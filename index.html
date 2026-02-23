@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Playfair+Display:wght@700&family=Oswald:wght@700&display=swap" rel="stylesheet">
 </head>
-<a href="https://wa.me/447402233467" class="whatsapp-float" target="_blank">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
-    <span>Book via WhatsApp</span>
-</a>
 <body>
 
     <div class="hero">
@@ -29,34 +25,40 @@
             </section>
 
             <section class="card animate-in" style="animation-delay: 0.2s;">
-    <h2 class="section-title">Book an Appointment</h2>
-    
-    <p class="form-note">Please select your preferred time. We will be in touch for confirmation.</p>
+                <h2 class="section-title">Book an Appointment</h2>
+                <p class="form-note">Please select your preferred time. We will be in touch for confirmation.</p>
 
-    <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
-        <div class="input-group">
-            <input type="text" name="name" placeholder="Full Name" required>
-        </div>
-        
-        <div class="input-group">
-            <input type="tel" name="phone" placeholder="Phone Number (Required)" required>
-        </div>
+                <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
+                    <div class="input-group">
+                        <input type="text" name="name" placeholder="Full Name" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="tel" name="phone" placeholder="Phone Number (Required)" required>
+                    </div>
 
-        <div class="input-group" style="display: flex; gap: 10px;">
-            <input type="date" name="date" required style="flex: 2;">
-            <input type="time" name="time" required style="flex: 1;">
-        </div>
+                    <div class="input-group">
+                        <label for="date" style="display:block; margin-bottom:5px; font-size:0.8rem; color:#888;">Select Date</label>
+                        <input type="date" name="date" id="date" required>
+                    </div>
 
-        <div class="input-group">
-            <textarea name="message" rows="3" placeholder="Any special request?"></textarea>
-        </div>
-        
-        <input type="hidden" name="_captcha" value="false">
-        <input type="hidden" name="_thanks" value="Thank you! We will be in touch shortly for confirmation.">
-        
-        <button type="submit" class="submit-btn">SEND BOOKING REQUEST</button>
-    </form>
-</section>
+                    <div class="input-group">
+                        <label for="time" style="display:block; margin-bottom:5px; font-size:0.8rem; color:#888;">Select Time</label>
+                        <select name="time" id="time" required>
+                            <option value="" disabled selected>Please select a date first</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <textarea name="message" rows="3" placeholder="Any special request?"></textarea>
+                    </div>
+                    
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="_thanks" value="Thank you! We will be in touch shortly for confirmation.">
+                    
+                    <button type="submit" class="submit-btn">SEND BOOKING REQUEST</button>
+                </form>
+            </section>
         </main>
 
         <footer class="footer animate-in">
@@ -64,6 +66,11 @@
             <p>Designed by <span>I CUT</span></p>
         </footer>
     </div>
+
+    <a href="https://wa.me/447402233467" class="whatsapp-float" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+        <span>Book via WhatsApp</span>
+    </a>
 
     <script src="script.js"></script>
 </body>

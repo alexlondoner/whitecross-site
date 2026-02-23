@@ -12,19 +12,28 @@ body {
     overflow-x: hidden;
 }
 
-/* LOGO - I CUT */
+/* LOGO PARLAMA EFEKTİ */
 .main-logo {
     font-family: 'Oswald', sans-serif;
     text-align: center;
     font-size: clamp(3.5rem, 12vw, 6rem);
     letter-spacing: 15px;
-    color: #fff;
     text-transform: uppercase;
     margin: 60px 0 0 0;
     line-height: 1;
+    position: relative;
+    background: linear-gradient(to right, #fff 20%, #d4af37 40%, #d4af37 60%, #fff 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 5s linear infinite;
 }
 
-/* YENİ YÖNETİM SLOGANI */
+@keyframes shine {
+    to { background-position: 200% center; }
+}
+
 .subtitle {
     text-align: center;
     color: var(--gold);
@@ -68,13 +77,6 @@ body {
     font-size: 1.8rem;
 }
 
-/* FİYAT LİSTESİ RESMİ - KESİLMEYİ ÖNLER */
-.image-wrapper {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
 .price-list-img {
     width: 100%;
     height: auto !important;
@@ -83,11 +85,9 @@ body {
 }
 
 /* FORM STİLLERİ */
-.booking-form .input-group {
-    margin-bottom: 15px;
-}
+.booking-form .input-group { margin-bottom: 15px; }
 
-.booking-form input, .booking-form textarea {
+.booking-form input, .booking-form textarea, select {
     width: 100%;
     padding: 12px;
     background: #000;
@@ -95,13 +95,19 @@ body {
     color: #fff;
     border-radius: 5px;
     box-sizing: border-box;
+    font-family: inherit;
 }
 
-.booking-form input:focus, .booking-form textarea:focus {
-    border-color: var(--gold);
-    outline: none;
+select {
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="gold" viewBox="0 0 16 16"><path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 15px center;
 }
 
+.form-note { text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 20px; font-style: italic; }
+
+/* NABIZ ATAN BUTON */
 .submit-btn {
     width: 100%;
     padding: 15px;
@@ -112,50 +118,6 @@ body {
     font-weight: bold;
     cursor: pointer;
     text-transform: uppercase;
-    transition: 0.3s;
-}
-
-.submit-btn:hover {
-    background: #fff;
-}
-
-/* ANIMASYONLAR */
-.animate-in {
-    animation: fadeInUp 0.8s ease forwards;
-}
-
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.footer {
-    text-align: center;
-    padding: 40px;
-    font-size: 0.8rem;
-    color: #666;
-}
-
-.footer span { color: var(--gold); }
-/* 1. I CUT Logosuna Parlama Efekti */
-.main-logo {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(to right, #fff 20%, #d4af37 40%, #d4af37 60%, #fff 80%);
-    background-size: 200% auto;
-    color: #000;
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shine 5s linear infinite;
-}
-
-@keyframes shine {
-    to { background-position: 200% center; }
-}
-
-/* 2. Randevu Butonuna Nabız (Pulse) Efekti */
-.submit-btn {
     animation: pulse 2s infinite;
 }
 
@@ -165,7 +127,7 @@ body {
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
 }
 
-/* 3. WhatsApp Butonu Stili */
+/* WHATSAPP FLOAT */
 .whatsapp-float {
     position: fixed;
     bottom: 20px;
@@ -179,21 +141,16 @@ body {
     gap: 10px;
     text-decoration: none;
     font-weight: bold;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     z-index: 1000;
-    transition: 0.3s;
 }
 
 .whatsapp-float img { width: 25px; height: 25px; }
 
-.whatsapp-float:hover {
-    transform: translateY(-5px);
-    background-color: #128c7e;
-    .form-note {
-    text-align: center;
-    color: #888;
-    font-size: 0.85rem;
-    margin-bottom: 20px;
-    font-style: italic;
-}
-}
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+/* ANIMATIONS */
+.animate-in { animation: fadeInUp 0.8s ease forwards; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.footer { text-align: center; padding: 40px; font-size: 0.8rem; color: #666; }
+.footer span { color: var(--gold); }

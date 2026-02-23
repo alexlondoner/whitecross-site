@@ -2,31 +2,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
 
-    // 1. Geçmiş tarihi seçmeyi engelle
+    // Bugünün tarihini minimum yap (Geçmişe randevu alınmasın)
     const today = new Date().toISOString().split('T')[0];
     if(dateInput) dateInput.setAttribute('min', today);
 
-    // 2. Gün seçildiğinde saat listesini ayarla
+    // Gün değişince saatleri doldur
     dateInput.addEventListener('change', () => {
         const selectedDate = new Date(dateInput.value);
-        const dayOfWeek = selectedDate.getDay(); // 0: Pazar, 1: Pzt, ..., 6: Cts
+        const dayOfWeek = selectedDate.getDay(); // 0: Pazar, 6: Cts
 
         timeSelect.innerHTML = '<option value="" disabled selected>Choose a time slot</option>';
 
         let startHour, endHour;
 
-        if (dayOfWeek === 0) { // PAZAR
+        if (dayOfWeek === 0) { // PAZAR: 10:00 - 16:00
             startHour = 10;
-            endHour = 16; // 4 PM
-        } else if (dayOfWeek === 6) { // CUMARTESİ
+            endHour = 16;
+        } else if (dayOfWeek === 6) { // CUMARTESİ: 09:00 - 18:00
             startHour = 9;
-            endHour = 18; // 6 PM
-        } else { // HAFTA İÇİ
+            endHour = 18;
+        } else { // HAFTA İÇİ: 09:00 - 19:00
             startHour = 9;
-            endHour = 19; // 7 PM
+            endHour = 19;
         }
 
-        // Seçenekleri oluştur
         for (let hour = startHour; hour < endHour; hour++) {
             ['00', '30'].forEach(min => {
                 const period = hour >= 12 ? 'PM' : 'AM';
