@@ -1,261 +1,46 @@
-/* --- I CUT WHITE CROSS ST - PREMIUM CSS --- */
+:root { --gold: #d4af37; --dark: #050505; --card-bg: #0f0f0f; }
+body { background: var(--dark); color: #fff; margin: 0; font-family: 'Inter', sans-serif; }
 
-:root { 
-    --gold: #d4af37; 
-    --dark: #050505; 
-    --card-bg: #0f0f0f; 
-    --text-muted: #777;
-}
-
-body { 
-    background-color: var(--dark); 
-    color: #fff; 
-    margin: 0; 
-    font-family: 'Inter', sans-serif; 
-    overflow-x: hidden;
-}
-
-/* --- LOGO & HEADER --- */
 .main-logo {
-    font-family: 'Oswald', sans-serif; 
-    text-align: center; 
-    font-size: clamp(3.5rem, 15vw, 6.5rem);
-    letter-spacing: 12px; 
-    text-transform: uppercase; 
-    margin-top: 40px;
+    font-family: 'Oswald', sans-serif; text-align: center; font-size: 4rem;
+    letter-spacing: 10px; text-transform: uppercase; margin-top: 30px;
     background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto; 
-    -webkit-background-clip: text; 
-    background-clip: text;
-    -webkit-text-fill-color: transparent; 
-    animation: shine 5s linear infinite;
-}
-
-/* YENİ: PARLAYAN UNDER NEW MANAGEMENT */
-.subtitle {
-    text-align: center;
-    margin-top: -10px;
-    margin-bottom: 20px;
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
 }
 
 .subtitle span {
-    font-family: 'Oswald', sans-serif;
-    font-size: 1.1rem; 
-    font-weight: 700;
-    letter-spacing: 4px; 
-    text-transform: uppercase;
+    display: block; text-align: center; font-family: 'Oswald', sans-serif; font-size: 1.1rem;
+    color: var(--gold); letter-spacing: 3px; font-weight: 700;
     background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shine 5s linear infinite;
-    display: inline-block;
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
 }
 
-@keyframes shine { 
-    to { background-position: 200% center; } 
-}
+@keyframes shine { to { background-position: 200% center; } }
 
-.walk-in-tag { 
-    text-align: center; 
-    background: var(--gold); 
-    color: #000; 
-    font-weight: 900; 
-    font-size: 0.65rem; 
-    padding: 6px 16px; 
-    border-radius: 50px; 
-    margin: 15px auto; 
-    display: table; 
-    letter-spacing: 1px;
-}
+.container { max-width: 450px; margin: 0 auto; padding: 20px; }
+.card { background: var(--card-bg); border: 1px solid #1a1a1a; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+.section-title { color: var(--gold); text-align: center; font-family: 'Oswald'; text-transform: uppercase; }
 
-.location-text { 
-    text-align: center; 
-    color: #444; 
-    font-size: 0.75rem; 
-    margin-bottom: 40px; 
-}
+.menu-category { color: var(--gold); font-size: 0.8rem; margin: 20px 0 10px; border-left: 2px solid var(--gold); padding-left: 10px; text-transform: uppercase; }
+.services-grid { display: flex; flex-direction: column; gap: 8px; }
+.service-item { display: flex; justify-content: space-between; align-items: center; background: #151515; padding: 12px; border-radius: 8px; }
+.service-item.highlight { border: 1px solid var(--gold); }
+.s-info strong { display: block; font-size: 0.9rem; }
+.s-info p { font-size: 0.7rem; color: #777; margin: 2px 0 0; }
+.price { color: var(--gold); font-family: 'Oswald'; font-weight: bold; }
 
-/* --- CONTAINER & CARDS --- */
-.container { 
-    max-width: 480px; 
-    margin: 0 auto; 
-    padding: 0 15px 100px; 
-}
+.extras-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.extra-box { background: #111; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; font-size: 0.8rem; }
+.extra-box span { color: #888; }
+.extra-box strong { color: var(--gold); }
 
-.card { 
-    background: var(--card-bg); 
-    border: 1px solid #1a1a1a; 
-    padding: 25px; 
-    border-radius: 20px; 
-    margin-bottom: 30px; 
-    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-}
+.m-bottom { margin-bottom: 12px; }
+.row { display: flex; gap: 10px; }
+input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #222; color: #fff; border-radius: 8px; box-sizing: border-box; }
+.submit-btn { width: 100%; padding: 15px; background: var(--gold); color: #000; font-weight: 800; border: none; border-radius: 8px; cursor: pointer; }
 
-.section-title { 
-    font-family: 'Oswald', sans-serif; 
-    color: var(--gold); 
-    text-align: center; 
-    text-transform: uppercase; 
-    letter-spacing: 2px; 
-    margin-bottom: 25px; 
-    font-size: 1.4rem;
-}
-
-/* --- SERVICE MENU STYLES --- */
-.menu-category { 
-    color: var(--gold); 
-    font-size: 0.75rem; 
-    text-transform: uppercase; 
-    letter-spacing: 3px; 
-    margin: 30px 0 15px 0; 
-    border-left: 3px solid var(--gold); 
-    padding-left: 12px; 
-}
-
-.services-grid { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 12px; 
-}
-
-.service-item { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    background: rgba(255,255,255,0.02); 
-    padding: 16px; 
-    border-radius: 12px; 
-    border: 1px solid #1a1a1a; 
-    transition: 0.3s;
-}
-
-.service-item.highlight { 
-    border: 1px solid var(--gold); 
-    background: linear-gradient(to right, rgba(212, 175, 55, 0.1), transparent); 
-}
-
-.s-info strong { 
-    display: block; 
-    font-size: 1rem; 
-    color: #fff; 
-    margin-bottom: 4px; 
-}
-
-.s-info p { 
-    font-size: 0.75rem; 
-    color: var(--text-muted); 
-    margin: 0; 
-    line-height: 1.4; 
-}
-
-.price { 
-    font-family: 'Oswald', sans-serif; 
-    color: var(--gold); 
-    font-size: 1.2rem; 
-    font-weight: 600;
-}
-
-/* --- FORM STYLES --- */
-.booking-form .input-group { 
-    margin-bottom: 15px; 
-}
-
-input, select, textarea { 
-    width: 100%; 
-    padding: 14px; 
-    background: #000; 
-    border: 1px solid #222; 
-    color: #fff; 
-    border-radius: 12px; 
-    font-family: inherit; 
-    font-size: 0.9rem;
-    box-sizing: border-box;
-}
-
-input:focus, select:focus {
-    border-color: var(--gold);
-    outline: none;
-}
-
-/* Takvim İkonu Düzenlemesi */
-input[type="date"]::-webkit-calendar-picker-indicator { 
-    filter: invert(0.8) sepia(1) saturate(5) hue-rotate(10deg); 
-    cursor: pointer; 
-}
-
-.submit-btn { 
-    width: 100%; 
-    padding: 18px; 
-    background: var(--gold); 
-    color: #000; 
-    border: none; 
-    border-radius: 12px; 
-    font-weight: 800; 
-    cursor: pointer; 
-    text-transform: uppercase; 
-    margin-top: 10px; 
-    transition: 0.3s;
-    letter-spacing: 1px;
-}
-
-.submit-btn:hover {
-    background: #fff;
-    transform: translateY(-2px);
-}
-
-/* --- WHATSAPP & FOOTER --- */
-.whatsapp-float { 
-    position: fixed; 
-    bottom: 25px; 
-    right: 25px; 
-    background: #25d366; 
-    color: #fff; 
-    padding: 12px 22px; 
-    border-radius: 50px; 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    text-decoration: none; 
-    font-weight: bold; 
-    z-index: 1000; 
-    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-}
-
-.whatsapp-float img { 
-    width: 22px; 
-}
-
-.promo-box { 
-    text-align: center; 
-    color: var(--gold); 
-    font-size: 0.75rem; 
-    margin-top: 25px; 
-    font-weight: bold; 
-    border: 1px dashed var(--gold); 
-    padding: 15px; 
-    border-radius: 12px; 
-    line-height: 1.6;
-}
-
-.animate-in { 
-    animation: fadeInUp 0.8s ease forwards; 
-}
-
-@keyframes fadeInUp { 
-    from { opacity: 0; transform: translateY(25px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
-
-.footer { 
-    text-align: center; 
-    padding: 30px; 
-    font-size: 0.75rem; 
-    color: #444; 
-}
-
-.footer span { 
-    color: var(--gold); 
-    font-weight: bold;
-}
+.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; padding: 12px; border-radius: 50%; z-index: 100; }
+.whatsapp-float img { width: 30px; display: block; }
+.service-note { font-size: 0.65rem; color: var(--gold); text-align: center; margin-top: 15px; font-style: italic; }
