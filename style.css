@@ -1,41 +1,261 @@
-:root { --gold: #d4af37; --dark: #050505; --card-bg: #0f0f0f; }
-body { background-color: var(--dark); color: #fff; margin: 0; font-family: 'Inter', sans-serif; }
+/* --- I CUT WHITE CROSS ST - PREMIUM CSS --- */
 
-.main-logo {
-    font-family: 'Oswald', sans-serif; text-align: center; font-size: clamp(3rem, 15vw, 6rem);
-    letter-spacing: 12px; text-transform: uppercase; margin-top: 40px;
-    background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
+:root { 
+    --gold: #d4af37; 
+    --dark: #050505; 
+    --card-bg: #0f0f0f; 
+    --text-muted: #777;
 }
-@keyframes shine { to { background-position: 200% center; } }
-.subtitle { text-align: center; color: var(--gold); letter-spacing: 5px; font-weight: 700; font-size: 0.8rem; margin-top: -5px; }
-.walk-in-tag { text-align: center; background: var(--gold); color: #000; font-weight: 900; font-size: 0.6rem; padding: 5px 15px; border-radius: 50px; margin: 10px auto; display: table; }
-.location-text { text-align: center; color: #444; font-size: 0.75rem; margin-bottom: 30px; }
 
-.container { max-width: 480px; margin: 0 auto; padding: 0 15px 100px; }
-.card { background: var(--card-bg); border: 1px solid #1a1a1a; padding: 25px; border-radius: 20px; margin-bottom: 25px; }
-.section-title { font-family: 'Oswald', sans-serif; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 20px; }
+body { 
+    background-color: var(--dark); 
+    color: #fff; 
+    margin: 0; 
+    font-family: 'Inter', sans-serif; 
+    overflow-x: hidden;
+}
 
-.menu-category { color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; margin: 25px 0 15px 0; border-left: 3px solid var(--gold); padding-left: 10px; }
-.services-grid { display: flex; flex-direction: column; gap: 10px; }
-.service-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid #1a1a1a; }
-.service-item.highlight { border: 1px solid var(--gold); background: linear-gradient(to right, rgba(212, 175, 55, 0.1), transparent); }
+/* --- LOGO & HEADER --- */
+.main-logo {
+    font-family: 'Oswald', sans-serif; 
+    text-align: center; 
+    font-size: clamp(3.5rem, 15vw, 6.5rem);
+    letter-spacing: 12px; 
+    text-transform: uppercase; 
+    margin-top: 40px;
+    background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
+    background-size: 200% auto; 
+    -webkit-background-clip: text; 
+    background-clip: text;
+    -webkit-text-fill-color: transparent; 
+    animation: shine 5s linear infinite;
+}
 
-.s-info strong { display: block; font-size: 0.95rem; color: #fff; margin-bottom: 4px; }
-.s-info p { font-size: 0.7rem; color: #777; margin: 0; line-height: 1.3; }
-.price { font-family: 'Oswald', sans-serif; color: var(--gold); font-size: 1.1rem; }
+/* YENİ: PARLAYAN UNDER NEW MANAGEMENT */
+.subtitle {
+    text-align: center;
+    margin-top: -10px;
+    margin-bottom: 20px;
+}
 
-.booking-form .input-group { margin-bottom: 12px; }
-input, select, textarea { width: 100%; padding: 12px; background: #000; border: 1px solid #222; color: #fff; border-radius: 10px; font-family: inherit; }
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(1) saturate(5) hue-rotate(10deg); cursor: pointer; }
+.subtitle span {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem; 
+    font-weight: 700;
+    letter-spacing: 4px; 
+    text-transform: uppercase;
+    background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 5s linear infinite;
+    display: inline-block;
+}
 
-.submit-btn { width: 100%; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
-.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; color: #fff; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: bold; z-index: 1000; }
-.whatsapp-float img { width: 22px; }
+@keyframes shine { 
+    to { background-position: 200% center; } 
+}
 
-.promo-box { text-align: center; color: var(--gold); font-size: 0.7rem; margin-top: 20px; font-weight: bold; border: 1px dashed var(--gold); padding: 10px; border-radius: 10px; }
-.animate-in { animation: fadeInUp 0.8s ease forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.footer { text-align: center; padding: 20px; font-size: 0.7rem; color: #444; }
-.footer span { color: var(--gold); }
+.walk-in-tag { 
+    text-align: center; 
+    background: var(--gold); 
+    color: #000; 
+    font-weight: 900; 
+    font-size: 0.65rem; 
+    padding: 6px 16px; 
+    border-radius: 50px; 
+    margin: 15px auto; 
+    display: table; 
+    letter-spacing: 1px;
+}
+
+.location-text { 
+    text-align: center; 
+    color: #444; 
+    font-size: 0.75rem; 
+    margin-bottom: 40px; 
+}
+
+/* --- CONTAINER & CARDS --- */
+.container { 
+    max-width: 480px; 
+    margin: 0 auto; 
+    padding: 0 15px 100px; 
+}
+
+.card { 
+    background: var(--card-bg); 
+    border: 1px solid #1a1a1a; 
+    padding: 25px; 
+    border-radius: 20px; 
+    margin-bottom: 30px; 
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+}
+
+.section-title { 
+    font-family: 'Oswald', sans-serif; 
+    color: var(--gold); 
+    text-align: center; 
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+    margin-bottom: 25px; 
+    font-size: 1.4rem;
+}
+
+/* --- SERVICE MENU STYLES --- */
+.menu-category { 
+    color: var(--gold); 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    letter-spacing: 3px; 
+    margin: 30px 0 15px 0; 
+    border-left: 3px solid var(--gold); 
+    padding-left: 12px; 
+}
+
+.services-grid { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.service-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: rgba(255,255,255,0.02); 
+    padding: 16px; 
+    border-radius: 12px; 
+    border: 1px solid #1a1a1a; 
+    transition: 0.3s;
+}
+
+.service-item.highlight { 
+    border: 1px solid var(--gold); 
+    background: linear-gradient(to right, rgba(212, 175, 55, 0.1), transparent); 
+}
+
+.s-info strong { 
+    display: block; 
+    font-size: 1rem; 
+    color: #fff; 
+    margin-bottom: 4px; 
+}
+
+.s-info p { 
+    font-size: 0.75rem; 
+    color: var(--text-muted); 
+    margin: 0; 
+    line-height: 1.4; 
+}
+
+.price { 
+    font-family: 'Oswald', sans-serif; 
+    color: var(--gold); 
+    font-size: 1.2rem; 
+    font-weight: 600;
+}
+
+/* --- FORM STYLES --- */
+.booking-form .input-group { 
+    margin-bottom: 15px; 
+}
+
+input, select, textarea { 
+    width: 100%; 
+    padding: 14px; 
+    background: #000; 
+    border: 1px solid #222; 
+    color: #fff; 
+    border-radius: 12px; 
+    font-family: inherit; 
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+input:focus, select:focus {
+    border-color: var(--gold);
+    outline: none;
+}
+
+/* Takvim İkonu Düzenlemesi */
+input[type="date"]::-webkit-calendar-picker-indicator { 
+    filter: invert(0.8) sepia(1) saturate(5) hue-rotate(10deg); 
+    cursor: pointer; 
+}
+
+.submit-btn { 
+    width: 100%; 
+    padding: 18px; 
+    background: var(--gold); 
+    color: #000; 
+    border: none; 
+    border-radius: 12px; 
+    font-weight: 800; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    margin-top: 10px; 
+    transition: 0.3s;
+    letter-spacing: 1px;
+}
+
+.submit-btn:hover {
+    background: #fff;
+    transform: translateY(-2px);
+}
+
+/* --- WHATSAPP & FOOTER --- */
+.whatsapp-float { 
+    position: fixed; 
+    bottom: 25px; 
+    right: 25px; 
+    background: #25d366; 
+    color: #fff; 
+    padding: 12px 22px; 
+    border-radius: 50px; 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    text-decoration: none; 
+    font-weight: bold; 
+    z-index: 1000; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+}
+
+.whatsapp-float img { 
+    width: 22px; 
+}
+
+.promo-box { 
+    text-align: center; 
+    color: var(--gold); 
+    font-size: 0.75rem; 
+    margin-top: 25px; 
+    font-weight: bold; 
+    border: 1px dashed var(--gold); 
+    padding: 15px; 
+    border-radius: 12px; 
+    line-height: 1.6;
+}
+
+.animate-in { 
+    animation: fadeInUp 0.8s ease forwards; 
+}
+
+@keyframes fadeInUp { 
+    from { opacity: 0; transform: translateY(25px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+.footer { 
+    text-align: center; 
+    padding: 30px; 
+    font-size: 0.75rem; 
+    color: #444; 
+}
+
+.footer span { 
+    color: var(--gold); 
+    font-weight: bold;
+}
