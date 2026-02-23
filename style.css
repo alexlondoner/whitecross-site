@@ -2,55 +2,187 @@
     --gold: #d4af37;
     --bg: #0a0a0a;
     --card-bg: #141414;
+    --text: #ffffff;
 }
 
 body {
     background-color: var(--bg);
-    color: #fff;
+    color: var(--text);
     font-family: 'Inter', sans-serif;
     margin: 0;
-    line-height: 1.6;
+    padding: 0;
+    display: flex;
+    justify-content: center;
 }
 
-.hero { padding: 40px 20px; }
-.main-logo { font-family: 'Oswald'; font-size: 4rem; text-align: center; color: var(--gold); margin: 0; }
-.subtitle { text-align: center; font-weight: bold; letter-spacing: 3px; }
-.location-text { text-align: center; color: #888; font-size: 0.9rem; }
+.hero {
+    width: 100%;
+    max-width: 500px; /* Sitenin çok yayılmasını engeller, derli toplu tutar */
+    padding: 40px 20px;
+    text-align: center; /* HER ŞEYİ MERKEZE ALAN SİHİRLİ SATIR */
+}
 
-.container { max-width: 500px; margin: 0 auto; }
-.card { background: var(--card-bg); padding: 25px; border-radius: 20px; margin-bottom: 25px; border: 1px solid #222; }
+/* LOGO VE BAŞLIK */
+.main-logo {
+    font-family: 'Oswald', sans-serif;
+    font-size: 5rem;
+    color: var(--gold);
+    margin: 0;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+}
 
-.menu-category { color: var(--gold); font-family: 'Oswald'; margin: 20px 0 10px; border-bottom: 1px solid #333; }
-.service-item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
-.price { color: var(--gold); font-weight: bold; }
+.subtitle {
+    font-weight: 700;
+    letter-spacing: 4px;
+    font-size: 0.8rem;
+    margin: 10px 0;
+}
 
+.subtitle span {
+    color: var(--gold);
+    /* PARLAMA EFEKTİ */
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; text-shadow: 0 0 20px var(--gold); }
+    100% { opacity: 0.7; }
+}
+
+.walk-in-tag {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 5px 15px;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    margin: 15px 0;
+}
+
+.location-text {
+    color: #666;
+    font-size: 0.8rem;
+    margin-bottom: 30px;
+}
+
+/* KARTLAR VE LİSTELER */
+.card {
+    background: var(--card-bg);
+    border: 1px solid #222;
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    text-align: left; /* Menü yazıları sola yaslı olsun ama kart merkezde kalsın */
+}
+
+.section-title {
+    font-family: 'Oswald', sans-serif;
+    color: var(--gold);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.menu-category {
+    color: var(--gold);
+    border-bottom: 1px solid #333;
+    padding-bottom: 5px;
+    margin: 20px 0 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.service-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+/* MODAL / POPUP */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    border: 1px solid var(--gold);
+    width: 85%;
+    max-width: 400px;
+    position: relative;
+    color: #fff;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px; right: 20px;
+    font-size: 30px;
+    color: var(--gold);
+    cursor: pointer;
+}
+
+/* BUTONLAR */
 .details-btn {
-    background: none; border: 1px solid var(--gold); color: var(--gold);
-    font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; cursor: pointer; text-transform: uppercase; margin-top: 5px;
-}
-
-.input-field {
-    width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333;
-    background: #000; color: #fff; box-sizing: border-box;
+    background: none;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-size: 0.6rem;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
 }
 
 .submit-btn {
-    width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 8px;
-    font-weight: bold; cursor: pointer; font-size: 1rem;
+    background: var(--gold);
+    color: #000;
+    border: none;
+    width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
 }
 
-/* MODAL STYLES */
-.modal {
-    display: none; position: fixed; z-index: 999; left: 0; top: 0;
-    width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center;
+.input-field {
+    width: 100%;
+    padding: 12px;
+    background: #000;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
 }
-.modal-content {
-    background: var(--card-bg); padding: 30px; border-radius: 20px; width: 80%; max-width: 400px;
-    border: 1px solid var(--gold); position: relative;
+
+/* FOOTER */
+.footer {
+    padding: 40px;
+    font-size: 0.7rem;
+    color: #444;
 }
-.close-modal { position: absolute; top: 10px; right: 20px; font-size: 2rem; cursor: pointer; color: var(--gold); }
 
-.footer { text-align: center; padding: 40px; font-size: 0.8rem; color: #444; }
-.footer span { color: var(--gold); font-weight: bold; }
+.footer span {
+    color: var(--gold);
+    font-weight: bold;
+}
 
-.whatsapp-float { position: fixed; bottom: 30px; right: 30px; width: 60px; z-index: 100; }
+/* WHATSAPP */
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+}
