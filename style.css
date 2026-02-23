@@ -20,30 +20,42 @@ body { background-color: var(--dark); color: var(--light); margin: 0; font-famil
 
 .location-text { text-align: center; color: #666; font-size: 0.8rem; margin-bottom: 30px; }
 
-.container { max-width: 450px; margin: 0 auto; padding: 15px; }
+.container { max-width: 480px; margin: 0 auto; padding: 15px; }
 
-.card { background: #111; border: 1px solid #222; padding: 25px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.card { background: #111; border: 1px solid #222; padding: 25px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
 
-.section-title { font-family: 'Oswald', sans-serif; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px; }
+.section-title { font-family: 'Oswald', sans-serif; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 25px; letter-spacing: 2px; }
 
-.services-grid { display: flex; flex-direction: column; gap: 12px; }
-.service-item { display: flex; justify-content: space-between; border-bottom: 1px solid #222; padding-bottom: 8px; font-size: 0.95rem; }
-.service-item .price { color: var(--gold); font-weight: bold; }
-.view-all-note { text-align: center; font-size: 0.7rem; color: #555; margin-top: 15px; font-style: italic; }
+/* MENÜ STİLLERİ */
+.menu-category { color: var(--gold); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 3px; margin: 25px 0 12px 0; border-left: 2px solid var(--gold); padding-left: 12px; }
 
+.services-grid { display: flex; flex-direction: column; gap: 10px; }
+
+.service-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.03); padding: 14px 18px; border-radius: 12px;
+}
+
+.service-item.highlight { border: 1px solid rgba(212, 175, 55, 0.3); background: linear-gradient(90deg, rgba(212, 175, 55, 0.1), transparent); }
+
+.s-info strong { display: block; font-size: 0.95rem; color: #fff; margin-bottom: 3px; }
+.s-info p { font-size: 0.75rem; color: #666; margin: 0; }
+.service-item .price { font-family: 'Oswald', sans-serif; color: var(--gold); font-size: 1.1rem; }
+
+/* FORM STİLLERİ */
 .booking-form .input-group { margin-bottom: 15px; }
-input, select, textarea { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; font-family: inherit; font-size: 0.9rem; }
+input, select, textarea { width: 100%; padding: 14px; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; font-family: inherit; font-size: 0.9rem; }
 select { appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="gold" viewBox="0 0 16 16"><path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center; }
 
-.submit-btn { width: 100%; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; transition: 0.3s; }
+.submit-btn { width: 100%; padding: 18px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
 .submit-btn:hover { background: #fff; transform: translateY(-2px); }
 
-.promo-box { text-align: center; color: var(--gold); font-size: 0.75rem; margin-top: 20px; border: 1px dashed var(--gold); padding: 10px; border-radius: 10px; }
+.promo-box { text-align: center; color: var(--gold); font-size: 0.75rem; margin-top: 25px; border: 1px dashed var(--gold); padding: 15px; border-radius: 12px; }
 
-.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; color: #fff; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: bold; z-index: 1000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.whatsapp-float { position: fixed; bottom: 25px; right: 25px; background: #25d366; color: #fff; padding: 12px 22px; border-radius: 50px; display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: bold; z-index: 1000; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
 
 .animate-in { animation: fadeInUp 0.8s ease forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
 
-.footer { text-align: center; padding: 40px; font-size: 0.7rem; color: #444; }
+.footer { text-align: center; padding: 50px; font-size: 0.7rem; color: #444; }
 .footer span { color: var(--gold); font-weight: bold; }

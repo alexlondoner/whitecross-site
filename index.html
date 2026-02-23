@@ -19,19 +19,45 @@
 
         <main class="container">
             <section class="card animate-in">
-                <h2 class="section-title">Our Services</h2>
+                <h2 class="section-title">Service Menu</h2>
+                
+                <div class="menu-category">Exclusive Bundles</div>
                 <div class="services-grid">
-                    <div class="service-item"><span>Standard Haircut</span><span class="price">£28</span></div>
-                    <div class="service-item"><span>Skin Fade</span><span class="price">£32</span></div>
-                    <div class="service-item"><span>Full Experience</span><span class="price">£40</span></div>
-                    <div class="service-item"><span>I CUT Royal</span><span class="price">£65</span></div>
+                    <div class="service-item">
+                        <div class="s-info"><strong>The Full Experience</strong><p>Professional Haircut & Beard</p></div>
+                        <span class="price">£40</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="s-info"><strong>Full Skin Fade</strong><p>Skin Fade & Beard Sculpting</p></div>
+                        <span class="price">£48</span>
+                    </div>
+                    <div class="service-item highlight">
+                        <div class="s-info"><strong>I CUT Royal</strong><p>The Ultimate Care, Full Facial & Steam</p></div>
+                        <span class="price">£65</span>
+                    </div>
                 </div>
-                <p class="view-all-note">See all services and bundles in the booking section below.</p>
+
+                <div class="menu-category">Standard Cuts</div>
+                <div class="services-grid">
+                    <div class="service-item">
+                        <div class="s-info"><strong>Classic Cut</strong><p>Short Back & Sides</p></div>
+                        <span class="price">£28</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="s-info"><strong>Skin Fade</strong><p>Sharp & Detailed Fade</p></div>
+                        <span class="price">£32</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="s-info"><strong>Hot Towel Shave</strong><p>Traditional Turkish Shave</p></div>
+                        <span class="price">£22</span>
+                    </div>
+                </div>
+                <p class="view-all-note">Browse all options (Kids, Seniors, Extras) in the section below.</p>
             </section>
 
             <section class="card animate-in" style="animation-delay: 0.2s;">
                 <h2 class="section-title">Priority Booking</h2>
-                <p class="form-note">Select your service and preferred time below.</p>
+                <p class="form-note">Book your chair now. Confirmation will be sent shortly.</p>
 
                 <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
                     <div class="input-group">
@@ -44,21 +70,21 @@
 
                     <div class="input-group">
                         <select name="service" id="service" required>
-                            <option value="" disabled selected>Select a Service</option>
-                            <optgroup label="✨ EXCLUSIVE BUNDLES">
-                                <option value="The Full Experience">The Full Experience - £40</option>
-                                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                            <option value="" disabled selected>Choose Your Service</option>
+                            <optgroup label="✨ BUNDLES">
+                                <option value="Full Experience">Full Experience - £40</option>
+                                <option value="Full Skin Fade">Full Skin Fade Service - £48</option>
                                 <option value="I CUT Deluxe">I CUT Deluxe - £50</option>
                                 <option value="I CUT Royal">I CUT Royal - £65</option>
-                                <option value="Senior Citizen Full Experience">Senior Citizen Full Experience (65+) - £35</option>
                             </optgroup>
-                            <optgroup label="✂️ STANDARD PACKAGES">
-                                <option value="Classic Short Back & Side">Classic Short Back & Side - £28</option>
-                                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                            <optgroup label="✂️ PACKAGES">
+                                <option value="Classic Cut">Classic Short Back & Side - £28</option>
+                                <option value="Skin Fade">Skin Fade Cut - £32</option>
                                 <option value="Scissor Cut">Scissor Cut - £30</option>
                                 <option value="Clipper Cut">Clipper Cut - £22</option>
                                 <option value="Hot Towel Shave">Hot Towel Shave - £22</option>
-                                <option value="Young Gents Haircut">Young Gents Haircut (0-12) - £20</option>
+                                <option value="Senior Cut">Senior Citizen (65+) - £23</option>
+                                <option value="Young Gents">Young Gents (0-12) - £20</option>
                             </optgroup>
                         </select>
                     </div>
@@ -75,9 +101,9 @@
                     </div>
                     
                     <input type="hidden" name="_captcha" value="false">
-                    <input type="hidden" name="_thanks" value="Thank you! We will be in touch shortly for confirmation.">
+                    <input type="hidden" name="_thanks" value="Thank you Alex! Your request has been received.">
                     
-                    <button type="submit" class="submit-btn">SEND BOOKING REQUEST</button>
+                    <button type="submit" class="submit-btn">BOOK MY SEAT</button>
                 </form>
 
                 <div class="promo-box">
@@ -92,9 +118,9 @@
         </footer>
     </div>
 
-    <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
+    <a href="https://wa.me/447XXXXXXXXX" class="whatsapp-float" target="_blank">
         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
-        <span>WhatsApp</span>
+        <span>Book on WhatsApp</span>
     </a>
 
     <script src="script.js"></script>
