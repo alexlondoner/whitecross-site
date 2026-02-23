@@ -1,41 +1,69 @@
-:root { --gold: #d4af37; --dark: #050505; --card-bg: #0f0f0f; }
-body { background-color: var(--dark); color: #fff; margin: 0; font-family: 'Inter', sans-serif; }
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
 
-.main-logo {
-    font-family: 'Oswald', sans-serif; text-align: center; font-size: clamp(3rem, 15vw, 6rem);
-    letter-spacing: 12px; text-transform: uppercase; margin-top: 40px;
-    background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
-}
-@keyframes shine { to { background-position: 200% center; } }
-.subtitle { text-align: center; color: var(--gold); letter-spacing: 5px; font-weight: 700; font-size: 0.8rem; margin-top: -5px; }
-.walk-in-tag { text-align: center; background: var(--gold); color: #000; font-weight: 900; font-size: 0.6rem; padding: 5px 15px; border-radius: 50px; margin: 10px auto; display: table; }
-.location-text { text-align: center; color: #444; font-size: 0.75rem; margin-bottom: 30px; }
+    // 1. Bugünden öncesini seçmeyi engelle
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD formatı
+    if(dateInput) {
+        dateInput.setAttribute('min', todayStr);
+    }
 
-.container { max-width: 480px; margin: 0 auto; padding: 0 15px 100px; }
-.card { background: var(--card-bg); border: 1px solid #1a1a1a; padding: 25px; border-radius: 20px; margin-bottom: 25px; }
-.section-title { font-family: 'Oswald', sans-serif; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 20px; }
+    // 2. Tarih kutusuna tıklandığında takvimi aç (Klavye gelmesin diye)
+    dateInput.addEventListener('click', function() {
+        if (this.showPicker) this.showPicker();
+    });
 
-.menu-category { color: var(--gold); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; margin: 25px 0 15px 0; border-left: 3px solid var(--gold); padding-left: 10px; }
-.services-grid { display: flex; flex-direction: column; gap: 10px; }
-.service-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid #1a1a1a; }
-.service-item.highlight { border: 1px solid var(--gold); background: linear-gradient(to right, rgba(212, 175, 55, 0.1), transparent); }
+    // 3. Tarih değiştiğinde saatleri hesapla
+    dateInput.addEventListener('change', function() {
+        const selectedDate = new Date(this.value);
+        const dayOfWeek = selectedDate.getDay(); // 0: Pazar, 6: Ctesi
+        
+        // Önce saat listesini temizle
+        timeSelect.innerHTML = '<option value="" disabled selected>Time</option>';
 
-.s-info strong { display: block; font-size: 0.95rem; color: #fff; margin-bottom: 4px; }
-.s-info p { font-size: 0.7rem; color: #777; margin: 0; line-height: 1.3; }
-.price { font-family: 'Oswald', sans-serif; color: var(--gold); font-size: 1.1rem; }
+        let startHour, endHour;
 
-.booking-form .input-group { margin-bottom: 12px; }
-input, select, textarea { width: 100%; padding: 12px; background: #000; border: 1px solid #222; color: #fff; border-radius: 10px; font-family: inherit; }
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(1) saturate(5) hue-rotate(10deg); cursor: pointer; }
+        // White Cross St. Çalışma Saatleri Kuralları
+        if (dayOfWeek === 0) { 
+            startHour = 10; endHour = 16; // Pazar 10:00 - 16:00
+        } else if (dayOfWeek === 6) { 
+            startHour = 9; endHour = 18;  // Cumartesi 09:00 - 18:00
+        } else { 
+            startHour = 9; endHour = 19;  // Hafta içi 09:00 - 19:00
+        }
 
-.submit-btn { width: 100%; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
-.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; color: #fff; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: bold; z-index: 1000; }
-.whatsapp-float img { width: 22px; }
+        // Saat dilimlerini oluştur (30 dakikalık aralıklarla)
+        for (let hour = startHour; hour < endHour; hour++) {
+            ['00', '30'].forEach(min => {
+                
+                // Eğer BUGÜN seçiliyse, geçmiş saatleri listeden çıkar
+                if (this.value === todayStr) {
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const currentMin = now.getMinutes();
+                    if (hour < currentHour || (hour === currentHour && parseInt(min) <= currentMin)) {
+                        return; // Geçmiş saati ekleme, atla
+                    }
+                }
 
-.promo-box { text-align: center; color: var(--gold); font-size: 0.7rem; margin-top: 20px; font-weight: bold; border: 1px dashed var(--gold); padding: 10px; border-radius: 10px; }
-.animate-in { animation: fadeInUp 0.8s ease forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.footer { text-align: center; padding: 20px; font-size: 0.7rem; color: #444; }
-.footer span { color: var(--gold); }
+                const period = hour >= 12 ? 'PM' : 'AM';
+                let displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+                
+                const timeText = `${displayHour}:${min} ${period}`;
+                const option = document.createElement('option');
+                option.value = timeText;
+                option.textContent = timeText;
+                timeSelect.appendChild(option);
+            });
+        }
+
+        // Eğer o güne hiç saat kalmadıysa (Dükkan kapanmışsa)
+        if (timeSelect.options.length === 1) {
+            const option = document.createElement('option');
+            option.textContent = "Fully Booked";
+            option.disabled = true;
+            timeSelect.appendChild(option);
+        }
+    });
+});
