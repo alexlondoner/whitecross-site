@@ -76,13 +76,16 @@ h1 {
     border-radius: 12px;
 }
 
-.price-list-img {
-    width: 100%;
+..price-list-img {
+    max-width: 600px; /* Masüstünde çok büyümesin */
+    width: 95%;       /* Mobilde ekrana tam sığsın */
     height: auto;
     display: block;
-    transition: transform 0.5s ease;
+    margin: 20px auto; /* Ortalamak için */
+    border: 2px solid #d4af37; /* Dükkanın altın sarısı çerçevesi */
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
-
 .price-list-img:hover {
     transform: scale(1.05);
 }
