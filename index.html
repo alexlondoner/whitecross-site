@@ -11,16 +11,11 @@
 
     <div class="hero">
         <header class="animate-in">
-    <h1 class="main-logo">I CUT</h1>
-    <p class="subtitle">UNDER NEW MANAGEMENT</p>
-    <p class="walk-in-tag">WALK-INS ALWAYS WELCOME</p>
-    <p class="location-text">White Cross St. London</p>
-</header>
-
-<section class="card animate-in" style="animation-delay: 0.2s;">
-    <h2 class="section-title">Priority Booking</h2>
-    <p class="form-note">Walk-in or skip the queue by booking below. We'll confirm shortly.</p>
-    </section>
+            <h1 class="main-logo">I CUT</h1>
+            <p class="subtitle">UNDER NEW MANAGEMENT</p>
+            <p class="walk-in-tag">WALK-INS ALWAYS WELCOME</p>
+            <p class="location-text">White Cross St. London</p>
+        </header>
 
         <main class="container">
             <section class="card animate-in">
@@ -31,8 +26,8 @@
             </section>
 
             <section class="card animate-in" style="animation-delay: 0.2s;">
-                <h2 class="section-title">Book an Appointment</h2>
-                <p class="form-note">Please select your preferred time. We will be in touch for confirmation.</p>
+                <h2 class="section-title">Priority Booking</h2>
+                <p class="form-note">Book your slot now. We will be in touch for confirmation.</p>
 
                 <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
                     <div class="input-group">
@@ -44,19 +39,40 @@
                     </div>
 
                     <div class="input-group">
-                        <label for="date" style="display:block; margin-bottom:5px; font-size:0.8rem; color:#888;">Select Date</label>
-                        <input type="date" name="date" id="date" required>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="time" style="display:block; margin-bottom:5px; font-size:0.8rem; color:#888;">Select Time</label>
-                        <select name="time" id="time" required>
-                            <option value="" disabled selected>Please select a date first</option>
+                        <select name="service" id="service" required>
+                            <option value="" disabled selected>Select a Service</option>
+                            <optgroup label="✨ EXCLUSIVE BUNDLES">
+                                <option value="The Full Experience">The Full Experience - £40</option>
+                                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                                <option value="I CUT Deluxe">I CUT Deluxe - £50</option>
+                                <option value="I CUT Royal">I CUT Royal - £65</option>
+                                <option value="Senior Citizen Full Experience">Senior Citizen Full Experience (65+) - £35</option>
+                            </optgroup>
+                            <optgroup label="✂️ STANDARD PACKAGES">
+                                <option value="Classic Short Back & Side">Classic Short Back & Side - £28</option>
+                                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                                <option value="Scissor Cut">Scissor Cut - £30</option>
+                                <option value="Clipper Cut">Clipper Cut - £22</option>
+                                <option value="Hot Towel Shave">Hot Towel Shave - £22</option>
+                                <option value="Senior Citizen Haircut">Senior Citizen Haircut (65+) - £23</option>
+                                <option value="Young Gents Haircut">Young Gents Haircut (0-12) - £20</option>
+                                <option value="Young Gents Skin Fade">Young Gents Skin Fade (4-12) - £24</option>
+                            </optgroup>
                         </select>
                     </div>
 
                     <div class="input-group">
-                        <textarea name="message" rows="3" placeholder="Any special request?"></textarea>
+                        <input type="date" name="date" id="date" required>
+                    </div>
+
+                    <div class="input-group">
+                        <select name="time" id="time" required>
+                            <option value="" disabled selected>Select a date first</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <textarea name="message" rows="2" placeholder="Any special requests?"></textarea>
                     </div>
                     
                     <input type="hidden" name="_captcha" value="false">
@@ -64,18 +80,22 @@
                     
                     <button type="submit" class="submit-btn">SEND BOOKING REQUEST</button>
                 </form>
+
+                <div class="promo-box">
+                    <p>🎓 STUDENTS GET 10% OFF!</p>
+                    <p>🎁 FREE FACE MASK WITH FIRST SERVICE!</p>
+                </div>
             </section>
         </main>
 
         <footer class="footer animate-in">
-            <p>© 2026 White Cross Barbers. All rights reserved.</p>
-            <p>Designed by <span>I CUT</span></p>
+            <p>© 2026 White Cross Barbers | Designed by <span>I CUT</span></p>
         </footer>
     </div>
 
-    <a href="https://wa.me/447402233467" class="whatsapp-float" target="_blank">
+    <a href="https://wa.me/447XXXXXXXXX" class="whatsapp-float" target="_blank">
         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
-        <span>Book via WhatsApp</span>
+        <span>Quick Message</span>
     </a>
 
     <script src="script.js"></script>

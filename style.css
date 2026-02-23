@@ -12,16 +12,13 @@ body {
     overflow-x: hidden;
 }
 
-/* LOGO PARLAMA EFEKTİ */
 .main-logo {
     font-family: 'Oswald', sans-serif;
     text-align: center;
     font-size: clamp(3.5rem, 12vw, 6rem);
-    letter-spacing: 15px;
+    letter-spacing: 12px;
     text-transform: uppercase;
     margin: 60px 0 0 0;
-    line-height: 1;
-    position: relative;
     background: linear-gradient(to right, #fff 20%, #d4af37 40%, #d4af37 60%, #fff 80%);
     background-size: 200% auto;
     -webkit-background-clip: text;
@@ -30,146 +27,64 @@ body {
     animation: shine 5s linear infinite;
 }
 
-@keyframes shine {
-    to { background-position: 200% center; }
-}
+@keyframes shine { to { background-position: 200% center; } }
 
-.subtitle {
+.subtitle { text-align: center; color: var(--gold); letter-spacing: 4px; font-weight: 700; margin: 5px 0; }
+
+.walk-in-tag {
     text-align: center;
-    color: var(--gold);
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 10px 0;
+    background: var(--gold);
+    color: #000;
+    font-weight: 800;
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 50px;
+    margin: 10px auto;
+    display: table;
 }
 
-.location-text {
-    text-align: center;
-    color: #666;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-size: 0.8rem;
-    margin-bottom: 40px;
-}
+.location-text { text-align: center; color: #666; font-size: 0.8rem; margin-bottom: 30px; }
 
-/* CONTAINER & CARDS */
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-}
+.container { max-width: 500px; margin: 0 auto; padding: 15px; }
 
 .card {
     background: #111;
     border: 1px solid #222;
-    padding: 30px;
+    padding: 25px;
     border-radius: 15px;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.section-title {
-    font-family: 'Playfair Display', serif;
-    color: var(--gold);
-    text-align: center;
     margin-bottom: 25px;
-    font-size: 1.8rem;
 }
 
-.price-list-img {
-    width: 100%;
-    height: auto !important;
-    border-radius: 8px;
-    border: 1px solid #333;
-}
+.section-title { font-family: 'Oswald', sans-serif; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 20px; }
 
-/* FORM STİLLERİ */
-.booking-form .input-group { margin-bottom: 15px; }
+.price-list-img { width: 100%; border-radius: 8px; border: 1px solid #333; }
 
-.booking-form input, .booking-form textarea, select {
-    width: 100%;
-    padding: 12px;
-    background: #000;
-    border: 1px solid #333;
-    color: #fff;
-    border-radius: 5px;
-    box-sizing: border-box;
-    font-family: inherit;
+.booking-form .input-group { margin-bottom: 12px; }
+
+input, select, textarea {
+    width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; font-family: inherit;
 }
 
 select {
     appearance: none;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="gold" viewBox="0 0 16 16"><path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>');
-    background-repeat: no-repeat;
-    background-position: right 15px center;
+    background-repeat: no-repeat; background-position: right 15px center;
 }
 
-.form-note { text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 20px; font-style: italic; }
-
-/* NABIZ ATAN BUTON */
 .submit-btn {
-    width: 100%;
-    padding: 15px;
-    background: var(--gold);
-    color: #000;
-    border: none;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
-    text-transform: uppercase;
-    animation: pulse 2s infinite;
+    width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); }
-    70% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
-}
+.promo-box { text-align: center; color: var(--gold); font-size: 0.75rem; margin-top: 15px; line-height: 1.5; font-weight: bold; }
 
-/* WHATSAPP FLOAT */
-.whatsapp-float {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: #25d366;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 50px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    font-weight: bold;
-    z-index: 1000;
-}
+.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; color: #fff; padding: 10px 18px; border-radius: 50px; display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.9rem; font-weight: bold; z-index: 1000; }
 
-.whatsapp-float img { width: 25px; height: 25px; }
+.whatsapp-float img { width: 22px; }
 
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 
-/* ANIMATIONS */
-.animate-in { animation: fadeInUp 0.8s ease forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeInUp 0.6s ease forwards; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-.footer { text-align: center; padding: 40px; font-size: 0.8rem; color: #666; }
+.footer { text-align: center; padding: 30px; font-size: 0.7rem; color: #444; }
 .footer span { color: var(--gold); }
-.walk-in-tag {
-    text-align: center;
-    background: var(--gold);
-    color: #000;
-    display: inline-block;
-    padding: 5px 15px;
-    font-weight: 800;
-    font-size: 0.75rem;
-    letter-spacing: 2px;
-    border-radius: 50px;
-    margin: 5px auto 15px;
-    display: table; /* Ortalamak için */
-}
-
-/* Priority Booking için küçük bir vurgu */
-.section-title {
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
