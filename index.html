@@ -67,25 +67,55 @@
                 </div>
             </section>
 
-            <section class="card animate-in">
-                <h2 class="section-title">Priority Booking</h2>
-                <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" id="bookingForm">
-                    <input type="text" name="name" placeholder="Full Name" required class="input-field">
-                    <input type="tel" name="phone" placeholder="Phone Number" required class="input-field">
-                    
-                    <select name="service" required class="input-field">
-                        <option value="" disabled selected>Select Your Service</option>
-                        <optgroup label="VIP BUNDLES">
-                            <option value="I CUT Royal">I CUT Royal - £65</option>
-                            <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
-                            <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
-                        </optgroup>
-                        <optgroup label="STANDARD">
-                            <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
-                            <option value="Scissor Cut">Scissor Cut - £30</option>
-                        </optgroup>
-                    </select>
+           <section class="card animate-in">
+    <h2 class="section-title">Priority Booking</h2>
+    <p style="text-align:center; font-size: 0.8rem; color: var(--gold); margin-bottom: 15px;">
+        ☕ <strong>Complimentary Turkish Tea or Coffee with every service!</strong>
+    </p>
+    
+    <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" id="bookingForm">
+        <input type="text" name="name" placeholder="Full Name" required class="input-field">
+        <input type="tel" name="phone" placeholder="Phone Number" required class="input-field">
+        
+        <select name="service" required class="input-field">
+            <option value="" disabled selected>Select Your Service</option>
+            
+            <optgroup label="VIP EXPERIENCES">
+                <option value="I CUT Royal">I CUT Royal - £65</option>
+                <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
+                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                <option value="The Full Experience">The Full Experience - £40</option>
+            </optgroup>
 
+            <optgroup label="STANDARD CUTS">
+                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                <option value="Scissor Cut">Scissor Cut - £30</option>
+                <option value="Short Back & Side">Short Back & Side - £28</option>
+                <option value="Student Skin Fade">Student Skin Fade - £24</option>
+                <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
+            </optgroup>
+
+            <optgroup label="EXTRAS & GROOMING">
+                <option value="Full Facial">Full Facial - £24</option>
+                <option value="Beard Dyeing">Beard Dyeing - £24</option>
+                <option value="Beard Shape Up">Beard Shape Up - £20</option>
+                <option value="Face Mask">Face Mask - £12</option>
+                <option value="Threading">Threading - £10</option>
+                <option value="Ear Waxing">Ear Waxing - £10</option>
+                <option value="Nose Waxing">Nose Waxing - £10</option>
+            </optgroup>
+        </select>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="date" name="date" id="date" required style="flex: 1.5;" class="input-field" onfocus="this.showPicker()">
+            <select name="time" id="time" required style="flex: 1;" class="input-field">
+                <option value="" disabled selected>Time</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
+    </form>
+</section>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <input type="date" name="date" id="date" required style="flex: 1.5;" class="input-field" onfocus="this.showPicker()">
                         <select name="time" id="time" required style="flex: 1;" class="input-field">

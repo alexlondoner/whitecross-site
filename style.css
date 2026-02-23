@@ -75,7 +75,7 @@ body {
     border-radius: 20px;
     padding: 25px;
     margin-bottom: 25px;
-    text-align: left; /* Menü yazıları sola yaslı olsun ama kart merkezde kalsın */
+    text-align: center; /* Menü yazıları merkezde olsun ama kart merkezde kalsın */
 }
 
 .section-title {
