@@ -76,17 +76,15 @@ h1 {
     border-radius: 12px;
 }
 
-.price-list {
-    width: 100% !important;        /* Genişlik ekrana yayılsın */
-    max-width: 500px !important;   /* Ama 500px'i geçmesin */
-    height: auto !important;       /* Yüksekliği kendi ayarlasın (KESMEYİ ÖNLER) */
-    display: block !important;
-    margin: 40px auto !important;
-    object-fit: contain !important; /* Resmin tamamını kutunun içine sığdırır */
-    overflow: visible !important;   /* Taşma olursa bile kesme yapma */
-    border: 3px solid #d4af37 !important;
-    border-radius: 10px !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+..price-list {
+    width: 100% !important;        /* Genişlik esnek olsun */
+    max-width: 500px !important;   /* Ama 500px'den büyük olup ekranı patlatmasın */
+    height: auto !important;       /* Boyunu otomatik bırak, KESİLMEYİ ÖNLER */
+    display: block !important;     /* Blok yap ki ortalayabilelim */
+    margin: 30px auto !important;  /* Üstten alttan boşluk, sağdan soldan ortalama */
+    object-fit: scale-down !important; /* Resim sığmazsa kesme, içine sığdır */
+    border: 2px solid #d4af37;     /* Dükkanın o altın rengi çerçevesi */
+    border-radius: 8px;            /* Hafif oval köşeler */
 }
 .input-group {
     margin-bottom: 20px;
