@@ -229,8 +229,18 @@ input:focus, select:focus { border-color: var(--gold); outline: none; }
 }
 .whatsapp-float img { width: 30px; display: block; }
 
-.footer { text-align: center; padding: 40px 20px; font-size: 0.75rem; color: #444; letter-spacing: 1px; }
-.footer span { color: var(--gold); }
+..footer { 
+    text-align: center; 
+    padding: 40px 20px; 
+    font-size: 0.75rem; 
+    color: #444; 
+    letter-spacing: 1px; 
+}
+
+.footer span { 
+    color: var(--gold); /* İsmin Alex olarak altın sarısı görünecek */
+    font-weight: bold;
+}
 
 .animate-in { animation: fadeInUp 0.8s ease forwards; }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
