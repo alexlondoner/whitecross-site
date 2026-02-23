@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>I CUT White Cross St | Premium Barber</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
@@ -19,108 +19,106 @@
 
         <main class="container">
             <section class="card animate-in">
-                <h2 class="section-title">The Menu</h2>
+                <h2 class="section-title">The Experience Menu</h2>
                 
                 <div class="menu-category">Exclusive Bundles</div>
                 <div class="services-grid">
                     <div class="service-item highlight">
-                        <div class="s-info"><strong>I CUT Royal</strong><p>Haircut, Beard, Full Facial & Steam</p></div>
+                        <div class="s-info"><strong>I CUT Royal</strong><p>Full Haircut, Beard, Full Facial, Steam, Hot Towel, Wash & Massage</p></div>
                         <span class="price">£65</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>I CUT Deluxe</strong><p>Haircut, Beard Trim & Face Mask</p></div>
+                        <div class="s-info"><strong>I CUT Deluxe</strong><p>Full Haircut, Beard Shape, Face Mask, Hot Towel & Wash</p></div>
                         <span class="price">£55</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>Full Skin Fade Service</strong><p>Skin Fade Cut & Beard</p></div>
+                        <div class="s-info"><strong>Full Skin Fade Service</strong><p>Skin Fade Cut, Beard Sculpting, Hot Towel & Wash</p></div>
                         <span class="price">£48</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>The Full Experience</strong><p>Standard Cut & Beard</p></div>
+                        <div class="s-info"><strong>The Full Experience</strong><p>Classic Haircut, Beard Trim, Hot Towel & Wash</p></div>
                         <span class="price">£40</span>
-                    </div>
-                    <div class="service-item">
-                        <div class="s-info"><strong>Senior Full Experience (65+)</strong><p>Haircut & Beard Trim</p></div>
-                        <span class="price">£35</span>
                     </div>
                 </div>
 
-                <div class="menu-category">Standard Packages</div>
+                <div class="menu-category">Standard Cuts</div>
                 <div class="services-grid">
                     <div class="service-item"><span>Skin Fade Cut</span><span class="price">£32</span></div>
                     <div class="service-item"><span>Scissor Cut</span><span class="price">£30</span></div>
-                    <div class="service-item"><span>Classic Short Back & Side</span><span class="price">£28</span></div>
-                    <div class="service-item"><span>Hot Towel Shave</span><span class="price">£22</span></div>
+                    <div class="service-item"><span>Classic Short Back & Sides</span><span class="price">£28</span></div>
                     <div class="service-item"><span>Young Gents Skin Fade (4-12)</span><span class="price">£24</span></div>
                     <div class="service-item"><span>Young Gents Haircut (0-12)</span><span class="price">£20</span></div>
-                </div>
-
-                <div class="menu-category">Extras</div>
-                <div class="extras-grid">
-                    <div class="extra-box"><span>Full Facial</span><strong>£24</strong></div>
-                    <div class="extra-box"><span>Beard Dyeing</span><strong>£24</strong></div>
-                    <div class="extra-box"><span>Threading</span><strong>£10</strong></div>
-                    <div class="extra-box"><span>Face Mask</span><strong>£12</strong></div>
-                    <div class="extra-box"><span>Shape Up</span><strong>£20</strong></div>
-                    <div class="extra-box"><span>Waxing</span><strong>£10</strong></div>
                 </div>
                 <p class="service-note">All main services include Shampoo Wash & Hot Towel.</p>
             </section>
 
             <section class="card animate-in">
                 <h2 class="section-title">Priority Booking</h2>
-                <form action="https://formsubmit.co/aerulas@gmail.com" method="POST">
-                    <input type="text" name="name" placeholder="Full Name" required class="m-bottom">
-                    <input type="tel" name="phone" placeholder="Phone Number" required class="m-bottom">
+                <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" id="bookingForm">
+                    <div class="input-group">
+                        <input type="text" name="name" placeholder="Full Name" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="tel" name="phone" placeholder="Phone Number" required>
+                    </div>
                     
-                    <select name="service" required class="m-bottom">
-                        <option value="" disabled selected>Select Service</option>
-                        <optgroup label="BUNDLES">
-                            <option value="Royal">I CUT Royal - £65</option>
-                            <option value="Deluxe">I CUT Deluxe - £55</option>
-                            <option value="Full Skin Fade">Full Skin Fade Service - £48</option>
-                            <option value="Full Experience">The Full Experience - £40</option>
-                        </optgroup>
-                        <optgroup label="CUTS">
-                            <option value="Skin Fade">Skin Fade Cut - £32</option>
-                            <option value="Standard">Short Back & Side - £28</option>
-                            <option value="Young Gents">Young Gents - £20-24</option>
-                        </optgroup>
-                    </select>
+                    <div class="input-group">
+                        <select name="service" required>
+                            <option value="" disabled selected>Select Your Service</option>
+                            <optgroup label="VIP BUNDLES">
+                                <option value="I CUT Royal">I CUT Royal - £65</option>
+                                <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
+                                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                                <option value="The Full Experience">The Full Experience - £40</option>
+                            </optgroup>
+                            <optgroup label="STANDARD CUTS">
+                                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                                <option value="Scissor Cut">Scissor Cut - £30</option>
+                                <option value="Short Back & Side">Short Back & Side - £28</option>
+                                <option value="Young Gents Fade">Young Gents Fade (4-12) - £24</option>
+                                <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
+                            </optgroup>
+                        </select>
+                    </div>
 
                     <div class="input-group" style="display: flex; gap: 10px;">
-    <input type="date" name="date" id="date" required 
-           style="flex: 1.5;" 
-           readonly 
-           onfocus="this.showPicker();" 
-           onclick="this.showPicker();">
-    
-    <select name="time" id="time" required style="flex: 1;">
-        <option value="" disabled selected>Time</option>
-    </select>
-</div>
+                        <input type="date" name="date" id="date" required 
+                               style="flex: 1.5;" 
+                               onfocus="this.showPicker()" 
+                               onclick="this.showPicker()">
+                        
+                        <select name="time" id="time" required style="flex: 1;">
+                            <option value="" disabled selected>Time</option>
+                        </select>
+                    </div>
                     
                     <button type="submit" class="submit-btn">BOOK MY SEAT</button>
                 </form>
-               <div class="promo-container">
-    <div class="promo-badge">
-        <span class="promo-icon">🎓</span>
-        <div class="promo-text">
-            <strong>STUDENT PRIVILEGE</strong>
-            <p>10% OFF ALL SERVICES</p>
-        </div>
-    </div>
-    <div class="promo-badge">
-        <span class="promo-icon">🎁</span>
-        <div class="promo-text">
-            <strong>WELCOME GIFT</strong>
-            <p>FREE FACE MASK ON FIRST VISIT</p>
-        </div>
-    </div>
-</div>
 
-    <a href="https://wa.me/447XXXXXXXXX" class="whatsapp-float" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+                <div class="promo-container">
+                    <div class="promo-badge">
+                        <span class="promo-icon">🎓</span>
+                        <div class="promo-text">
+                            <strong>STUDENT PRIVILEGE</strong>
+                            <p>10% OFF ALL SERVICES</p>
+                        </div>
+                    </div>
+                    <div class="promo-badge">
+                        <span class="promo-icon">🎁</span>
+                        <div class="promo-text">
+                            <strong>WELCOME GIFT</strong>
+                            <p>FREE FACE MASK ON FIRST VISIT</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">© 2026 White Cross Barbers | <span>I CUT</span></footer>
+    </div>
+
+    <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp Arda">
     </a>
 
     <script src="script.js"></script>
