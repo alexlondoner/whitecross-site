@@ -1,106 +1,236 @@
-:root { --gold: #d4af37; --dark: #050505; --card-bg: #0f0f0f; }
-body { background: var(--dark); color: #fff; margin: 0; font-family: 'Inter', sans-serif; }
+/* --- I CUT WHITE CROSS ST - PREMIUM FINAL CSS --- */
+
+:root { 
+    --gold: #d4af37; 
+    --dark: #050505; 
+    --card-bg: #0f0f0f; 
+    --text-muted: #888;
+}
+
+body { 
+    background-color: var(--dark); 
+    color: #fff; 
+    margin: 0; 
+    font-family: 'Inter', sans-serif; 
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* --- HEADER & LOGO SECTON --- */
+header {
+    padding: 40px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Her şeyi yatayda merkezler */
+    text-align: center;
+}
 
 .main-logo {
-    font-family: 'Oswald', sans-serif; text-align: center; font-size: 4rem;
-    letter-spacing: 10px; text-transform: uppercase; margin-top: 30px;
+    font-family: 'Oswald', sans-serif; 
+    font-size: clamp(4.5rem, 22vw, 8.5rem); /* Devasa ve Heybetli */
+    letter-spacing: 12px; 
+    text-transform: uppercase; 
+    margin: 0;
+    font-weight: 700;
+    line-height: 1;
     background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
+    background-size: 200% auto; 
+    -webkit-background-clip: text; 
+    background-clip: text;
+    -webkit-text-fill-color: transparent; 
+    animation: shine 5s linear infinite;
+}
+
+.subtitle {
+    margin: 10px 0;
 }
 
 .subtitle span {
-    display: block; text-align: center; font-family: 'Oswald', sans-serif; font-size: 1.1rem;
-    color: var(--gold); letter-spacing: 3px; font-weight: 700;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem; 
+    font-weight: 700;
+    letter-spacing: 5px; 
+    text-transform: uppercase;
     background: linear-gradient(to right, #fff 20%, var(--gold) 40%, var(--gold) 60%, #fff 80%);
-    background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; animation: shine 5s linear infinite;
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 5s linear infinite;
+    display: inline-block;
 }
 
-@keyframes shine { to { background-position: 200% center; } }
+@keyframes shine { 
+    to { background-position: 200% center; } 
+}
 
-.container { max-width: 450px; margin: 0 auto; padding: 20px; }
-.card { background: var(--card-bg); border: 1px solid #1a1a1a; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-.section-title { color: var(--gold); text-align: center; font-family: 'Oswald'; text-transform: uppercase; }
-
-.menu-category { color: var(--gold); font-size: 0.8rem; margin: 20px 0 10px; border-left: 2px solid var(--gold); padding-left: 10px; text-transform: uppercase; }
-.services-grid { display: flex; flex-direction: column; gap: 8px; }
-.service-item { display: flex; justify-content: space-between; align-items: center; background: #151515; padding: 12px; border-radius: 8px; }
-.service-item.highlight { border: 1px solid var(--gold); }
-.s-info strong { display: block; font-size: 0.9rem; }
-.s-info p { font-size: 0.7rem; color: #777; margin: 2px 0 0; }
-.price { color: var(--gold); font-family: 'Oswald'; font-weight: bold; }
-
-.extras-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.extra-box { background: #111; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; font-size: 0.8rem; }
-.extra-box span { color: #888; }
-.extra-box strong { color: var(--gold); }
-
-.m-bottom { margin-bottom: 12px; }
-.row { display: flex; gap: 10px; }
-input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #222; color: #fff; border-radius: 8px; box-sizing: border-box; }
-.submit-btn { width: 100%; padding: 15px; background: var(--gold); color: #000; font-weight: 800; border: none; border-radius: 8px; cursor: pointer; }
-
-.whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; padding: 12px; border-radius: 50%; z-index: 100; }
-.whatsapp-float img { width: 30px; display: block; }
-.service-note { font-size: 0.65rem; color: var(--gold); text-align: center; margin-top: 15px; font-style: italic; }
-/* WALK-IN YAZISINI MERKEZLEME */
 .walk-in-tag { 
-    text-align: center; 
     background: var(--gold); 
     color: #000; 
     font-weight: 900; 
     font-size: 0.7rem; 
-    padding: 8px 20px; 
+    padding: 8px 22px; 
     border-radius: 50px; 
-    margin: 20px auto; /* 'auto' sayesinde tam merkeze oturur */
-    display: table; /* Genişliği içeriği kadar yapar */
+    margin: 20px auto; 
+    display: inline-block; /* Merkezleme için inline-block */
     letter-spacing: 2px;
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    text-transform: uppercase;
 }
 
-/* PROMOSYON KUTULARI (Zengin Görünüm) */
+.location-text { 
+    color: #555; 
+    font-size: 0.85rem; 
+    margin: 0 auto 30px; 
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    display: block;
+}
+
+/* --- CONTAINER & CARDS --- */
+.container { 
+    max-width: 480px; 
+    margin: 0 auto; 
+    padding: 0 15px 120px; 
+}
+
+.card { 
+    background: var(--card-bg); 
+    border: 1px solid #1a1a1a; 
+    padding: 25px; 
+    border-radius: 24px; 
+    margin-bottom: 30px; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+}
+
+.section-title { 
+    font-family: 'Oswald', sans-serif; 
+    color: var(--gold); 
+    text-align: center; 
+    text-transform: uppercase; 
+    letter-spacing: 3px; 
+    margin-bottom: 25px; 
+    font-size: 1.5rem;
+}
+
+/* --- SERVICE MENU --- */
+.menu-category { 
+    color: var(--gold); 
+    font-size: 0.8rem; 
+    text-transform: uppercase; 
+    letter-spacing: 3px; 
+    margin: 35px 0 15px 0; 
+    border-left: 3px solid var(--gold); 
+    padding-left: 12px; 
+}
+
+.services-grid { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.service-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: rgba(255,255,255,0.02); 
+    padding: 16px; 
+    border-radius: 14px; 
+    border: 1px solid #1a1a1a; 
+}
+
+.service-item.highlight { 
+    border: 1px solid var(--gold); 
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), transparent); 
+}
+
+.s-info strong { 
+    display: block; 
+    font-size: 1rem; 
+    color: #fff; 
+    margin-bottom: 4px; 
+}
+
+.s-info p { 
+    font-size: 0.75rem; 
+    color: var(--text-muted); 
+    margin: 0; 
+}
+
+.price { 
+    font-family: 'Oswald', sans-serif; 
+    color: var(--gold); 
+    font-size: 1.25rem; 
+    font-weight: 600;
+}
+
+/* --- PROMO BADGES --- */
 .promo-container {
-    margin-top: 30px;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 15px;
+    margin-top: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .promo-badge {
-    background: linear-gradient(145deg, #151515, #0a0a0a);
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(212, 175, 55, 0.15);
     padding: 15px;
-    border-radius: 15px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     gap: 15px;
-    transition: 0.3s;
 }
 
-.promo-badge:hover {
-    border-color: var(--gold);
-    transform: translateY(-3px);
+.promo-icon { font-size: 1.4rem; }
+.promo-text strong { display: block; color: var(--gold); font-size: 0.85rem; font-family: 'Oswald'; }
+.promo-text p { margin: 0; font-size: 0.75rem; color: #999; }
+
+/* --- FORMS --- */
+.input-group { margin-bottom: 15px; }
+input, select { 
+    width: 100%; 
+    padding: 15px; 
+    background: #000; 
+    border: 1px solid #222; 
+    color: #fff; 
+    border-radius: 12px; 
+    font-family: inherit; 
+    box-sizing: border-box;
 }
 
-.promo-icon {
-    font-size: 1.5rem;
-    background: rgba(212, 175, 55, 0.1);
-    padding: 10px;
-    border-radius: 12px;
+input:focus, select:focus { border-color: var(--gold); outline: none; }
+
+.submit-btn { 
+    width: 100%; 
+    padding: 18px; 
+    background: var(--gold); 
+    color: #000; 
+    border: none; 
+    border-radius: 12px; 
+    font-weight: 800; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    letter-spacing: 2px;
 }
 
-.promo-text strong {
-    display: block;
-    color: var(--gold);
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    font-family: 'Oswald', sans-serif;
+/* --- WHATSAPP & FOOTER --- */
+.whatsapp-float { 
+    position: fixed; 
+    bottom: 30px; 
+    right: 30px; 
+    background: #25d366; 
+    padding: 15px; 
+    border-radius: 50%; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+    z-index: 1000;
 }
+.whatsapp-float img { width: 30px; display: block; }
 
-.promo-text p {
-    margin: 0;
-    font-size: 0.75rem;
-    color: #ccc;
-    font-weight: 400;
-}
+.footer { text-align: center; padding: 40px 20px; font-size: 0.75rem; color: #444; letter-spacing: 1px; }
+.footer span { color: var(--gold); }
+
+.animate-in { animation: fadeInUp 0.8s ease forwards; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
