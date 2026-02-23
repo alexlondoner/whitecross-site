@@ -76,16 +76,17 @@ h1 {
     border-radius: 12px;
 }
 
-..price-list {
-    width: 100% !important;
-    max-width: 450px !important; /* Biraz daha daraltıp mobilde daha şık durmasını sağlıyoruz */
-    height: auto !important;
+.price-list {
+    width: 100% !important;        /* Genişlik ekrana yayılsın */
+    max-width: 500px !important;   /* Ama 500px'i geçmesin */
+    height: auto !important;       /* Yüksekliği kendi ayarlasın (KESMEYİ ÖNLER) */
     display: block !important;
     margin: 40px auto !important;
-    border: 2px solid #d4af37 !important;
-    border-radius: 15px !important;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.7) !important;
-    object-fit: contain !important; /* Resmin ezilmesini engeller */
+    object-fit: contain !important; /* Resmin tamamını kutunun içine sığdırır */
+    overflow: visible !important;   /* Taşma olursa bile kesme yapma */
+    border: 3px solid #d4af37 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
 }
 .input-group {
     margin-bottom: 20px;
