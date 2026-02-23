@@ -76,15 +76,24 @@ h1 {
     border-radius: 12px;
 }
 
-..price-list {
-    width: 100% !important;        /* Genişlik esnek olsun */
-    max-width: 500px !important;   /* Ama 500px'den büyük olup ekranı patlatmasın */
-    height: auto !important;       /* Boyunu otomatik bırak, KESİLMEYİ ÖNLER */
-    display: block !important;     /* Blok yap ki ortalayabilelim */
-    margin: 30px auto !important;  /* Üstten alttan boşluk, sağdan soldan ortalama */
-    object-fit: scale-down !important; /* Resim sığmazsa kesme, içine sığdır */
-    border: 2px solid #d4af37;     /* Dükkanın o altın rengi çerçevesi */
-    border-radius: 8px;            /* Hafif oval köşeler */
+./* İsim tam olarak HTML'dekiyle aynı: price-list-img */
+.price-list-img {
+    width: 100% !important;        /* Genişlik esnek */
+    max-width: 450px !important;   /* Devasa olmasın, ideal boyut */
+    height: auto !important;       /* KESİLMEYİ ÖNLER, boyunu kendi ayarlar */
+    display: block !important;
+    margin: 20px auto !important;  /* Ortalar */
+    border: 2px solid #d4af37;     /* Şık altın çerçeve */
+    border-radius: 12px;           /* Köşeler jilet gibi keskin değil, yumuşak */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5); /* Derinlik katar */
+}
+
+/* Resmin içinde olduğu kutuyu (image-wrapper) rahatlatalım */
+.image-wrapper {
+    width: 100% !important;
+    overflow: visible !important;  /* Dışarı taşan bir şey varsa kesme der */
+    display: flex;
+    justify-content: center;
 }
 .input-group {
     margin-bottom: 20px;
