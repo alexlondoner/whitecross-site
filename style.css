@@ -44,3 +44,63 @@ input, select { width: 100%; padding: 12px; background: #000; border: 1px solid 
 .whatsapp-float { position: fixed; bottom: 20px; right: 20px; background: #25d366; padding: 12px; border-radius: 50%; z-index: 100; }
 .whatsapp-float img { width: 30px; display: block; }
 .service-note { font-size: 0.65rem; color: var(--gold); text-align: center; margin-top: 15px; font-style: italic; }
+/* WALK-IN YAZISINI MERKEZLEME */
+.walk-in-tag { 
+    text-align: center; 
+    background: var(--gold); 
+    color: #000; 
+    font-weight: 900; 
+    font-size: 0.7rem; 
+    padding: 8px 20px; 
+    border-radius: 50px; 
+    margin: 20px auto; /* 'auto' sayesinde tam merkeze oturur */
+    display: table; /* Genişliği içeriği kadar yapar */
+    letter-spacing: 2px;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+/* PROMOSYON KUTULARI (Zengin Görünüm) */
+.promo-container {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.promo-badge {
+    background: linear-gradient(145deg, #151515, #0a0a0a);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    padding: 15px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: 0.3s;
+}
+
+.promo-badge:hover {
+    border-color: var(--gold);
+    transform: translateY(-3px);
+}
+
+.promo-icon {
+    font-size: 1.5rem;
+    background: rgba(212, 175, 55, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.promo-text strong {
+    display: block;
+    color: var(--gold);
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    font-family: 'Oswald', sans-serif;
+}
+
+.promo-text p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #ccc;
+    font-weight: 400;
+}
