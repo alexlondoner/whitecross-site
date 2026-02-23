@@ -16,20 +16,31 @@ body {
 .main-logo {
     font-family: 'Oswald', sans-serif;
     text-align: center;
-    font-size: clamp(3rem, 10vw, 5rem);
-    letter-spacing: 12px;
+    font-size: clamp(3.5rem, 12vw, 6rem);
+    letter-spacing: 15px;
     color: #fff;
     text-transform: uppercase;
-    margin: 40px 0 5px 0;
+    margin: 60px 0 0 0;
     line-height: 1;
 }
 
+/* YENİ YÖNETİM SLOGANI */
 .subtitle {
     text-align: center;
     color: var(--gold);
-    letter-spacing: 3px;
+    letter-spacing: 5px;
     text-transform: uppercase;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 10px 0;
+}
+
+.location-text {
+    text-align: center;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
     margin-bottom: 40px;
 }
 
@@ -66,8 +77,7 @@ body {
 
 .price-list-img {
     width: 100%;
-    max-width: 100%;
-    height: auto !important; /* Resmin orijinal oranını korur, kesmez */
+    height: auto !important;
     border-radius: 8px;
     border: 1px solid #333;
 }
@@ -84,7 +94,7 @@ body {
     border: 1px solid #333;
     color: #fff;
     border-radius: 5px;
-    box-sizing: border-box; /* Padding'in genişliği bozmasını önler */
+    box-sizing: border-box;
 }
 
 .booking-form input:focus, .booking-form textarea:focus {
@@ -101,6 +111,7 @@ body {
     border-radius: 5px;
     font-weight: bold;
     cursor: pointer;
+    text-transform: uppercase;
     transition: 0.3s;
 }
 
