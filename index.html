@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I CUT | Best Skin Fade & Hot Towel Shave White Cross St. London</title>
-    <meta name="description" content="Looking for a fresh Skin Fade or a Sharp Beard Trim in London? I CUT White Cross St. offers premium grooming with Hot Towel Shaves and Master Cuts under new management. Book your seat online today.">
-    
-    <meta name="keywords" content="Skin Fade London, Barber Shop White Cross St, Mens Grooming London, Best Barber EC1, Hot Towel Shave London, I CUT London, Haircut London City">- 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>I CUT White Cross St | Premium Barber</title>
+    <title>I CUT | Best Skin Fade & Hot Towel Shave White Cross St. London</title>
+    
+    <meta name="description" content="Looking for a fresh Skin Fade or a Sharp Beard Trim in London? I CUT White Cross St. offers premium grooming with Hot Towel Shaves and Master Cuts under new management. Book your seat online today.">
+    <meta name="keywords" content="Skin Fade London, Barber Shop White Cross St, Mens Grooming London, Best Barber EC1, Hot Towel Shave London, I CUT London, Haircut London City">
+    
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 </head>
@@ -56,7 +53,15 @@
                     <div class="service-item"><span>Young Gents Skin Fade (4-12)</span><span class="price">£24</span></div>
                     <div class="service-item"><span>Young Gents Haircut (0-12)</span><span class="price">£20</span></div>
                 </div>
-                <p class="service-note">All main services include Shampoo Wash & Hot Towel.</p>
+
+                <div class="menu-category">Extras</div>
+                <div class="services-grid">
+                    <div class="service-item"><span>Full Facial</span><span class="price">£24</span></div>
+                    <div class="service-item"><span>Beard Dyeing</span><span class="price">£24</span></div>
+                    <div class="service-item"><span>Shape Up</span><span class="price">£20</span></div>
+                    <div class="service-item"><span>Face Mask</span><span class="price">£12</span></div>
+                    <div class="service-item"><span>Threading / Waxing</span><span class="price">£10</span></div>
+                </div>
             </section>
 
             <section class="card animate-in">
@@ -70,41 +75,34 @@
                     </div>
                     
                     <div class="input-group">
-                      <select name="service" required>
-    <option value="" disabled selected>Select Your Service</option>
-    
-    <optgroup label="VIP BUNDLES">
-        <option value="I CUT Royal">I CUT Royal - £65</option>
-        <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
-        <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
-        <option value="The Full Experience">The Full Experience - £40</option>
-    </optgroup>
-
-    <optgroup label="STANDARD CUTS">
-        <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
-        <option value="Scissor Cut">Scissor Cut - £30</option>
-        <option value="Short Back & Side">Short Back & Side - £28</option>
-        <option value="Young Gents Fade">Young Gents Fade (4-12) - £24</option>
-        <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
-    </optgroup>
-
-    <optgroup label="EXTRAS">
-        <option value="Full Facial">Full Facial - £24</option>
-        <option value="Beard Dyeing">Beard Dyeing - £24</option>
-        <option value="Shape Up">Shape Up - £20</option>
-        <option value="Face Mask">Face Mask - £12</option>
-        <option value="Threading">Threading - £10</option>
-        <option value="Waxing">Waxing - £10</option>
-    </optgroup>
-</select>
+                        <select name="service" required>
+                            <option value="" disabled selected>Select Your Service</option>
+                            <optgroup label="VIP BUNDLES">
+                                <option value="I CUT Royal">I CUT Royal - £65</option>
+                                <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
+                                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                                <option value="The Full Experience">The Full Experience - £40</option>
+                            </optgroup>
+                            <optgroup label="STANDARD CUTS">
+                                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                                <option value="Scissor Cut">Scissor Cut - £30</option>
+                                <option value="Short Back & Side">Short Back & Side - £28</option>
+                                <option value="Young Gents Fade">Young Gents Fade (4-12) - £24</option>
+                                <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
+                            </optgroup>
+                            <optgroup label="EXTRAS">
+                                <option value="Full Facial">Full Facial - £24</option>
+                                <option value="Beard Dyeing">Beard Dyeing - £24</option>
+                                <option value="Shape Up">Shape Up - £20</option>
+                                <option value="Face Mask">Face Mask - £12</option>
+                                <option value="Threading">Threading - £10</option>
+                                <option value="Waxing">Waxing - £10</option>
+                            </optgroup>
+                        </select>
                     </div>
 
                     <div class="input-group" style="display: flex; gap: 10px;">
-                        <input type="date" name="date" id="date" required 
-                               style="flex: 1.5;" 
-                               onfocus="this.showPicker()" 
-                               onclick="this.showPicker()">
-                        
+                        <input type="date" name="date" id="date" required style="flex: 1.5;" onfocus="this.showPicker()" onclick="this.showPicker()">
                         <select name="time" id="time" required style="flex: 1;">
                             <option value="" disabled selected>Time</option>
                         </select>
@@ -132,26 +130,35 @@
             </section>
         </main>
 
-<footer class="footer">© 2026 White Cross Barbers | Powered by <span>Alex</span></footer>
-.footer {
-    text-align: center;
-    padding: 30px 20px; /* Boşluğu yukarıdan biraz azalttık */
-    font-size: 0.7rem;
-    color: #444;
-    letter-spacing: 0.5px; /* Harf arası mesafeyi biraz daralttık */
-}
-
-</main> <footer class="footer">
+        <footer class="footer">
             © 2026 White Cross Barbers | Powered by <span>Alex</span>
         </footer>
 
-        <div class="seo-footer" style="text-align: center; font-size: 0.7rem; color: #333; margin-top: 20px; padding-bottom: 20px;">
-            <p>Located in the heart of <strong>White Cross Street Market</strong>, serving <strong>EC1</strong>, <strong>Old Street</strong>, and <strong>Barbican</strong>.</p>
+        <div class="seo-footer" style="text-align: center; font-size: 0.7rem; color: #333; margin-top: 10px; padding-bottom: 30px;">
+            <p>Located in White Cross Street Market, serving EC1, Old Street, and Barbican.</p>
         </div>
-    </div> <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp Arda">
+    </div>
+
+    <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
     </a>
 
     <script src="script.js"></script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BarberShop",
+      "name": "I CUT White Cross St",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "White Cross St.",
+        "addressLocality": "London",
+        "addressCountry": "UK"
+      },
+      "telephone": "+447879553312",
+      "priceRange": "£20-£65"
+    }
+    </script>
 </body>
 </html>
