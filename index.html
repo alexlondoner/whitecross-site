@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>I CUT | Best Skin Fade & Hot Towel Shave White Cross St. London</title>
-    
-    <meta name="description" content="Looking for a fresh Skin Fade or a Sharp Beard Trim in London? I CUT White Cross St. offers premium grooming with Hot Towel Shaves and Master Cuts under new management. Book your seat online today.">
-    <meta name="keywords" content="Skin Fade London, Barber Shop White Cross St, Mens Grooming London, Best Barber EC1, Hot Towel Shave London, I CUT London, Haircut London City">
-    
+    <meta name="description" content="Experience the ultimate grooming journey at I CUT White Cross St. London. Specializing in Skin Fades, Hot Towel Shaves, and VIP treatment.">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 </head>
@@ -28,19 +25,35 @@
                 <div class="menu-category">Exclusive Bundles</div>
                 <div class="services-grid">
                     <div class="service-item highlight">
-                        <div class="s-info"><strong>I CUT Royal</strong><p>Full Haircut, Beard, Full Facial, Steam, Hot Towel, Wash & Massage</p></div>
+                        <div class="s-info">
+                            <strong>I CUT Royal</strong>
+                            <p>The Ultimate 60-Min Journey</p>
+                            <button class="details-btn" onclick="openStory('royal')">View Journey Details</button>
+                        </div>
                         <span class="price">£65</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>I CUT Deluxe</strong><p>Full Haircut, Beard Shape, Face Mask, Hot Towel & Wash</p></div>
+                        <div class="s-info">
+                            <strong>I CUT Deluxe</strong>
+                            <p>Premium Grooming Ritual</p>
+                            <button class="details-btn" onclick="openStory('deluxe')">View Journey Details</button>
+                        </div>
                         <span class="price">£55</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>Full Skin Fade Service</strong><p>Skin Fade Cut, Beard Sculpting, Hot Towel & Wash</p></div>
+                        <div class="s-info">
+                            <strong>Full Skin Fade Service</strong>
+                            <p>Sharp & Precise Finish</p>
+                            <button class="details-btn" onclick="openStory('fade')">View Journey Details</button>
+                        </div>
                         <span class="price">£48</span>
                     </div>
                     <div class="service-item">
-                        <div class="s-info"><strong>The Full Experience</strong><p>Classic Haircut, Beard Trim, Hot Towel & Wash</p></div>
+                        <div class="s-info">
+                            <strong>The Full Experience</strong>
+                            <p>Classic Master Cut</p>
+                            <button class="details-btn" onclick="openStory('experience')">View Journey Details</button>
+                        </div>
                         <span class="price">£40</span>
                     </div>
                 </div>
@@ -50,92 +63,51 @@
                     <div class="service-item"><span>Skin Fade Cut</span><span class="price">£32</span></div>
                     <div class="service-item"><span>Scissor Cut</span><span class="price">£30</span></div>
                     <div class="service-item"><span>Classic Short Back & Sides</span><span class="price">£28</span></div>
-                    <div class="service-item"><span>Young Gents Skin Fade (4-12)</span><span class="price">£24</span></div>
-                    <div class="service-item"><span>Young Gents Haircut (0-12)</span><span class="price">£20</span></div>
-                </div>
-
-                <div class="menu-category">Extras</div>
-                <div class="services-grid">
-                    <div class="service-item"><span>Full Facial</span><span class="price">£24</span></div>
-                    <div class="service-item"><span>Beard Dyeing</span><span class="price">£24</span></div>
-                    <div class="service-item"><span>Shape Up</span><span class="price">£20</span></div>
-                    <div class="service-item"><span>Face Mask</span><span class="price">£12</span></div>
-                    <div class="service-item"><span>Threading / Waxing</span><span class="price">£10</span></div>
+                    <div class="service-item"><span>Student Skin Fade (Valid ID)</span><span class="price">£24</span></div>
                 </div>
             </section>
 
             <section class="card animate-in">
                 <h2 class="section-title">Priority Booking</h2>
                 <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" id="bookingForm">
-                    <div class="input-group">
-                        <input type="text" name="name" placeholder="Full Name" required>
-                    </div>
-                    <div class="input-group">
-                        <input type="tel" name="phone" placeholder="Phone Number" required>
-                    </div>
+                    <input type="text" name="name" placeholder="Full Name" required class="input-field">
+                    <input type="tel" name="phone" placeholder="Phone Number" required class="input-field">
                     
-                    <div class="input-group">
-                        <select name="service" required>
-                            <option value="" disabled selected>Select Your Service</option>
-                            <optgroup label="VIP BUNDLES">
-                                <option value="I CUT Royal">I CUT Royal - £65</option>
-                                <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
-                                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
-                                <option value="The Full Experience">The Full Experience - £40</option>
-                            </optgroup>
-                            <optgroup label="STANDARD CUTS">
-                                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
-                                <option value="Scissor Cut">Scissor Cut - £30</option>
-                                <option value="Short Back & Side">Short Back & Side - £28</option>
-                                <option value="Young Gents Fade">Young Gents Fade (4-12) - £24</option>
-                                <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
-                            </optgroup>
-                            <optgroup label="EXTRAS">
-                                <option value="Full Facial">Full Facial - £24</option>
-                                <option value="Beard Dyeing">Beard Dyeing - £24</option>
-                                <option value="Shape Up">Shape Up - £20</option>
-                                <option value="Face Mask">Face Mask - £12</option>
-                                <option value="Threading">Threading - £10</option>
-                                <option value="Waxing">Waxing - £10</option>
-                            </optgroup>
-                        </select>
-                    </div>
+                    <select name="service" required class="input-field">
+                        <option value="" disabled selected>Select Your Service</option>
+                        <optgroup label="VIP BUNDLES">
+                            <option value="I CUT Royal">I CUT Royal - £65</option>
+                            <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
+                            <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
+                        </optgroup>
+                        <optgroup label="STANDARD">
+                            <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
+                            <option value="Scissor Cut">Scissor Cut - £30</option>
+                        </optgroup>
+                    </select>
 
-                    <div class="input-group" style="display: flex; gap: 10px;">
-                        <input type="date" name="date" id="date" required style="flex: 1.5;" onfocus="this.showPicker()" onclick="this.showPicker()">
-                        <select name="time" id="time" required style="flex: 1;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="date" name="date" id="date" required style="flex: 1.5;" class="input-field" onfocus="this.showPicker()">
+                        <select name="time" id="time" required style="flex: 1;" class="input-field">
                             <option value="" disabled selected>Time</option>
                         </select>
                     </div>
-                    
                     <button type="submit" class="submit-btn">BOOK MY SEAT</button>
                 </form>
-
-                <div class="promo-container">
-                    <div class="promo-badge">
-                        <span class="promo-icon">🎓</span>
-                        <div class="promo-text">
-                            <strong>STUDENT PRIVILEGE</strong>
-                            <p>10% OFF ALL SERVICES</p>
-                        </div>
-                    </div>
-                    <div class="promo-badge">
-                        <span class="promo-icon">🎁</span>
-                        <div class="promo-text">
-                            <strong>WELCOME GIFT</strong>
-                            <p>FREE FACE MASK ON FIRST VISIT</p>
-                        </div>
-                    </div>
-                </div>
             </section>
         </main>
 
         <footer class="footer">
             © 2026 White Cross Barbers | Powered by <span>Alex</span>
         </footer>
+    </div>
 
-        <div class="seo-footer" style="text-align: center; font-size: 0.7rem; color: #333; margin-top: 10px; padding-bottom: 30px;">
-            <p>Located in White Cross Street Market, serving EC1, Old Street, and Barbican.</p>
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeInfo()">&times;</span>
+            <h2 id="modal-title"></h2>
+            <p id="modal-desc"></p>
+            <button class="submit-btn" style="margin-top:20px;" onclick="closeInfo()">GOT IT</button>
         </div>
     </div>
 
@@ -144,21 +116,5 @@
     </a>
 
     <script src="script.js"></script>
-    
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BarberShop",
-      "name": "I CUT White Cross St",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "White Cross St.",
-        "addressLocality": "London",
-        "addressCountry": "UK"
-      },
-      "telephone": "+447879553312",
-      "priceRange": "£20-£65"
-    }
-    </script>
 </body>
 </html>

@@ -1,73 +1,48 @@
+const stories = {
+    royal: {
+        title: "The I CUT Royal Journey",
+        content: "<strong>The Ultimate 60-Minute VIP Escape.</strong><br><br>• Precision haircut & beard sculpting.<br>• Deep steam session with a traditional straight-edge shave.<br>• Enjoy <strong>Turkish Tea or Coffee</strong> while your face mask sets.<br>• Extended arm & shoulder massage.<br>• Invigorating hair wash & hot towel finish."
+    },
+    deluxe: {
+        title: "The I CUT Deluxe Ritual",
+        content: "<strong>Sharp Look, Relaxed Mind.</strong><br><br>• Master haircut & beard shape-up.<br>• Revitalizing face mask treatment.<br>• Relaxing scalp massage during wash.<br>• Finished with premium styling & hot towel."
+    },
+    fade: {
+        title: "Full Skin Fade Service",
+        content: "<strong>The Precision Specialist.</strong><br><br>• Flawless zero-fade using detailers & foil shavers.<br>• Razor-sharp beard line-up.<br>• Hair wash and cooling tonic treatment.<br>• Signature hot towel finish."
+    },
+    experience: {
+        title: "The Full Experience",
+        content: "<strong>The Gentleman's Signature.</strong><br><br>• Classic tailored haircut.<br>• Professional beard trim & shape.<br>• Invigorating hair wash.<br>• The perfect refresh for the modern man."
+    }
+};
+
+function openStory(type) {
+    document.getElementById('modal-title').innerHTML = stories[type].title;
+    document.getElementById('modal-desc').innerHTML = stories[type].content;
+    document.getElementById('infoModal').style.display = 'flex';
+}
+
+function closeInfo() {
+    document.getElementById('infoModal').style.display = 'none';
+}
+
+// Tarih ve Saat Mantığı
 document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
+    const today = new Date().toLocaleDateString('en-CA');
+    dateInput.setAttribute('min', today);
 
-    // 1. Bugünden öncesini seçmeyi engelle
-    const today = new Date();
-    const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD formatı
-    if(dateInput) {
-        dateInput.setAttribute('min', todayStr);
-    }
-
-    // 2. Tarih seçildiğinde saat dropdown'unu doldur
-    dateInput.addEventListener('input', function() {
-        const selectedDate = new Date(this.value);
-        const dayOfWeek = selectedDate.getDay(); // 0: Pazar, 6: Ctesi
-        
-        // Saat listesini her seferinde temizle
+    dateInput.addEventListener('change', () => {
         timeSelect.innerHTML = '<option value="" disabled selected>Time</option>';
-
-        let startHour, endHour;
-
-        // White Cross St. Çalışma Saatleri (Tabelaya Göre)
-        if (dayOfWeek === 0) { // PAZAR
-            startHour = 10; endHour = 16;
-        } else if (dayOfWeek === 6) { // CUMARTESİ
-            startHour = 9; endHour = 18;
-        } else { // HAFTA İÇİ
-            startHour = 9; endHour = 19;
-        }
-
-        // Saat dilimlerini 30 dakikalık aralıklarla ekle
-        for (let hour = startHour; hour < endHour; hour++) {
-            ['00', '30'].forEach(min => {
-                
-                // Eğer BUGÜN seçiliyse, şu anki saatten öncesini gösterme
-                if (this.value === todayStr) {
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const currentMin = now.getMinutes();
-                    // Eğer saat veya dakika geçmişse bu slotu ekleme
-                    if (hour < currentHour || (hour === currentHour && parseInt(min) <= currentMin)) {
-                        return; 
-                    }
-                }
-
-                const period = hour >= 12 ? 'PM' : 'AM';
-                let displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-                
-                const timeText = `${displayHour}:${min} ${period}`;
-                const option = document.createElement('option');
-                option.value = timeText;
-                option.textContent = timeText;
-                timeSelect.appendChild(option);
+        for(let h=9; h<19; h++) {
+            [0, 30].forEach(m => {
+                let time = `${h}:${m === 0 ? '00' : '30'} ${h >= 12 ? 'PM' : 'AM'}`;
+                let opt = document.createElement('option');
+                opt.value = time; opt.textContent = time;
+                timeSelect.appendChild(opt);
             });
         }
-
-        // Eğer o gün için tüm saatler geçmişse veya dükkan kapalıysa
-        if (timeSelect.options.length === 1) {
-            const option = document.createElement('option');
-            option.textContent = "No slots available";
-            option.disabled = true;
-            timeSelect.appendChild(option);
-        }
     });
-
-    // 3. Form gönderildiğinde ufak bir teşekkür mesajı (Opsiyonel)
-    const form = document.getElementById('bookingForm');
-    if(form) {
-        form.addEventListener('submit', () => {
-            console.log("Booking request sent to Arda!");
-        });
-    }
 });
