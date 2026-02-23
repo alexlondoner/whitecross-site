@@ -95,10 +95,54 @@ body {
     font-weight: bold;
 }
 
+/* BU KISMI BUL VE TAMAMEN YENİSİYLE DEĞİŞTİR */
 .service-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 15px;
+    align-items: flex-start; /* Yazılar ve fiyat tepeden hizalansın */
+    padding: 15px 0;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.s-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.s-info strong {
+    font-size: 1.05rem;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.s-info p {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0;
+}
+
+.details-btn {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-size: 0.6rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px; /* İsmin hemen altına, ama hepsi aynı hizaya */
+    text-transform: uppercase;
+    transition: 0.3s;
+}
+
+.price {
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-left: 20px;
+    text-align: right;
+    min-width: 60px; /* Fiyatlar sağda jilet gibi hizalı durur */
 }
 
 /* MODAL / POPUP */
