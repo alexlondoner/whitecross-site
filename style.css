@@ -189,4 +189,11 @@ body {
 .whatsapp-float:hover {
     transform: translateY(-5px);
     background-color: #128c7e;
+    .form-note {
+    text-align: center;
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    font-style: italic;
+}
 }

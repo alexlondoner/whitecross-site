@@ -29,24 +29,34 @@
             </section>
 
             <section class="card animate-in" style="animation-delay: 0.2s;">
-                <h2 class="section-title">Book an Appointment</h2>
-                <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
-                    <div class="input-group">
-                        <input type="text" name="name" placeholder="Full Name" required>
-                    </div>
-                    <div class="input-group">
-                        <input type="email" name="email" placeholder="Email Address" required>
-                    </div>
-                    <div class="input-group">
-                        <textarea name="message" rows="4" placeholder="How can we help you today?" required></textarea>
-                    </div>
-                    
-                    <input type="hidden" name="_captcha" value="false">
-                    <input type="hidden" name="_next" value="https://whitecrossbarbers.com">
-                    
-                    <button type="submit" class="submit-btn">SEND REQUEST</button>
-                </form>
-            </section>
+    <h2 class="section-title">Book an Appointment</h2>
+    
+    <p class="form-note">Please select your preferred time. We will be in touch for confirmation.</p>
+
+    <form action="https://formsubmit.co/aerulas@gmail.com" method="POST" class="booking-form">
+        <div class="input-group">
+            <input type="text" name="name" placeholder="Full Name" required>
+        </div>
+        
+        <div class="input-group">
+            <input type="tel" name="phone" placeholder="Phone Number (Required)" required>
+        </div>
+
+        <div class="input-group" style="display: flex; gap: 10px;">
+            <input type="date" name="date" required style="flex: 2;">
+            <input type="time" name="time" required style="flex: 1;">
+        </div>
+
+        <div class="input-group">
+            <textarea name="message" rows="3" placeholder="Any special request?"></textarea>
+        </div>
+        
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_thanks" value="Thank you! We will be in touch shortly for confirmation.">
+        
+        <button type="submit" class="submit-btn">SEND BOOKING REQUEST</button>
+    </form>
+</section>
         </main>
 
         <footer class="footer animate-in">
