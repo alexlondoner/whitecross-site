@@ -8,6 +8,30 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 </head>
+<script>
+function openStory(type) {
+    const stories = {
+        royal: { title: "I CUT Royal Journey", content: "The Ultimate 60-Min VIP Escape... Turkish Tea/Coffee included." },
+        deluxe: { title: "I CUT Deluxe Journey", content: "Luxury grooming ritual... Turkish Tea/Coffee included." },
+        fade: { title: "Full Skin Fade Journey", content: "Precision zero-fade... Turkish Tea/Coffee included." },
+        experience: { title: "The Full Experience Journey", content: "Signature cut & beard... Turkish Tea/Coffee included." },
+        skin_fade_only: { title: "Skin Fade Service", content: "Master of fades... Turkish Tea/Coffee included." },
+        scissor_cut: { title: "Scissor Cut Service", content: "Traditional craftsmanship... Turkish Tea/Coffee included." },
+        short_back_sides: { title: "Short Back & Sides Service", content: "The timeless classic... Turkish Tea/Coffee included." }
+    };
+
+    const modal = document.getElementById('infoModal');
+    if (modal && stories[type]) {
+        document.getElementById('modal-title').innerHTML = stories[type].title;
+        document.getElementById('modal-desc').innerHTML = stories[type].content;
+        modal.style.display = 'flex';
+    }
+}
+
+function closeInfo() {
+    document.getElementById('infoModal').style.display = 'none';
+}
+</script>
 <body>
 
     <div class="hero">
