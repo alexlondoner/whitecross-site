@@ -12,7 +12,7 @@ const stories = {
     full_facial: { title: "Full Facial Treatment", content: "Deep-cleansing facial designed to rejuvenate the skin, remove impurities, and restore a healthy glow." },
     beard_dye: { title: "Beard Dyeing", content: "Enhance or restore your beard’s colour for a fuller, more defined appearance." },
     face_mask: { title: "Face Mask & Steam", content: "A relaxing treatment that opens pores and prepares the skin for deeper cleansing or a smoother finish." },
-    threading: { title: "Threading & Waxing", content: "Precise eyebrow shaping and removal of unwanted hair from nose and ears for a cleaner look." }
+    threading: { title: "Threading & Waxing", content: "A quick cleanup for a sharp look. We focus on **tidying up the edges and middle** of the eyebrows without changing their natural shape and removal of unwanted hair from nose and ears for a cleaner look." }
 };
 
 function openStory(type) {
