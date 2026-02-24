@@ -2,188 +2,180 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>I CUT | Best Skin Fade & Hot Towel Shave White Cross St. London</title>
-    <meta name="description" content="Experience the ultimate grooming journey at I CUT White Cross St. London. Specializing in Skin Fades, Hot Towel Shaves, and VIP treatment.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I CUT | Best Skin Fade & Hot Towel Shave London</title>
+    <meta name="description" content="Premium barber services at I CUT, White Cross St. From Skin Fades to the Royal Journey. Book your seat and coffee now.">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-</head>
-<script>
-function openStory(type) {
-    const stories = {
-        royal: { title: "I CUT Royal Journey", content: "The Ultimate 60-Min VIP Escape... Turkish Tea/Coffee included." },
-        deluxe: { title: "I CUT Deluxe Journey", content: "Luxury grooming ritual... Turkish Tea/Coffee included." },
-        fade: { title: "Full Skin Fade Journey", content: "Precision zero-fade... Turkish Tea/Coffee included." },
-        experience: { title: "The Full Experience Journey", content: "Signature cut & beard... Turkish Tea/Coffee included." },
-        skin_fade_only: { title: "Skin Fade Service", content: "Master of fades... Turkish Tea/Coffee included." },
-        scissor_cut: { title: "Scissor Cut Service", content: "Traditional craftsmanship... Turkish Tea/Coffee included." },
-        short_back_sides: { title: "Short Back & Sides Service", content: "The timeless classic... Turkish Tea/Coffee included." }
-    };
-
-    const modal = document.getElementById('infoModal');
-    if (modal && stories[type]) {
-        document.getElementById('modal-title').innerHTML = stories[type].title;
-        document.getElementById('modal-desc').innerHTML = stories[type].content;
-        modal.style.display = 'flex';
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BarberShop",
+      "name": "I CUT",
+      "image": "https://icutbarber.com/logo.png",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "White Cross Street Market",
+        "addressLocality": "London",
+        "postalCode": "EC1",
+        "addressCountry": "GB"
+      }
     }
-}
-
-function closeInfo() {
-    document.getElementById('infoModal').style.display = 'none';
-}
-</script>
+    </script>
+</head>
 <body>
 
-    <div class="hero">
-        <header class="animate-in">
-            <h1 class="main-logo">I CUT</h1>
-            <p class="subtitle"><span>UNDER NEW MANAGEMENT</span></p>
-            <div class="walk-in-tag">WALK-INS WELCOME</div>
-            <p class="location-text">White Cross St. London</p>
-        </header>
+<div class="hero">
+    <h1 class="main-logo">I CUT</h1>
+    <div class="subtitle"><span>UNDER NEW MANAGEMENT</span></div>
+    <div class="walk-in-tag">WALK-INS WELCOME</div>
+    <p class="location-text">White Cross Street Market, London EC1</p>
 
-        <main class="container">
-            <section class="card animate-in">
-                <h2 class="section-title">The Experience Menu</h2>
-                
-                <div class="menu-category">Exclusive Bundles</div>
-                <div class="services-grid">
-                    <div class="service-item highlight">
-    <div class="s-info">
-        <strong>I CUT Royal</strong>
-        <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
-    </div>
-    <span class="price">£65</span>
-</div>
-                    <div class="service-item">
-                        <div class="s-info">
-                            <strong>I CUT Deluxe</strong>
-                            <p>Premium Grooming Ritual</p>
-                            <button class="details-btn" onclick="openStory('deluxe')">View Journey Details</button>
-                        </div>
-                        <span class="price">£55</span>
-                    </div>
-                    <div class="service-item">
-                        <div class="s-info">
-                            <strong>Full Skin Fade Service</strong>
-                            <p>Sharp & Precise Finish</p>
-                            <button class="details-btn" onclick="openStory('fade')">View Journey Details</button>
-                        </div>
-                        <span class="price">£48</span>
-                    </div>
-                    <div class="service-item">
-                        <div class="s-info">
-                            <strong>The Full Experience</strong>
-                            <p>Classic Master Cut</p>
-                            <button class="details-btn" onclick="openStory('experience')">View Journey Details</button>
-                        </div>
-                        <span class="price">£40</span>
-                    </div>
-                </div>
+    <section class="card">
+        <h2 class="section-title">Exclusive Bundle Packages</h2>
+        <div class="service-item highlight">
+            <div class="s-info">
+                <strong>I CUT Royal</strong>
+                <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
+            </div>
+            <span class="price">£65</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>I CUT Deluxe</strong>
+                <button class="details-btn" onclick="openStory('deluxe')">Journey Details</button>
+            </div>
+            <span class="price">£50</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Full Skin Fade Service</strong>
+                <button class="details-btn" onclick="openStory('fade_service')">Journey Details</button>
+            </div>
+            <span class="price">£48</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>The Full Experience</strong>
+                <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
+            </div>
+            <span class="price">£40</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Senior Full Experience (65+)</strong>
+                <button class="details-btn" onclick="openStory('senior_full')">Journey Details</button>
+            </div>
+            <span class="price">£35</span>
+        </div>
+    </section>
 
-                <div class="menu-category">Standard Cuts</div>
-                <div class="service-item">
-    <div class="s-info">
-        <strong>Skin Fade Cut</strong>
-        <button class="details-btn" onclick="openStory('skin_fade_only')">Service Details</button>
-    </div>
-    <span class="price">£32</span>
-</div>
+    <section class="card">
+        <h2 class="section-title">Standard Packages</h2>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Skin Fade Cut</strong>
+                <button class="details-btn" onclick="openStory('skin_fade')">Service Details</button>
+            </div>
+            <span class="price">£32</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Scissor Cut</strong>
+                <button class="details-btn" onclick="openStory('scissor')">Service Details</button>
+            </div>
+            <span class="price">£30</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Classic Short Back & Sides</strong>
+                <button class="details-btn" onclick="openStory('short_back')">Service Details</button>
+            </div>
+            <span class="price">£28</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Hot Towel Shave</strong>
+                <button class="details-btn" onclick="openStory('shave')">Service Details</button>
+            </div>
+            <span class="price">£22</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Clipper Cut</strong>
+                <button class="details-btn" onclick="openStory('clipper')">Service Details</button>
+            </div>
+            <span class="price">£22</span>
+        </div>
+        <div class="service-item"><span>Senior Haircut (65+)</span><span class="price">£23</span></div>
+        <div class="service-item"><span>Young Gents (0-12)</span><span class="price">£20</span></div>
+        <div class="service-item"><span>Young Gents Skin Fade (4-12)</span><span class="price">£24</span></div>
+    </section>
 
-<div class="service-item">
-    <div class="s-info">
-        <strong>Scissor Cut</strong>
-        <button class="details-btn" onclick="openStory('scissor_cut')">Service Details</button>
-    </div>
-    <span class="price">£30</span>
-</div>
+    <section class="card">
+        <h2 class="section-title">Extras</h2>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Full Facial Treatment</strong>
+                <button class="details-btn" onclick="openStory('full_facial')">Service Details</button>
+            </div>
+            <span class="price">£24</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Beard Dyeing</strong>
+                <button class="details-btn" onclick="openStory('beard_dye')">Service Details</button>
+            </div>
+            <span class="price">£24</span>
+        </div>
+        <div class="service-item">
+            <div class="s-info">
+                <strong>Shape Up & Clean Up</strong>
+                <button class="details-btn" onclick="openStory('shape_up')">Service Details</button>
+            </div>
+            <span class="price">£20</span>
+        </div>
+        <div class="service-item"><span>Face Mask / Face Steam</span><span class="price">£12</span></div>
+        <div class="service-item"><span>Threading / Waxing</span><span class="price">£10</span></div>
+        <div class="service-item"><span>Wash, Style & Hot Towel</span><span class="price">£10</span></div>
+    </section>
 
-<div class="service-item">
-    <div class="s-info">
-        <strong>Short Back & Side</strong>
-        <button class="details-btn" onclick="openStory('short_back_sides')">Service Details</button>
-    </div>
-    <span class="price">£28</span>
-</div>
-            </section>
-
-           <section class="card animate-in">
-    <h2 class="section-title">Priority Booking</h2>
-    <p style="text-align:center; font-size: 0.8rem; color: var(--gold); margin-bottom: 15px;">
-        ☕ <strong>Complimentary Turkish Tea or Coffee with every service!</strong>
-    </p>
-    
-    <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" id="bookingForm">
-        <input type="text" name="name" placeholder="Full Name" required class="input-field">
-        <input type="tel" name="phone" placeholder="Phone Number" required class="input-field">
-        
-        <select name="service" required class="input-field">
-            <option value="" disabled selected>Select Your Service</option>
-            
-            <optgroup label="VIP EXPERIENCES">
-                <option value="I CUT Royal">I CUT Royal - £65</option>
-                <option value="I CUT Deluxe">I CUT Deluxe - £55</option>
-                <option value="Full Skin Fade Service">Full Skin Fade Service - £48</option>
-                <option value="The Full Experience">The Full Experience - £40</option>
-            </optgroup>
-
-            <optgroup label="STANDARD CUTS">
-                <option value="Skin Fade Cut">Skin Fade Cut - £32</option>
-                <option value="Scissor Cut">Scissor Cut - £30</option>
-                <option value="Short Back & Side">Short Back & Side - £28</option>
-                <option value="Student Skin Fade">Student Skin Fade - £24</option>
-                <option value="Young Gents Haircut">Young Gents Haircut - £20</option>
-            </optgroup>
-
-            <optgroup label="EXTRAS & GROOMING">
-                <option value="Full Facial">Full Facial - £24</option>
-                <option value="Beard Dyeing">Beard Dyeing - £24</option>
-                <option value="Beard Shape Up">Beard Shape Up - £20</option>
-                <option value="Face Mask">Face Mask - £12</option>
-                <option value="Threading">Threading - £10</option>
-                <option value="Ear Waxing">Ear Waxing - £10</option>
-                <option value="Nose Waxing">Nose Waxing - £10</option>
-            </optgroup>
-        </select>
-
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <input type="date" name="date" id="date" required style="flex: 1.5;" class="input-field" onfocus="this.showPicker()">
-            <select name="time" id="time" required style="flex: 1;" class="input-field">
-                <option value="" disabled selected>Time</option>
+    <section class="card">
+        <h2 class="section-title">Priority Booking</h2>
+        <p style="color:var(--gold); font-size:0.8rem; margin-bottom:15px;">☕ Complimentary Turkish Tea or Coffee with every service!</p>
+        <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST">
+            <input type="text" name="name" placeholder="Name" required class="input-field">
+            <input type="tel" name="phone" placeholder="Phone" required class="input-field">
+            <select name="service" required class="input-field">
+                <option value="" disabled selected>Select Service</option>
+                <option value="Royal">I CUT Royal - £65</option>
+                <option value="Deluxe">I CUT Deluxe - £50</option>
+                <option value="Skin Fade Service">Full Skin Fade Service - £48</option>
+                <option value="Standard Fade">Skin Fade Cut - £32</option>
+                <option value="Shave">Hot Towel Shave - £22</option>
             </select>
-        </div>
-        
-        <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
-    </form>
-</section>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <input type="date" name="date" id="date" required style="flex: 1.5;" class="input-field" onfocus="this.showPicker()">
-                        <select name="time" id="time" required style="flex: 1;" class="input-field">
-                            <option value="" disabled selected>Time</option>
-                        </select>
-                    </div>
-                </form>
-            </section>
-        </main>
+            <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
+        </form>
+    </section>
 
-        <footer class="footer">
-            © 2026 White Cross Barbers | Powered by <span>Alex</span>
-        </footer>
+    <footer class="footer">
+        <p>© 2026 <span>I CUT</span> London. Powered by Alex.</p>
+    </footer>
+</div>
+
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeInfo()">&times;</span>
+        <h2 id="modal-title"></h2>
+        <div id="modal-desc"></div>
     </div>
+</div>
 
-    <div id="infoModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeInfo()">&times;</span>
-            <h2 id="modal-title"></h2>
-            <p id="modal-desc"></p>
-            <button class="submit-btn" style="margin-top:20px;" onclick="closeInfo()">GOT IT</button>
-        </div>
-    </div>
+<a href="https://wa.me/447414844445" class="whatsapp-float" target="_blank">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+</a>
 
-    <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
-    </a>
-
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
