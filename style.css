@@ -323,3 +323,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     font-size: 0.95rem;
     line-height: 1.5;
 }
+.promo-section {
+    margin-top: 40px;
+    padding: 25px 20px;
+    background: #0f0f0f;
+    border-left: 3px solid #d4af37;
+    border-radius: 6px;
+    color: #ccc;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.promo-section strong {
+    color: #d4af37;
+}
