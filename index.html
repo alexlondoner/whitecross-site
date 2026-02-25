@@ -137,38 +137,71 @@
         </div>
     </section>
 
-    <!-- BOOKING FORM -->
-    <section class="card">
-        <h2 class="section-title">Priority Booking</h2>
-
-     <form id="bookingForm" action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST">
+    <form id="bookingForm" action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST" class="booking-form">
 
     <input type="text" name="name" placeholder="Name" required class="input-field">
 
-    <input type="tel" name="phone" placeholder="+44 7xxx xxx xxx" required
-    pattern="^\+44\s?7\d{3}\s?\d{3}\s?\d{3}$"
-    title="Please enter a valid UK mobile number starting with +44"
+    <input 
+    type="tel" 
+    id="phone" 
+    name="phone" 
+    placeholder="+44 7..." 
+    required 
     class="input-field">
+
 
     <input type="date" id="date" name="date" required class="input-field">
 
     <select id="time" name="time" required class="input-field">
         <option value="" disabled selected>Select Time</option>
+        <!-- JS ile dolduruyorsan burası kalabilir -->
     </select>
 
+    <!-- SERVICES (broşürle birebir) -->
     <select name="service" required class="input-field">
         <option value="" disabled selected>Select Service</option>
-        <!-- your services here -->
+
+        <optgroup label="Exclusive Bundle Packages">
+            <option value="The Full Experience - £40">The Full Experience (Standard Cut & Beard) – £40</option>
+            <option value="Full Skin Fade Service - £48">Full Skin Fade Service (Skin Fade Cut & Beard) – £48</option>
+            <option value="I CUT Deluxe - £55">I CUT Deluxe (Hair Cut, Beard Trim, Face Mask) – £55</option>
+            <option value="I CUT Royal - £65">I CUT Royal (Hair Cut, Beard, Full Facial, Steam) – £65</option>
+            <option value="Senior Citizen Full Experience - £35">Senior Citizen Full Experience 65+ (Hair Cut, Beard Trim) – £35</option>
+        </optgroup>
+
+        <optgroup label="Standard Packages">
+            <option value="Classic Short Back & Sides - £28">Classic Short Back & Sides – £28</option>
+            <option value="Skin Fade Cut - £32">Skin Fade Cut – £32</option>
+            <option value="Scissor Cut - £30">Scissor Cut – £30</option>
+            <option value="Clipper Cut - £22">Clipper Cut – £22</option>
+            <option value="Hot Towel Shave - £22">Hot Towel Shave – £22</option>
+            <option value="Senior Citizen Hair Cut - £23">Senior Citizen Hair Cut (65+) – £23</option>
+            <option value="Young Gents - £20">Young Gents (0–12) – £20</option>
+            <option value="Young Gents Skin Fade - £24">Young Gents Skin Fade (4–12) – £24</option>
+        </optgroup>
+
+        <optgroup label="Extras">
+            <option value="Threading - £10">Threading – £10</option>
+            <option value="Waxing (Nose & Ears) - £10">Waxing (Nose & Ears) – £10</option>
+            <option value="Face Mask - £12">Face Mask – £12</option>
+            <option value="Face Steam - £12">Face Steam – £12</option>
+            <option value="Beard Dyeing - £24">Beard Dyeing – £24</option>
+            <option value="Shape Up & Clean Up - £20">Shape Up & Clean Up – £20</option>
+            <option value="Wash, Style & Hot Towel - £10">Wash, Style & Hot Towel – £10</option>
+            <option value="Full Facial Treatment - £24">Full Facial Treatment – £24</option>
+        </optgroup>
     </select>
 
     <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
 
-    <!-- SUCCESS MESSAGE -->
-    <div id="form-message" style="display:none; text-align:center; margin-top:20px; color:#d4af37; font-size:1.1rem;">
-        Thanks for your request. We'll be contacting you shortly for confirmation.
+    <div id="form-message" class="form-message">
+        Thanks for your request. We’ll be contacting you shortly for confirmation.
+        <br>
+        If your booking is for today, WhatsApp or call us for faster confirmation.
     </div>
 
 </form>
+
 
     </section>
 </div>

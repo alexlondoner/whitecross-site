@@ -128,32 +128,68 @@ if (!hasImages) {
 
 });
 // SAME-DAY BOOKING WARNING
-document.getElementById('date').addEventListener('change', function() {
-    const selected = new Date(this.value);
-    const today = new Date();
+const dateInput = document.getElementById('date');
+if (dateInput) {
+    dateInput.addEventListener('change', function () {
+        const selected = new Date(this.value);
+        const today = new Date();
 
-    today.setHours(0,0,0,0);
-    selected.setHours(0,0,0,0);
+        today.setHours(0, 0, 0, 0);
+        selected.setHours(0, 0, 0, 0);
 
-    if (selected.getTime() === today.getTime()) {
-        alert("For same-day bookings, please WhatsApp us for faster confirmation.\n\nWhatsApp: +44 7879 553312");
-    }
-});
-
-// FORM SUBMIT HANDLER (LOCAL + GITHUB SAFE)
-document.getElementById('bookingForm').addEventListener('submit', function(e) {
-    e.preventDefault(); // sayfa yenilenmesin
-
-    // FormSubmit'e gönder
-    fetch(this.action, {
-        method: "POST",
-        body: new FormData(this)
+        if (selected.getTime() === today.getTime()) {
+            alert(
+                "For same-day bookings, please WhatsApp or call us for faster confirmation.\n\nWhatsApp: +44 7xxx xxx xxx"
+            );
+        }
     });
+}
 
-    // Mesajı göster
-    document.getElementById('form-message').style.display = "block";
+// FORM SUBMIT HANDLER (local + GitHub safe)
+const bookingForm = document.getElementById('bookingForm');
+if (bookingForm) {
+    bookingForm.addEventListener('submit', function (e) {
+        e.preventDefault();
 
-    // Formu temizle
-    this.reset();
-});
+        // FormSubmit'e gönder
+        fetch(this.action, {
+            method: "POST",
+            body: new FormData(this)
+        });
+
+        // Mesajı göster
+        const msg = document.getElementById('form-message');
+        if (msg) {
+            msg.style.display = "block";
+        }
+
+        // Formu temizle
+        this.reset();
+    });
+}
+
+const phoneInput = document.getElementById('phone');
+
+if (phoneInput) {
+    phoneInput.value = "+44 ";
+
+    phoneInput.addEventListener('input', function () {
+        // +44 sabit kalsın
+        if (!this.value.startsWith("+44 ")) {
+            this.value = "+44 ";
+        }
+
+        // +44 'den sonrasını al
+        let digits = this.value.replace("+44 ", "");
+
+        // Sadece rakam kalsın
+        digits = digits.replace(/\D/g, "");
+
+        // Maksimum 10–11 rakam
+        digits = digits.substring(0, 10);
+
+        // Geri yaz
+        this.value = "+44 " + digits;
+    });
+}
 
