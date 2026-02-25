@@ -127,3 +127,33 @@ if (!hasImages) {
 }
 
 });
+// SAME-DAY BOOKING WARNING
+document.getElementById('date').addEventListener('change', function() {
+    const selected = new Date(this.value);
+    const today = new Date();
+
+    today.setHours(0,0,0,0);
+    selected.setHours(0,0,0,0);
+
+    if (selected.getTime() === today.getTime()) {
+        alert("For same-day bookings, please WhatsApp us for faster confirmation.\n\nWhatsApp: +44 7879 553312");
+    }
+});
+
+// FORM SUBMIT HANDLER (LOCAL + GITHUB SAFE)
+document.getElementById('bookingForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // sayfa yenilenmesin
+
+    // FormSubmit'e gönder
+    fetch(this.action, {
+        method: "POST",
+        body: new FormData(this)
+    });
+
+    // Mesajı göster
+    document.getElementById('form-message').style.display = "block";
+
+    // Formu temizle
+    this.reset();
+});
+
