@@ -1,4 +1,4 @@
-/* 1. TEMEL AYARLAR */
+/* TEMEL AYARLAR */
 * {
     margin: 0;
     padding: 0;
@@ -6,7 +6,7 @@
 }
 
 body {
-    background-color: #000; /* BEYAZ EKRANI SİYAH YAPAR */
+    background-color: #000;
     color: #fff;
     font-family: 'Inter', sans-serif;
     line-height: 1.6;
@@ -19,15 +19,12 @@ body {
     text-align: center;
 }
 
-/* 2. LOGO VE BAŞLIKLAR */
-/* LOGO PARLAMA EFEKTİ */
+/* LOGO */
 .main-logo {
     font-family: 'Oswald', sans-serif;
     font-size: 4rem;
     text-transform: uppercase;
     margin-bottom: 5px;
-    
-    /* Parlama ve Altın Renk Ayarı */
     color: #d4af37;
     background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
     -webkit-background-clip: text;
@@ -38,11 +35,8 @@ body {
     text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
 }
 
-/* Parlama Animasyonu */
 @keyframes goldShine {
-    to {
-        background-position: 200% center;
-    }
+    to { background-position: 200% center; }
 }
 
 .subtitle {
@@ -62,7 +56,7 @@ body {
     margin-bottom: 30px;
 }
 
-/* 3. SERVİS KARTLARI */
+/* KARTLAR */
 .card {
     background: #111;
     border: 1px solid #222;
@@ -99,7 +93,7 @@ body {
     font-size: 1.1rem;
 }
 
-/* 4. BUTONLAR VE FORM (SENİN GÖNDERDİĞİN DÜZELTMELER DAHİL) */
+/* BUTONLAR */
 .details-btn {
     background: none;
     border: 1px solid #d4af37;
@@ -109,9 +103,9 @@ body {
     margin-top: 5px;
     cursor: pointer;
     border-radius: 4px;
-    width: fit-content;
 }
 
+/* FORM */
 .input-field {
     width: 100%;
     padding: 12px;
@@ -120,11 +114,9 @@ body {
     border: 1px solid #333;
     color: #fff;
     border-radius: 8px;
-    display: block !important;
     font-size: 14px;
 }
 
-/* Takvim ikonu rengini beyaz yapar */
 input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
     cursor: pointer;
@@ -143,7 +135,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     text-transform: uppercase;
 }
 
-/* 5. MODAL VE WHATSAPP */
+/* MODAL */
 .modal {
     display: none;
     position: fixed;
@@ -164,7 +156,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     max-width: 400px;
     border: 1px solid #d4af37;
     position: relative;
-    color: #fff;
 }
 
 .close-modal {
@@ -176,10 +167,52 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #d4af37;
 }
 
+/* WHATSAPP */
 .whatsapp-float {
     position: fixed;
     bottom: 20px;
     right: 20px;
     width: 60px;
     z-index: 100;
+}
+
+/* SLIDER */
+.slider {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.slides {
+    display: flex;
+    width: 300%;
+    animation: slideShow 12s infinite;
+}
+
+.slides img {
+    width: 100%;
+    object-fit: cover;
+}
+
+@keyframes slideShow {
+    0% { transform: translateX(0); }
+    33% { transform: translateX(-100%); }
+    66% { transform: translateX(-200%); }
+    100% { transform: translateX(0); }
+}
+
+/* GRID GALERİ */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.gallery-grid img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
 }

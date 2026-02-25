@@ -3,93 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I CUT | Premium Barber London</title>
+    <title>Whitecross Barbers | Skin Fade Specialist | London EC1</title>
+
+    <meta name="description" content="Whitecross Barbers – Premium grooming in London EC1. Skin fades, scissor cuts, beard trims, hot towel shaves and full grooming packages. Walk-ins welcome.">
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
 <div class="hero">
     <h1 class="main-logo">I CUT</h1>
-    <div class="subtitle"><span>UNDER NEW MANAGEMENT</span></div>
+    <div class="subtitle">WHITE CROSS BARBERS – EC1 LONDON</div>
     <div class="walk-in-tag">WALK-INS WELCOME</div>
 
+    <!-- BUNDLE PACKAGES -->
     <section class="card">
         <h2 class="section-title">Exclusive Bundle Packages</h2>
+
         <div class="service-item highlight">
             <div class="s-info"><strong>I CUT Royal</strong><button class="details-btn" onclick="openStory('royal')">Journey Details</button></div>
             <span class="price">£65</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>I CUT Deluxe</strong><button class="details-btn" onclick="openStory('deluxe')">Journey Details</button></div>
             <span class="price">£55</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Full Skin Fade Service</strong><button class="details-btn" onclick="openStory('fade_service')">Journey Details</button></div>
             <span class="price">£48</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>The Full Experience</strong><button class="details-btn" onclick="openStory('experience')">Journey Details</button></div>
             <span class="price">£40</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Senior Full Experience (65+)</strong><button class="details-btn" onclick="openStory('senior_full')">Journey Details</button></div>
             <span class="price">£35</span>
         </div>
     </section>
 
+    <!-- STANDARD PACKAGES -->
     <section class="card">
         <h2 class="section-title">Standard Packages</h2>
+
         <div class="service-item">
             <div class="s-info"><strong>Skin Fade Cut</strong><button class="details-btn" onclick="openStory('skin_fade')">Service Details</button></div>
             <span class="price">£32</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Scissor Cut</strong><button class="details-btn" onclick="openStory('scissor')">Service Details</button></div>
             <span class="price">£30</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Classic Short Back & Sides</strong><button class="details-btn" onclick="openStory('short_back')">Service Details</button></div>
             <span class="price">£28</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Hot Towel Shave</strong><button class="details-btn" onclick="openStory('shave')">Service Details</button></div>
             <span class="price">£22</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Clipper Cut</strong><button class="details-btn" onclick="openStory('clipper')">Service Details</button></div>
             <span class="price">£22</span>
         </div>
-        <div class="service-item"><span>Senior Haircut (65+)</span><span class="price">£23</span></div>
-        <div class="service-item"><span>Young Gents (0-12)</span><span class="price">£20</span></div>
+
+        <div class="service-item">
+            <div class="s-info"><strong>Senior Haircut (65+)</strong><button class="details-btn" onclick="openStory('senior')">Service Details</button></div>
+            <span class="price">£23</span>
+        </div>
+
+        <div class="service-item">
+            <div class="s-info"><strong>Young Gents (0-12)</strong><button class="details-btn" onclick="openStory('young')">Service Details</button></div>
+            <span class="price">£20</span>
+        </div>
     </section>
 
+    <!-- EXTRAS -->
     <section class="card">
         <h2 class="section-title">Extras</h2>
+
         <div class="service-item">
             <div class="s-info"><strong>Full Facial Treatment</strong><button class="details-btn" onclick="openStory('full_facial')">Service Details</button></div>
             <span class="price">£24</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Beard Dyeing</strong><button class="details-btn" onclick="openStory('beard_dye')">Service Details</button></div>
             <span class="price">£24</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Face Mask / Steam</strong><button class="details-btn" onclick="openStory('face_mask')">Service Details</button></div>
             <span class="price">£12</span>
         </div>
+
         <div class="service-item">
             <div class="s-info"><strong>Threading / Waxing</strong><button class="details-btn" onclick="openStory('threading')">Service Details</button></div>
             <span class="price">£10</span>
         </div>
     </section>
 
+    <!-- GALLERY -->
+    <section class="card">
+        <h2 class="section-title">Gallery</h2>
+
+        <!-- SLIDER -->
+        <div class="slider">
+            <div class="slides">
+                <img src="">
+                <img src="">
+                <img src="">
+            </div>
+        </div>
+
+        <!-- GRID -->
+        <div class="gallery-grid">
+            <img src="">
+            <img src="">
+            <img src="">
+            <img src="">
+            <img src="">
+            <img src="">
+        </div>
+    </section>
+
+    <!-- BOOKING FORM -->
     <section class="card">
         <h2 class="section-title">Priority Booking</h2>
+
         <form action="https://formsubmit.co/whitecrossbarbers@gmail.com" method="POST">
             <input type="text" name="name" placeholder="Name" required class="input-field">
             <input type="tel" name="phone" placeholder="Phone" required class="input-field">
-            
+
             <input type="date" id="date" name="date" required class="input-field">
             <select id="time" name="time" required class="input-field">
                 <option value="" disabled selected>Select Time</option>
@@ -97,26 +152,38 @@
 
             <select name="service" required class="input-field">
                 <option value="" disabled selected>Select Service</option>
+
                 <optgroup label="Bundles">
                     <option value="Royal">I CUT Royal - £65</option>
-                    <option value="Deluxe">I CUT Deluxe - £50</option>
+                    <option value="Deluxe">I CUT Deluxe - £55</option>
                     <option value="Full Fade Service">Full Skin Fade Service - £48</option>
                     <option value="Full Experience">The Full Experience - £40</option>
                 </optgroup>
-                <optgroup label="Standard/Extras">
+
+                <optgroup label="Standard">
                     <option value="Skin Fade">Skin Fade Cut - £32</option>
-                    <option value="Short Back"> Classic Short Back & Sides - £28</option>
+                    <option value="Scissor Cut">Scissor Cut - £30</option>
+                    <option value="Short Back">Classic Short Back & Sides - £28</option>
+                    <option value="Clipper Cut">Clipper Cut - £22</option>
+                    <option value="Senior Haircut">Senior Haircut - £23</option>
+                    <option value="Young Gents">Young Gents - £20</option>
+                </optgroup>
+
+                <optgroup label="Extras">
                     <option value="Shave">Hot Towel Shave - £22</option>
                     <option value="Facial">Full Facial - £24</option>
+                    <option value="Beard Dye">Beard Dyeing - £24</option>
                     <option value="Mask/Steam">Face Mask/Steam - £12</option>
                     <option value="Threading/Waxing">Threading/Waxing - £10</option>
                 </optgroup>
             </select>
+
             <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
         </form>
     </section>
 </div>
 
+<!-- MODAL -->
 <div id="infoModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeInfo()">&times;</span>
@@ -125,18 +192,16 @@
     </div>
 </div>
 
+<!-- WHATSAPP -->
 <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg">
 </a>
 
 <script src="script.js"></script>
-<div class="seo-hidden" style="display: none; visibility: hidden;">
-    Serving clients from Islington, Angel, Holloway, Barbican, Old Street, Hoxton, Shoreditch, and Hackney. 
-    Professional haircuts, skin fades,Taper Fade, Drop Fade, Burst Fade, and beard grooming near me in London EC1, EC1V, EC1R, EC!Y.
-</div>
 
-<footer style="text-align: center; padding: 20px; color: #888; font-size: 0.9rem; margin-top: 30px;">
-    Powered by Alex
+<footer style="text-align:center; padding:20px; color:#888; font-size:0.9rem; margin-top:30px;">
+    Whitecross Barbers – EC1 London
 </footer>
+
 </body>
 </html>
