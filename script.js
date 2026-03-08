@@ -48,9 +48,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
 
-    // 1. Bugünün tarihini ayarla (YYYY-MM-DD)
+    // 1. Bugünün tarihini Londra formatında al (YYYY-MM-DD)
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     
     if (dateInput) {
         dateInput.setAttribute('min', todayStr);
@@ -59,18 +59,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedDate = this.value;
             const isToday = (selectedDate === todayStr);
             
-            // Saatleri temizle ve varsayılan seçeneği ekle
             timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
 
             const currentHour = new Date().getHours();
             const currentMinute = new Date().getMinutes();
 
-            // Saatleri oluştur (9 AM'den 9 PM'e kadar)
+            // 9 AM'den 9:30 PM'e kadar döngü
             for (let h = 9; h <= 21; h++) {
                 ['00', '30'].forEach(mStr => {
                     const mVal = parseInt(mStr);
                     
-                    // 9:30 PM'den sonrasını ekleme
+                    // 9:30 PM'den sonrasını kapat
                     if (h === 21 && mVal > 0) return;
 
                     // Bugün için geçmiş saatleri filtrele
@@ -88,8 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     opt.value = timeText;
                     opt.textContent = timeText;
                     
-                    // After Hours Etiketi (8 PM ve 9 PM)
-                    if (h >= 20) {
+                    // 7 PM (19:00) ve sonrası After Hours olarak işaretlenir
+                    if (h >= 19) {
                         opt.textContent += " (After Hours)";
                     }
                     
@@ -97,23 +96,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Bugün uyarısı
             if (isToday) {
                 alert("Same-day bookings need confirmation. Please WhatsApp us at +44 7879 553 312");
             }
         });
     }
 
-    // After Hours Surcharge Uyarı Kontrolü
+    // After Hours Surcharge Uyarı Kontrolü (7, 8 ve 9 PM için)
     if (timeSelect) {
         timeSelect.addEventListener('change', function() {
-            if (this.value.includes("8:") || this.value.includes("9:")) {
-                alert("Note: There is a surcharge for After Hours bookings (8PM/9PM). Contact us for details!");
+            const val = this.value;
+            if (val.includes("7:") || val.includes("8:") || val.includes("9:")) {
+                alert("Note: There is a surcharge for After Hours bookings (7PM-9PM). Please contact us directly for confirmation.\n\nWhatsApp: +44 7879 553 312");
             }
         });
     }
 
-    // Telefon Formatı ve Form Gönderimi (Basitleştirilmiş)
+    // Telefon Formatı
     const phoneInput = document.getElementById('phone');
     if (phoneInput) {
         phoneInput.addEventListener('input', function() {
@@ -121,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Form Gönderimi
     const form = document.getElementById('bookingForm');
     if (form) {
         form.addEventListener('submit', function(e) {
