@@ -1,5 +1,5 @@
 /* ============================
-   SERVICE STORY CONTENT
+   SERVICE STORIES (MODAL)
 ============================ */
 const stories = {
     royal: { title: "I CUT Royal Journey", content: "<strong>VIP Luxury.</strong> Bespoke Haircut, Beard Service, Full Facial & Deep Steam therapy. Includes Turkish Tea/Coffee." },
@@ -25,14 +25,13 @@ const stories = {
     wash_style_hot_towel: { title: "Wash, Style & Hot Towel", content: "Professional wash, styling, and hot towel finishing treatment." }
 };
 
-/* ============================
-   MODAL FUNCTIONS
-============================ */
 function openStory(type) {
     const modal = document.getElementById('infoModal');
+    const title = document.getElementById('modal-title');
+    const desc = document.getElementById('modal-desc');
     if (modal && stories[type]) {
-        document.getElementById('modal-title').innerHTML = stories[type].title;
-        document.getElementById('modal-desc').innerHTML = stories[type].content;
+        title.innerHTML = stories[type].title;
+        desc.innerHTML = stories[type].content;
         modal.style.display = 'flex';
     }
 }
@@ -42,94 +41,94 @@ function closeInfo() {
     if (modal) modal.style.display = 'none'; 
 }
 
-window.onclick = function(e) { 
-    const modal = document.getElementById('infoModal');
-    if (modal && e.target == modal) closeInfo(); 
-};
-
 /* ============================
-   BOOKING & TIME GENERATOR
+   MAIN INITIALIZATION
 ============================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
 
+    // 1. Bugünün tarihini ayarla (YYYY-MM-DD)
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
     if (dateInput) {
-        // Geçmiş tarihleri engelle
-        dateInput.setAttribute('min', new Date().toLocaleDateString('en-CA'));
-        
-        // Tarih değişince saatleri oluştur ve "Aynı Gün" uyarısı ver
-        dateInput.addEventListener('change', function() {
-            // 1. Saatleri Doldur
-            if (timeSelect) {
-                timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
-                for (let h = 9; h < 19; h++) {
-                    ['00', '30'].forEach(m => {
-                        let hour12 = h % 12 || 12;
-                        let ampm = h >= 12 ? 'PM' : 'AM';
-                        let timeStr = `${hour12}:${m} ${ampm}`;
-                        let opt = document.createElement('option');
-                        opt.value = timeStr;
-                        opt.textContent = timeStr;
-                        timeSelect.appendChild(opt);
-                    });
-                }
+        dateInput.setAttribute('min', todayStr);
+
+        dateInput.addEventListener('input', function() {
+            const selectedDate = this.value;
+            const isToday = (selectedDate === todayStr);
+            
+            // Saatleri temizle ve varsayılan seçeneği ekle
+            timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
+
+            const currentHour = new Date().getHours();
+            const currentMinute = new Date().getMinutes();
+
+            // Saatleri oluştur (9 AM'den 9 PM'e kadar)
+            for (let h = 9; h <= 21; h++) {
+                ['00', '30'].forEach(mStr => {
+                    const mVal = parseInt(mStr);
+                    
+                    // 9:30 PM'den sonrasını ekleme
+                    if (h === 21 && mVal > 0) return;
+
+                    // Bugün için geçmiş saatleri filtrele
+                    if (isToday) {
+                        if (h < currentHour || (h === currentHour && mVal <= currentMinute)) {
+                            return; 
+                        }
+                    }
+
+                    let hour12 = h % 12 || 12;
+                    let ampm = h >= 12 ? 'PM' : 'AM';
+                    let timeText = `${hour12}:${mStr} ${ampm}`;
+                    
+                    let opt = document.createElement('option');
+                    opt.value = timeText;
+                    opt.textContent = timeText;
+                    
+                    // After Hours Etiketi (8 PM ve 9 PM)
+                    if (h >= 20) {
+                        opt.textContent += " (After Hours)";
+                    }
+                    
+                    timeSelect.appendChild(opt);
+                });
             }
 
-            // 2. Aynı Gün Uyarısı
-            const selected = new Date(this.value);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            selected.setHours(0, 0, 0, 0);
-
-            if (selected.getTime() === today.getTime()) {
-                alert("For same-day bookings, please WhatsApp or call us for faster confirmation.\n\nWhatsApp: +44 7879 553 312");
+            // Bugün uyarısı
+            if (isToday) {
+                alert("Same-day bookings need confirmation. Please WhatsApp us at +44 7879 553 312");
             }
         });
     }
 
-    /* GALLERY AUTO-HIDE (GITHUB SAFE) */
-    const slider = document.querySelector('.slider');
-    const grid = document.querySelector('.gallery-grid');
-    if (grid || slider) {
-        const sliderImages = document.querySelectorAll('.slides img');
-        const gridImages = document.querySelectorAll('.gallery-grid img');
-        let hasImages = false;
-        const isRealImage = (img) => img.getAttribute("src") && img.getAttribute("src").trim() !== "";
-        sliderImages.forEach(img => { if (isRealImage(img)) hasImages = true; });
-        gridImages.forEach(img => { if (isRealImage(img)) hasImages = true; });
-        if (!hasImages) {
-            if (slider) slider.style.display = "none";
-            if (grid) grid.style.display = "none";
-        }
+    // After Hours Surcharge Uyarı Kontrolü
+    if (timeSelect) {
+        timeSelect.addEventListener('change', function() {
+            if (this.value.includes("8:") || this.value.includes("9:")) {
+                alert("Note: There is a surcharge for After Hours bookings (8PM/9PM). Contact us for details!");
+            }
+        });
+    }
+
+    // Telefon Formatı ve Form Gönderimi (Basitleştirilmiş)
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            if (!this.value.startsWith("+")) this.value = "+" + this.value;
+        });
+    }
+
+    const form = document.getElementById('bookingForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch(this.action, { method: "POST", body: new FormData(this) });
+            const msg = document.getElementById('form-message');
+            if (msg) msg.style.display = "block";
+            this.reset();
+        });
     }
 });
-
-/* ============================
-   FORM & PHONE HANDLERS
-============================ */
-const bookingForm = document.getElementById('bookingForm');
-if (bookingForm) {
-    bookingForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        fetch(this.action, { method: "POST", body: new FormData(this) });
-        const msg = document.getElementById('form-message');
-        if (msg) msg.style.display = "block";
-        this.reset();
-    });
-}
-
-const phoneInput = document.getElementById('phone');
-if (phoneInput) {
-    phoneInput.addEventListener('input', function () {
-        let value = this.value;
-        if (value && !value.startsWith("+")) value = "+" + value;
-        let cleaned = value.replace(/[^\d+]/g, "");
-        const match = cleaned.match(/^(\+)(\d{1,3})(\d*)$/);
-        if (match) {
-            const countryCode = match[2];
-            let phoneNumber = (match[3] || "").substring(0, 15);
-            this.value = "+" + countryCode + (phoneNumber ? " " + phoneNumber : "");
-        }
-    });
-}
