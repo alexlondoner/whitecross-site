@@ -16,7 +16,7 @@ const stories = {
     young: { title: "Young Gents (0-12)", content: "A clean, neat cut for young boys with gentle handling." },
     young_gents_skin_fade: { title: "Young Gents Skin Fade (4-12)", content: "Modern fade technique tailored for young boys with precision shaping." },
     full_facial: { title: "Full Facial Treatment", content: "Deep-cleansing facial designed to rejuvenate the skin." },
-    beard_dye: { title: "Beard Dyeing", content: "Enhance or restore your beard’s colour for a fuller look." },
+    beard_dye: { title: "Beard Dyeing", content: "Enhance or restore your beard's colour for a fuller look." },
     face_mask: { title: "Face Mask", content: "Deep pore cleansing treatment that prepares the skin." },
     face_steam: { title: "Face Steam", content: "Relaxing steam therapy to open pores and soften the skin." },
     threading: { title: "Threading", content: "Precision eyebrow shaping and tidy-up using traditional threading." },
@@ -39,6 +39,33 @@ function openStory(type) {
 function closeInfo() { 
     const modal = document.getElementById('infoModal');
     if (modal) modal.style.display = 'none'; 
+}
+
+/* Close modal when clicking outside */
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('infoModal');
+    if (modal && event.target === modal) {
+        closeInfo();
+    }
+});
+
+/* ============================
+   CUSTOM SUCCESS POPUP
+============================ */
+function showSuccessPopup() {
+    const popup = document.getElementById('successPopup');
+    if (popup) {
+        popup.style.display = 'flex';
+        popup.style.animation = 'popupSlideIn 0.4s ease-out';
+        
+        // Auto-close after 5 seconds
+        setTimeout(function() {
+            popup.style.animation = 'popupSlideOut 0.4s ease-out';
+            setTimeout(function() {
+                popup.style.display = 'none';
+            }, 400);
+        }, 5000);
+    }
 }
 
 /* ============================
@@ -112,11 +139,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Telefon Formatı
+    // Phone Number Validation & Formatting
     const phoneInput = document.getElementById('phone');
     if (phoneInput) {
         phoneInput.addEventListener('input', function() {
-            if (!this.value.startsWith("+")) this.value = "+" + this.value;
+            // Remove any non-digit and non-plus characters
+            let value = this.value.replace(/[^0-9+\s]/g, '');
+            
+            // Ensure it starts with +
+            if (value && !value.startsWith('+')) {
+                value = '+' + value;
+            }
+            
+            this.value = value;
+        });
+        
+        phoneInput.addEventListener('blur', function() {
+            // Validate phone number format on blur
+            const phoneRegex = /^\+[0-9]{1,3}\s?[0-9]{6,14}$/;
+            if (this.value && !phoneRegex.test(this.value)) {
+                this.style.borderColor = '#ff6b6b';
+                console.warn('Invalid phone format. Please use format like: +44 7879 553312');
+            } else {
+                this.style.borderColor = '#333';
+            }
+        });
+    }
+    
+    // Email Validation
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (this.value && !emailRegex.test(this.value)) {
+                this.style.borderColor = '#ff6b6b';
+            } else {
+                this.style.borderColor = '#333';
+            }
         });
     }
 
@@ -126,9 +185,51 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             fetch(this.action, { method: "POST", body: new FormData(this) });
+            
+            // Show custom styled popup
+            showSuccessPopup();
+            
             const msg = document.getElementById('form-message');
             if (msg) msg.style.display = "block";
             this.reset();
         });
+    }
+
+    // Close popup when clicking the close button
+    const closePopupBtn = document.getElementById('closePopup');
+    if (closePopupBtn) {
+        closePopupBtn.addEventListener('click', function() {
+            const popup = document.getElementById('successPopup');
+            if (popup) {
+                popup.style.animation = 'popupSlideOut 0.4s ease-out';
+                setTimeout(function() {
+                    popup.style.display = 'none';
+                }, 400);
+            }
+        });
+    }
+
+    // Close popup when clicking outside
+    const successPopup = document.getElementById('successPopup');
+    if (successPopup) {
+        successPopup.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.animation = 'popupSlideOut 0.4s ease-out';
+                setTimeout(() => {
+                    this.style.display = 'none';
+                }, 400);
+            }
+        });
+    }
+
+    // Load Booksy Widget (only if container exists and script not already loaded)
+    const booksyContainer = document.getElementById('booksy-widget-container');
+    if (booksyContainer && !window.booksyLoaded) {
+        window.booksyLoaded = true;
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'https://booksy.com/widget/code.js?id=179328&country=gb&lang=en';
+        script.async = true;
+        booksyContainer.appendChild(script);
     }
 });
