@@ -1,4 +1,4 @@
-/* TEMEL AYARLAR */
+/* --- TEMEL AYARLAR --- */
 * {
     margin: 0;
     padding: 0;
@@ -10,6 +10,33 @@ body {
     color: #fff;
     font-family: 'Inter', sans-serif;
     line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* --- BACKGROUND WATERMARK --- */
+/* This ensures the logo stays faded in the background of the whole page */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('whitecross-logo.png');
+    background-size: 500px;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.03; /* Faded down as requested */
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero, .reviews-section, footer {
+    position: relative;
+    z-index: 1; /* Keeps content above the watermark */
 }
 
 .hero {
@@ -17,9 +44,16 @@ body {
     max-width: 600px;
     margin: 0 auto;
     text-align: center;
+    flex: 1; /* Pushes footer to bottom */
 }
 
-/* LOGO */
+/* --- LOGO & BRANDING --- */
+.main-logo-img {
+    width: 100px;
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.2));
+}
+
 .main-logo {
     font-family: 'Oswald', sans-serif;
     font-size: 4rem;
@@ -56,7 +90,7 @@ body {
     margin-bottom: 30px;
 }
 
-/* KARTLAR */
+/* --- KARTLAR (CARDS) --- */
 .card {
     background: #111;
     border: 1px solid #222;
@@ -93,7 +127,7 @@ body {
     font-size: 1.1rem;
 }
 
-/* BUTONLAR */
+/* --- BUTONLAR & FORMS --- */
 .details-btn {
     background: none;
     border: 1px solid #d4af37;
@@ -105,7 +139,6 @@ body {
     border-radius: 4px;
 }
 
-/* FORM */
 .input-field {
     width: 100%;
     padding: 12px;
@@ -138,16 +171,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     font-size: 0.95rem;
 }
 
-.input-field::placeholder {
-    color: #777;
-}
-
-.booking-form select optgroup {
-    background: #000;
-    color: #d4af37;
-    font-style: normal;
-}
-
 .submit-btn {
     margin-top: 8px;
     padding: 12px 16px;
@@ -161,11 +184,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.submit-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
-}
-
 .form-message {
     display: none;
     margin-top: 14px;
@@ -175,7 +193,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     line-height: 1.5;
 }
 
-/* MODAL */
+/* --- MODALS & POPUPS --- */
 .modal {
     display: none;
     position: fixed;
@@ -207,83 +225,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #d4af37;
 }
 
-/* WHATSAPP */
-.whatsapp-float {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    z-index: 100;
-}
-
-/* PROMO SECTION */
-.promo-section {
-    margin-top: 40px;
-    padding: 30px 25px;
-    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-    border: 2px solid #d4af37;
-    border-radius: 12px;
-    color: #e0e0e0;
-    font-size: 1rem;
-    line-height: 1.8;
-    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.15), inset 0 1px 0 rgba(212, 175, 55, 0.1);
-}
-
-.promo-section p {
-    margin-bottom: 15px;
-}
-
-.promo-section p:last-child {
-    margin-bottom: 0;
-}
-
-.promo-section strong {
-    color: #d4af37;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
-/* SOCIAL BUTTONS */
-.social-buttons {
-    display: flex;
-    gap: 10px;
-    margin: 20px auto;
-    max-width: 540px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.btn-booksy,
-.btn-instagram {
-    flex: 1;
-    min-width: 150px;
-    padding: 12px 20px;
-    background-color: #d4af37;
-    color: #050505;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    text-align: center;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    letter-spacing: 1px;
-}
-
-.btn-booksy:hover,
-.btn-instagram:hover {
-    background-color: #e6c55f;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
-}
-
-.btn-booksy:active,
-.btn-instagram:active {
-    transform: translateY(0);
-}
-
-/* CUSTOM SUCCESS POPUP */
 .success-popup {
     display: none;
     position: fixed;
@@ -310,135 +251,116 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border: 2px solid #fff;
 }
 
-.popup-close {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(255, 255, 255, 0.3);
-    border: none;
-    color: #050505;
-    font-size: 28px;
-    cursor: pointer;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
+/* --- PROMO SECTION (COMPACT) --- */
+.promo-section {
+    margin-top: 25px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 2px solid #d4af37;
+    border-radius: 12px;
+    color: #e0e0e0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.15);
 }
 
-.popup-close:hover {
-    background: rgba(255, 255, 255, 0.6);
-    transform: rotate(90deg);
+.promo-section p {
+    margin-bottom: 8px;
 }
 
-.popup-icon {
-    font-size: 60px;
-    color: #050505;
-    margin-bottom: 15px;
-    animation: popupBounce 0.6s ease-out;
+/* --- REVIEWS SECTION (ORIGINAL LAYOUT) --- */
+.reviews-section {
+    margin: 30px auto;
+    padding: 30px 25px;
+    max-width: 600px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 2px solid #d4af37;
+    border-radius: 15px;
+    text-align: center;
 }
 
-@keyframes popupBounce {
-    0% { transform: scale(0); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
-}
-
-.popup-title {
-    color: #050505;
-    font-size: 24px;
-    font-weight: bold;
-    margin: 15px 0 10px 0;
+.reviews-section h2 {
+    color: #d4af37;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
     font-family: 'Oswald', sans-serif;
+}
+
+.reviews-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.review-platform, .service-areas {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.review-link {
+    display: inline-block;
+    color: #d4af37;
+    text-decoration: none;
+    font-weight: bold;
+    margin-top: 10px;
+    border-bottom: 2px solid #d4af37;
+}
+
+/* --- FOOTER & SIGNATURE --- */
+footer {
+    text-align: center;
+    padding: 20px 10px;
+    color: #d4af37;
+    font-size: 0.8rem;
+    margin-top: auto;
     letter-spacing: 1px;
 }
 
-.popup-message {
-    color: #050505;
-    font-size: 14px;
-    line-height: 1.6;
-    margin: 10px 0;
-    font-family: 'Inter', sans-serif;
-}
-
-.popup-whatsapp-btn {
-    display: inline-block;
-    background: #050505;
+.signature-alex {
+    font-family: 'Great Vibes', cursive;
+    font-size: 1.8rem;
     color: #d4af37;
-    padding: 12px 25px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 14px;
-    margin: 15px 0;
-    transition: all 0.3s ease;
-    border: 2px solid #050505;
+    margin-top: 5px;
+    font-weight: 400;
 }
 
-.popup-whatsapp-btn:hover {
-    background: transparent;
+/* --- WHATSAPP & SOCIAL --- */
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    z-index: 100;
+}
+
+.social-buttons {
+    display: flex;
+    gap: 10px;
+    margin: 20px auto;
+    max-width: 540px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-booksy, .btn-instagram {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 20px;
+    background-color: #d4af37;
     color: #050505;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-align: center;
 }
 
-.popup-footer {
-    color: rgba(5, 5, 5, 0.7);
-    font-size: 12px;
-    margin-top: 15px;
-    font-style: italic;
-}
-
-@keyframes popupSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px) scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@keyframes popupSlideOut {
-    from {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-    to {
-        opacity: 0;
-        transform: translateY(-50px) scale(0.9);
-    }
-}
-
-/* RESPONSIVE */
+/* --- RESPONSIVE --- */
 @media (max-width: 600px) {
-    .social-buttons {
-        gap: 8px;
-        margin: 15px auto;
-    }
-
-    .btn-booksy,
-    .btn-instagram {
-        min-width: 120px;
-        padding: 10px 15px;
-        font-size: 0.85rem;
-    }
-
-    .success-popup-content {
-        padding: 30px 20px;
-        max-width: 90%;
-    }
-
-    .popup-title {
-        font-size: 20px;
-    }
-
-    .popup-message {
-        font-size: 13px;
-    }
-
-    .popup-icon {
-        font-size: 50px;
-    }
+    .main-logo { font-size: 3rem; }
+    .social-buttons { gap: 8px; }
+    .btn-booksy, .btn-instagram { min-width: 120px; font-size: 0.85rem; }
 }
