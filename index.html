@@ -64,54 +64,12 @@
         "longitude": "-0.093342"
       },
       "areaServed": [
-        {
-          "@type": "City",
-          "name": "Clerkenwell"
-        },
-        {
-          "@type": "City",
-          "name": "Barbican"
-        },
-        {
-          "@type": "City",
-          "name": "Farringdon"
-        },
-        {
-          "@type": "City",
-          "name": "Liverpool Street"
-        },
-        {
-          "@type": "City",
-          "name": "Old Street"
-        },
-        {
-          "@type": "City",
-          "name": "Hoxton"
-        },
-        {
-          "@type": "City",
-          "name": "Angel"
-        },
-        {
-          "@type": "City",
-          "name": "Islington"
-        },
-        {
-          "@type": "City",
-          "name": "Shoreditch"
-        },
-        {
-          "@type": "City",
-          "name": "Bloomsbury"
-        },
-        {
-          "@type": "City",
-          "name": "Holborn"
-        },
-        {
-          "@type": "City",
-          "name": "Spitalfields"
-        }
+        { "@type": "City", "name": "Clerkenwell" }, { "@type": "City", "name": "Barbican" },
+        { "@type": "City", "name": "Farringdon" }, { "@type": "City", "name": "Liverpool Street" },
+        { "@type": "City", "name": "Old Street" }, { "@type": "City", "name": "Hoxton" },
+        { "@type": "City", "name": "Angel" }, { "@type": "City", "name": "Islington" },
+        { "@type": "City", "name": "Shoreditch" }, { "@type": "City", "name": "Bloomsbury" },
+        { "@type": "City", "name": "Holborn" }, { "@type": "City", "name": "Spitalfields" }
       ],
       "acceptsReservations": true,
       "rating": {
@@ -122,71 +80,19 @@
     }
     </script>
 
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "ProfessionalService",
-      "name": "Whitecross Barbers - Premium Barbershop on WhiteCross Street, EC1Y 8QJ London",
-      "description": "Walk-in friendly premier barbershop on WhiteCross Street, EC1Y 8QJ serving Barbican, Clerkenwell, Farringdon, Liverpool Street, Old Street, Hoxton & Angel. EC1 London barbershop offering bespoke haircuts, traditional grooming, skin fades, scissor cuts, beard trims, and men's grooming services. No appointment necessary – find us near you.",
-      "url": "https://whitecrossbarbers.com",
-      "telephone": "+447879553312",
-      "availability": "https://schema.org/Monday",
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "Barber Services - London EC1Y",
-        "itemListElement": [
-          {
-            "@type": "Offer",
-            "name": "Skin Fade Cut - Premium Barbers London EC1",
-            "description": "Premium skin fade specialist service in Clerkenwell, Barbican, Farringdon",
-            "price": "32",
-            "priceCurrency": "GBP"
-          },
-          {
-            "@type": "Offer",
-            "name": "Scissor Cut - Barbers Clerkenwell EC1Y",
-            "description": "Expert scissor cutting service near Whitecross Street",
-            "price": "30",
-            "priceCurrency": "GBP"
-          },
-          {
-            "@type": "Offer",
-            "name": "Hot Towel Shave - Premium Grooming Liverpool Street",
-            "description": "Traditional hot towel shave service in Farringdon, Old Street",
-            "price": "22",
-            "priceCurrency": "GBP"
-          },
-          {
-            "@type": "Offer",
-            "name": "I CUT Royal - Premium Grooming Package Barbican",
-            "description": "Premium package: Hair Cut, Beard, Full Facial, Steam - Available in Clerkenwell, Barbican, Islington",
-            "price": "65",
-            "priceCurrency": "GBP"
-          },
-          {
-            "@type": "Offer",
-            "name": "I CUT Deluxe - Bespoke Haircut & Beard Trim Hoxton",
-            "description": "Deluxe package with hair cut, beard trim, and face mask",
-            "price": "55",
-            "priceCurrency": "GBP"
-          },
-          {
-            "@type": "Offer",
-            "name": "Full Skin Fade Service - Shoreditch Barbers",
-            "description": "Complete skin fade service with beard trim",
-            "price": "48",
-            "priceCurrency": "GBP"
-          }
-        ]
-      }
-    }
-    </script>
-
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
 
     <style>
-        /* Logo Integration */
+        /* Force Footer to Bottom */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .hero { flex: 1; }
+
         .brand-header {
             display: flex;
             align-items: center;
@@ -195,30 +101,25 @@
             padding: 30px 10px 10px 10px;
             flex-wrap: wrap;
         }
-        .main-logo-img {
-            width: 100px;
-            height: auto;
-        }
-        .main-logo {
-            margin: 0 !important;
-        }
+        .main-logo-img { width: 100px; height: auto; }
+        .main-logo { margin: 0 !important; }
         @media (max-width: 480px) {
             .brand-header { flex-direction: column; gap: 5px; }
             .main-logo-img { width: 80px; }
         }
+        .seo-hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="hero">
-    
     <div class="brand-header">
-        <img src="whitecross-logo.png" alt="Whitecross Barbers Logo - Premium Barbershop on WhiteCross Street EC1Y 8QJ" class="main-logo-img">
+        <img src="whitecross-logo.png" alt="Whitecross Barbers Logo" class="main-logo-img">
         <h1 class="main-logo">I CUT</h1>
     </div>
 
     <div class="subtitle">WHITECROSS BARBERS – EC1Y 8QJ LONDON | WHITECROSS STREET, CLERKENWELL</div>
-    <div class="walk-in-tag">WALK-INS & APPOINTMENTS WELCOME </div>
+    <div class="walk-in-tag">WALK-INS & APPOINTMENTS WELCOME</div>
 
     <section class="card">
         <h2 class="section-title">Exclusive Bundle Packages</h2>
@@ -319,7 +220,7 @@
     <form id="bookingForm" action="https://formspree.io/f/mzdjrvpq" method="POST" class="booking-form">
         <input type="text" name="name" placeholder="Name" required class="input-field">
         <input type="email" id="email" name="email" placeholder="your.email@example.com" required class="input-field">
-        <input type="tel" id="phone" name="phone" placeholder="+44 7879 553312" required class="input-field" pattern="^\+[0-9]{1,3}\s?[0-9]{6,14}$" title="Please enter a valid phone number with country code (e.g., +44 7879 553312)">
+        <input type="tel" id="phone" name="phone" placeholder="+44 7879 553312" required class="input-field">
         <input type="date" id="date" name="date" required class="input-field">
         <select id="time" name="time" required class="input-field">
             <option value="" disabled selected>Select Time</option>
@@ -328,11 +229,11 @@
         <select name="service" required class="input-field">
             <option value="" disabled selected>Select Service</option>
             <optgroup label="Exclusive Bundle Packages">
-                <option value="The Full Experience - £40">The Full Experience (Standard Cut & Beard) – £40</option>
-                <option value="Full Skin Fade Service - £48">Full Skin Fade Service (Skin Fade Cut & Beard) – £48</option>
-                <option value="I CUT Deluxe - £55">I CUT Deluxe (Hair Cut, Beard Trim, Face Mask) – £55</option>
-                <option value="I CUT Royal - £65">I CUT Royal (Hair Cut, Beard, Full Facial, Steam) – £65</option>
-                <option value="Senior Citizen Full Experience - £35">Senior Citizen Full Experience 65+ (Hair Cut, Beard Trim) – £35</option>
+                <option value="The Full Experience - £40">The Full Experience – £40</option>
+                <option value="Full Skin Fade Service - £48">Full Skin Fade Service – £48</option>
+                <option value="I CUT Deluxe - £55">I CUT Deluxe – £55</option>
+                <option value="I CUT Royal - £65">I CUT Royal – £65</option>
+                <option value="Senior Citizen Full Experience - £35">Senior Citizen Full Experience – £35</option>
             </optgroup>
             <optgroup label="Standard Packages">
                 <option value="Classic Short Back & Sides - £28">Classic Short Back & Sides – £28</option>
@@ -341,25 +242,20 @@
                 <option value="Clipper Cut - £22">Clipper Cut – £22</option>
                 <option value="Senior Haircut - £23">Senior Haircut (65+) – £23</option>
                 <option value="Young Gents - £20">Young Gents (0–12) – £20</option>
-                <option value="Young Gents Skin Fade - £24">Young Gents Skin Fade (4–12) – £24</option>
+                <option value="Young Gents Skin Fade - £24">Young Gents Skin Fade – £24</option>
             </optgroup>
             <optgroup label="Extras">
                 <option value="Threading - £10">Threading – £10</option>
-                <option value="Waxing (Nose & Ears) - £10">Waxing (Nose & Ears) – £10</option>
+                <option value="Waxing - £10">Waxing (Nose & Ears) – £10</option>
                 <option value="Face Mask - £12">Face Mask – £12</option>
                 <option value="Face Steam - £12">Face Steam – £12</option>
                 <option value="Beard Dyeing - £24">Beard Dyeing – £24</option>
-                <option value="Shape Up & Clean Up - £20">Shape Up & Clean Up – £20</option>
-                <option value="Wash, Style & Hot Towel - £10">Wash, Style & Hot Towel – £10</option>
-                <option value="Full Facial Treatment - £24">Full Facial Treatment – £24</option>
+                <option value="Shape Up - £20">Shape Up & Clean Up – £20</option>
+                <option value="Wash & Style - £10">Wash, Style & Hot Towel – £10</option>
+                <option value="Facial - £24">Full Facial Treatment – £24</option>
             </optgroup>
         </select>
         <button type="submit" class="submit-btn">BOOK MY SEAT & COFFEE</button>
-        <div id="form-message" class="form-message">
-            Thanks for your request. We'll be contacting you shortly for confirmation.
-            <br>
-            If your booking is for today, WhatsApp or call us for faster confirmation.
-        </div>
     </form>
 
     <div class="social-buttons">
@@ -368,76 +264,50 @@
     </div>
 
     <section class="promo-section" style="padding: 13px; font-size: 0.85rem; line-height: 1.5;">
-        <p style="margin-bottom: 5px;"><strong>WALK-INS & APPOINTMENTS WELCOME</strong></p>
-        <p style="margin-bottom: 5px;">WhiteCross Street, EC1Y 8QJ London – Serving Barbican, Clerkenwell, Farringdon, Liverpool Street, Old Street, Hoxton, Angel & Islington areas</p>
-        <p style="margin-bottom: 5px;"><strong>ALL MAIN SERVICES INCLUDE SHAMPOO WASH & HOT TOWEL</strong></p>
-        <p style="margin-bottom: 5px;">Ear-flaming & eyebrow trimming available upon request.</p>
-        <p style="margin-bottom: 5px;">Free cleansing face mask with your first service. <strong>Students get 10% off</strong></p>
+        <p><strong>WALK-INS & APPOINTMENTS WELCOME</strong></p>
+        <p>WhiteCross Street, EC1Y 8QJ London – Serving Barbican, Clerkenwell, Farringdon, Liverpool Street, Old Street, Hoxton, Angel & Islington areas</p>
+        <p><strong>ALL MAIN SERVICES INCLUDE SHAMPOO WASH & HOT TOWEL</strong></p>
+        <p>Ear-flaming & eyebrow trimming available upon request.</p>
+        <p>Free cleansing face mask with your first service. <strong>Students get 10% off</strong></p>
     </section>
 </div>
 
-<div id="infoModal" class="modal">
-    <div class="modal-content">
-        <span class="close-modal" onclick="closeInfo()">&times;</span>
-        <h2 id="modal-title"></h2>
-        <div id="modal-desc"></div>
-    </div>
-</div>
-
-<a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp Whitecross Barbers">
-</a>
-
-<script src="script.js"></script>
+<div id="infoModal" class="modal"><div class="modal-content"><span class="close-modal" onclick="closeInfo()">&times;</span><h2 id="modal-title"></h2><div id="modal-desc"></div></div></div>
 
 <section class="reviews-section">
     <h2>⭐ Trusted by Our Community</h2>
     <div class="reviews-container">
         <div class="review-platform">
-            <div class="platform-header">
-                <h3>Google Reviews</h3>
-                <div class="rating">4.8 ★</div>
-            </div>
-            <p class="platform-description">Rated 4.8 out of 5 stars on Google</p>
+            <h3>Google Reviews</h3>
+            <div class="rating">4.8 ★</div>
             <a href="https://share.google/69VOllkR9e7iHR6Gf" target="_blank" class="review-link">View on Google →</a>
         </div>
-        
         <div class="review-platform">
-            <div class="platform-header">
-                <h3>Booksy Reviews</h3>
-                <div class="rating">Book Now</div>
-            </div>
-            <p class="platform-description">Check our reviews and availability on Booksy</p>
+            <h3>Booksy Reviews</h3>
+            <div class="rating">Book Now</div>
             <a href="https://booksy.com/en-gb/179328_icut-whitecross-barbers_barber_311817_london" target="_blank" class="review-link">View on Booksy →</a>
         </div>
     </div>
-    
     <div class="service-areas">
-    <h3>We Serve These Areas</h3>
-    <p>Premium barbers serving: <strong>Clerkenwell • Barbican • Farringdon • Liverpool Street • Old Street • Hoxton • Angel • Islington • Shoreditch • Bloomsbury • Holborn • Spitalfields • Hackney</strong></p>
-    
-    <div class="seo-hidden">
-        Service postcodes: EC1, EC1A, EC1M, EC1N, EC1P, EC1R, EC1V, EC1Y, EC2, EC2A, EC2M, EC2N, EC2P, EC2R, EC2V, EC2Y, EC3, EC3A, EC3M, EC3N, EC3P, EC3R, EC3V, EC4, EC4A, EC4M, EC4N, EC4P, EC4R, EC4V, EC4Y, N1, N5, E1, WC1, WC1A, WC1B, WC1E, WC1H, WC1N, WC1R, WC1V, WC1X, WC2, WC2A, WC2B, WC2E, WC2H, WC2N, WC2R
+        <h3>We Serve These Areas</h3>
+        <p><strong>Clerkenwell • Barbican • Farringdon • Liverpool Street • Old Street • Hoxton • Angel • Islington • Shoreditch • Bloomsbury • Holborn • Spitalfields • Hackney</strong></p>
+        <div class="seo-hidden">
+            Service postcodes: EC1, EC1A, EC1M, EC1N, EC1P, EC1R, EC1V, EC1Y, EC2, EC2A, EC2M, EC2N, EC2P, EC2R, EC2V, EC2Y, EC3, EC3A, EC3M, EC3N, EC3P, EC3R, EC3V, EC4, EC4A, EC4M, EC4N, EC4P, EC4R, EC4V, EC4Y, N1, N5, E1, WC1, WC1A, WC1B, WC1E, WC1H, WC1N, WC1R, WC1V, WC1X, WC2, WC2A, WC2B, WC2E, WC2H, WC2N, WC2R
+        </div>
     </div>
-</div>
 </section>
 
-<div id="successPopup" class="success-popup">
-    <div class="success-popup-content">
-        <button id="closePopup" class="popup-close">&times;</button>
-        <div class="popup-icon">✓</div>
-        <h2 class="popup-title">Booking Request Sent!</h2>
-        <p class="popup-message">Thanks for your request. We'll be contacting you shortly for confirmation.</p>
-        <p class="popup-message">If your booking is for today, WhatsApp or call us for faster confirmation.</p>
-        <a href="https://wa.me/447879553312" target="_blank" class="popup-whatsapp-btn">📞 WhatsApp: +44 7879 553 312</a>
-        <p class="popup-footer">This message will close automatically in 5 seconds</p>
-    </div>
-</div>
+<div id="successPopup" class="success-popup"><div class="success-popup-content"><button id="closePopup" class="popup-close">&times;</button><div class="popup-icon">✓</div><h2 class="popup-title">Booking Request Sent!</h2><p>We'll be contacting you shortly.</p></div></div>
 
-</body>
-    
+<a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+</a>
+
+<script src="script.js"></script>
+
 <footer style="text-align:center; padding:15px 10px; color:#d4af37; font-size:0.8rem; margin-top:20px; letter-spacing:1px;">
     Whitecross Barbers • WhiteCross Street • EC1Y 8QJ London<br>
-    <div style="font-family: 'Great Vibes', cursive; font-size:1.8rem; color:#d4af37; margin-top:8px; font-weight:400; letter-spacing:0px;">Crafted By Alex</div>
+    <div style="font-family: 'Great Vibes', cursive; font-size:1.8rem; color:#d4af37; margin-top:8px; font-weight:400;">Crafted By Alex</div>
 </footer>
+</body>
 </html>
