@@ -511,3 +511,73 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 .btn-instagram:hover::after {
     left: 130%;
 }
+/* --- MOBILE OPTIMIZATION (THE ALEX EDITION) --- */
+@media (max-width: 480px) {
+    /* 1. Make the header more compact so they see the prices immediately */
+    .brand-header {
+        padding: 20px 10px;
+    }
+    
+    .main-logo {
+        font-size: 2.8rem; /* Slightly smaller for narrow screens */
+        letter-spacing: 2px;
+    }
+
+    .main-logo-img {
+        width: 70px; /* Keep logo visible but not overwhelming */
+    }
+
+    /* 2. Service Items: Fix price alignment for small screens */
+    .service-item {
+        padding: 15px 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .service-item strong {
+        font-size: 0.95rem; /* Ensure text doesn't wrap weirdly */
+        display: block;
+        max-width: 180px;
+    }
+
+    .price {
+        font-size: 1.1rem;
+        min-width: 50px;
+        text-align: right;
+    }
+
+    /* 3. Thumb-Friendly Buttons */
+    .social-buttons {
+        flex-direction: column; /* Stack them for easier tapping */
+        gap: 10px;
+    }
+
+    .btn-booksy, .btn-instagram {
+        width: 100%;
+        padding: 18px; /* Bigger tap area */
+        font-size: 0.9rem;
+    }
+
+    /* 4. Form inputs look better on mobile when large */
+    .input-field {
+        font-size: 16px !important; /* Prevents iPhone from auto-zooming on click */
+        padding: 15px;
+    }
+
+    .submit-btn {
+        padding: 20px;
+        font-size: 1rem;
+    }
+
+    /* 5. Hide the background logo on very small screens to keep text readable */
+    body::before {
+        background-size: 300px;
+        opacity: 0.02;
+    }
+
+    /* 6. Fix Map height for mobile */
+    .map-box {
+        height: 200px;
+    }
+}
