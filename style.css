@@ -511,73 +511,65 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 .btn-instagram:hover::after {
     left: 130%;
 }
-/* --- MOBILE OPTIMIZATION (THE ALEX EDITION) --- */
+//* --- MOBILE REPAIR (THE ALEX EDITION) --- */
 @media (max-width: 480px) {
-    /* 1. Make the header more compact so they see the prices immediately */
-    .brand-header {
-        padding: 20px 10px;
-    }
-    
-    .main-logo {
-        font-size: 2.8rem; /* Slightly smaller for narrow screens */
-        letter-spacing: 2px;
+    .card {
+        padding: 15px; /* Kart iç boşluğunu daraltalım */
+        margin-bottom: 20px;
     }
 
-    .main-logo-img {
-        width: 70px; /* Keep logo visible but not overwhelming */
-    }
-
-    /* 2. Service Items: Fix price alignment for small screens */
     .service-item {
-        padding: 15px 10px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-    }
-
-    .service-item strong {
-        font-size: 0.95rem; /* Ensure text doesn't wrap weirdly */
-        display: block;
-        max-width: 180px;
-    }
-
-    .price {
-        font-size: 1.1rem;
-        min-width: 50px;
-        text-align: right;
-    }
-
-    /* 3. Thumb-Friendly Buttons */
-    .social-buttons {
-        flex-direction: column; /* Stack them for easier tapping */
+        align-items: flex-start; /* Yazı ve fiyatı hizala */
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.1);
         gap: 10px;
     }
 
-    .btn-booksy, .btn-instagram {
-        width: 100%;
-        padding: 18px; /* Bigger tap area */
-        font-size: 0.9rem;
+    /* Sol taraf: İsim ve Buton */
+    .service-item div:first-child {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px; /* Yazı ile buton arasını aç */
+        flex: 1;
     }
 
-    /* 4. Form inputs look better on mobile when large */
-    .input-field {
-        font-size: 16px !important; /* Prevents iPhone from auto-zooming on click */
-        padding: 15px;
+    .service-item strong {
+        font-size: 1.05rem;
+        line-height: 1.3;
+        color: #fff;
     }
 
-    .submit-btn {
-        padding: 20px;
-        font-size: 1rem;
+    /* Sağ taraf: Fiyat */
+    .price {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #d4af37;
+        margin-top: 2px;
+        white-space: nowrap; /* Fiyatın aşağı kaymasını engelle */
     }
 
-    /* 5. Hide the background logo on very small screens to keep text readable */
-    body::before {
-        background-size: 300px;
-        opacity: 0.02;
+    /* Details Butonları */
+    .details-btn {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        border: 1px solid #d4af37;
+        background: transparent;
+        color: #d4af37;
+        border-radius: 4px;
+        text-transform: uppercase;
     }
 
-    /* 6. Fix Map height for mobile */
-    .map-box {
-        height: 200px;
+    /* WhatsApp Butonunun yazıları kapatmaması için en alta boşluk */
+    body {
+        padding-bottom: 80px; 
+    }
+
+    /* Başlıkları biraz küçültelim ki sığsın */
+    .section-title {
+        font-size: 1.2rem;
+        text-align: center;
     }
 }
