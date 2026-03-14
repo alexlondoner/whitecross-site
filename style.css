@@ -615,3 +615,58 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .insta-icon path {
   fill: currentColor !important;
 }
+/* BOOKSY PREMIUM BUTTON */
+.btn-booksy {
+  background: #00bcd4 !important;          /* modern turkuaz */
+  color: #ffffff !important;
+  border: none !important;
+
+  padding: 12px 18px;
+  border-radius: 14px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  font-weight: 700;
+  letter-spacing: 0.6px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.24);
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+
+.btn-booksy:hover {
+  filter: brightness(1.08);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.32);
+}
+
+.booksy-icon {
+  font-size: 18px;
+}
+<div class="social-buttons">
+  ...
+</div>
+.social-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Desktop: yan yana, doğal genişlik */
+.social-buttons .btn {
+  flex: 0 0 auto;
+}
+
+/* Mobile: tam genişlik, üst üste */
+@media (max-width: 600px) {
+  .social-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .social-buttons .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
