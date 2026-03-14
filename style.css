@@ -680,3 +680,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin-bottom: 22px;
     text-transform: uppercase;
 }
+.footer-signature {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 40px;
+    padding-bottom: 25px;
+}
+
+.signature-line {
+    flex: 1;
+    height: 1px;
+    background-color: #d4af37;
+    opacity: 0.7;
+}
+
+.signature-text {
+    font-family: 'Allura', cursive;
+    font-size: 1rem; /* daha küçük imza */
+    color: #d4af37;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
