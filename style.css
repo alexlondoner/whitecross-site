@@ -703,3 +703,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
     letter-spacing: 0.5px;
 }
+.main-logo {
+    margin-bottom: 32px;
+}
+
+.subtitle {
+    margin-bottom: 38px;
+}
+.booking-form {
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
+.promo-box {
+    margin-bottom: 35px;
+}
