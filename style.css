@@ -670,3 +670,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     justify-content: center;
   }
 }
+
+.bundle-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: #d4af37;
+    text-align: center;
+    margin-bottom: 22px;
+    text-transform: uppercase;
+}
