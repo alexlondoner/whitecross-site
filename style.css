@@ -704,7 +704,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     letter-spacing: 0.5px;
 }
 .main-logo {
-    margin-bottom: 32px;
+    margin-bottom: 35px;
 }
 
 .subtitle {
@@ -716,4 +716,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .promo-box {
     margin-bottom: 35px;
+}
+.wc-header {
+    text-align: center;
+    padding: 50px 20px 40px;
+}
+
+.wc-logo-img {
+    width: 140px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.wc-title {
+    font-family: "Playfair Display", serif;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #111;
+}
+
+.wc-subtitle {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 16px;
+    letter-spacing: 4px;
+    margin-top: 6px;
+    color: #444;
+}
+
+.wc-divider {
+    width: 80px;
+    height: 1px;
+    background: linear-gradient(to right, #c8a96a, #e8d7a8, #c8a96a);
+    margin: 20px auto 0;
+    border-radius: 2px;
 }
