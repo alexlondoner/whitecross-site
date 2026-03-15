@@ -134,7 +134,7 @@ const stories = {
         title: "Young Gents (0–12)",
         content: `
 <p><strong>A haircut service specially for boys aged 0 to 12 years.</strong></p>
-<p>The hair is trimmed on the back and sides using clippers, then blended into the top with scissors. After cutting the required amount from the top to keep it balanced and age-appropriate, the service is carried out in a quick, child-friendly manner to ensure a relaxed experience.</p>
+<p>The hair is trimmed or styled using clippers on the back and sides to keep it neat and blending into top with scissors , after required amount cutting from the top of the hair to keep it balanced and age-appropriate. The service is usually quick and carried out in a child-friendly manner to ensure a relaxed experience.</p>
         `
     },
 
@@ -308,13 +308,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (timeSelect) {
-        timeSelect.addEventListener('change', function () {
-            const v = this.value;
-            if (v.includes("7pm:") || v.includes("8pm:") || v.includes("9pm:")) {
-                alert("Note: There is a surcharge for After Hours bookings (7PM–9PM). Please contact us directly for confirmation.\n\nWhatsApp: +44 7879 553312");
-            }
-        });
-    }
+    timeSelect.addEventListener('change', function () {
+        const v = this.value;
+        
+        // Ensure the time includes "PM" AND starts with 7, 8, or 9
+        const isAfterHours = v.includes("PM") && (v.startsWith("7:") || v.startsWith("8:") || v.startsWith("9:"));
+
+        if (isAfterHours) {
+            alert("Note: There is a surcharge for After Hours bookings (7PM–9PM). Please contact us directly for confirmation.\n\nWhatsApp: +44 7879 553312");
+        }
+    });
+}
 
     /* PHONE VALIDATION */
     const phoneInput = document.getElementById('phone');
