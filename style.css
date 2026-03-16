@@ -40,19 +40,43 @@ footer {
   text-align: center;
 }
 
+/* FINAL HEADER FIX — CLEAN & PREMIUM */
 .brand-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0px !important; /* logo ile I CUT arasındaki boşluk */
+    margin-bottom: 0 !important;
 }
 
+/* LOGO — tam üstte, I CUT’a yakın */
 .main-logo-img {
-  width: 160px;
-  height: auto;
-  margin-bottom: -5px;
-  display: block;
+    width: 200px !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto -12px !important; /* I CUT tam altına gelsin */
 }
+
+/* I CUT — logonun hemen altında */
+.main-logo {
+    margin-top: 0 !important;
+    margin-bottom: 12px !important; /* alt boşluk */
+}
+
+/* Mobil optimizasyon */
+@media (max-width: 600px) {
+    .main-logo-img {
+        width: 165px !important;
+        margin-bottom: -10px !important;
+    }
+
+    .main-logo {
+        font-size: 2.6rem !important;
+        margin-bottom: 10px !important;
+    }
+}
+
 
 .main-logo {
   margin: 0;
@@ -751,35 +775,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin: 20px auto 0;
     border-radius: 2px;
 }
+/* ACCORDION HEADER */
 .accordion-toggle {
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: background 0.25s ease;
 }
 
+.accordion-toggle:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+/* ARROW + SPRING BOUNCE */
 .arrow {
     font-size: 18px;
-    transition: transform 0.3s ease;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.arrow-exclusive.rotate,
-.arrow-standard.rotate,
-.arrow-extras.rotate {
-    transform: rotate(180deg);
+.arrow.rotate {
+    transform: rotate(180deg) scale(1.05);
 }
 
 /* SMOOTH ACCORDION — APPLE STYLE */
-.accordion-content {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.45s cubic-bezier(0.25, 0.1, 0.25, 1);
-    margin-top: 0;
-}
-
-.accordion-content.open {
-    margin-top: 15px;
-}
 .accordion-content {
     overflow: hidden;
     max-height: 0;
@@ -794,3 +813,50 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding-top: 12px;
     padding-bottom: 12px;
 }
+
+/* FADE-IN + SLIDE-UP ITEMS */
+.accordion-content .service-item {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.accordion-content.open .service-item {
+    opacity: 1;
+    transform: translateY(0);
+}
+header {
+    padding: 12px 20px; /* 20–30px arası ideal */
+}
+header {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+.logo {
+    width: 200px;
+}
+
+@media (max-width: 600px) {
+    .logo {
+        width: 160px;
+    }
+}
+.main-logo-img {
+    width: 220px;   /* masaüstü için premium boyut */
+    max-width: none;
+    height: auto;
+    display: block;
+    margin: 0 auto 10px;
+}
+@media (max-width: 600px) {
+    .main-logo-img {
+        width: 170px;
+    }
+}
+.brand-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
