@@ -1,3 +1,4 @@
+console.log("SCRIPT LOADED");
 /* ============================
    SERVICE STORIES (MODAL)
    Booksy metni + premium düzen
@@ -408,3 +409,33 @@ if (booksyContainer && !window.booksyLoaded) {
     script.src = 'https://booksy.com/widget/code.js?id=179328&country=gb&lang=en';
     booksyContainer.appendChild(script);
 }
+document.addEventListener("DOMContentLoaded", () => {
+
+    document.querySelectorAll(".accordion-toggle").forEach(toggle => {
+        toggle.addEventListener("click", () => {
+
+            const target = toggle.getAttribute("data-target");
+            const content = document.querySelector(`.${target}-content`);
+            const arrow = document.querySelector(`.arrow-${target}`);
+
+            const isOpen = content.classList.contains("open");
+
+            if (isOpen) {
+                // CLOSE
+                content.style.maxHeight = content.scrollHeight + "px";
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = "0px";
+                });
+                content.classList.remove("open");
+                arrow.classList.remove("rotate");
+
+            } else {
+                // OPEN
+                content.classList.add("open");
+                content.style.maxHeight = content.scrollHeight + "px";
+                arrow.classList.add("rotate");
+            }
+        });
+    });
+
+});

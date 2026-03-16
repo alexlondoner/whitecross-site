@@ -751,3 +751,46 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin: 20px auto 0;
     border-radius: 2px;
 }
+.accordion-toggle {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.arrow {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.arrow-exclusive.rotate,
+.arrow-standard.rotate,
+.arrow-extras.rotate {
+    transform: rotate(180deg);
+}
+
+/* SMOOTH ACCORDION — APPLE STYLE */
+.accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.45s cubic-bezier(0.25, 0.1, 0.25, 1);
+    margin-top: 0;
+}
+
+.accordion-content.open {
+    margin-top: 15px;
+}
+.accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transition:
+        max-height 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
+        padding 0.3s ease;
+}
+
+.accordion-content.open {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
