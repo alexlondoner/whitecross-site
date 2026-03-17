@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- EMERGENCY STRIPE CHECK: This runs before anything else -->
+    <script>
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('booking') === 'success') {
+        window.isStripeSuccess = true;
+    }
+})();
+    </script>
+
     <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
     <!-- Google tag (gtag.js) -->
@@ -85,6 +95,7 @@
             overflow: hidden !important;
             pointer-events: none !important;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -296,73 +307,62 @@
   </div>
 </section>
 
-    <!-- BOOKING FORM -->
-    <form id="bookingForm" action="https://formspree.io/f/mzdjrvpq" method="POST" class="booking-form">
-        <input type="text" name="name" placeholder="Name" required class="input-field" id="name">
-        <input type="email" name="email" placeholder="your.email@example.com" required class="input-field" id="email">
-        <input type="tel" name="phone" placeholder="+44 7879 553312" required class="input-field" id="phone">
-        <input type="date" name="date" required class="input-field" id="date">
+<h2 class="form-header">Request Booking</h2>
+<form id="booking-form" action="https://formspree.io/f/mzdjrvpq" method="POST" class="booking-form">
+    <input type="text" name="name" placeholder="Name" required class="input-field" id="name">
+    <input type="email" name="email" placeholder="your.email@example.com" required class="input-field" id="email">
+    <input type="tel" name="phone" placeholder="+44 7879 553312" required class="input-field" id="phone">
+    <input type="date" name="date" required class="input-field" id="date">
 
-        <select id="time" name="time" required class="input-field">
-            <option value="" disabled selected>Select Time</option>
-        </select>
+    <select id="time" name="time" required class="input-field">
+        <option value="" disabled selected>Select Time</option>
+    </select>
 
-        <select name="service" required class="input-field">
-            <option value="" disabled selected>Select Service</option>
+    <select id="service" name="service" required class="input-field">
+        <option value="" disabled selected>Select Service</option>
+        <optgroup label="Exclusive Bundle Packages">
+            <option value="full-experience">The Full Experience – £40</option>
+            <option value="full-skinfade-beard-luxury">Full Skin Fade & Beard Luxury – £48</option>
+            <option value="i-cut-deluxe">I CUT Deluxe – £55</option>
+            <option value="i-cut-royal">I CUT Royal – £65</option>
+            <option value="senior-full-experience">Senior Full Experience (65+) – £35</option>
+        </optgroup>
+        <optgroup label="Standard Packages">
+            <option value="skin-fade">Skin Fade Cut – £32</option>
+            <option value="scissor-cut">Scissor Cut – £30</option>
+            <option value="classic-sbs">Classic Short Back & Sides – £28</option>
+            <option value="hot-towel-shave">Hot Towel Shave – £22</option>
+            <option value="clipper-cut">Clipper Cut – £22</option>
+            <option value="senior-haircut">Senior Haircut (65+) – £23</option>
+            <option value="young-gents">Young Gents (0–12) – £20</option>
+            <option value="young-gents-skin-fade">Young Gents Skin Fade (4–12) – £24</option>
+        </optgroup>
+        <optgroup label="Extras">
+            <option value="beard-dyeing">Beard Dyeing – £24</option>
+            <option value="face-mask">Face Mask – £12</option>
+            <option value="face-steam">Face Steam – £12</option>
+            <option value="threading">Threading – £10</option>
+            <option value="waxing">Waxing (Nose & Ears) – £10</option>
+            <option value="shape-up-clean-up">Shape Up & Clean Up – £20</option>
+            <option value="wash-hot-towel">Wash, Style & Hot Towel – £10</option>
+        </optgroup>
+    </select>
 
-            <optgroup label="Exclusive Bundle Packages">
-                <option value="The Full Experience - £40">The Full Experience – £40</option>
-                <option value="Full Skin Fade & Beard Luxury - £48">Full Skin Fade & Beard Luxury – £48</option>
-                <option value="I CUT Deluxe - £55">I CUT Deluxe – £55</option>
-                <option value="I CUT Royal - £65">I CUT Royal – £65</option>
-                <option value="Senior Full Experience (65+) - £35">Senior Full Experience (65+) – £35</option>
-            </optgroup>
+    <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
+</form>
 
-            <optgroup label="Standard Packages">
-                <option value="Skin Fade Cut - £32">Skin Fade Cut – £32</option>
-                <option value="Scissor Cut - £30">Scissor Cut – £30</option>
-                <option value="Classic Short Back & Sides - £28">Classic Short Back & Sides – £28</option>
-                <option value="Hot Towel Shave - £22">Hot Towel Shave – £22</option>
-                <option value="Clipper Cut - £22">Clipper Cut – £22</option>
-                <option value="Senior Haircut (65+) - £23">Senior Haircut (65+) – £23</option>
-                <option value="Young Gents (0-12) - £20">Young Gents (0–12) – £20</option>
-                <option value="Young Gents Skin Fade (4-12) - £24">Young Gents Skin Fade (4–12) – £24</option>
-            </optgroup>
-
-            <optgroup label="Extras">
-                <option value="Full Facial Treatment - £24">Full Facial Treatment – £24</option>
-                <option value="Beard Dyeing - £24">Beard Dyeing – £24</option>
-                <option value="Face Mask - £12">Face Mask – £12</option>
-                <option value="Face Steam - £12">Face Steam – £12</option>
-                <option value="Threading - £10">Threading – £10</option>
-                <option value="Waxing (Nose & Ears) - £10">Waxing (Nose & Ears) – £10</option>
-                <option value="Shape Up & Clean Up - £20">Shape Up & Clean Up – £20</option>
-                <option value="Wash, Style & Hot Towel - £10">Wash, Style & Hot Towel – £10</option>
-            </optgroup>
-        </select>
-
-        <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
-    </form>    
-    <script>
-document.getElementById("bookingForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-
-    const form = this;
-
-    // 1) Formspree'ye gönder
-    fetch(form.action, {
-        method: "POST",
-        body: new FormData(form),
-        headers: { "Accept": "application/json" }
-    }).then(() => {
-        // 2) Stripe ödeme sayfasına yönlendir
-        window.location.href = "https://book.stripe.com/dRmbJ3gFX7OVgPn0Ntg3600";
-    }).catch(() => {
-        alert("Something went wrong. Please try again.");
-    });
-});
-</script>
-
+<div id="successPopup" class="success-popup">
+    <div class="success-popup-content">
+        <span id="closePopup" class="close-popup" style="position: absolute; top: 10px; right: 15px; cursor: pointer; color: #d4af37; font-size: 1.5rem;">&times;</span>
+        <div id="popup-icon" class="popup-icon" style="font-size: 3rem; margin-bottom: 10px;">⏳</div>
+        <h2 id="popup-title" class="popup-title" style="color: #d4af37; margin-bottom: 10px; font-family: 'Oswald', sans-serif; text-transform: uppercase;">Redirecting to Payment...</h2>
+        <p id="popup-text" style="color: #fff; margin-bottom: 20px; font-family: 'Inter', sans-serif;">Please wait while we connect you to Stripe to secure your booking.</p>
+        <div id="loader" class="loader" style="border: 3px solid #333; border-top: 3px solid #d4af37; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto 0;"></div>
+        <button id="ok-btn" class="ok-btn" style="display: none; margin: 20px auto 0; background: #d4af37; color: #000; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase;">OK</button>
+    </div>
+</div>
+```
+<!-- SOCIAL BUTTONS -->
 <div class="social-buttons">
 
   <a id="booksy-link"
@@ -372,8 +372,7 @@ document.getElementById("bookingForm").addEventListener("submit", function(e) {
    class="btn btn-booksy">
     <span class="booksy-icon">🔷</span>
     <span class="btn-text">Book on Booksy</span>
-</a>
-
+  </a>
 
   <a id="insta-link" href="https://www.instagram.com/whitecross_barbers"
      target="_blank" rel="noopener noreferrer"
@@ -397,76 +396,66 @@ document.getElementById("bookingForm").addEventListener("submit", function(e) {
         </div>
     </div>
 
-    <!-- LOCATION & HOURS -->
-    <div class="location-wrapper">
-        <section class="card location-hours-section">
-            <h2 class="section-title">Location & Hours</h2>
-            <div class="location-container">
-                <div class="map-box">
-                    <iframe 
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2482.3581783856275!2d-0.09591692338002626!3d51.5240163718165!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48761ca3f4bc738d%3A0xe5df78bc28638b44!2s136%20Whitecross%20St%2C%20London%20EC1Y%208QJ!5e0!3m2!1sen!2suk!4v1710375600000!5m2!1sen!2suk" 
-                        width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
+        <!-- LOCATION & HOURS -->
+        <div class="location-wrapper">
+            <section class="card location-hours-section">
+                <h2 class="section-title">Location & Hours</h2>
+                <div class="location-container">
+                    <div class="map-box">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2482.3581783856275!2d-0.09591692338002626!3d51.5240163718165!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48761ca3f4bc738d%3A0xe5df78bc28638b44!2s136%20Whitecross%20St%2C%20London%20EC1Y%208QJ!5e0!3m2!1sen!2suk!4v1710375600000!5m2!1sen!2suk" 
+                            width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
+                    </div>
+
+                    <div class="info-box">
+                        <p>
+                            <strong>VISIT US</strong><br>
+                            136 Whitecross St, London, EC1Y 8QJ
+                        </p>
+
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=136+Whitecross+St+London+EC1Y+8QJ" 
+                        target="_blank" 
+                        class="btn-map">
+                        📍 TAKE ME THERE (Open in Maps)
+                        </a>
+                        
+                        <div class="hours-grid">
+                            <div class="hours-row">
+                                <span>Mon - Sat</span>
+                                <span>09:00 - 19:00</span>
+                            </div>
+                            <div class="hours-row">
+                                <span>Sunday</span>
+                                <span>10:00 - 16:00</span>
+                            </div>
+                        </div>
+
+                        <div class="call-box">
+                            <a href="tel:+447470108578">📞 CALL: 07470 108578</a>
+                        </div>
+                    </div>
                 </div>
+            </section>
+        </div>
 
-                <div class="info-box">
-                    <p>
-                        <strong>VISIT US</strong><br>
-                        136 Whitecross St, London, EC1Y 8QJ
-                    </p>
-
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=136+Whitecross+St+London+EC1Y+8QJ" 
-                       target="_blank" 
-                       class="btn-map">
-                       📍 TAKE ME THERE (Open in Maps)
-                    </a>
-                    
-                    <div class="hours-grid">
-                        <div class="hours-row">
-                            <span>Mon - Sat</span>
-                            <span>09:00 - 19:00</span>
-                        </div>
-                        <div class="hours-row">
-                            <span>Sunday</span>
-                            <span>10:00 - 16:00</span>
-                        </div>
-                    </div>
-
-                    <div class="call-box">
-                        <a href="tel:+447470108578">📞 CALL: 07470 108578</a>
-                    </div>
+        <!-- REVIEWS -->
+        <section class="reviews-section">
+            <h2>⭐ Trusted by Our Community</h2>
+            <div class="reviews-container">
+                <div class="review-platform">
+                    <h3>Google Reviews</h3>
+                    <div class="gold-stars"><span>4.8</span><span class="stars">★★★★★</span></div>
+                    <a href="https://share.google/69VOllkR9e7iHR6Gf" target="_blank" class="review-link">View on Google →</a>
+                </div>
+                <div class="review-platform">
+                    <h3>Booksy Reviews</h3>
+                    <div class="gold-stars"><span>5.0</span><span class="stars">★★★★★</span></div>
+                    <a href="https://booksy.com/en-gb/179328_icut-whitecross-barbers_barber_311817_london" target="_blank" class="review-link">Book on Booksy →</a>
                 </div>
             </div>
         </section>
     </div>
-
-    <!-- REVIEWS -->
-    <section class="reviews-section">
-        <h2>⭐ Trusted by Our Community</h2>
-        <div class="reviews-container">
-            <div class="review-platform">
-                <h3>Google Reviews</h3>
-                <div class="gold-stars"><span>4.8</span><span class="stars">★★★★★</span></div>
-                <a href="https://share.google/69VOllkR9e7iHR6Gf" target="_blank" class="review-link">View on Google →</a>
-            </div>
-            <div class="review-platform">
-                <h3>Booksy Reviews</h3>
-                <div class="gold-stars"><span>5.0</span><span class="stars">★★★★★</span></div>
-                <a href="https://booksy.com/en-gb/179328_icut-whitecross-barbers_barber_311817_london" target="_blank" class="review-link">Book on Booksy →</a>
-            </div>
-        </div>
-    </section>
-</div>
-
-<!-- SUCCESS POPUP -->
-<div id="successPopup" class="success-popup">
-    <div class="success-popup-content">
-        <button id="closePopup" class="popup-close">×</button>
-        <div class="popup-icon">✓</div>
-        <h2 class="popup-title">Booking Request Sent!</h2>
-        <p>We'll be contacting you shortly.</p>
-    </div>
-</div>
 
 <!-- WHATSAPP FLOAT -->
 <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
@@ -513,7 +502,7 @@ If you are in EC1Y and looking for a trusted barber nearby, I CUT Whitecross Bar
     Whitecross Barbers • 136 Whitecross Street • EC1Y 8QJ London<br>
     <div class="footer-signature">
         <div class="signature-line"></div>
-        <span class="signature-text">Crafted by Alex</span>
+        <span class="signature-text">All Rights Reserved - Powered by I CUT Whitecross Barbers</span>
         <div class="signature-line"></div>
     </div>
 </footer>

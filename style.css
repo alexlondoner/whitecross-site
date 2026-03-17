@@ -860,3 +860,155 @@ header {
     gap: 6px;
 }
 
+/* REQUEST BOOKING BAŞLIĞI - GÜNCEL */
+.form-header {
+    font-family: 'Oswald', sans-serif;
+    color: #fff;
+    font-size: 1.6rem; /* Ne çok büyük ne çok küçük */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 4px; /* Orijinal görseldeki o geniş hava */
+    text-align: center;
+    margin-bottom: 20px; /* Form ile arasındaki boşluk */
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+    /* Altın rengi hafif bir parlama efekti (opsiyonel) */
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+/* Başlığın altındaki şık altın çizgi */
+.form-header::after {
+    content: '';
+    display: block;
+    width: 40px; /* Çizgi boyu */
+    height: 2px;
+    background: #d4af37; /* Sitedeki altın rengi */
+    margin: 8px auto 0;
+    border-radius: 2px;
+}
+/* REQUEST BOOKING BAŞLIĞI */
+.form-header {
+    font-family: 'Oswald', sans-serif;
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 4px; /* O geniş ve premium hava */
+    text-align: center;
+    margin-bottom: 25px;
+    display: block; 
+}
+
+.form-header::after {
+    content: '';
+    display: block;
+    width: 45px;
+    height: 3px;
+    background: #d4af37;
+    margin: 10px auto 0;
+    border-radius: 2px;
+}
+
+/* INPUT ALANLARI - GÖRSELDEKİ OVAL YAPI */
+.booking-form .input-field {
+    width: 100%;
+    background: #000 !important;
+    border: 1.5px solid #222 !important;
+    color: #fff !important;
+    border-radius: 12px !important; /* Oval köşeler */
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+    font-size: 14px !important;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.booking-form .input-field:focus {
+    border-color: #d4af37 !important;
+    outline: none;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+}
+
+/* OVAL INPUTLAR */
+.booking-form .input-field {
+    border-radius: 12px !important; /* Görseldeki gibi oval */
+    padding: 15px !important;
+}
+
+/* YÜKLENİYOR POPUP STİLİ */
+.success-popup {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: none; /* JS ile açılacak */
+    justify-content: center;
+    align-items: center;
+    z-index: 999999 !important; /* En üstte kalması şart */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Popup aktif olduğunda (JS buraya müdahale edecek) */
+.success-popup.active {
+    display: flex !important;
+    opacity: 1;
+}
+
+.success-popup-content {
+    background: #000;
+    padding: 40px;
+    border-radius: 20px;
+    border: 2px solid #d4af37;
+    text-align: center;
+    max-width: 350px; /* Daha derli toplu durur */
+    width: 90%;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+}
+
+#popup-icon {
+    font-size: 50px;
+    display: block;
+    margin-bottom: 15px;
+}
+
+#ok-btn {
+    background: #d4af37;
+    color: #000;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.success-popup {
+    position: fixed !important; /* Sayfa kaysa bile ekranın ortasında kalır */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9); /* Arkayı tamamen karartır */
+    display: none; /* JS ile flex yapılacak */
+    justify-content: center;
+    align-items: center;
+    z-index: 99999 !important; /* Her şeyin ama her şeyin üstünde görünür */
+}
+
+.success-popup-content {
+    background: #000;
+    padding: 40px;
+    border-radius: 20px;
+    border: 2px solid #d4af37; /* Görseldeki altın sarısı çerçeve */
+    text-align: center;
+    max-width: 90%;
+    width: 400px;
+    position: relative;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+}
