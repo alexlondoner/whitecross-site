@@ -428,13 +428,12 @@ I CUT Whitecross Barbers is one of the highest-rated and most convenient barbers
 <div class="seo-hidden">
 I CUT Whitecross Barbers is one of the closest and most convenient premium barbershops for anyone in the Barbican, Old Street, Clerkenwell and EC1Y area.
 </div>
-<!-- SUCCESS POPUP -->
-<div id="successPopup" class="success-popup">
-    <div class="success-popup-content">
-        <button id="closePopup" class="popup-close">×</button>
-        <div class="popup-icon" id="popup-icon">✓</div>
-        <h2 class="popup-title" id="popup-title">Booking Confirmed!</h2>
-        <p id="popup-text">Payment received. We'll see you soon at Whitecross Street!</p>
+<div id="successPopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.9); z-index:999999; justify-content:center; align-items:center;">
+    <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:400px; width:90%; text-align:center; position:relative;">
+        <button id="closePopup" onclick="document.getElementById('successPopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
+        <div id="popup-icon" style="font-size:3rem; margin-bottom:10px;">✓</div>
+        <h2 id="popup-title" style="color:#d4af37; font-family:'Oswald',sans-serif; text-transform:uppercase; margin-bottom:10px;">Booking Confirmed!</h2>
+        <p id="popup-text" style="color:#fff; margin-bottom:20px;">Payment received. We'll see you soon at Whitecross Street!</p>
     </div>
 </div>
 
