@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (pText) pText.innerText = "Securing your booking. Please wait...";
             if (loader) loader.style.display = "block";
             if (okBtn) okBtn.style.display = "none";
-            if (popup) popup.style.display = "flex";
+            if (popup) popup.classList.add('show');
 
             fetch(form.action, {
                 method: "POST",

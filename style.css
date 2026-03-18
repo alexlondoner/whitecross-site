@@ -459,9 +459,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.9);
-  z-index: 2000;
   justify-content: center;
   align-items: center;
+  z-index: 99999;
+  opacity: 1;
 }
 
 .modal-content,
@@ -1011,4 +1012,7 @@ header {
     width: 400px;
     position: relative;
     box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+}
+.success-popup.show {
+  display: flex !important;
 }
