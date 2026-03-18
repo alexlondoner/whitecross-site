@@ -219,8 +219,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pIcon)  pIcon.innerText  = "✅";
         if (pTitle) pTitle.innerText = "Booking Confirmed!";
         if (pText)  pText.innerText  = "Payment received. We'll see you soon at Whitecross Street!";
-        if (successPopup) successPopup.style.display = 'flex';
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (successPopup) successPopup.classList.add('show');        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
 });
+
