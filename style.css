@@ -453,7 +453,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* MODAL & POPUP */
 
-.modal,
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
 .success-popup {
   display: none;
   position: fixed;
@@ -461,8 +470,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: rgba(0,0,0,0.9);
   justify-content: center;
   align-items: center;
-  z-index: 99999;
-  opacity: 1;
+  z-index: 999999;
+}
+
+.success-popup.show {
+  display: flex !important;
 }
 
 .modal-content,
@@ -511,7 +523,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-bottom: 8px;
   text-align: center;
 }
-
 /* WHATSAPP FLOAT */
 
 .whatsapp-float {
