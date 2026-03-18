@@ -694,9 +694,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .booksy-icon {
   font-size: 18px;
 }
-<div class="social-buttons">
-  ...
-</div>
+/* --- PREMIUM SOCIAL BUTTONS WITH SHIMMER --- */
 .social-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -721,85 +719,67 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-.bundle-title {
-    font-size: 1.3rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: #d4af37;
-    text-align: center;
-    margin-bottom: 22px;
-    text-transform: uppercase;
-}
-.footer-signature {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 40px;
-    padding-bottom: 25px;
-}
-
-.signature-line {
+.btn-booksy, .btn-instagram {
     flex: 1;
-    height: 1px;
-    background-color: #d4af37;
-    opacity: 0.7;
-}
-
-.signature-text {
-    font-family: 'Allura', cursive;
-    font-size: 1rem; /* daha küçük imza */
-    color: #d4af37;
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-}
-.main-logo {
-    margin-bottom: 35px;
-}
-
-.subtitle {
-    margin-bottom: 38px;
-}
-.booking-form {
-    margin-top: 40px;
-    margin-bottom: 40px;
-}
-.promo-box {
-    margin-bottom: 35px;
-}
-.wc-header {
+    position: relative; /* Essential for the shimmer */
+    overflow: hidden; 
+    padding: 15px 20px;
+    border-radius: 12px;
+    font-weight: 800;
     text-align: center;
-    padding: 50px 20px 40px;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
 }
 
-.wc-logo-img {
-    width: 140px;
-    height: auto;
-    margin-bottom: 20px;
+/* Booksy: Solid Gold */
+.btn-booksy {
+    background: #d4af37;
+    color: #000;
+    border: 2px solid #d4af37;
 }
 
-.wc-title {
-    font-family: "Playfair Display", serif;
-    font-size: 42px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: #111;
+/* Instagram: Sleek Gold Outline */
+.btn-instagram {
+    background: transparent;
+    color: #d4af37;
+    border: 2px solid #d4af37;
 }
 
-.wc-subtitle {
-    font-family: "Cormorant Garamond", serif;
-    font-size: 16px;
-    letter-spacing: 4px;
-    margin-top: 6px;
-    color: #444;
+/* --- THE SHIMMER EFFECT --- */
+.btn-booksy::after, .btn-instagram::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 30%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: rotate(30deg);
+    transition: all 0.6s ease;
 }
 
-.wc-divider {
-    width: 80px;
-    height: 1px;
-    background: linear-gradient(to right, #c8a96a, #e8d7a8, #c8a96a);
-    margin: 20px auto 0;
-    border-radius: 2px;
+.btn-booksy:hover::after, .btn-instagram:hover::after {
+    left: 130%; /* Moves the "light flash" across the button */
+}
+
+.btn-booksy:hover, .btn-instagram:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+}
+/* Instagram: Hover Fix */
+.btn-instagram:hover {
+    background: #d4af37; /* Fills with gold */
+    color: #000 !important; /* Forces text to Black so it's readable */
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* Ensure the shimmer still works on top */
+.btn-instagram:hover::after {
+    left: 130%;
 }
 /* ACCORDION HEADER */
 .accordion-toggle {
