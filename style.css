@@ -866,23 +866,6 @@ header {
     gap: 6px;
 }
 
-/* REQUEST BOOKING BAŞLIĞI - GÜNCEL */
-.form-header {
-    font-family: 'Oswald', sans-serif;
-    color: #fff;
-    font-size: 1.6rem; /* Ne çok büyük ne çok küçük */
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 4px; /* Orijinal görseldeki o geniş hava */
-    text-align: center;
-    margin-bottom: 20px; /* Form ile arasındaki boşluk */
-    margin-top: 10px;
-    display: block;
-    width: 100%;
-    /* Altın rengi hafif bir parlama efekti (opsiyonel) */
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
-}
-
 /* Başlığın altındaki şık altın çizgi */
 .form-header::after {
     content: '';
@@ -1020,4 +1003,133 @@ header {
 }
 .success-popup.show {
   display: flex !important;
+}
+/* =========================
+   HOURS WIDGET
+========================= */
+
+.hours-widget {
+    margin-top: 15px;
+}
+
+.hours-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(212, 175, 55, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot.open {
+    background: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    animation: pulse-green 2s infinite;
+}
+
+.status-dot.closed {
+    background: #ff5252;
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.5);
+}
+
+@keyframes pulse-green {
+    0%   { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70%  { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.status-text {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+}
+
+.open-text  { color: #4caf50; }
+.closed-text { color: #ff5252; }
+
+.status-closing {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-left: auto;
+}
+
+.hours-grid-new {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hours-row-new {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #aaa;
+    transition: background 0.2s;
+}
+
+.hours-row-new.today {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    color: #fff;
+}
+
+.hours-day {
+    min-width: 100px;
+    font-weight: 500;
+}
+
+.hours-row-new.today .hours-day {
+    color: #d4af37;
+    font-weight: 700;
+}
+
+.hours-time {
+    flex: 1;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.hours-row-new.today .hours-time {
+    color: #fff;
+}
+
+.hours-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    min-width: 58px;
+    text-align: center;
+}
+
+.badge-open {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.badge-closed {
+    background: rgba(255, 82, 82, 0.15);
+    color: #ff5252;
+    border: 1px solid rgba(255, 82, 82, 0.4);
+}
+
+.hours-badge-empty {
+    min-width: 58px;
+    display: inline-block;
 }

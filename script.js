@@ -91,6 +91,67 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert("Note: There is a surcharge for After Hours bookings (7PM–9PM). Please contact us directly for confirmation.\n\nWhatsApp: +44 7879 553312");
             }
         });
+        /* HOURS WIDGET */
+(function() {
+    const schedule = [
+        { day: 'Monday',    open: '09:00', close: '19:00' },
+        { day: 'Tuesday',   open: '09:00', close: '19:00' },
+        { day: 'Wednesday', open: '09:00', close: '19:00' },
+        { day: 'Thursday',  open: '09:00', close: '19:00' },
+        { day: 'Friday',    open: '09:00', close: '19:00' },
+        { day: 'Saturday',  open: '09:00', close: '19:00' },
+        { day: 'Sunday',    open: '10:00', close: '16:00' },
+    ];
+
+    const now = new Date();
+    const jsToSchedule = [6, 0, 1, 2, 3, 4, 5];
+    const todayScheduleIndex = jsToSchedule[now.getDay()];
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    function timeToMinutes(t) {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    function formatTime(t) {
+        const [h, m] = t.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 || 12;
+        return `${hour12}:${m === 0 ? '00' : m} ${ampm}`;
+    }
+
+    const todaySchedule = schedule[todayScheduleIndex];
+    const isOpenNow = currentTime >= timeToMinutes(todaySchedule.open) && currentTime < timeToMinutes(todaySchedule.close);
+
+    const statusEl = document.getElementById('hoursStatus');
+    if (!statusEl) return;
+
+    if (isOpenNow) {
+        const minsLeft = timeToMinutes(todaySchedule.close) - currentTime;
+        const hoursLeft = Math.floor(minsLeft / 60);
+        const minsLeftRem = minsLeft % 60;
+        const closingMsg = hoursLeft > 0 ? `Closes in ${hoursLeft}h ${minsLeftRem}m` : `Closes in ${minsLeftRem} min`;
+        statusEl.innerHTML = `<span class="status-dot open"></span><span class="status-text open-text">OPEN NOW</span><span class="status-closing">${closingMsg}</span>`;
+    } else {
+        const nextDay = schedule[(todayScheduleIndex + 1) % 7];
+        statusEl.innerHTML = `<span class="status-dot closed"></span><span class="status-text closed-text">CLOSED</span><span class="status-closing">Opens ${nextDay.day} at ${formatTime(nextDay.open)}</span>`;
+    }
+
+    const grid = document.getElementById('hoursGrid');
+    if (!grid) return;
+
+    schedule.forEach((item, index) => {
+        const isToday = index === todayScheduleIndex;
+        const row = document.createElement('div');
+        row.className = 'hours-row-new' + (isToday ? ' today' : '');
+        row.innerHTML = `
+            <span class="hours-day">${isToday ? '▶ ' + item.day : item.day}</span>
+            <span class="hours-time">${formatTime(item.open)} – ${formatTime(item.close)}</span>
+            ${isToday ? `<span class="hours-badge ${isOpenNow ? 'badge-open' : 'badge-closed'}">${isOpenNow ? 'OPEN' : 'CLOSED'}</span>` : '<span class="hours-badge-empty"></span>'}
+        `;
+        grid.appendChild(row);
+    });
+})();
     }
 
     /* PHONE VALIDATION */
