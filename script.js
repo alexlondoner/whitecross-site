@@ -172,12 +172,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert("Please select a service before booking.");
                 return;
             }
+
+            // Show redirecting popup
+            const successPopup = document.getElementById('successPopup');
+            const pIcon  = document.getElementById('popup-icon');
+            const pTitle = document.getElementById('popup-title');
+            const pText  = document.getElementById('popup-text');
+
+            if (pIcon)  pIcon.innerText  = "⏳";
+            if (pTitle) pTitle.innerText = "Redirecting to Payment...";
+            if (pText)  pText.innerText  = "Please wait while we connect you to Stripe.";
+            if (successPopup) successPopup.style.display = 'flex';
+
             fetch(this.action, {
                 method: "POST",
                 body: new FormData(this),
                 headers: { "Accept": "application/json" }
             }).finally(() => {
-                setTimeout(() => { window.location.href = stripeUrl; }, 300);
+                setTimeout(() => { window.location.href = stripeUrl; }, 1000);
             });
         });
     }
