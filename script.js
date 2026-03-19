@@ -152,13 +152,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
                 "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
                 "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
-                "classic-sbs":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
+                "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
                 "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
                 "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
                 "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
                 "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
                 "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
-                "full-facial":                "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
+                "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
                 "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
                 "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
                 "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
@@ -166,15 +166,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
                 "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
                 "wash-hot-towel":             "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
-            };
+        };
             const stripeUrl = stripeLinks[service];
             if (!stripeUrl) {
                 alert("Please select a service before booking.");
                 return;
             }
-            // TEST MODE: Formspree disabled temporarily
-            // fetch(this.action, { method: "POST", body: new FormData(this), headers: { "Accept": "application/json" } });
-            setTimeout(() => { window.location.href = stripeUrl; }, 300);
+            fetch(this.action, {
+                method: "POST",
+                body: new FormData(this),
+                headers: { "Accept": "application/json" }
+            }).finally(() => {
+                setTimeout(() => { window.location.href = stripeUrl; }, 300);
+            });
         });
     }
 
