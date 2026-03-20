@@ -78,8 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
             if (isToday) {
-                alert("Same-day bookings need confirmation. Please WhatsApp us at +44 7879 553312");
-            }
+            document.getElementById('sameDayPopup').style.display = 'flex';            }
         });
     }
 
