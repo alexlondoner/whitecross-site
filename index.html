@@ -386,6 +386,29 @@
     </div>
 </section>
 
+
+<!-- GALLERY CAROUSEL -->
+<section class="gallery-section">
+    <div class="reviews-header">
+        <span class="reviews-crown">✦</span>
+        <h2 class="reviews-title">Our Work</h2>
+        <span class="reviews-crown">✦</span>
+    </div>
+    <div class="carousel-track-wrap">
+        <div class="carousel-track" id="carouselTrack">
+            <div class="carousel-slide"><img src="img/gallery1.jpeg" alt="Haircut by I CUT Whitecross Barbers"></div>
+            <div class="carousel-slide"><img src="img/gallery2.jpeg" alt="Skin fade by I CUT Whitecross Barbers"></div>
+            <div class="carousel-slide"><img src="img/gallery3.jpeg" alt="Beard trim by I CUT Whitecross Barbers"></div>
+            <div class="carousel-slide"><img src="img/gallery4.jpeg" alt="Scissor cut by I CUT Whitecross Barbers"></div>
+            <div class="carousel-slide"><img src="img/gallery5.jpeg" alt="Hot towel shave by I CUT Whitecross Barbers"></div>
+            <div class="carousel-slide"><img src="img/gallery6.jpeg" alt="Full grooming by I CUT Whitecross Barbers"></div>
+        </div>
+    </div>
+    <div class="carousel-dots" id="carouselDots"></div>
+    <a href="gallery.html" class="gallery-see-more">See All Our Work →</a>
+</section>
+
+
 <!-- WHATSAPP FLOAT -->
 <a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
@@ -405,6 +428,57 @@ I CUT Whitecross Barbers is one of the highest-rated barbershops for anyone sear
     <p>I CUT Whitecross Barbers — 136 Whitecross Street EC1Y 8QJ London.</p>
 </div>
 
+<script>
+    // GALLERY CAROUSEL
+    (function() {
+        const track = document.getElementById('carouselTrack');
+        const dotsContainer = document.getElementById('carouselDots');
+        if (!track) return;
+        const slides = track.querySelectorAll('.carousel-slide');
+        let current = 0;
+        let timer;
+
+        // Build dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('span');
+            dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+            dot.addEventListener('click', () => goTo(i));
+            dotsContainer.appendChild(dot);
+        });
+
+        function goTo(index) {
+            current = index;
+            track.style.transform = `translateX(-${current * 100}%)`;
+            dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === current);
+            });
+        }
+
+        function next() {
+            goTo((current + 1) % slides.length);
+        }
+
+        // Auto-slide every 3s
+        function startTimer() { timer = setInterval(next, 3000); }
+        function stopTimer()  { clearInterval(timer); }
+
+        startTimer();
+
+        // Pause on hover
+        track.parentElement.addEventListener('mouseenter', stopTimer);
+        track.parentElement.addEventListener('mouseleave', startTimer);
+
+        // Swipe support for mobile
+        let startX = 0;
+        track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; stopTimer(); }, { passive: true });
+        track.addEventListener('touchend', e => {
+            const diff = startX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 40) diff > 0 ? next() : goTo((current - 1 + slides.length) % slides.length);
+            startTimer();
+        });
+    })();
+</script>
+
 <script src="script.js"></script>
 
 <footer class="footer">
@@ -414,6 +488,13 @@ I CUT Whitecross Barbers is one of the highest-rated barbershops for anyone sear
         <span class="footer-line"></span>
     </div>
     <p class="footer-address">136 Whitecross Street • EC1Y 8QJ • London</p>
+    <div class="footer-links">
+        <a href="about.html" class="footer-link-btn" style="text-decoration:underline;">About Us</a>
+        <span class="footer-dot">•</span>
+        <a href="gallery.html" class="footer-link-btn" style="text-decoration:underline;">Our Work</a>
+        <span class="footer-dot">•</span>
+        <a href="terms.html" class="footer-link-btn" style="text-decoration:underline;">Cancellation Policy</a>
+    </div>
     <p class="footer-copy">© 2026 I CUT Whitecross Barbers. All rights reserved.</p>
     <p class="footer-powered">Powered by Alex</p>
 </footer>
@@ -421,7 +502,74 @@ I CUT Whitecross Barbers is one of the highest-rated barbershops for anyone sear
 <div class="seo-hidden">
 I CUT Whitecross Barbers is one of the closest premium barbershops in Barbican, Old Street, Clerkenwell and EC1Y.
 </div>
-      <!-- SAME DAY BOOKING POPUP -->
+
+<!-- ABOUT US MODAL -->
+<div id="aboutModal" class="modal" onclick="if(event.target===this)closeAboutModal()">
+    <div class="modal-content" style="max-width:480px; max-height:85vh; overflow-y:auto;">
+        <span class="close-modal" onclick="closeAboutModal()">×</span>
+        <div style="text-align:center; margin-bottom:20px;">
+            <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" style="width:80px; margin-bottom:10px;">
+            <h2 style="font-family:'Oswald',sans-serif; color:#d4af37; text-transform:uppercase; letter-spacing:3px; font-size:1.2rem;">About Us</h2>
+        </div>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:14px;">
+            Welcome to <strong style="color:#fff;">I CUT Whitecross Barbers</strong> — a premium barbershop at the heart of Clerkenwell, London. Located at 136 Whitecross Street EC1Y 8QJ, we've built our reputation on precision, care, and an uncompromising standard of grooming.
+        </p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:14px;">
+            We believe a great haircut is more than just a trim — it's a full experience. From the moment you sit in the chair, every detail is considered: your hair type, your face shape, your lifestyle, and your style goals.
+        </p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:14px;">
+            Our services range from classic cuts and hot towel shaves to full luxury grooming packages — all delivered with the skill and attention you deserve. Whether you're a regular or visiting for the first time, you'll always leave looking and feeling your best.
+        </p>
+        <div style="border-top:1px solid #333; margin:20px 0; padding-top:16px;">
+            <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.85rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">Find Us</p>
+            <p style="color:#ccc; font-size:0.85rem; line-height:1.8;">
+                📍 136 Whitecross Street, Clerkenwell, London EC1Y 8QJ<br>
+                📞 <a href="tel:+447879553312" style="color:#d4af37; text-decoration:none;">+44 7879 553312</a><br>
+                🕐 Mon–Sat: 9:00am – 7:00pm &nbsp;|&nbsp; Sun: 10:00am – 4:00pm
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- TERMS & CANCELLATION MODAL -->
+<div id="termsModal" class="modal" onclick="if(event.target===this)closeTermsModal()">
+    <div class="modal-content" style="max-width:480px; max-height:85vh; overflow-y:auto;">
+        <span class="close-modal" onclick="closeTermsModal()">×</span>
+        <h2 style="font-family:'Oswald',sans-serif; color:#d4af37; text-transform:uppercase; letter-spacing:3px; font-size:1.2rem; margin-bottom:20px;">Cancellation Policy</h2>
+
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:16px;">
+            We value your time and ask that you value ours. Please read our cancellation and no-show policy carefully before booking.
+        </p>
+
+        <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.85rem; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Cancellations</p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:16px;">
+            We require a minimum of <strong style="color:#fff;">24 hours notice</strong> for any cancellation or rescheduling. Cancellations made with less than 24 hours notice may result in a cancellation fee or loss of any deposit paid.
+        </p>
+
+        <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.85rem; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">No-Shows</p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:16px;">
+            Clients who do not show up for their appointment without prior notice will be charged <strong style="color:#fff;">100% of the service fee</strong>. Repeated no-shows may result in being unable to book future appointments.
+        </p>
+
+        <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.85rem; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Late Arrivals</p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:16px;">
+            If you are more than <strong style="color:#fff;">15 minutes late</strong>, we may need to shorten your service or reschedule your appointment to avoid delays for other clients.
+        </p>
+
+        <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.85rem; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Same-Day Bookings</p>
+        <p style="color:#ccc; font-size:0.88rem; line-height:1.8; margin-bottom:16px;">
+            Same-day appointments are subject to availability and must be confirmed directly via WhatsApp or phone before attending.
+        </p>
+
+        <div style="border-top:1px solid #333; margin-top:16px; padding-top:16px;">
+            <p style="color:#888; font-size:0.78rem; line-height:1.7;">
+                To cancel or reschedule please contact us at least 24 hours in advance via WhatsApp at <a href="https://wa.me/447879553312" style="color:#d4af37;">+44 7879 553312</a> or call us directly. Thank you for your understanding.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- SAME DAY BOOKING POPUP -->
 <div id="sameDayPopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.92); z-index:999999; justify-content:center; align-items:center;">
     <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:380px; width:90%; text-align:center; position:relative;">
         <button onclick="document.getElementById('sameDayPopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
