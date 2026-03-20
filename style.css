@@ -1,4 +1,4 @@
-* =========================
+/* =========================
    RESET
 ========================= */
 * {
@@ -914,6 +914,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .main-logo { font-size: 2.6rem !important; }
   .main-logo-img { width: 165px !important; margin-bottom: -10px !important; }
 }
+/*
 @media (max-width: 600px) {
   .hero {
     padding: 30px 20px;
@@ -942,3 +943,4 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 0 20px;
   }
 }
+*/
