@@ -261,7 +261,7 @@ if (form) {
             service: service
         };
 
-        const scriptURL = "https://script.google.com/macros/s/AKfycbyPPi6S0KvBkiveqIdjn8sFdf5AAMqvCIbtg7xmkfxDVUNJMkLi4gytAgGmuH-5-sCx/exec";
+        const scriptURL = "https://script.google.com/macros/s/AKfycbxWzBt4WcwqVLYaDce8hNvlucu9aDQk6b3D4Edn8hiNokA7yYqkoWmjKYz7ko9vBhfL/exec";
 
         // 3. ASENKRON GÖNDERİM: Veriyi yolla ve güvenli yönlendirme yap
         fetch(scriptURL, {
