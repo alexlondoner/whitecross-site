@@ -198,61 +198,91 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /* BOOKING FORM */
-    const form = document.getElementById('bookingForm');
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const service = document.getElementById('service').value;
-            const stripeLinks = {
-                "full-experience":            "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
-                "i-cut-deluxe":               "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
-                "i-cut-royal":                "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
-                "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
-                "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
-                "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
-                "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
-                "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
-                "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
-                "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
-                "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
-                "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
-                "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
-                "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
-                "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
-                "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
-                "threading":                  "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
-                "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
-                "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-                "wash-hot-towel":             "https://buy.stripe.com/5kQbJ32P79X3bv37bRg360l"
+   /* BOOKING FORM - GÜVENLİ VE ÇAKIŞMASIZ VERSİYON */
+const form = document.getElementById('bookingForm');
+if (form) {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        // 1. ÇAKIŞMA ENGELİ: Butonu hemen kilitle (Double-click yapamasın)
+        const submitBtn = form.querySelector('.submit-btn');
+        if (submitBtn.disabled) return; // Eğer zaten basılmışsa durdur
+        
+        const service = document.getElementById('service').value;
+        const stripeLinks = {
+            "full-experience":            "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
+            "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
+            "i-cut-deluxe":               "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
+            "i-cut-royal":                "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
+            "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
+            "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
+            "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
+            "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
+            "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
+            "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
+            "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
+            "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
+            "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
+            "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
+            "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
+            "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
+            "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
+            "threading":                  "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
+            "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
+            "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
+            "wash-hot-towel":             "https://buy.stripe.com/5kQbJ32P79X3bv37bRg360l"
         };
-            const stripeUrl = stripeLinks[service];
-            if (!stripeUrl) {
-                alert("Please select a service before booking.");
-                return;
-            }
 
-            // Show redirecting popup
-            const successPopup = document.getElementById('successPopup');
-            const pIcon  = document.getElementById('popup-icon');
-            const pTitle = document.getElementById('popup-title');
-            const pText  = document.getElementById('popup-text');
+        const stripeUrl = stripeLinks[service];
+        if (!stripeUrl) {
+            alert("Please select a service.");
+            return;
+        }
 
-            if (pIcon)  pIcon.innerText  = "⏳";
-            if (pTitle) pTitle.innerText = "Redirecting to Payment...";
-            if (pText)  pText.innerText  = "Please wait while we connect you to Stripe.";
-            if (successPopup) successPopup.style.display = 'flex';
+        // 2. GÖRSEL GERİ BİLDİRİM: Butonu pasif yap ve popup'ı güncelle
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Saving...";
+        submitBtn.style.opacity = "0.6";
 
-            fetch(this.action, {
-                method: "POST",
-                body: new FormData(this),
-                headers: { "Accept": "application/json" }
-            }).finally(() => {
-                setTimeout(() => { window.location.href = stripeUrl; }, 1000);
-            });
+        const successPopup = document.getElementById('successPopup');
+        if (successPopup) {
+            document.getElementById('popup-icon').innerText  = "⏳";
+            document.getElementById('popup-title').innerText = "Almost there!";
+            document.getElementById('popup-text').innerText  = "Booking secured. Taking you to Stripe...";
+            successPopup.style.display = 'flex';
+        }
+
+        const formData = {
+            name: document.getElementById('name').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            date: document.getElementById('date').value,
+            time: document.getElementById('time').value,
+            service: service
+        };
+
+        const scriptURL = "https://script.google.com/macros/s/AKfycbxHwXYDiZ0v32-5ku0vM1VlQoX7Ni9kn43OJ1H6g0uF9xK63ofqRXrtGfxkaSYKbQ/exec";
+
+        // 3. ASENKRON GÖNDERİM: Veriyi yolla ve güvenli yönlendirme yap
+        fetch(scriptURL, {
+            method: "POST",
+            mode: "no-cors", 
+            cache: "no-cache",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        })
+        .then(() => {
+            // Google sunucusuna ulaştı, 800ms bekle (bildirim tetiklensin) ve uçur
+            setTimeout(() => { 
+                window.location.href = stripeUrl; 
+            }, 800);
+        })
+        .catch(err => {
+            console.error("Hata olsa da ödemeye devam et:", err);
+            window.location.href = stripeUrl;
         });
-    }
+    });
+}
 
     /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(toggle => {
