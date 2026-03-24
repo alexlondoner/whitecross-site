@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
         script.async = true;
         booksyContainer.appendChild(script);
     }
-//* STRIPE SUCCESS */
+/* STRIPE SUCCESS */
     if (window.isStripeSuccess) {
         const pIcon  = document.getElementById('popup-icon');
         const pTitle = document.getElementById('popup-title');
