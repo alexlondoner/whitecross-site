@@ -1075,3 +1075,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow: hidden;
 }
 
+@media (max-width: 600px) {
+  .reviews-container {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .reviews-divider {
+    width: 80% !important;
+    height: 1px !important;
+  }
+}
+
+
