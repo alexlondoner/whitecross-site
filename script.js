@@ -74,21 +74,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     const opt = document.createElement('option');
                     opt.value = label;
                     opt.textContent = label;
+                    if (h >= 19) opt.dataset.afterHours = 'true';
                     timeSelect.appendChild(opt);
                 }
             }
             if (isToday) {
-            document.getElementById('sameDayPopup').style.display = 'flex';            }
+                alert("Same-day bookings need confirmation. Please WhatsApp us at +44 7879 553312");
+            }
         });
     }
 
     if (timeSelect) {
         timeSelect.addEventListener('change', function () {
-            const v = this.value;
-            const isAfterHours = v.includes("PM") && (v.startsWith("7:") || v.startsWith("8:") || v.startsWith("9:"));
-            if (isAfterHours) {
-                alert("Note: There is a surcharge for After Hours bookings (7PM–9PM). Please contact us directly for confirmation.\n\nWhatsApp: +44 7879 553312");
-            }
+            // after hours handled at form submit
         });
         /* HOURS WIDGET */
 (function() {
@@ -198,92 +196,109 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-   /* BOOKING FORM - GÜVENLİ VE ÇAKIŞMASIZ VERSİYON */
-const form = document.getElementById('bookingForm');
-if (form) {
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
+    /* BOOKING FORM */
+    const form = document.getElementById('bookingForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
 
-        // 1. ÇAKIŞMA ENGELİ: Butonu hemen kilitle (Double-click yapamasın)
-        const submitBtn = form.querySelector('.submit-btn');
-        if (submitBtn.disabled) return; // Eğer zaten basılmışsa durdur
-        
-        const service = document.getElementById('service').value;
-        const stripeLinks = {
-            "full-experience":            "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
-            "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
-            "i-cut-deluxe":               "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
-            "i-cut-royal":                "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
-            "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
-            "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
-            "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
-            "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
-            "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
-            "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
-            "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
-            "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
-            "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
-            "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
-            "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
-            "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
-            "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
-            "threading":                  "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
-            "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
-            "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-            "wash-hot-towel":             "https://buy.stripe.com/5kQbJ32P79X3bv37bRg360l"
-        };
+            const service = document.getElementById('service').value;
+            if (!service) { alert("Please select a service before booking."); return; }
 
-        const stripeUrl = stripeLinks[service];
-        if (!stripeUrl) {
-            alert("Please select a service.");
-            return;
-        }
+            // After hours check
+            const timeEl = document.getElementById('time');
+            const selectedOption = timeEl.options[timeEl.selectedIndex];
+            const isAfterHours = selectedOption && selectedOption.dataset.afterHours === 'true';
+            if (isAfterHours) {
+                document.getElementById('afterHoursPopup').style.display = 'flex';
+                return;
+            }
 
-        // 2. GÖRSEL GERİ BİLDİRİM: Butonu pasif yap ve popup'ı güncelle
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Saving...";
-        submitBtn.style.opacity = "0.6";
+            const stripeLinks = {
+                "full-experience":            "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
+                "i-cut-deluxe":               "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
+                "i-cut-royal":                "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
+                "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
+                "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
+                "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
+                "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
+                "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
+                "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
+                "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
+                "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
+                "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
+                "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
+                "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
+                "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
+                "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
+                "threading":                  "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
+                "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
+                "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
+                "wash-hot-towel":             "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
+            };
+
+            const depositLinks = {
+                "i-cut-royal":                "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
+                "i-cut-deluxe":               "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
+                "full-experience":            "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601",
+            };
+
+            const extrasOnly = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
+            const isExtra = extrasOnly.includes(service);
+            const fullUrl = stripeLinks[service];
+            const depositUrl = depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o";
+
+            if (!fullUrl) { alert("Please select a service before booking."); return; }
+
+            window._pendingFormData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                service: service
+            };
+
+          if (isExtra) {
+                proceedToPayment(fullUrl, 'FULL');
+            } else {
+                document.getElementById('paymentChoicePopup').style.display = 'flex';
+                document.getElementById('btnFullPayment').onclick = function() {
+                    document.getElementById('paymentChoicePopup').style.display = 'none';
+                    proceedToPayment(fullUrl, 'FULL');
+                };
+                document.getElementById('btnDeposit').onclick = function() {
+                    document.getElementById('paymentChoicePopup').style.display = 'none';
+                    proceedToPayment(depositUrl, 'DEPOSIT');
+                };
+            }
+        });
+    }
+
+    function proceedToPayment(stripeUrl, paymentType) {
+        const formData = window._pendingFormData;
+        formData.paymentType = paymentType;
+        formData.status = 'CONFIRMED';
 
         const successPopup = document.getElementById('successPopup');
         if (successPopup) {
             document.getElementById('popup-icon').innerText  = "⏳";
-            document.getElementById('popup-title').innerText = "Almost there!";
-            document.getElementById('popup-text').innerText  = "Booking secured. Taking you to Stripe...";
+            document.getElementById('popup-title').innerText = "Redirecting to Payment...";
+            document.getElementById('popup-text').innerText  = "Please wait while we connect you to Stripe.";
             successPopup.style.display = 'flex';
         }
 
-        const formData = {
-            name: document.getElementById('name').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            date: document.getElementById('date').value,
-            time: document.getElementById('time').value,
-            service: service
-        };
-
-        const scriptURL = "https://script.google.com/macros/s/AKfycbxHwXYDiZ0v32-5ku0vM1VlQoX7Ni9kn43OJ1H6g0uF9xK63ofqRXrtGfxkaSYKbQ/exec";
-
-        // 3. ASENKRON GÖNDERİM: Veriyi yolla ve güvenli yönlendirme yap
-        fetch(scriptURL, {
+        fetch("https://script.google.com/macros/s/AKfycbz0eA5w_V8aeQ8ztOYmWYctAXVANNJVjPgifEs993vTTQzcCcEnI1_5eiPe9DVcC1wf/exec", {
             method: "POST",
-            mode: "no-cors", 
-            cache: "no-cache",
+            mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(formData)
-        })
-        .then(() => {
-            // Google sunucusuna ulaştı, 800ms bekle (bildirim tetiklensin) ve uçur
-            setTimeout(() => { 
-                window.location.href = stripeUrl; 
-            }, 800);
-        })
-        .catch(err => {
-            console.error("Hata olsa da ödemeye devam et:", err);
-            window.location.href = stripeUrl;
+        }).finally(() => {
+            setTimeout(() => { window.location.href = stripeUrl; }, 800);
         });
-    });
-}
-
+    }
     /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(toggle => {
         toggle.addEventListener("click", () => {
@@ -314,10 +329,8 @@ if (form) {
         script.async = true;
         booksyContainer.appendChild(script);
     }
-
-    /* STRIPE SUCCESS POPUP */
+/* STRIPE SUCCESS */
     if (window.isStripeSuccess) {
-        console.log("Booking Success Detected!");
         const pIcon  = document.getElementById('popup-icon');
         const pTitle = document.getElementById('popup-title');
         const pText  = document.getElementById('popup-text');
@@ -325,8 +338,8 @@ if (form) {
         if (pIcon)  pIcon.innerText  = "✅";
         if (pTitle) pTitle.innerText = "Booking Confirmed!";
         if (pText)  pText.innerText  = "Payment received. We'll see you soon at Whitecross Street!";
-        if (successPopup) successPopup.style.display = 'flex';  
-         window.history.replaceState({}, document.title, window.location.pathname);
+        if (successPopup) successPopup.style.display = 'flex';
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
 });

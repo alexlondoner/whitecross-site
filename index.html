@@ -586,7 +586,39 @@ I CUT Whitecross Barbers is one of the closest premium barbershops in Barbican, 
         </a>
     </div>
 </div>
+<!-- AFTER HOURS POPUP -->
+<div id="afterHoursPopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.92); z-index:999999; justify-content:center; align-items:center;">
+    <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:380px; width:90%; text-align:center; position:relative;">
+        <button onclick="document.getElementById('afterHoursPopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
+        <div style="font-size:2.4rem; margin-bottom:10px;">🌙</div>
+        <h2 style="color:#d4af37; font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:1.2rem; letter-spacing:2px; margin-bottom:10px;">After Hours Booking</h2>
+        <p style="color:#ccc; font-size:0.88rem; margin-bottom:8px; line-height:1.6;">After hours appointments (7PM–9PM) require direct confirmation.</p>
+        <p style="color:#aaa; font-size:0.82rem; margin-bottom:22px; line-height:1.6;">A surcharge applies. Please contact us directly to confirm availability and pricing.</p>
+        <a href="tel:+447879553312" style="display:flex; align-items:center; justify-content:center; gap:10px; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; font-weight:800; text-decoration:none; padding:13px 20px; border-radius:10px; font-size:0.88rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">
+            📞 Call Us Directly
+        </a>
+        <a href="https://wa.me/447879553312?text=Hi%2C%20I%27d%20like%20to%20book%20an%20after%20hours%20appointment" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:10px; background:transparent; color:#d4af37; font-weight:800; text-decoration:none; padding:13px 20px; border-radius:10px; border:2px solid #d4af37; font-size:0.88rem; text-transform:uppercase; letter-spacing:1px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style="width:20px; height:20px;"> WhatsApp Us
+        </a>
+    </div>
+</div>
 
+<!-- PAYMENT CHOICE POPUP -->
+<div id="paymentChoicePopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.92); z-index:999999; justify-content:center; align-items:center;">
+    <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:380px; width:90%; text-align:center; position:relative;">
+        <button onclick="document.getElementById('paymentChoicePopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
+        <div style="font-size:2.4rem; margin-bottom:10px;">💳</div>
+        <h2 style="color:#d4af37; font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:1.2rem; letter-spacing:2px; margin-bottom:10px;">Secure Your Booking</h2>
+        <p style="color:#ccc; font-size:0.88rem; margin-bottom:24px; line-height:1.6;">Choose how you'd like to secure your appointment today.</p>
+        <button id="btnFullPayment" style="display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; font-weight:800; border:none; padding:14px 20px; border-radius:10px; font-size:0.88rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; cursor:pointer;">
+            ✅ Pay in Full — Best Value
+        </button>
+        <button id="btnDeposit" style="display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:transparent; color:#d4af37; font-weight:800; border:2px solid #d4af37; padding:14px 20px; border-radius:10px; font-size:0.88rem; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">
+            🔒 Pay Deposit to Reserve Slot
+        </button>
+        <p style="color:#666; font-size:0.75rem; margin-top:14px; line-height:1.5;">Deposit secures your slot. Remaining balance paid on the day.</p>
+    </div>
+</div>
 <div id="successPopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.9); z-index:999999; justify-content:center; align-items:center;">
     <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:400px; width:90%; text-align:center; position:relative;">
         <button id="closePopup" onclick="document.getElementById('successPopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
