@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const depositLinks = {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
 
             window._pendingFormData = {
