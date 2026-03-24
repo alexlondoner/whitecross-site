@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (dateInput && timeSelect) {
         dateInput.setAttribute('min', todayStr);
-        dateInput.addEventListener('input', function () {
+        dateInput.addEventListener('change', function () {
             const selectedDate = this.value;
             const isToday = selectedDate === todayStr;
             timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
