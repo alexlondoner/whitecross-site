@@ -24,6 +24,7 @@ const stories = {
     wash_style_hot_towel: { title: "Wash, Style & Hot Towel", content: `<p><strong>A grooming service that combines hair washing, styling, and relaxation.</strong></p><p>Your hair is washed, professionally styled, and finished with a soothing hot towel treatment. Perfect before an event, meeting, or night out when you want to feel fresh and well-presented.</p>` }
 };
 
+/* --- MODAL FUNCTIONS --- */
 function openStory(type) {
     const modal = document.getElementById('infoModal');
     const title = document.getElementById('modal-title');
@@ -45,9 +46,10 @@ document.addEventListener('click', function (event) {
     if (modal && event.target === modal) closeInfo();
 });
 
+/* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
-    /* DATE & TIME */
+    /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
     const now = new Date();
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
             timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
             const currentHour = new Date().getHours();
             const currentMinute = new Date().getMinutes();
+            
             for (let h = 9; h <= 21; h++) {
                 for (let m of [0, 30]) {
                     if (h === 21 && m > 0) continue;
@@ -84,173 +87,97 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (timeSelect) {
-        timeSelect.addEventListener('change', function () {
-            // after hours handled at form submit
-        });
-        /* HOURS WIDGET */
-(function() {
-    const schedule = [
-        { day: 'Monday',    open: '09:00', close: '19:00' },
-        { day: 'Tuesday',   open: '09:00', close: '19:00' },
-        { day: 'Wednesday', open: '09:00', close: '19:00' },
-        { day: 'Thursday',  open: '09:00', close: '19:00' },
-        { day: 'Friday',    open: '09:00', close: '19:00' },
-        { day: 'Saturday',  open: '09:00', close: '19:00' },
-        { day: 'Sunday',    open: '10:00', close: '16:00' },
-    ];
+    /* HOURS WIDGET */
+    (function () {
+        const schedule = [
+            { day: 'Monday', open: '09:00', close: '19:00' },
+            { day: 'Tuesday', open: '09:00', close: '19:00' },
+            { day: 'Wednesday', open: '09:00', close: '19:00' },
+            { day: 'Thursday', open: '09:00', close: '19:00' },
+            { day: 'Friday', open: '09:00', close: '19:00' },
+            { day: 'Saturday', open: '09:00', close: '19:00' },
+            { day: 'Sunday', open: '10:00', close: '16:00' },
+        ];
 
-    const now = new Date();
-    const jsToSchedule = [6, 0, 1, 2, 3, 4, 5];
-    const todayScheduleIndex = jsToSchedule[now.getDay()];
-    const currentTime = now.getHours() * 60 + now.getMinutes();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const jsToSchedule = [6, 0, 1, 2, 3, 4, 5];
+        const todayIdx = jsToSchedule[now.getDay()];
 
-    function timeToMinutes(t) {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    }
+        function timeToMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+        function format12(t) { 
+            const [h, m] = t.split(':').map(Number);
+            return `${h % 12 || 12}:${m === 0 ? '00' : m} ${h >= 12 ? 'PM' : 'AM'}`;
+        }
 
-    function formatTime(t) {
-        const [h, m] = t.split(':').map(Number);
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const hour12 = h % 12 || 12;
-        return `${hour12}:${m === 0 ? '00' : m} ${ampm}`;
-    }
+        const today = schedule[todayIdx];
+        const isOpen = currentTime >= timeToMins(today.open) && currentTime < timeToMins(today.close);
+        const statusEl = document.getElementById('hoursStatus');
 
-    const todaySchedule = schedule[todayScheduleIndex];
-    const isOpenNow = currentTime >= timeToMinutes(todaySchedule.open) && currentTime < timeToMinutes(todaySchedule.close);
-
-    const statusEl = document.getElementById('hoursStatus');
-    if (!statusEl) return;
-
-    if (isOpenNow) {
-        const minsLeft = timeToMinutes(todaySchedule.close) - currentTime;
-        const hoursLeft = Math.floor(minsLeft / 60);
-        const minsLeftRem = minsLeft % 60;
-        const closingMsg = hoursLeft > 0 ? `Closes in ${hoursLeft}h ${minsLeftRem}m` : `Closes in ${minsLeftRem} min`;
-        statusEl.innerHTML = `<span class="status-dot open"></span><span class="status-text open-text">OPEN NOW</span><span class="status-closing">${closingMsg}</span>`;
-    } else {
-        const nextDay = schedule[(todayScheduleIndex + 1) % 7];
-        statusEl.innerHTML = `<span class="status-dot closed"></span><span class="status-text closed-text">CLOSED</span><span class="status-closing">Opens ${nextDay.day} at ${formatTime(nextDay.open)}</span>`;
-    }
-
-    const grid = document.getElementById('hoursGrid');
-    if (!grid) return;
-
-    schedule.forEach((item, index) => {
-        const isToday = index === todayScheduleIndex;
-        const row = document.createElement('div');
-        row.className = 'hours-row-new' + (isToday ? ' today' : '');
-        row.innerHTML = `
-            <span class="hours-day">${isToday ? '▶ ' + item.day : item.day}</span>
-            <span class="hours-time">${formatTime(item.open)} – ${formatTime(item.close)}</span>
-            ${isToday ? `<span class="hours-badge ${isOpenNow ? 'badge-open' : 'badge-closed'}">${isOpenNow ? 'OPEN' : 'CLOSED'}</span>` : '<span class="hours-badge-empty"></span>'}
-        `;
-        grid.appendChild(row);
-    });
-})();
-    }
-
-    /* PHONE VALIDATION */
-    const phoneInput = document.getElementById('phone');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', function () {
-            let v = this.value.replace(/[^0-9+\s]/g, '');
-            if (v && !v.startsWith('+')) v = '+' + v;
-            this.value = v;
-        });
-        phoneInput.addEventListener('blur', function () {
-            const phoneRegex = /^\+[0-9]{1,3}\s?[0-9]{6,14}$/;
-            if (this.value && !phoneRegex.test(this.value)) {
-                this.style.borderColor = '#ff6b6b';
+        if (statusEl) {
+            if (isOpen) {
+                const diff = timeToMins(today.close) - currentTime;
+                statusEl.innerHTML = `<span class="status-dot open"></span> OPEN NOW (Closes in ${Math.floor(diff/60)}h ${diff%60}m)`;
             } else {
-                this.style.borderColor = '#333';
+                const next = schedule[(todayIdx + 1) % 7];
+                statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens ${next.day} ${format12(next.open)})`;
             }
-        });
-    }
+        }
 
-    /* EMAIL VALIDATION */
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-        emailInput.addEventListener('blur', function () {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (this.value && !emailRegex.test(this.value)) {
-                this.style.borderColor = '#ff6b6b';
-            } else {
-                this.style.borderColor = '#333';
-            }
-        });
-    }
+        const grid = document.getElementById('hoursGrid');
+        if (grid) {
+            schedule.forEach((item, idx) => {
+                const isToday = idx === todayIdx;
+                const row = document.createElement('div');
+                row.className = 'hours-row-new' + (isToday ? ' today' : '');
+                row.innerHTML = `<span>${isToday ? '▶ ' : ''}${item.day}</span><span>${format12(item.open)} - ${format12(item.close)}</span>`;
+                grid.appendChild(row);
+            });
+        }
+    })();
 
-    /* POPUP CLOSE */
-    const popup = document.getElementById('successPopup');
-    const closePopupBtn = document.getElementById('closePopup');
-    if (closePopupBtn) {
-        closePopupBtn.addEventListener('click', function () {
-            if (popup) popup.style.display = 'none';
-        });
-    }
-    if (popup) {
-        popup.addEventListener('click', function (e) {
-            if (e.target === this) this.style.display = 'none';
-        });
-    }
-
-    /* BOOKING FORM */
+    /* FORM SUBMISSION & STRIPE */
     const form = document.getElementById('bookingForm');
     if (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-
             const service = document.getElementById('service').value;
-            if (!service) { alert("Please select a service before booking."); return; }
+            if (!service) return alert("Select a service.");
 
-            // After hours check
             const timeEl = document.getElementById('time');
-            const selectedOption = timeEl.options[timeEl.selectedIndex];
-            const isAfterHours = selectedOption && selectedOption.dataset.afterHours === 'true';
+            const isAfterHours = timeEl.options[timeEl.selectedIndex]?.dataset.afterHours === 'true';
             if (isAfterHours) {
                 document.getElementById('afterHoursPopup').style.display = 'flex';
                 return;
             }
 
             const stripeLinks = {
-                "full-experience":            "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
+                "full-experience": "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
-                "i-cut-deluxe":               "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
-                "i-cut-royal":                "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
-                "senior-full-experience":     "https://buy.stripe.com/6oUbJ3dtLc5b9mVgMrg360e",
-                "skin-fade":                  "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
-                "scissor-cut":                "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
-                "classic-sbs":                "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
-                "hot-towel-shave":            "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
-                "clipper-cut":                "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
-                "senior-haircut":             "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
-                "young-gents":                "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
-                "young-gents-skin-fade":      "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
-                "full-facial":                "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
-                "beard-dyeing":               "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
-                "face-mask":                  "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
-                "face-steam":                 "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
-                "threading":                  "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
-                "waxing":                     "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
-                "shape-up-clean-up":          "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-                "wash-hot-towel":             "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
+                "i-cut-deluxe": "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
+                "i-cut-royal": "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
+                "skin-fade": "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
+                "scissor-cut": "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
+                "classic-sbs": "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
+                "hot-towel-shave": "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
+                "clipper-cut": "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
+                "senior-haircut": "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
+                "young-gents": "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
+                "young-gents-skin-fade": "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
+                "full-facial": "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
+                "beard-dyeing": "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
+                "face-mask": "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
+                "face-steam": "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
+                "threading": "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
+                "waxing": "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
+                "shape-up-clean-up": "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
+                "wash-hot-towel": "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
             };
 
             const depositLinks = {
-                "i-cut-royal":                "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "i-cut-deluxe":               "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-experience":            "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601",
+                "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
+                "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q"
             };
-
-            const extrasOnly = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
-            const isExtra = extrasOnly.includes(service);
-            const fullUrl = stripeLinks[service];
-            const depositUrl = depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o";
-
-            if (!fullUrl) { alert("Please select a service before booking."); return; }
 
             window._pendingFormData = {
                 name: document.getElementById('name').value,
@@ -261,104 +188,71 @@ document.addEventListener('DOMContentLoaded', function () {
                 service: service
             };
 
-          if (isExtra) {
-                proceedToPayment(fullUrl, 'FULL');
+            const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
+            
+            if (extras.includes(service)) {
+                proceedToPayment(stripeLinks[service], 'FULL');
             } else {
                 document.getElementById('paymentChoicePopup').style.display = 'flex';
-                document.getElementById('btnFullPayment').onclick = function() {
-                    document.getElementById('paymentChoicePopup').style.display = 'none';
-                    proceedToPayment(fullUrl, 'FULL');
-                };
-                document.getElementById('btnDeposit').onclick = function() {
-                    document.getElementById('paymentChoicePopup').style.display = 'none';
-                    proceedToPayment(depositUrl, 'DEPOSIT');
-                };
+                document.getElementById('btnFullPayment').onclick = () => proceedToPayment(stripeLinks[service], 'FULL');
+                document.getElementById('btnDeposit').onclick = () => proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
             }
         });
     }
 
-  function proceedToPayment(stripeUrl, paymentType) {
-    const formData = window._pendingFormData;
-    formData.paymentType = paymentType;
-    formData.status = 'PENDING';
+    function proceedToPayment(url, type) {
+        const data = window._pendingFormData;
+        data.paymentType = type;
+        data.status = 'PENDING';
+        sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
-    // sessionStorage'a kaydet
-    sessionStorage.setItem('pendingBooking', JSON.stringify(formData));
+        const popup = document.getElementById('successPopup');
+        if (popup) {
+            document.getElementById('popup-icon').innerText = "⏳";
+            document.getElementById('popup-title').innerText = "Redirecting...";
+            popup.style.display = 'flex';
+        }
 
-    const successPopup = document.getElementById('successPopup');
-    if (successPopup) {
-        document.getElementById('popup-icon').innerText  = "⏳";
-        document.getElementById('popup-title').innerText = "Redirecting to Payment...";
-        document.getElementById('popup-text').innerText  = "Please wait while we connect you to Stripe.";
-        successPopup.style.display = 'flex';
+        fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify(data)
+        }).finally(() => { setTimeout(() => window.location.href = url, 800); });
     }
 
-    // PENDING olarak Sheets'e yaz — Calendar yok, email yok
-    fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-    }).finally(() => {
-        setTimeout(() => { window.location.href = stripeUrl; }, 800);
-    });
-}
-    }
     /* ACCORDION */
-    document.querySelectorAll(".accordion-toggle").forEach(toggle => {
-        toggle.addEventListener("click", () => {
-            const target = toggle.getAttribute("data-target");
-            const content = document.querySelector(`.${target}-content`);
-            const arrow = document.querySelector(`.arrow-${target}`);
-            const isOpen = content.classList.contains("open");
-            if (isOpen) {
-                content.style.maxHeight = content.scrollHeight + "px";
-                requestAnimationFrame(() => { content.style.maxHeight = "0px"; });
-                content.classList.remove("open");
+    document.querySelectorAll(".accordion-toggle").forEach(t => {
+        t.addEventListener("click", () => {
+            const target = document.querySelector(`.${t.dataset.target}-content`);
+            const arrow = document.querySelector(`.arrow-${t.dataset.target}`);
+            if (target.classList.contains("open")) {
+                target.style.maxHeight = "0px";
+                target.classList.remove("open");
                 arrow.classList.remove("rotate");
             } else {
-                content.classList.add("open");
-                content.style.maxHeight = content.scrollHeight + "px";
+                target.classList.add("open");
+                target.style.maxHeight = target.scrollHeight + "px";
                 arrow.classList.add("rotate");
             }
         });
     });
 
-    /* BOOKSY WIDGET */
-    const booksyContainer = document.getElementById('booksy-widget-container');
-    if (booksyContainer && !window.booksyLoaded) {
-        window.booksyLoaded = true;
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = 'https://booksy.com/widget/code.js?id=179328&country=gb&lang=en';
-        script.async = true;
-        booksyContainer.appendChild(script);
-    }
-/* STRIPE SUCCESS */
+    /* STRIPE SUCCESS CHECK */
     if (window.isStripeSuccess) {
-        const pIcon  = document.getElementById('popup-icon');
-        const pTitle = document.getElementById('popup-title');
-        const pText  = document.getElementById('popup-text');
-        const successPopup = document.getElementById('successPopup');
-        if (pIcon)  pIcon.innerText  = "✅";
-        if (pTitle) pTitle.innerText = "Booking Confirmed!";
-        if (pText)  pText.innerText  = "Payment received. We'll see you soon at Whitecross Street!";
-        if (successPopup) successPopup.style.display = 'flex';
-
+        const popup = document.getElementById('successPopup');
+        if (popup) {
+            document.getElementById('popup-icon').innerText = "✅";
+            document.getElementById('popup-title').innerText = "Confirmed!";
+            popup.style.display = 'flex';
+        }
         const pending = sessionStorage.getItem('pendingBooking');
         if (pending) {
-            const bookingData = JSON.parse(pending);
-            bookingData.status = 'CONFIRMED';
+            const data = JSON.parse(pending);
+            data.status = 'CONFIRMED';
             fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(bookingData)
-            }).finally(() => {
-                sessionStorage.removeItem('pendingBooking');
-            });
+                method: "POST", mode: "no-cors", body: JSON.stringify(data)
+            }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
-   window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState({}, '', window.location.pathname);
     }
-
 });
