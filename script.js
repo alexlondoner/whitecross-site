@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function () {
             successPopup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbz0eA5w_V8aeQ8ztOYmWYctAXVANNJVjPgifEs993vTTQzcCcEnI1_5eiPe9DVcC1wf/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbxxKTUhkyIRDvxHblQBvv5YU2wjtx6IGZGDv9WVNmHK_iQ4-gB4lLp5sS7CAtTnIkLA/exec", {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
