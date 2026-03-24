@@ -277,27 +277,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function proceedToPayment(stripeUrl, paymentType) {
-        const formData = window._pendingFormData;
-        formData.paymentType = paymentType;
-        formData.status = 'CONFIRMED';
+  function proceedToPayment(stripeUrl, paymentType) {
+    const formData = window._pendingFormData;
+    formData.paymentType = paymentType;
+    formData.status = 'PENDING';
 
-        const successPopup = document.getElementById('successPopup');
-        if (successPopup) {
-            document.getElementById('popup-icon').innerText  = "⏳";
-            document.getElementById('popup-title').innerText = "Redirecting to Payment...";
-            document.getElementById('popup-text').innerText  = "Please wait while we connect you to Stripe.";
-            successPopup.style.display = 'flex';
-        }
+    // sessionStorage'a kaydet
+    sessionStorage.setItem('pendingBooking', JSON.stringify(formData));
 
-        fetch("https://script.google.com/macros/s/AKfycbxxKTUhkyIRDvxHblQBvv5YU2wjtx6IGZGDv9WVNmHK_iQ4-gB4lLp5sS7CAtTnIkLA/exec", {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData)
-        }).finally(() => {
-            setTimeout(() => { window.location.href = stripeUrl; }, 800);
-        });
+    const successPopup = document.getElementById('successPopup');
+    if (successPopup) {
+        document.getElementById('popup-icon').innerText  = "⏳";
+        document.getElementById('popup-title').innerText = "Redirecting to Payment...";
+        document.getElementById('popup-text').innerText  = "Please wait while we connect you to Stripe.";
+        successPopup.style.display = 'flex';
+    }
+
+    // PENDING olarak Sheets'e yaz — Calendar yok, email yok
+    fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+    }).finally(() => {
+        setTimeout(() => { window.location.href = stripeUrl; }, 800);
+    });
+}
     }
     /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(toggle => {
@@ -329,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
         script.async = true;
         booksyContainer.appendChild(script);
     }
-/* STRIPE SUCCESS */
+//* STRIPE SUCCESS */
     if (window.isStripeSuccess) {
         const pIcon  = document.getElementById('popup-icon');
         const pTitle = document.getElementById('popup-title');
@@ -339,7 +344,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pTitle) pTitle.innerText = "Booking Confirmed!";
         if (pText)  pText.innerText  = "Payment received. We'll see you soon at Whitecross Street!";
         if (successPopup) successPopup.style.display = 'flex';
-        window.history.replaceState({}, document.title, window.location.pathname);
+
+        const pending = sessionStorage.getItem('pendingBooking');
+        if (pending) {
+            const bookingData = JSON.parse(pending);
+            bookingData.status = 'CONFIRMED';
+            fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bookingData)
+            }).finally(() => {
+                sessionStorage.removeItem('pendingBooking');
+            });
+        }
+   window.history.replaceState({}, document.title, window.location.pathname);
     }
 
 });
