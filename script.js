@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const depositLinks = {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q"
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
 
             window._pendingFormData = {
@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = window._pendingFormData;
         data.paymentType = type;
         data.status = 'PENDING';
+        data.bookingId = 'WCB-' + Date.now(); 
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         const popup = document.getElementById('successPopup');
@@ -213,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzHWbaSARu_uqHuH1TuWJfa1v2cQx4mY27foWiJ5Jf70kPAFdbtXAiX6MfoUekh1sLZ/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -249,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbyndT4MnGSkrcnIttd1abkrOc8I_qIOIbCgNVOWZpuLDzQEI_eVzzlXm86u9pZS5_AM/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbzHWbaSARu_uqHuH1TuWJfa1v2cQx4mY27foWiJ5Jf70kPAFdbtXAiX6MfoUekh1sLZ/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
