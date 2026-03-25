@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbxFeXvSA85KhEjHzSXU16juhw-OmeEPtWuXC6l89b6jrAU_MinGRCXTd47DkDu9S6tt/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbz7RGZhzSacHtZp_KEZeNHkmw5N96rIRfddXsgcjz9zCyl3v0Z_zQGA9vEfEeUUDXU/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbxFeXvSA85KhEjHzSXU16juhw-OmeEPtWuXC6l89b6jrAU_MinGRCXTd47DkDu9S6tt/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbz7RGZhzSacHtZp_KEZeNHkmw5N96rIRfddXsgcjz9zCyl3v0Z_zQGA9vEfEeUUDXU/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
