@@ -1060,3 +1060,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 0 20px;
   }
 }
+/* Footer logo küçült */
+.footer-logo-text {
+  font-size: 0.85rem !important;
+  letter-spacing: 3px !important;
+}
+
+/* Reviews ortala */
+.reviews-container {
+  justify-content: center !important;
+}
+
+.reviews-section {
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .reviews-container {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .reviews-divider {
+    width: 80% !important;
+    height: 1px !important;
+  }
+}
+
+
