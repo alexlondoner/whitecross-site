@@ -81,9 +81,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     timeSelect.appendChild(opt);
                 }
             }
-            if (isToday) {
-                alert("Same-day bookings need confirmation. Please WhatsApp us at +44 7879 553312");
-            }
+            // Availability kontrolü
+                    checkAvailability(selectedDate);
+        
         });
     }
 
@@ -214,13 +214,56 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbxsULWtX39xj35fIstey89fNiqbRKcLAfmnzdM4DRU1XwZZ3PkyOlh2ayLwtMkxhW4X/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
         }).finally(() => { setTimeout(() => window.location.href = url, 800); });
+
+        
+    }
+function checkAvailability(date) {
+        const barber = document.getElementById('barber')?.value || 'no-preference';
+        if (!date) return;
+        const url = 'https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec?date=' + date + '&barber=' + barber;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.busy) return;
+                const busy = data.busy;
+                timeSelect.querySelectorAll('option').forEach(opt => {
+                    if (!opt.value) return;
+                    const match = opt.value.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                    if (!match) return;
+                    let h = parseInt(match[1]);
+                    let m = parseInt(match[2]);
+                    const ampm = match[3].toUpperCase();
+                    if (ampm === 'PM' && h !== 12) h += 12;
+                    if (ampm === 'AM' && h === 12) h = 0;
+                    const slotTime = new Date(date + 'T00:00:00');
+                    slotTime.setHours(h, m, 0, 0);
+                    const slotMs = slotTime.getTime();
+                    const BUFFER = 10 * 60 * 1000;
+                    const isBusy = busy.some(b => slotMs >= (b.start - BUFFER) && slotMs < (b.end + BUFFER));
+                    if (isBusy) {
+                        opt.disabled = true;
+                        opt.textContent = opt.value + ' — Unavailable';
+                        opt.style.color = '#666';
+                    }
+                });
+            })
+            .catch(err => console.log('Availability check failed:', err));
     }
 
+    const barberSelect = document.getElementById('barber');
+    if (barberSelect) {
+        barberSelect.addEventListener('change', function() {
+            const selectedDate = dateInput?.value;
+            if (selectedDate) dateInput.dispatchEvent(new Event('change'));
+        });
+    }
+
+    /* ACCORDION */
     /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(t => {
         t.addEventListener("click", () => {
@@ -250,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbxsULWtX39xj35fIstey89fNiqbRKcLAfmnzdM4DRU1XwZZ3PkyOlh2ayLwtMkxhW4X/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
