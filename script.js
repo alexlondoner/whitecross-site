@@ -177,7 +177,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601
             };
 
             window._pendingFormData = {
@@ -215,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzdyQwGHdxUe6sDAAC36ZCARwNY7pncI-aKPLXBPUnDfq_2Tlu5yLX_4wB_GST8-J6A/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbxsULWtX39xj35fIstey89fNiqbRKcLAfmnzdM4DRU1XwZZ3PkyOlh2ayLwtMkxhW4X/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -251,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzdyQwGHdxUe6sDAAC36ZCARwNY7pncI-aKPLXBPUnDfq_2Tlu5yLX_4wB_GST8-J6A/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbxsULWtX39xj35fIstey89fNiqbRKcLAfmnzdM4DRU1XwZZ3PkyOlh2ayLwtMkxhW4X/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
