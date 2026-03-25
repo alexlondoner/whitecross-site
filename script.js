@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("hhttps://script.google.com/macros/s/AKfycbzdyQwGHdxUe6sDAAC36ZCARwNY7pncI-aKPLXBPUnDfq_2Tlu5yLX_4wB_GST8-J6A/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzdyQwGHdxUe6sDAAC36ZCARwNY7pncI-aKPLXBPUnDfq_2Tlu5yLX_4wB_GST8-J6A/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
