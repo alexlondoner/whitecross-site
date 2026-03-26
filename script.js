@@ -208,9 +208,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
             };
-
             const barberVal = document.getElementById('barber').value;
-            const isAfterHours = selectedTimeOpt?.dataset.afterHours === 'true';
+            const assignedBarber = selectedTimeOpt && selectedTimeOpt.dataset ? selectedTimeOpt.dataset.assignedBarber : null;
+
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const barberEl = document.getElementById('barber');
     const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';        
         if (!date) return;
-        const url = 'https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec?date=' + date + '&barber=' + barber;
         fetch(url)
             .then(r => r.json())
             .then(data => {
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
