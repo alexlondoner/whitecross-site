@@ -210,8 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             const barberVal = document.getElementById('barber').value;
-            const assignedBarber = selectedTimeOpt?.dataset.assignedBarber;
-
+            const isAfterHours = selectedTimeOpt?.dataset.afterHours === 'true';
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
