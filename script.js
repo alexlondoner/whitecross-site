@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('afterHoursPopup').style.display = 'flex';
                 return;
             }
-        // BURAYA EKLE:
+    
      if (selectedTimeOpt && selectedTimeOpt.disabled) {
      alert('This time slot is unavailable. Please select a different time or date.');
                 return;
@@ -268,8 +268,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkAvailability(date) {
     const barberEl = document.getElementById('barber');
-    const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';        
-        if (!date) return;
+    const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
+    const serviceEl = document.getElementById('service');
+    const service = serviceEl ? serviceEl.value : '';
+    
+    const durationMap = {
+        "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 45,
+        "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
+        "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
+        "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
+        "young-gents-skin-fade": 25, "full-facial": 15, "beard-dyeing": 20,
+        "face-mask": 10, "face-steam": 10, "threading": 5,
+        "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
+    };
+    const duration = durationMap[service] || 30;
+
+    if (!date) return;
         const url = 'https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec?date=' + date + '&barber=' + barber;
         fetch(url)
             .then(r => r.json())
@@ -288,9 +302,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     slotTime.setHours(h, m, 0, 0);
                     const slotMs = slotTime.getTime();
 
-                    function isBusySlot(busyList) {
-                        return (busyList || []).some(b => slotMs >= (b.start - BUFFER) && slotMs < (b.end + BUFFER));
-                    }
+                   function isBusySlot(busyList) {
+    const serviceDurationMs = duration * 60 * 1000;
+    const slotEnd = slotMs + serviceDurationMs;
+                return (busyList || []).some(b =>
+        slotMs < (b.end + BUFFER) && slotEnd > (b.start - BUFFER)
+    );
+            }
 
                     if (data.mode === 'single') {
                         if (isBusySlot(data.busy)) {
@@ -320,12 +338,19 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => console.log('Availability check failed:', err));
     }
-
-    const barberSelect = document.getElementById('barber');
+const barberSelect = document.getElementById('barber');
     if (barberSelect) {
         barberSelect.addEventListener('change', function() {
             const selectedDate = dateInput?.value;
             if (selectedDate) dateInput.dispatchEvent(new Event('change'));
+        });
+    }
+
+    const serviceSelect = document.getElementById('service');
+    if (serviceSelect) {
+        serviceSelect.addEventListener('change', function() {
+            const selectedDate = dateInput?.value;
+            if (selectedDate) checkAvailability(selectedDate);
         });
     }
 
