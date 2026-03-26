@@ -71,7 +71,7 @@
       "areaServed": [
         "Clerkenwell", "Barbican", "Farringdon", "Old Street", "Hoxton",
         "Shoreditch", "Angel", "Islington", "Liverpool Street", "Holborn",
-        "Bloomsbury", "Spitalfields"
+        "Bloomsbury", "Spitalfields", "Bethnal Green", "Whitechapel", "Aldgate", "Tower Hill"
       ],
       "openingHoursSpecification": [
         { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "09:00", "closes": "19:00" },
@@ -279,58 +279,58 @@
   </div>
 </section>
 <h2 class="form-header">Priority Booking</h2>
-    <!-- BOOKING FORM -->
-    <form id="bookingForm" class="booking-form">
-        <input type="text" name="name" placeholder="Name" required class="input-field" id="name">
-<input type="email" name="email" placeholder="your.email@example.com" required class="input-field" id="email">
-<input type="tel" name="phone" placeholder="+XXX XXX XXXXXX" required class="input-field" id="phone">
+   <!-- BOOKING FORM -->
+<form id="bookingForm" class="booking-form">
+    <input type="text" name="name" placeholder="Name" required class="input-field" id="name">
+    <input type="email" name="email" placeholder="your.email@example.com" required class="input-field" id="email">
+    <input type="tel" name="phone" placeholder="+XXX XXX XXXXXX" required class="input-field" id="phone">
 
-<select id="barber" name="barber" required class="input-field">
-    <option value="" disabled selected>Select Barber</option>
-    <option value="alex">Alex</option>
-    <option value="arda">Arda</option>
-    <option value="no-preference">No Preference</option>
-</select>
+    <input type="date" name="date" required class="input-field" id="date">
 
-<input type="date" name="date" required class="input-field" id="date">
+    <select id="service" name="service" required class="input-field">
+        <option value="" disabled selected>Select Service</option>
+        <optgroup label="Exclusive Bundle Packages">
+            <option value="full-experience">The Full Experience – £40</option>
+            <option value="full-skinfade-beard-luxury">Full Skin Fade & Beard Luxury – £48</option>
+            <option value="i-cut-deluxe">I CUT Deluxe – £55</option>
+            <option value="i-cut-royal">I CUT Royal – £65</option>
+            <option value="senior-full-experience">Senior Full Experience (65+) – £35</option>
+        </optgroup>
+        <optgroup label="Standard Packages">
+            <option value="skin-fade">Skin Fade Cut – £32</option>
+            <option value="scissor-cut">Scissor Cut – £30</option>
+            <option value="classic-sbs">Classic Short Back & Sides – £28</option>
+            <option value="hot-towel-shave">Hot Towel Shave – £22</option>
+            <option value="clipper-cut">Clipper Cut – £22</option>
+            <option value="senior-haircut">Senior Haircut (65+) – £23</option>
+            <option value="young-gents">Young Gents (0–12) – £20</option>
+            <option value="young-gents-skin-fade">Young Gents Skin Fade (4–12) – £24</option>
+        </optgroup>
+        <optgroup label="Extras">
+            <option value="full-facial">Full Facial Treatment – £24</option>
+            <option value="beard-dyeing">Beard Dyeing – £24</option>
+            <option value="face-mask">Face Mask – £12</option>
+            <option value="face-steam">Face Steam – £12</option>
+            <option value="threading">Threading – £10</option>
+            <option value="waxing">Waxing (Nose & Ears) – £10</option>
+            <option value="shape-up-clean-up">Shape Up & Clean Up – £20</option>
+            <option value="wash-hot-towel">Wash, Style & Hot Towel – £10</option>
+        </optgroup>
+    </select>
 
-<select id="time" name="time" required class="input-field">
-    <option value="" disabled selected>Select Time</option>
-</select>
+    <select id="barber" name="barber" required class="input-field">
+        <option value="" disabled selected>Select Barber</option>
+        <option value="alex">Alex</option>
+        <option value="arda">Arda</option>
+        <option value="no-preference">No Preference</option>
+    </select>
 
-       <select id="service" name="service" required class="input-field">
-            <option value="" disabled selected>Select Service</option>
-            <optgroup label="Exclusive Bundle Packages">
-                <option value="full-experience">The Full Experience – £40</option>
-                <option value="full-skinfade-beard-luxury">Full Skin Fade & Beard Luxury – £48</option>
-                <option value="i-cut-deluxe">I CUT Deluxe – £55</option>
-                <option value="i-cut-royal">I CUT Royal – £65</option>
-                <option value="senior-full-experience">Senior Full Experience (65+) – £35</option>
-            </optgroup>
-            <optgroup label="Standard Packages">
-                <option value="skin-fade">Skin Fade Cut – £32</option>
-                <option value="scissor-cut">Scissor Cut – £30</option>
-                <option value="classic-sbs">Classic Short Back & Sides – £28</option>
-                <option value="hot-towel-shave">Hot Towel Shave – £22</option>
-                <option value="clipper-cut">Clipper Cut – £22</option>
-                <option value="senior-haircut">Senior Haircut (65+) – £23</option>
-                <option value="young-gents">Young Gents (0–12) – £20</option>
-                <option value="young-gents-skin-fade">Young Gents Skin Fade (4–12) – £24</option>
-            </optgroup>
-            <optgroup label="Extras">
-                <option value="full-facial">Full Facial Treatment – £24</option>
-                <option value="beard-dyeing">Beard Dyeing – £24</option>
-                <option value="face-mask">Face Mask – £12</option>
-                <option value="face-steam">Face Steam – £12</option>
-                <option value="threading">Threading – £10</option>
-                <option value="waxing">Waxing (Nose & Ears) – £10</option>
-                <option value="shape-up-clean-up">Shape Up & Clean Up – £20</option>
-                <option value="wash-hot-towel">Wash, Style & Hot Towel – £10</option>
-            </optgroup>
-        </select>
+    <select id="time" name="time" required class="input-field">
+        <option value="" disabled selected>Select Time</option>
+    </select>
 
-        <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
-    </form>
+    <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
+</form>
 
 <div class="social-buttons">
 
