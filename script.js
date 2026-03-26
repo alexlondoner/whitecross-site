@@ -179,7 +179,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('afterHoursPopup').style.display = 'flex';
                 return;
             }
-
+        // BURAYA EKLE:
+     if (selectedTimeOpt && selectedTimeOpt.disabled) {
+     alert('This time slot is unavailable. Please select a different time or date.');
+                return;
+}
             const stripeLinks = {
                 "full-experience": "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
@@ -206,10 +210,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const depositLinks = {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
-            const barberVal = document.getElementById('barber').value;
-            const assignedBarber = selectedTimeOpt && selectedTimeOpt.dataset ? selectedTimeOpt.dataset.assignedBarber : null;
+          const barberVal = document.getElementById('barber').value;
 
             window._pendingFormData = {
                 name: document.getElementById('name').value,
@@ -218,9 +221,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 date: document.getElementById('date').value,
                 time: document.getElementById('time').value,
                 service: service,
-                barber: barberVal === 'no-preference' ? (assignedBarber || 'alex') : barberVal
+                barber: barberVal === 'no-preference' 
+                    ? (selectedTimeOpt && selectedTimeOpt.dataset && selectedTimeOpt.dataset.assignedBarber 
+                        ? selectedTimeOpt.dataset.assignedBarber 
+                        : 'alex') 
+                    : barberVal
             };
-
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
 
             if (extras.includes(service)) {
