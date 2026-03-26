@@ -261,7 +261,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkAvailability(date) {
-        const barber = document.getElementById('barber')?.value || 'no-preference';
+    const barberEl = document.getElementById('barber');
+    const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';        
         if (!date) return;
         const url = 'https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec?date=' + date + '&barber=' + barber;
         fetch(url)
