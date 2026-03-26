@@ -24,7 +24,7 @@ const stories = {
     wash_style_hot_towel: { title: "Wash, Style & Hot Towel", content: `<p><strong>A grooming service that combines hair washing, styling, and relaxation.</strong></p><p>Your hair is washed, professionally styled, and finished with a soothing hot towel treatment. Perfect before an event, meeting, or night out when you want to feel fresh and well-presented.</p>` }
 };
 
-* --- MODAL FUNCTIONS --- */
+/* --- MODAL FUNCTIONS --- */
 function openStory(type) {
     const modal = document.getElementById('infoModal');
     const title = document.getElementById('modal-title');
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
             timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
             const currentHour = new Date().getHours();
             const currentMinute = new Date().getMinutes();
-            
+
             for (let h = 9; h <= 21; h++) {
                 for (let m of [0, 30]) {
                     if (h === 21 && m > 0) continue;
@@ -81,12 +81,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     timeSelect.appendChild(opt);
                 }
             }
-            // Availability kontrolü
-                    checkAvailability(selectedDate);
-        
+            checkAvailability(selectedDate);
         });
     }
- /* HOURS WIDGET */
+
+    /* PHONE VALIDATION */
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function () {
+            let v = this.value.replace(/[^0-9+\s]/g, '');
+            if (v && !v.startsWith('+')) v = '+' + v;
+            this.value = v;
+        });
+        phoneInput.addEventListener('blur', function () {
+            const phoneRegex = /^\+[0-9]{1,3}\s?[0-9]{6,14}$/;
+            if (this.value && !phoneRegex.test(this.value)) {
+                this.style.borderColor = '#ff6b6b';
+            } else {
+                this.style.borderColor = '#333';
+            }
+        });
+    }
+
+    /* EMAIL VALIDATION */
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('blur', function () {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (this.value && !emailRegex.test(this.value)) {
+                this.style.borderColor = '#ff6b6b';
+            } else {
+                this.style.borderColor = '#333';
+            }
+        });
+    }
+
+    /* HOURS WIDGET */
     (function () {
         const schedule = [
             { day: 'Monday', open: '09:00', close: '19:00' },
@@ -103,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const todayIdx = jsToSchedule[now.getDay()];
 
         function timeToMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-        function format12(t) { 
+        function format12(t) {
             const [h, m] = t.split(':').map(Number);
             return `${h % 12 || 12}:${m === 0 ? '00' : m} ${h >= 12 ? 'PM' : 'AM'}`;
         }
@@ -143,7 +173,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!service) return alert("Select a service.");
 
             const timeEl = document.getElementById('time');
-            const isAfterHours = timeEl.options[timeEl.selectedIndex]?.dataset.afterHours === 'true';
+            const selectedTimeOpt = timeEl.options[timeEl.selectedIndex];
+            const isAfterHours = selectedTimeOpt?.dataset.afterHours === 'true';
             if (isAfterHours) {
                 document.getElementById('afterHoursPopup').style.display = 'flex';
                 return;
@@ -178,23 +209,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
             };
 
+            const barberVal = document.getElementById('barber').value;
+            const assignedBarber = selectedTimeOpt?.dataset.assignedBarber;
+
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 date: document.getElementById('date').value,
                 time: document.getElementById('time').value,
-                service: service
+                service: service,
+                barber: barberVal === 'no-preference' ? (assignedBarber || 'alex') : barberVal
             };
 
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
-            
+
             if (extras.includes(service)) {
                 proceedToPayment(stripeLinks[service], 'FULL');
             } else {
                 document.getElementById('paymentChoicePopup').style.display = 'flex';
-                document.getElementById('btnFullPayment').onclick = () => proceedToPayment(stripeLinks[service], 'FULL');
-                document.getElementById('btnDeposit').onclick = () => proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                document.getElementById('btnFullPayment').onclick = () => {
+                    document.getElementById('paymentChoicePopup').style.display = 'none';
+                    proceedToPayment(stripeLinks[service], 'FULL');
+                };
+                document.getElementById('btnDeposit').onclick = () => {
+                    document.getElementById('paymentChoicePopup').style.display = 'none';
+                    proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                };
             }
         });
     }
@@ -203,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = window._pendingFormData;
         data.paymentType = type;
         data.status = 'PENDING';
-        data.bookingId = 'WCB-' + Date.now(); 
+        data.bookingId = 'WCB-' + Date.now();
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         const popup = document.getElementById('successPopup');
@@ -218,18 +259,16 @@ document.addEventListener('DOMContentLoaded', function () {
             mode: "no-cors",
             body: JSON.stringify(data)
         }).finally(() => { setTimeout(() => window.location.href = url, 800); });
-
-
     }
-function checkAvailability(date) {
+
+    function checkAvailability(date) {
         const barber = document.getElementById('barber')?.value || 'no-preference';
         if (!date) return;
         const url = 'https://script.google.com/macros/s/AKfycbxpM6HNF-i2a3uXIP3DxgqGVRY3e0bNL_3M7-_9Bto9A5Qd1LcN8AZrJOPurCMCIY29/exec?date=' + date + '&barber=' + barber;
         fetch(url)
             .then(r => r.json())
             .then(data => {
-                if (!data.busy) return;
-                const busy = data.busy;
+                const BUFFER = 10 * 60 * 1000;
                 timeSelect.querySelectorAll('option').forEach(opt => {
                     if (!opt.value) return;
                     const match = opt.value.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -242,12 +281,34 @@ function checkAvailability(date) {
                     const slotTime = new Date(date + 'T00:00:00');
                     slotTime.setHours(h, m, 0, 0);
                     const slotMs = slotTime.getTime();
-                    const BUFFER = 10 * 60 * 1000;
-                    const isBusy = busy.some(b => slotMs >= (b.start - BUFFER) && slotMs < (b.end + BUFFER));
-                    if (isBusy) {
-                        opt.disabled = true;
-                        opt.textContent = opt.value + ' — Unavailable';
-                        opt.style.color = '#666';
+
+                    function isBusySlot(busyList) {
+                        return (busyList || []).some(b => slotMs >= (b.start - BUFFER) && slotMs < (b.end + BUFFER));
+                    }
+
+                    if (data.mode === 'single') {
+                        if (isBusySlot(data.busy)) {
+                            opt.disabled = true;
+                            opt.textContent = opt.value + ' — Unavailable';
+                            opt.style.color = '#666';
+                        }
+                    } else if (data.mode === 'preference') {
+                        const alexBusy = isBusySlot(data.alexBusy);
+                        const ardaBusy = isBusySlot(data.ardaBusy);
+
+                        if (alexBusy && ardaBusy) {
+                            opt.disabled = true;
+                            opt.textContent = opt.value + ' — Unavailable';
+                            opt.style.color = '#666';
+                        } else if (!alexBusy) {
+                            opt.dataset.assignedBarber = 'alex';
+                        } else if (!ardaBusy) {
+                            opt.dataset.assignedBarber = 'arda';
+                        } else {
+                            const alexCount = (data.alexBusy || []).length;
+                            const ardaCount = (data.ardaBusy || []).length;
+                            opt.dataset.assignedBarber = alexCount <= ardaCount ? 'alex' : 'arda';
+                        }
                     }
                 });
             })
@@ -297,6 +358,5 @@ function checkAvailability(date) {
         }
         window.history.replaceState({}, '', window.location.pathname);
     }
-}
 
 });
