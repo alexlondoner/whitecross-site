@@ -24,7 +24,7 @@ const stories = {
     wash_style_hot_towel: { title: "Wash, Style & Hot Towel", content: `<p><strong>A grooming service that combines hair washing, styling, and relaxation.</strong></p><p>Your hair is washed, professionally styled, and finished with a soothing hot towel treatment. Perfect before an event, meeting, or night out when you want to feel fresh and well-presented.</p>` }
 };
 
-/* --- MODAL FUNCTIONS --- */
+* --- MODAL FUNCTIONS --- */
 function openStory(type) {
     const modal = document.getElementById('infoModal');
     const title = document.getElementById('modal-title');
@@ -86,8 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         });
     }
-
-    /* HOURS WIDGET */
+ /* HOURS WIDGET */
     (function () {
         const schedule = [
             { day: 'Monday', open: '09:00', close: '19:00' },
@@ -220,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify(data)
         }).finally(() => { setTimeout(() => window.location.href = url, 800); });
 
-        
+
     }
 function checkAvailability(date) {
         const barber = document.getElementById('barber')?.value || 'no-preference';
@@ -264,7 +263,6 @@ function checkAvailability(date) {
     }
 
     /* ACCORDION */
-    /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(t => {
         t.addEventListener("click", () => {
             const target = document.querySelector(`.${t.dataset.target}-content`);
@@ -299,4 +297,6 @@ function checkAvailability(date) {
         }
         window.history.replaceState({}, '', window.location.pathname);
     }
+}
+
 });
