@@ -1178,3 +1178,56 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         min-width: 0;
     }
 }
+.time-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.time-slot-btn {
+    background: #000;
+    border: 1.5px solid #333;
+    color: #aaa;
+    padding: 10px 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.time-slot-btn:hover:not(.unavailable) {
+    border-color: #d4af37;
+    color: #d4af37;
+}
+
+.time-slot-btn.selected {
+    background: linear-gradient(135deg, #d4af37, #b8860b);
+    border-color: #d4af37;
+    color: #000;
+    font-weight: 800;
+}
+
+.time-slot-btn.unavailable {
+    border-color: #1a1a1a;
+    color: #333;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.time-slot-btn.after-hours {
+    border-color: #2a2a1a;
+    color: #666;
+    font-size: 0.68rem;
+}
+
+.time-slots-empty {
+    color: #555;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 16px 0;
+    font-style: italic;
+}

@@ -49,41 +49,16 @@ document.addEventListener('click', function (event) {
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
- 
     /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
-    const timeSelect = document.getElementById('time');
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    if (dateInput && timeSelect) {
+    if (dateInput) {
         dateInput.setAttribute('min', todayStr);
         dateInput.value = '';
         dateInput.addEventListener('change', function () {
-            const selectedDate = this.value;
-            const isToday = selectedDate === todayStr;
-            timeSelect.innerHTML = '<option value="" disabled selected>Select Time</option>';
-            const currentHour = new Date().getHours();
-            const currentMinute = new Date().getMinutes();
-
-            for (let h = 9; h <= 21; h++) {
-                for (let m of [0, 30]) {
-                    if (h === 21 && m > 0) continue;
-                    if (isToday) {
-                        if (h < currentHour || (h === currentHour && m <= currentMinute)) continue;
-                    }
-                    const hour12 = h % 12 || 12;
-                    const ampm = h >= 12 ? 'PM' : 'AM';
-                    let label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
-                    if (h >= 19) label += " (After Hours)";
-                    const opt = document.createElement('option');
-                    opt.value = label;
-                    opt.textContent = label;
-                    if (h >= 19) opt.dataset.afterHours = 'true';
-                    timeSelect.appendChild(opt);
-                }
-            }
-            checkAvailability(selectedDate);
+            checkAvailability(this.value);
         });
     }
 
@@ -179,18 +154,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const service = document.getElementById('service').value;
             if (!service) return alert("Select a service.");
 
-            const timeEl = document.getElementById('time');
-            const selectedTimeOpt = timeEl.options[timeEl.selectedIndex];
-            const isAfterHours = selectedTimeOpt?.dataset.afterHours === 'true';
+            const hiddenTime = document.getElementById('time');
+            const selectedTime = hiddenTime.value;
+            const isAfterHours = hiddenTime.dataset.afterHours === 'true';
+
+            if (!selectedTime) {
+                alert('Please select a time slot.');
+                return;
+            }
+
             if (isAfterHours) {
                 document.getElementById('afterHoursPopup').style.display = 'flex';
                 return;
             }
-    
-     if (selectedTimeOpt && selectedTimeOpt.disabled) {
-     alert('This time slot is unavailable. Please select a different time or date.');
-                return;
-}
+
             const stripeLinks = {
                 "full-experience": "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
@@ -219,21 +196,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
-          const barberVal = document.getElementById('barber').value;
+
+            const barberVal = document.getElementById('barber').value;
 
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 date: document.getElementById('date').value,
-                time: document.getElementById('time').value,
+                time: selectedTime,
                 service: service,
-                barber: barberVal === 'no-preference' 
-                    ? (selectedTimeOpt && selectedTimeOpt.dataset && selectedTimeOpt.dataset.assignedBarber 
-                        ? selectedTimeOpt.dataset.assignedBarber 
-                        : 'alex') 
+                barber: barberVal === 'no-preference'
+                    ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+                        ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+                        : 'alex')
                     : barberVal
             };
+
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
 
             if (extras.includes(service)) {
@@ -274,89 +253,157 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkAvailability(date) {
-    const barberEl = document.getElementById('barber');
-    const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
-    const serviceEl = document.getElementById('service');
-    const service = serviceEl ? serviceEl.value : '';
-    
-    const durationMap = {
-        "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 45,
-        "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
-        "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
-        "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
-        "young-gents-skin-fade": 25, "full-facial": 15, "beard-dyeing": 20,
-        "face-mask": 10, "face-steam": 10, "threading": 5,
-        "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
-    };
-    const duration = durationMap[service] || 30;
+        const barberEl = document.getElementById('barber');
+        const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
+        const serviceEl = document.getElementById('service');
+        const service = serviceEl ? serviceEl.value : '';
+        const timeSlotsGrid = document.getElementById('timeSlots');
+        const hiddenTime = document.getElementById('time');
 
-    if (!date) return;
+        const durationMap = {
+            "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 45,
+            "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
+            "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
+            "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
+            "young-gents-skin-fade": 25, "full-facial": 15, "beard-dyeing": 20,
+            "face-mask": 10, "face-steam": 10, "threading": 5,
+            "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
+        };
+        const duration = durationMap[service] || 30;
+
+        if (!date) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '';
+            return;
+        }
+
+        const slots = [];
+        const now2 = new Date();
+        const todayStr2 = now2.toISOString().split('T')[0];
+        const isToday = date === todayStr2;
+        const currentHour = now2.getHours();
+        const currentMinute = now2.getMinutes();
+
+        for (let h = 9; h <= 21; h++) {
+            for (let m of [0, 30]) {
+                if (h === 21 && m > 0) continue;
+                if (isToday) {
+                    if (h < currentHour || (h === currentHour && m <= currentMinute)) continue;
+                }
+                const hour12 = h % 12 || 12;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
+                const afterHours = h >= 19;
+                slots.push({ label, h, m, afterHours });
+            }
+        }
+
+        if (slots.length === 0) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No available slots for today</div>';
+            return;
+        }
+
+        function renderSlots(busyFn) {
+            timeSlotsGrid.innerHTML = '';
+            hiddenTime.value = '';
+
+            slots.forEach(slot => {
+                const slotTime = new Date(date + 'T00:00:00');
+                slotTime.setHours(slot.h, slot.m, 0, 0);
+                const slotMs = slotTime.getTime();
+                const slotEnd = slotMs + duration * 60 * 1000;
+                const busy = busyFn(slotMs, slotEnd);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = slot.label + (slot.afterHours ? ' 🌙' : '');
+                btn.className = 'time-slot-btn' +
+                    (busy ? ' unavailable' : '') +
+                    (slot.afterHours ? ' after-hours' : '');
+                btn.dataset.time = slot.label;
+                btn.dataset.afterHours = slot.afterHours ? 'true' : 'false';
+                btn.dataset.assignedBarber = '';
+                btn.disabled = busy;
+
+                if (!busy) {
+                    btn.addEventListener('click', function () {
+                        timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        hiddenTime.value = slot.label;
+                        hiddenTime.dataset.afterHours = slot.afterHours ? 'true' : 'false';
+                        hiddenTime.dataset.assignedBarber = btn.dataset.assignedBarber || '';
+                    });
+                }
+
+                timeSlotsGrid.appendChild(btn);
+            });
+        }
+
+        if (!barber || barber === '') {
+            renderSlots(() => false);
+            return;
+        }
+
         const url = 'https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec?date=' + date + '&barber=' + barber;
+
         fetch(url)
             .then(r => r.json())
             .then(data => {
-                const BUFFER = 10 * 60 * 1000;
-                timeSelect.querySelectorAll('option').forEach(opt => {
-                    if (!opt.value) return;
-                    const match = opt.value.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                    if (!match) return;
-                    let h = parseInt(match[1]);
-                    let m = parseInt(match[2]);
-                    const ampm = match[3].toUpperCase();
-                    if (ampm === 'PM' && h !== 12) h += 12;
-                    if (ampm === 'AM' && h === 12) h = 0;
-                    const slotTime = new Date(date + 'T00:00:00');
-                    slotTime.setHours(h, m, 0, 0);
-                    const slotMs = slotTime.getTime();
+                renderSlots((slotMs, slotEnd) => {
+                    function isBusy(busyList) {
+                        return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
+                    }
+                    if (data.mode === 'single') return isBusy(data.busy);
+                    if (data.mode === 'preference') return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
+                    return false;
+                });
 
-function isBusySlot(busyList) {
-    const serviceDurationMs = duration * 60 * 1000;
-    const slotEnd = slotMs + serviceDurationMs;
-    return (busyList || []).some(b =>
-        slotMs < b.end && slotEnd > b.start
-    );
-}
+                if (data.mode === 'preference') {
+                    timeSlotsGrid.querySelectorAll('.time-slot-btn:not(.unavailable)').forEach(btn => {
+                        const match = btn.dataset.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                        if (!match) return;
+                        let h = parseInt(match[1]);
+                        let m = parseInt(match[2]);
+                        const ampm = match[3].toUpperCase();
+                        if (ampm === 'PM' && h !== 12) h += 12;
+                        if (ampm === 'AM' && h === 12) h = 0;
+                        const slotTime = new Date(date + 'T00:00:00');
+                        slotTime.setHours(h, m, 0, 0);
+                        const slotMs = slotTime.getTime();
+                        const slotEnd = slotMs + duration * 60 * 1000;
 
-                    if (data.mode === 'single') {
-                        if (isBusySlot(data.busy)) {
-                            opt.disabled = true;
-                            opt.textContent = opt.value + ' — Unavailable';
-                            opt.style.color = '#666';
+                        function isBusy(busyList) {
+                            return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
                         }
-                    } else if (data.mode === 'preference') {
-                        const alexBusy = isBusySlot(data.alexBusy);
-                        const ardaBusy = isBusySlot(data.ardaBusy);
 
-                        if (alexBusy && ardaBusy) {
-                            opt.disabled = true;
-                            opt.textContent = opt.value + ' — Unavailable';
-                            opt.style.color = '#666';
-                        } else if (!alexBusy) {
-                            opt.dataset.assignedBarber = 'alex';
-                        } else if (!ardaBusy) {
-                            opt.dataset.assignedBarber = 'arda';
-                        } else {
+                        const alexBusy = isBusy(data.alexBusy);
+                        const ardaBusy = isBusy(data.ardaBusy);
+
+                        if (!alexBusy) btn.dataset.assignedBarber = 'alex';
+                        else if (!ardaBusy) btn.dataset.assignedBarber = 'arda';
+                        else {
                             const alexCount = (data.alexBusy || []).length;
                             const ardaCount = (data.ardaBusy || []).length;
-                            opt.dataset.assignedBarber = alexCount <= ardaCount ? 'alex' : 'arda';
+                            btn.dataset.assignedBarber = alexCount <= ardaCount ? 'alex' : 'arda';
                         }
-                    }
-                });
+                    });
+                }
             })
             .catch(err => console.log('Availability check failed:', err));
     }
-const barberSelect = document.getElementById('barber');
+
+    /* Barber & Service listeners */
+    const barberSelect = document.getElementById('barber');
     if (barberSelect) {
-        barberSelect.addEventListener('change', function() {
-            const selectedDate = dateInput?.value;
-            if (selectedDate) dateInput.dispatchEvent(new Event('change'));
+        barberSelect.addEventListener('change', function () {
+            const selectedDate = dateInput && dateInput.value;
+            if (selectedDate) checkAvailability(selectedDate);
         });
     }
 
     const serviceSelect = document.getElementById('service');
     if (serviceSelect) {
-        serviceSelect.addEventListener('change', function() {
-            const selectedDate = dateInput?.value;
+        serviceSelect.addEventListener('change', function () {
+            const selectedDate = dateInput && dateInput.value;
             if (selectedDate) checkAvailability(selectedDate);
         });
     }
