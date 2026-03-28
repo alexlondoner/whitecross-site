@@ -49,6 +49,7 @@ document.addEventListener('click', function (event) {
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
+ 
     /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const timeSelect = document.getElementById('time');
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (dateInput && timeSelect) {
         dateInput.setAttribute('min', todayStr);
+        dateInput.value = '';
         dateInput.addEventListener('change', function () {
             const selectedDate = this.value;
             const isToday = selectedDate === todayStr;
@@ -147,8 +149,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const diff = timeToMins(today.close) - currentTime;
                 statusEl.innerHTML = `<span class="status-dot open"></span> OPEN NOW (Closes in ${Math.floor(diff/60)}h ${diff%60}m)`;
             } else {
-                const next = schedule[(todayIdx + 1) % 7];
-                statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens ${next.day} ${format12(next.open)})`;
+                const opensLaterToday = currentTime < timeToMins(today.open);
+                if (opensLaterToday) {
+                    statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens today at ${format12(today.open)})`;
+                } else {
+                    const next = schedule[(todayIdx + 1) % 7];
+                    statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens ${next.day} at ${format12(next.open)})`;
+                }
             }
         }
 
@@ -301,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const slotTime = new Date(date + 'T00:00:00');
                     slotTime.setHours(h, m, 0, 0);
                     const slotMs = slotTime.getTime();
-                    
+
 function isBusySlot(busyList) {
     const serviceDurationMs = duration * 60 * 1000;
     const slotEnd = slotMs + serviceDurationMs;
