@@ -1165,3 +1165,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     letter-spacing: 2px;
     text-transform: uppercase;
 }
+@media (max-width: 600px) {
+    .footer-links {
+        gap: 6px;
+    }
+    .footer-link-btn {
+        padding: 6px 10px;
+        font-size: 0.62rem;
+        letter-spacing: 1px;
+    }
+}

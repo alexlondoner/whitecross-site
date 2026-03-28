@@ -302,13 +302,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     slotTime.setHours(h, m, 0, 0);
                     const slotMs = slotTime.getTime();
 
-                   function isBusySlot(busyList) {
+             function isBusySlot(busyList) {
     const serviceDurationMs = duration * 60 * 1000;
     const slotEnd = slotMs + serviceDurationMs;
-                return (busyList || []).some(b =>
-        slotMs < (b.end + BUFFER) && slotEnd > (b.start - BUFFER)
+    return (busyList || []).some(b =>
+        slotMs < b.end && slotEnd > b.start
     );
-            }
+}
 
                     if (data.mode === 'single') {
                         if (isBusySlot(data.busy)) {
