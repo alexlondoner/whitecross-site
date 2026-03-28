@@ -262,12 +262,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const durationMap = {
             "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 45,
-            "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
-            "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
-            "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
-            "young-gents-skin-fade": 25, "full-facial": 15, "beard-dyeing": 20,
-            "face-mask": 10, "face-steam": 10, "threading": 5,
-            "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
+      "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
+      "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
+      "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
+      "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
+      "face-mask": 10, "face-steam": 10, "threading": 5,
+      "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
         };
         const duration = durationMap[service] || 30;
 
@@ -350,8 +350,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 renderSlots((slotMs, slotEnd) => {
                     function isBusy(busyList) {
-                        return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
-                    }
+                     return (busyList || []).some(b => slotMs >= b.start && slotMs < b.end);
+            }
                     if (data.mode === 'single') return isBusy(data.busy);
                     if (data.mode === 'preference') return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
                     return false;
