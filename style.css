@@ -1175,3 +1175,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         letter-spacing: 1px;
     }
 }
+.reviews-container {
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+
+.reviews-section {
+    overflow: hidden !important;
+    width: 100% !important;
+}
