@@ -25,6 +25,33 @@ const stories = {
 };
 
 /* --- MODAL FUNCTIONS --- */
+function selectService(value) {
+    const serviceHidden = document.getElementById('service');
+    if (serviceHidden) serviceHidden.value = value;
+
+    document.querySelectorAll('.service-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.dataset.value === value) btn.classList.add('selected');
+    });
+
+    const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
+    if (extras.includes(value)) {
+        const extrasGrid = document.getElementById('extras-grid');
+        const extrasArrow = document.querySelector('.service-arrow');
+        if (extrasGrid && extrasGrid.style.display === 'none') {
+            extrasGrid.style.display = 'flex';
+            extrasGrid.style.flexDirection = 'column';
+            extrasGrid.style.gap = '6px';
+            if (extrasArrow) extrasArrow.classList.add('open');
+        }
+    }
+
+    closeInfo();
+    document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
+    const dateInput = document.getElementById('date');
+    if (dateInput && dateInput.value) checkAvailability(dateInput.value);
+}
+
 function openStory(type) {
     const modal = document.getElementById('infoModal');
     const title = document.getElementById('modal-title');
@@ -390,23 +417,46 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => console.log('Availability check failed:', err));
     }
-
-    /* Barber & Service listeners */
-    const barberSelect = document.getElementById('barber');
-    if (barberSelect) {
-        barberSelect.addEventListener('change', function () {
+/* Service Extras Accordion */
+    document.querySelectorAll('.service-accordion-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const targetId = toggle.dataset.target;
+            const content = document.getElementById(targetId);
+            const arrow = toggle.querySelector('.service-arrow');
+            if (content.style.display === 'none') {
+                content.style.display = 'flex';
+                content.style.flexDirection = 'column';
+                content.style.gap = '6px';
+                arrow.classList.add('open');
+            } else {
+                content.style.display = 'none';
+                arrow.classList.remove('open');
+            }
+        });
+    });
+    
+/* Barber & Service listeners */
+    const barberHidden = document.getElementById('barber');
+    document.querySelectorAll('.barber-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.barber-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            barberHidden.value = btn.dataset.value;
             const selectedDate = dateInput && dateInput.value;
             if (selectedDate) checkAvailability(selectedDate);
         });
-    }
+    });
 
-    const serviceSelect = document.getElementById('service');
-    if (serviceSelect) {
-        serviceSelect.addEventListener('change', function () {
+    const serviceHidden = document.getElementById('service');
+    document.querySelectorAll('.service-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            serviceHidden.value = btn.dataset.value;
             const selectedDate = dateInput && dateInput.value;
             if (selectedDate) checkAvailability(selectedDate);
         });
-    }
+    });
 
     /* ACCORDION */
     document.querySelectorAll(".accordion-toggle").forEach(t => {
