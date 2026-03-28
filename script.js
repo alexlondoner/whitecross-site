@@ -301,8 +301,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const slotTime = new Date(date + 'T00:00:00');
                     slotTime.setHours(h, m, 0, 0);
                     const slotMs = slotTime.getTime();
-
-             function isBusySlot(busyList) {
+                    
+function isBusySlot(busyList) {
     const serviceDurationMs = duration * 60 * 1000;
     const slotEnd = slotMs + serviceDurationMs;
     return (busyList || []).some(b =>
