@@ -26,25 +26,8 @@ const stories = {
 
 /* --- MODAL FUNCTIONS --- */
 function selectService(value) {
-    const serviceHidden = document.getElementById('service');
-    if (serviceHidden) serviceHidden.value = value;
-
-    document.querySelectorAll('.service-btn').forEach(btn => {
-        btn.classList.remove('selected');
-        if (btn.dataset.value === value) btn.classList.add('selected');
-    });
-
-    const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
-    if (extras.includes(value)) {
-        const extrasGrid = document.getElementById('extras-grid');
-        const extrasArrow = document.querySelector('.service-arrow');
-        if (extrasGrid && extrasGrid.style.display === 'none') {
-            extrasGrid.style.display = 'flex';
-            extrasGrid.style.flexDirection = 'column';
-            extrasGrid.style.gap = '6px';
-            if (extrasArrow) extrasArrow.classList.add('open');
-        }
-    }
+    const serviceEl = document.getElementById('service');
+    if (serviceEl) serviceEl.value = value;
 
     closeInfo();
     document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
