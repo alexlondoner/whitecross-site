@@ -17,48 +17,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Us | I CUT Whitecross Barbers – Premium Barbershop EC1Y London</title>
     <meta name="description" content="Learn about I CUT Whitecross Barbers – a premium barbershop at 136 Whitecross Street EC1Y 8QJ London. Our story, values, team and location in Clerkenwell.">
-    <meta name="keywords" content="about I CUT Whitecross Barbers, Clerkenwell barbershop, premium barbers London, EC1Y barbers, barbers Whitecross Street">
-
-    <meta name="geo.position" content="51.524013;-0.093342">
-    <meta name="ICBM" content="51.524013, -0.093342">
-    <meta name="geo.placename" content="Whitecross Street, Clerkenwell, London, EC1Y 8QJ">
-    <meta name="geo.region" content="GB-ENG">
-
-    <meta property="og:title" content="About I CUT Whitecross Barbers | EC1Y London">
-    <meta property="og:description" content="Premium barbershop at 136 Whitecross Street EC1Y 8QJ. Our story, values, and what makes us different.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://whitecrossbarbers.com/about.html">
-    <meta property="og:image" content="https://whitecrossbarbers.com/whitecross-logo.png">
-
-    <link rel="canonical" href="https://whitecrossbarbers.com/about.html">
-
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Barbershop",
-      "name": "I CUT Whitecross Barbers",
-      "image": "https://whitecrossbarbers.com/whitecross-logo.png",
-      "url": "https://whitecrossbarbers.com",
-      "telephone": "+442036215929",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "136 Whitecross Street",
-        "addressLocality": "Clerkenwell",
-        "addressRegion": "London",
-        "postalCode": "EC1Y 8QJ",
-        "addressCountry": "GB"
-      },
-      "openingHoursSpecification": [
-        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "09:00", "closes": "19:00" },
-        { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "10:00", "closes": "16:00" }
-      ]
-    }
-    </script>
-
+    
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
+        body {
+            background-color: #000;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+        }
         .page-wrap {
             max-width: 600px;
             margin: 0 auto;
@@ -84,17 +54,11 @@
             gap: 6px;
         }
         .back-link:hover { color: #fff; }
-        .page-logo {
-            width: 50px;
-            height: auto;
-        }
-        .page-header {
-            text-align: center;
-            margin-bottom: 36px;
-        }
+        .page-logo { width: 50px; height: auto; }
+        .page-header { text-align: center; margin-bottom: 36px; }
         .page-header h1 {
             font-family: 'Oswald', sans-serif;
-            font-size: 2rem;
+            font-size: 2.2rem;
             letter-spacing: 4px;
             text-transform: uppercase;
             background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
@@ -121,7 +85,7 @@
         .about-card h2 {
             font-family: 'Oswald', sans-serif;
             color: #d4af37;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             letter-spacing: 2px;
             text-transform: uppercase;
             margin-bottom: 14px;
@@ -130,16 +94,15 @@
         }
         .about-card p {
             color: #ccc;
-            font-size: 0.88rem;
-            line-height: 1.9;
+            font-size: 0.9rem;
+            line-height: 1.8;
             margin-bottom: 12px;
         }
-        .about-card p:last-child { margin-bottom: 0; }
         .values-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
-            margin-top: 4px;
+            margin-top: 15px;
         }
         .value-item {
             background: rgba(212,175,55,0.06);
@@ -152,81 +115,43 @@
         .value-item strong {
             display: block;
             color: #d4af37;
-            font-size: 0.78rem;
-            letter-spacing: 1px;
+            font-size: 0.8rem;
             text-transform: uppercase;
             margin-bottom: 4px;
-        }
-        .value-item p {
-            color: #888;
-            font-size: 0.78rem;
-            line-height: 1.5;
-            margin: 0 !important;
         }
         .info-row {
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #1a1a1a;
-            font-size: 0.88rem;
+            font-size: 0.9rem;
         }
-        .info-row:last-child { border-bottom: none; }
-        .info-row .info-icon { font-size: 1rem; flex-shrink: 0; margin-top: 2px; }
-        .info-row .info-text { color: #ccc; line-height: 1.7; }
-        .info-row .info-text a { color: #d4af37; text-decoration: none; }
-        .info-row .info-text a:hover { text-decoration: underline; }
-        .cta-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 24px;
-            flex-wrap: wrap;
-        }
+        .info-text a { color: #d4af37; text-decoration: none; }
+        .cta-row { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
         .cta-btn {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 14px 16px;
+            padding: 15px;
             border-radius: 10px;
             font-weight: 800;
-            font-size: 0.82rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
             text-decoration: none;
-            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
         }
-        .cta-primary {
-            background: linear-gradient(135deg, #d4af37, #b8860b);
-            color: #000;
-        }
-        .cta-secondary {
-            background: transparent;
-            color: #d4af37;
-            border: 2px solid #d4af37;
-        }
-        .cta-whatsapp {
-            background: #25D366;
-            color: #000;
-        }
-        .map-embed {
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(212,175,55,0.3);
-            margin-top: 16px;
-        }
-        .map-embed iframe {
-            width: 100%;
-            height: 220px;
-            border: none;
-            display: block;
-        }
+        .cta-primary { background: linear-gradient(135deg, #d4af37, #b8860b); color: #000; }
+        .cta-whatsapp { background: #25D366; color: #000; }
+        .map-embed { border-radius: 12px; overflow: hidden; border: 1px solid rgba(212,175,55,0.3); margin-top: 16px; }
+        .map-embed iframe { width: 100%; height: 220px; border: none; display: block; }
         @keyframes goldShine {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
+        footer { text-align: center; padding: 40px 20px; border-top: 1px solid #333; margin-top: 40px; }
     </style>
 </head>
 <body>
@@ -234,100 +159,63 @@
 <div class="page-wrap">
 
     <nav class="page-nav">
-        <a href="index.html" class="back-link">← Back to Home</a>
-        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="page-logo">
+        <a href="index.html" class="back-link">← Back</a>
+        <img src="whitecross-logo.png" alt="I CUT Logo" class="page-logo">
         <a href="index.html#bookingForm" class="back-link">Book Now →</a>
     </nav>
 
     <div class="page-header">
         <h1>About Us</h1>
-        <p>136 Whitecross Street · EC1Y 8QJ · London</p>
+        <p>136 Whitecross Street · London</p>
     </div>
-
-    <div class="about-card" style="border: 1px dashed #d4af37; background: rgba(212,175,55,0.05); text-align: center;">
-        <h2 style="color: #fff; border: none; margin-bottom: 10px;">⚡ Lunch Break & Easy Booking</h2>
-        <p>Pressed for time? We are the specialists for the <strong>perfect lunch break haircut</strong> on Whitecross Street. Grab your food from the market and step in for a fast, sharp <strong>beard trim</strong> or shape-up.</p>
-        
-        <hr style="border: 0; border-top: 1px solid rgba(212,175,55,0.2); margin: 20px 0;">
-        
-        <p style="font-weight: 700; color: #d4af37; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">No Accounts. No Passwords. No Stress.</p>
-        <p style="margin-bottom: 20px;">Our priority booking takes only <strong>60 seconds</strong>. Just fill the form and <strong>secure your seat</strong> instantly.</p>
-        
-        <a href="index.html#bookingForm" style="display: inline-block; background: #d4af37; color: #000; padding: 12px 30px; border-radius: 8px; font-weight: 800; text-transform: uppercase; text-decoration: none; font-size: 0.85rem; letter-spacing: 1px; transition: 0.3s; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
-            ✂️ Book Your Seat Now
-        </a>
-        
-        <p style="font-size: 0.75rem; color: #888; margin-top: 15px;">Walk-ins are always welcome, but booking ensures you skip the queue!</p>
+    <div class="about-card">
+        <h2>Our Story</h2>
+        <p>Welcome to <strong style="color:#d4af37;">I CUT Whitecross Barbers</strong> — a premium barbershop at the heart of Clerkenwell, London. We've built our reputation on precision, care, and an uncompromising standard of grooming.</p>
+        <p>Located on <strong>Whitecross Street</strong>, we serve clients from Clerkenwell, Barbican, Old Street, Farringdon, Shoreditch and beyond. Whether you're a city professional or a local resident — you'll always be welcomed.</p>
+        <p>We believe a great haircut is more than just a trim. <strong>It's a full experience.</strong> From the moment you sit in the chair, every detail is considered: your hair type, face shape, and personal style.</p>
+        <div style="border-top: 1px solid #333; margin-top: 15px; padding-top: 15px;">
+            <p>At <strong>I CUT</strong>, we don't just follow trends — we craft looks that belong to you. Our mission is to ensure every gentleman feels completely renewed.</p>
+        </div>
     </div>
 
     <div class="about-card">
         <h2>What We Stand For</h2>
         <div class="values-grid">
-            <div class="value-item">
-                <div class="value-icon">✂️</div>
-                <strong>Precision</strong>
-                <p>Every cut is tailored to you — no two clients are the same.</p>
-            </div>
-            <div class="value-item">
-                <div class="value-icon">👑</div>
-                <strong>Quality</strong>
-                <p>Premium products and techniques on every service.</p>
-            </div>
-            <div class="value-item">
-                <div class="value-icon">🤝</div>
-                <strong>Respect</strong>
-                <p>Your time is valued. We run on time, every time.</p>
-            </div>
-            <div class="value-item">
-                <div class="value-icon">✨</div>
-                <strong>Experience</strong>
-                <p>A relaxing visit from start to finish, every visit.</p>
-            </div>
+            <div class="value-item"><div class="value-icon">✂️</div><strong>Precision</strong><p style="font-size: 0.75rem; margin: 5px 0 0;">Tailored to you.</p></div>
+            <div class="value-item"><div class="value-icon">👑</div><strong>Quality</strong><p style="font-size: 0.75rem; margin: 5px 0 0;">Premium products.</p></div>
+            <div class="value-item"><div class="value-icon">🤝</div><strong>Respect</strong><p style="font-size: 0.75rem; margin: 5px 0 0;">We run on time.</p></div>
+            <div class="value-item"><div class="value-icon">✨</div><strong>Experience</strong><p style="font-size: 0.75rem; margin: 5px 0 0;">Relaxing visit.</p></div>
         </div>
+    </div>
+    
+  <div class="about-card" style="border: 1px dashed #d4af37; background: rgba(212,175,55,0.05); text-align: center;">
+        <h2 style="color: #fff; border: none; margin-bottom: 10px;">⚡ Lunch Break & Easy Booking</h2>
+        <p>Pressed for time? We are the specialists for the <strong>perfect lunch break haircut</strong> on Whitecross Street. Grab your food from the market and step in for a fast, sharp <strong>beard trim</strong> or shape-up.</p>
+        <p style="font-weight: 700; color: #d4af37; margin-top: 15px; text-transform: uppercase;">No Accounts. No Stress.</p>
+        <p>Priority booking takes only <strong>60 seconds</strong>. Secure your seat instantly.</p>
+        <a href="index.html#bookingForm" style="display: inline-block; background: #d4af37; color: #000; padding: 12px 25px; border-radius: 8px; font-weight: 800; text-transform: uppercase; text-decoration: none; margin-top: 10px;">✂️ Book Seat Now</a>
     </div>
 
     <div class="about-card">
         <h2>Find Us</h2>
-        <div class="info-row">
-            <span class="info-icon">📍</span>
-            <span class="info-text">136 Whitecross Street, Clerkenwell, London <strong style="color:#fff;">EC1Y 8QJ</strong></span>
-        </div>
-        <div class="info-row">
-            <span class="info-icon">📞</span>
-            <span class="info-text"><a href="tel:+442036215929">020 3621 5929</a></span>
-        </div>
-        <div class="info-row">
-            <span class="info-icon">🕐</span>
-            <span class="info-text">
-                Mon – Sat: <strong style="color:#fff;">9:00am – 7:00pm</strong><br>
-                Sunday: <strong style="color:#fff;">10:00am – 4:00pm</strong>
-            </span>
-        </div>
-        <div class="info-row">
-            <span class="info-icon">🚇</span>
-            <span class="info-text">Nearest stations: Barbican, Old Street, Farringdon</span>
-        </div>
+        <div class="info-row">📍 <span class="info-text">136 Whitecross St, London <strong>EC1Y 8QJ</strong></span></div>
+        <div class="info-row">📞 <span class="info-text"><a href="tel:+442036215929">020 3621 5929</a></span></div>
+        <div class="info-row">🕐 <span class="info-text">Mon–Sat: 9am–7pm | Sun: 10am–4pm</span></div>
         <div class="map-embed">
-            <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2482.4831846433544!2d-0.09553062337839655!3d51.52269997181669!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48761b56f8f55555%3A0x6b864f84c8a5a5a5!2s136%20Whitecross%20St%2C%20London%20EC1Y%208QJ!5e0!3m2!1sen!2suk!4v1700000000000!5m2!1sen!2suk"
-                allowfullscreen=""
-                loading="lazy">
-            </iframe>
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2482.441584094194!2d-0.09591702337837016!3d51.52439367181594!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48761b56fc38496f%3A0xc39f9976378e994e!2s136%20Whitecross%20St%2C%20London%20EC1Y%208QJ!5e0!3m2!1sen!2suk!4v1710000000000!5m2!1sen!2suk" allowfullscreen="" loading="lazy"></iframe>
         </div>
     </div>
 
     <div class="cta-row">
         <a href="index.html" class="cta-btn cta-primary">📋 View Services</a>
-        <a href="https://wa.me/442036215929" target="_blank" class="cta-btn cta-whatsapp">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style="width:18px;"> WhatsApp
-        </a>
+        <a href="https://wa.me/442036215929" target="_blank" class="cta-btn cta-whatsapp">WhatsApp Us</a>
     </div>
 
 </div>
 
-<footer class="footer" style="text-align: center; padding: 40px 20px; border-top: 1px solid #333; margin-top: 40px;">
-    <p style="color: #888; font-size: 0.82rem; letter-spacing: 1px; text-transform: uppercase;">WHITE CROSS BARBERS • I CUT</p>
-    <p style="color: #555; font-size: 0.75rem; margin-top: 10px;">© 2026 I CUT Whitecross Barbers. Powered by Alex</p>
+<footer>
+    <p style="color: #888; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase;">WHITE CROSS BARBERS • I CUT</p>
+    <p style="color: #444; font-size: 0.7rem; margin-top: 10px;">© 2026 I CUT Whitecross Barbers. Powered by Alex</p>
 </footer>
 
 </body>
