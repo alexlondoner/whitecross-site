@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
            const barberVal = document.getElementById('barber').value || 'no-preference';
-            
+
              window._pendingFormData = {
               name: document.getElementById('name').value,
              email: document.getElementById('email').value,
@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbyX2mQj9nezY4tXeUerYxbq4EUZZOinttW305_abvuZG6jZuDaHNjs3tu5mD8JRB-4r/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -273,13 +273,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const hiddenTime = document.getElementById('time');
 
         const durationMap = {
-            "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 45,
-      "full-experience": 40, "senior-full-experience": 30, "skin-fade": 30,
+            "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
+      "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
       "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
-      "clipper-cut": 20, "senior-haircut": 20, "young-gents": 20,
+      "clipper-cut": 15, "senior-haircut": 20, "young-gents": 20,
       "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
       "face-mask": 10, "face-steam": 10, "threading": 5,
-      "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 15
+      "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
         };
         const duration = durationMap[service] || 30;
 
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbyX2mQj9nezY4tXeUerYxbq4EUZZOinttW305_abvuZG6jZuDaHNjs3tu5mD8JRB-4r/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbyX2mQj9nezY4tXeUerYxbq4EUZZOinttW305_abvuZG6jZuDaHNjs3tu5mD8JRB-4r/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
