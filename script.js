@@ -210,7 +210,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
            const barberVal = document.getElementById('barber').value || 'no-preference';
-
              window._pendingFormData = {
               name: document.getElementById('name').value,
              email: document.getElementById('email').value,
