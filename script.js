@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbym3aiA90OtwlGAa6FJQswQST4W9ItUGxsa9njdwolrdlvA32FobcdyDQVrnAVltSmf/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbym3aiA90OtwlGAa6FJQswQST4W9ItUGxsa9njdwolrdlvA32FobcdyDQVrnAVltSmf/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -400,23 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => console.log('Availability check failed:', err));
     }
-/* Service Extras Accordion */
-    document.querySelectorAll('.service-accordion-toggle').forEach(toggle => {
-        toggle.addEventListener('click', function() {
-            const targetId = toggle.dataset.target;
-            const content = document.getElementById(targetId);
-            const arrow = toggle.querySelector('.service-arrow');
-            if (content.style.display === 'none') {
-                content.style.display = 'flex';
-                content.style.flexDirection = 'column';
-                content.style.gap = '6px';
-                arrow.classList.add('open');
-            } else {
-                content.style.display = 'none';
-                arrow.classList.remove('open');
-            }
-        });
-    });
+
     
 /* Barber & Service listeners */
     const barberHidden = document.getElementById('barber');
@@ -470,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbym3aiA90OtwlGAa6FJQswQST4W9ItUGxsa9njdwolrdlvA32FobcdyDQVrnAVltSmf/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
@@ -478,3 +462,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+
