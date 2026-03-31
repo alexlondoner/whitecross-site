@@ -209,22 +209,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
             };
-
-            const barberVal = document.getElementById('barber').value;
-
-            window._pendingFormData = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                date: document.getElementById('date').value,
-                time: selectedTime,
-                service: service,
-                barber: barberVal === 'no-preference'
-                    ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-                        ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-                        : 'alex')
-                    : barberVal
-            };
+           const barberVal = document.getElementById('barber').value || 'no-preference';
+            
+             window._pendingFormData = {
+              name: document.getElementById('name').value,
+             email: document.getElementById('email').value,
+             phone: document.getElementById('phone').value,
+             date: document.getElementById('date').value,
+             time: selectedTime,
+            service: service,
+            barber: barberVal === 'no-preference'
+        ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+            ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+            : 'no-preference')
+        : barberVal
+};
 
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
 
@@ -258,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbwIZ3vtuMAR92w9ny04MMx8o1bZriMSfNIdtj4CBMe5__AH8w8FrbbrYoPx7zBTXm36/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -356,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbwIZ3vtuMAR92w9ny04MMx8o1bZriMSfNIdtj4CBMe5__AH8w8FrbbrYoPx7zBTXm36/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -457,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzmsjB2I68DVv06HZjNhKpyQftbmY3cLqSGXW43j72H-C6hWL2-ZWkZLPVjgbSbHasD/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbwIZ3vtuMAR92w9ny04MMx8o1bZriMSfNIdtj4CBMe5__AH8w8FrbbrYoPx7zBTXm36/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
