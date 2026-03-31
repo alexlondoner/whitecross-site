@@ -59,13 +59,16 @@ document.addEventListener('click', function (event) {
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
-    /* DATE & TIME LOGIC */
+   /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
     if (dateInput) {
         dateInput.setAttribute('min', todayStr);
+        const maxDate = new Date();
+        maxDate.setDate(maxDate.getDate() + 90);
+        dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
         dateInput.value = '';
         dateInput.addEventListener('change', function () {
             checkAvailability(this.value);
