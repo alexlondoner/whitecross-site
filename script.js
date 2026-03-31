@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzwRj4_7WINdmM3h1vKcBDYyo5rntgiUTQ6C8ef4MVKKGQF19gA8UAtJSs_Ku8YZYw/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzwRj4_7WINdmM3h1vKcBDYyo5rntgiUTQ6C8ef4MVKKGQF19gA8UAtJSs_Ku8YZYw/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzwRj4_7WINdmM3h1vKcBDYyo5rntgiUTQ6C8ef4MVKKGQF19gA8UAtJSs_Ku8YZYw/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbzi-qqmO4W2cYHbtHFAw_VaQj2m9Hd2R0x7Xs8V9GHXZIY0TuS02SkWPH4Gp-y-LeS0/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
