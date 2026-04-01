@@ -201,13 +201,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 "threading": "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
                 "waxing": "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
                 "shape-up-clean-up": "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-                "wash-hot-towel": "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
+                "wash-hot-towel": "https://buy.stripe.com/5kQbJ32P79X3bv37bRg360l"
             };
 
             const depositLinks = {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/test_dRm4gBexP8SZ9mV9jZg3601"
+                "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
             };
            const barberVal = document.getElementById('barber').value || 'no-preference';
              window._pendingFormData = {
