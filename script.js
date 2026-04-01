@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbw24hnkO9-vFv_uBBR5RUGbxFmQx71Qd9FK_yARuB-c437ObOd-PBAPw-DzzH_pJPw/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzZUwqBMOksRdS6NXcFAykMBPBDO0OSQ_885gZwfMRPoC6NyxvoIk8oB6VUw4Mh6XUO/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbw24hnkO9-vFv_uBBR5RUGbxFmQx71Qd9FK_yARuB-c437ObOd-PBAPw-DzzH_pJPw/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbzZUwqBMOksRdS6NXcFAykMBPBDO0OSQ_885gZwfMRPoC6NyxvoIk8oB6VUw4Mh6XUO/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -455,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pending) {
             const data = JSON.parse(pending);
             data.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbw24hnkO9-vFv_uBBR5RUGbxFmQx71Qd9FK_yARuB-c437ObOd-PBAPw-DzzH_pJPw/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbzZUwqBMOksRdS6NXcFAykMBPBDO0OSQ_885gZwfMRPoC6NyxvoIk8oB6VUw4Mh6XUO/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(data)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
