@@ -443,23 +443,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    /* STRIPE SUCCESS CHECK */
+  /* STRIPE SUCCESS CHECK */
     if (window.isStripeSuccess) {
         const popup = document.getElementById('successPopup');
+        const pending = sessionStorage.getItem('pendingBooking');
+        const bookingData = pending ? JSON.parse(pending) : null;
+        
         if (popup) {
-            document.getElementById('popup-icon').innerText = "✅";
-            document.getElementById('popup-title').innerText = "Confirmed!";
+            const name = bookingData ? bookingData.name.split(' ')[0] : '';
+            const date = bookingData ? bookingData.date : '';
+            const time = bookingData ? bookingData.time : '';
+            document.getElementById('popup-icon').innerText = "✂️";
+            document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
+            document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + date + " at " + time + ". Check your email for confirmation!";
             popup.style.display = 'flex';
         }
-        const pending = sessionStorage.getItem('pendingBooking');
-        if (pending) {
-            const data = JSON.parse(pending);
-            data.status = 'CONFIRMED';
+
+        if (bookingData) {
+            bookingData.status = 'CONFIRMED';
             fetch("https://script.google.com/macros/s/AKfycbzZUwqBMOksRdS6NXcFAykMBPBDO0OSQ_885gZwfMRPoC6NyxvoIk8oB6VUw4Mh6XUO/exec", {
-                method: "POST", mode: "no-cors", body: JSON.stringify(data)
+                method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
+
         window.history.replaceState({}, '', window.location.pathname);
     }
-
 });
