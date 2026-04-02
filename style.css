@@ -545,7 +545,7 @@ select.input-field optgroup {
 }
 
 .social-buttons .btn {
-  flex: 1;
+  flex: 0 1 auto;
   position: relative;
   overflow: hidden;
 }
@@ -569,8 +569,8 @@ select.input-field optgroup {
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   color: #fff;
   border: none;
+  max-width: 280px;
 }
-
 .btn-instagram:hover {
   filter: brightness(1.15);
   transform: translateY(-3px);

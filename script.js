@@ -242,6 +242,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+// Duplicate kontrolü
+const phone = document.getElementById('phone').value;
+const date = document.getElementById('date').value;
+
+const checkUrl = 'https://script.google.com/macros/s/AKfycbxi_wMQpmyK-3cOkkgA92zXLWqN_tluzpSzMu5W4teO63W00bRQR3whZ6RlIryHpgnQ/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+
+fetch(checkUrl)
+    .then(r => r.json())
+    .then(result => {
+        if (result.duplicate) {
+            if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
+                return;
+            }
+        }
+        // devam et
+        if (extras.includes(service)) {
+            proceedToPayment(stripeLinks[service], 'FULL');
+        } else {
+            document.getElementById('paymentChoicePopup').style.display = 'flex';
+            // ...
+        }
+    });
+    
     function proceedToPayment(url, type) {
         const data = window._pendingFormData;
         data.paymentType = type;
@@ -257,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzTp5q12YhQBUEELlAFP627dQqMuga4LpRIZqq5fj01ccKjaN76GL1EAb8w-0Az1PV2/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbxi_wMQpmyK-3cOkkgA92zXLWqN_tluzpSzMu5W4teO63W00bRQR3whZ6RlIryHpgnQ/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -355,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzTp5q12YhQBUEELlAFP627dQqMuga4LpRIZqq5fj01ccKjaN76GL1EAb8w-0Az1PV2/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbxi_wMQpmyK-3cOkkgA92zXLWqN_tluzpSzMu5W4teO63W00bRQR3whZ6RlIryHpgnQ/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -462,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bookingData) {
             bookingData.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzTp5q12YhQBUEELlAFP627dQqMuga4LpRIZqq5fj01ccKjaN76GL1EAb8w-0Az1PV2/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbxi_wMQpmyK-3cOkkgA92zXLWqN_tluzpSzMu5W4teO63W00bRQR3whZ6RlIryHpgnQ/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }

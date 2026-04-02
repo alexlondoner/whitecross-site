@@ -82,35 +82,6 @@
             text-transform: uppercase;
         }
 
-        /* FILTER TABS */
-        .filter-tabs {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }
-        .filter-tab {
-            background: #111;
-            border: 1px solid #333;
-            color: #888;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 7px 14px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.2s ease;
-        }
-        .filter-tab:hover,
-        .filter-tab.active {
-            background: rgba(212,175,55,0.12);
-            border-color: #d4af37;
-            color: #d4af37;
-        }
-
         /* GALLERY GRID */
         .gallery-grid-full {
             display: grid;
@@ -153,25 +124,6 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-        }
-        .gallery-card.placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .gallery-card.placeholder .ph-icon {
-            font-size: 1.8rem;
-            opacity: 0.2;
-        }
-        .gallery-card.placeholder .ph-label {
-            font-size: 0.65rem;
-            color: #444;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            text-align: center;
-            padding: 0 8px;
         }
 
         /* LIGHTBOX */
@@ -295,56 +247,50 @@
         <p>Fresh cuts · Every time</p>
     </div>
 
-    <!-- FILTER TABS -->
-    <div class="filter-tabs">
-        <button class="filter-tab active" onclick="filterGallery('all', this)">All</button>
-        <button class="filter-tab" onclick="filterGallery('fade', this)">Skin Fades</button>
-        <button class="filter-tab" onclick="filterGallery('scissor', this)">Scissor Cuts</button>
-        <button class="filter-tab" onclick="filterGallery('beard', this)">Beards</button>
-        <button class="filter-tab" onclick="filterGallery('full', this)">Full Grooming</button>
-    </div>
-
     <!-- GALLERY GRID -->
-    <!-- 
-        HOW TO ADD YOUR PHOTOS:
-        1. Name your photos: gallery1.jpg, gallery2.jpg ... gallery6.jpg (or more)
-        2. Upload them to your server in the same folder as this file
-        3. Replace the src="gallery1.jpg" with your actual filenames
-        4. Update the data-category to match: fade | scissor | beard | full
-        5. Update the data-label to describe the photo
-    -->
     <div class="gallery-grid-full" id="galleryGrid">
 
-        <div class="gallery-card" data-category="fade">
-            <img src="img/gallery1.jpeg" alt="Skin fade by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Skin Fade</span></div>
+        <div class="gallery-card">
+            <img src="img/gallery1.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
         </div>
 
-        <div class="gallery-card" data-category="scissor">
-            <img src="img/gallery2.jpeg" alt="Scissor cut by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Scissor Cut</span></div>
+        <div class="gallery-card">
+            <img src="img/gallery2.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
         </div>
 
-        <div class="gallery-card" data-category="beard">
-            <img src="img/gallery3.jpeg" alt="Beard trim by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Beard Trim</span></div>
+        <div class="gallery-card">
+            <img src="img/gallery3.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
         </div>
 
-        <div class="gallery-card" data-category="full">
-            <img src="img/gallery4.jpeg" alt="Full grooming by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Full Grooming</span></div>
+        <div class="gallery-card">
+            <img src="img/gallery4.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
         </div>
 
-        <div class="gallery-card" data-category="fade">
+        <div class="gallery-card">
             <img src="img/gallery5.jpeg" alt="Haircut by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Skin Fade</span></div>
+            <div class="gallery-overlay"></div>
         </div>
 
-        <div class="gallery-card" data-category="fade">
+        <div class="gallery-card">
             <img src="img/gallery6.jpeg" alt="Haircut by I CUT Whitecross Barbers">
-            <div class="gallery-overlay"><span>Skin Fade</span></div>
+            <div class="gallery-overlay"></div>
         </div>
-
+ <div class="gallery-card">
+            <img src="img/gallery7.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
+        </div>
+         <div class="gallery-card">
+            <img src="img/gallery8.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
+        </div>
+         <div class="gallery-card">
+            <img src="img/gallery9.jpeg" alt="Haircut by I CUT Whitecross Barbers">
+            <div class="gallery-overlay"></div>
+        </div>
     </div>
 
     <!-- INSTAGRAM CTA -->
@@ -371,15 +317,15 @@
 </div>
 
 <!-- WHATSAPP FLOAT -->
-<a href="https://wa.me/447879553312" class="whatsapp-float" target="_blank">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+<a href="https://wa.me/447470108578" class="whatsapp-float" target="_blank">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp I CUT Whitecross Barbers">
 </a>
 
 <footer class="footer">
     <div class="footer-top">
-        <span class="footer-line"></span>
+        <div class="footer-line"></div>
         <span class="footer-logo-text">WHITE CROSS BARBERS • I CUT</span>
-        <span class="footer-line"></span>
+        <div class="footer-line"></div>
     </div>
     <p class="footer-address">136 Whitecross Street • EC1Y 8QJ • London</p>
     <div class="footer-links">
@@ -396,26 +342,11 @@
 </footer>
 
 <script>
-    // FILTER
-    function filterGallery(category, btn) {
-        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.gallery-card').forEach(card => {
-            if (category === 'all' || card.dataset.category === category) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        });
-    }
-
-    // LIGHTBOX — only works on real images, not placeholders
-    document.querySelectorAll('.gallery-card:not(.placeholder)').forEach(card => {
+    document.querySelectorAll('.gallery-card').forEach(card => {
         card.addEventListener('click', function () {
             const img = this.querySelector('img');
-            const label = this.querySelector('.gallery-overlay span');
             document.getElementById('lightboxImg').src = img.src;
-            document.getElementById('lightboxCaption').textContent = label ? label.textContent : '';
+            document.getElementById('lightboxCaption').textContent = '';
             document.getElementById('lightbox').classList.add('active');
         });
     });
@@ -428,9 +359,6 @@
         if (e.key === 'Escape') closeLightbox();
     });
 </script>
-<!-- WHATSAPP FLOAT -->
-<a href="https://wa.me/447470108578" class="whatsapp-float" target="_blank">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp I CUT Whitecross Barbers">
-</a>
+
 </body>
 </html>
