@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements — I CUT Whitecross Barbers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --gold-dark: #b8860b;
+            --gold-faint: rgba(212,175,55,0.08);
+            --gold-border: rgba(212,175,55,0.25);
+            --bg: #000;
+            --bg2: #0a0a0a;
+            --bg3: #111;
+            --text: #fff;
+            --muted: #888;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: rgba(0,0,0,0.95);
+            border-bottom: 1px solid var(--gold-border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-family: 'Oswald', sans-serif;
+            color: var(--gold);
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .nav-back {
+            font-family: 'Oswald', sans-serif;
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: 1px solid var(--gold-border);
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .nav-back:hover {
+            background: var(--gold);
+            color: #000;
+        }
+
+        /* HERO */
+        .hero {
+            padding: 120px 24px 60px;
+            text-align: center;
+            border-bottom: 1px solid var(--gold-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212,175,55,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-label {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 4px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            line-height: 1;
+            color: var(--text);
+        }
+
+        .hero h1 span {
+            color: var(--gold);
+        }
+
+        .hero-sub {
+            margin-top: 16px;
+            color: var(--muted);
+            font-size: 1rem;
+            font-style: italic;
+        }
+
+        /* MAIN */
+        main {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 60px 20px 80px;
+        }
+
+        /* ANNOUNCEMENT CARD */
+        .announcement {
+            border: 1px solid var(--gold-border);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .announcement:hover {
+            border-color: rgba(212,175,55,0.5);
+        }
+
+        .announcement-header {
+            background: var(--gold-faint);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--gold-border);
+        }
+
+        .announcement-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .announcement-tag {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gold);
+            background: rgba(212,175,55,0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .announcement-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text);
+        }
+
+        .announcement-body {
+            padding: 20px 24px;
+            background: var(--bg3);
+        }
+
+        .announcement-body p {
+            color: #ccc;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        .announcement-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .announcement-body ul {
+            list-style: none;
+            margin: 12px 0;
+        }
+
+        .announcement-body ul li {
+            color: #ccc;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .announcement-body ul li::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-size: 0.6rem;
+            top: 8px;
+        }
+
+        .highlight {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* DIVIDER */
+        .section-label {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .section-label::before,
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gold-border);
+        }
+
+        /* CTA */
+        .cta-box {
+            margin-top: 48px;
+            text-align: center;
+            padding: 40px 24px;
+            border: 1px dashed var(--gold-border);
+            border-radius: 12px;
+            background: var(--gold-faint);
+        }
+
+        .cta-box p {
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #000;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 14px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s;
+        }
+
+        .cta-btn:hover { opacity: 0.85; }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--gold-border);
+            padding: 30px 20px 40px;
+            text-align: center;
+            background: var(--bg2);
+        }
+
+        .footer-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .footer-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(212,175,55,0.4), transparent);
+            max-width: 80px;
+        }
+
+        .footer-logo-text {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            color: var(--gold);
+            font-weight: 700;
+        }
+
+        .footer-address {
+            font-size: 0.78rem;
+            color: var(--muted);
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .footer-links {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 16px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .footer-link-btn {
+            text-decoration: none;
+            color: #000;
+            background: var(--gold);
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: filter 0.2s;
+        }
+
+        .footer-link-btn:hover { filter: brightness(1.1); }
+
+        .footer-dot {
+            color: #444;
+            font-size: 0.7rem;
+        }
+
+        .footer-copy {
+            font-size: 0.7rem;
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 4px;
+        }
+
+        .footer-powered {
+            font-size: 0.68rem;
+            color: #444;
+            font-style: italic;
+        }
+
+        @media (max-width: 480px) {
+            .announcement-header { flex-wrap: wrap; }
+            .announcement-tag { margin-left: 0; }
+            .footer-link-btn { padding: 6px 10px; font-size: 0.62rem; letter-spacing: 1px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="index.html" class="nav-logo">I CUT Whitecross</a>
+    <a href="index.html#booking" class="nav-back">← Book Now</a>
+</nav>
+
+<div class="hero">
+    <p class="hero-label">What's On</p>
+    <h1>Announce<span>ments</span></h1>
+    <p class="hero-sub">Latest news, offers & updates from I CUT</p>
+</div>
+
+<main>
+
+    <div class="section-label">Current Offers</div>
+
+    <!-- STUDENT DISCOUNT -->
+    <div class="announcement">
+        <div class="announcement-header">
+            <span class="announcement-icon">🎓</span>
+            <span class="announcement-title">Student Discount</span>
+            <span class="announcement-tag">Ongoing</span>
+        </div>
+        <div class="announcement-body">
+            <p><span class="highlight">10% off</span> all services for students. Simply show a valid student ID at the time of your appointment.</p>
+            <p>Applies to all services — walk-ins and bookings both welcome.</p>
+        </div>
+    </div>
+
+    <!-- COMPLIMENTARY SERVICES -->
+    <div class="announcement">
+        <div class="announcement-header">
+            <span class="announcement-icon">🎁</span>
+            <span class="announcement-title">Complimentary Add-Ons</span>
+            <span class="announcement-tag">With Every Visit</span>
+        </div>
+        <div class="announcement-body">
+            <p>Every visit includes the following <span class="highlight">complimentary extras</span>:</p>
+            <ul>
+                <li>Wash & Hot Towel</li>
+                <li>Arm & Shoulder Massage</li>
+                <li>Turkish Coffee</li>
+                <li>Turkish Tea</li>
+                <li>Soft Drinks</li>
+            </ul>
+            <p>Because a great cut deserves a great experience.</p>
+        </div>
+    </div>
+
+    <!-- AVAILABLE ON REQUEST -->
+    <div class="announcement">
+        <div class="announcement-header">
+            <span class="announcement-icon">✨</span>
+            <span class="announcement-title">Available on Request</span>
+            <span class="announcement-tag">Ask Us</span>
+        </div>
+        <div class="announcement-body">
+            <p>The following services are available on request — just ask your barber:</p>
+            <ul>
+                <li>Ear Flame</li>
+                <li>Eyebrow Trimming</li>
+            </ul>
+            <p>No extra charge — part of the I CUT experience.</p>
+        </div>
+    </div>
+
+    <div class="cta-box">
+        <p>Ready to book your next appointment?</p>
+        <a href="index.html#booking" class="cta-btn">Book Online →</a>
+    </div>
+
+</main>
+
+<footer class="footer">
+    <div class="footer-top">
+        <div class="footer-line"></div>
+        <span class="footer-logo-text">WHITE CROSS BARBERS • I CUT</span>
+        <div class="footer-line"></div>
+    </div>
+    <p class="footer-address">136 Whitecross Street • EC1Y 8QJ • London</p>
+    <div class="footer-links">
+        <a href="about.html" class="footer-link-btn">About Us</a>
+        <span class="footer-dot">•</span>
+        <a href="gallery.html" class="footer-link-btn">Our Work</a>
+        <span class="footer-dot">•</span>
+        <a href="announcements.html" class="footer-link-btn">Announcements</a>
+        <span class="footer-dot">•</span>
+        <a href="terms.html" class="footer-link-btn">Cancellation Policy</a>
+    </div>
+    <p class="footer-copy">© 2026 I CUT Whitecross Barbers. All rights reserved.</p>
+    <p class="footer-powered"><em>Powered by Alex</em></p>
+</footer>
+
+</body>
+</html>

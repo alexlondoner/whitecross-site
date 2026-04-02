@@ -999,17 +999,17 @@ select.input-field optgroup {
 }
 
 .footer-link-btn {
-  text-decoration: none;
-  color: #000;
-  background: #d4af37;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-family: 'Oswald', sans-serif;
-  font-size: 0.72rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  border: none;
-  cursor: pointer;
+    text-decoration: none;
+    color: #000;
+    background: #d4af37;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: filter 0.2s;
+    white-space: nowrap;
 }
 
 .footer-link-btn:hover {
