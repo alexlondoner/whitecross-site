@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function () {
 const phone = document.getElementById('phone').value;
 const date = document.getElementById('date').value;
 
-const checkUrl = 'https://script.google.com/macros/s/AKfycbzu7ycW4fjSj9R-oOnigvEVG1fHyPE_Hw_buccQ49w_udeBtq-2kUHV6HimVbKav8Kc/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+const checkUrl = 'https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
 fetch(checkUrl)
     .then(r => r.json())
@@ -280,7 +280,7 @@ fetch(checkUrl)
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzu7ycW4fjSj9R-oOnigvEVG1fHyPE_Hw_buccQ49w_udeBtq-2kUHV6HimVbKav8Kc/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -378,7 +378,7 @@ fetch(checkUrl)
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzu7ycW4fjSj9R-oOnigvEVG1fHyPE_Hw_buccQ49w_udeBtq-2kUHV6HimVbKav8Kc/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -485,7 +485,7 @@ fetch(checkUrl)
 
         if (bookingData) {
             bookingData.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbzu7ycW4fjSj9R-oOnigvEVG1fHyPE_Hw_buccQ49w_udeBtq-2kUHV6HimVbKav8Kc/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
