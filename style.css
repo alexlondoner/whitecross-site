@@ -11,7 +11,8 @@
    BODY & BACKGROUND
 ========================= */
 body {
-  background-color: #000;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1410 50%, #0a0a0a 100%);
+  background-attachment: fixed;
   color: #fff;
   font-family: 'Inter', sans-serif;
   line-height: 1.6;
@@ -81,6 +82,7 @@ footer {
   -webkit-text-fill-color: transparent;
   background-size: 200% auto;
   animation: goldShine 3s linear infinite;
+  filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.3));
 }
 
 /* =========================
@@ -130,21 +132,23 @@ footer {
    CARDS & SERVICES
 ========================= */
 .card {
-  background: #111;
-  border: 1px solid #222;
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+  border: 1px solid #d4af37;
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 25px;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.35), inset 0 0 15px rgba(212, 175, 55, 0.08);
 }
 
 .section-title {
   font-family: 'Oswald', sans-serif;
   color: #d4af37;
-  border-bottom: 1px solid #333;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.4);
   padding-bottom: 10px;
   margin-bottom: 15px;
   text-transform: uppercase;
   font-size: 1rem;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .service-item {
@@ -180,7 +184,7 @@ footer {
 }
 
 .details-btn {
-  background: none;
+  background: rgba(212, 175, 55, 0.1);
   border: 1px solid #d4af37;
   color: #d4af37;
   font-size: 0.7rem;
@@ -189,6 +193,13 @@ footer {
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.15);
+}
+
+.details-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
 }
 
 /* =========================
@@ -244,7 +255,7 @@ footer {
 ========================= */
 .form-header {
   font-family: 'Oswald', sans-serif;
-  color: #fff;
+  color: #d4af37;
   font-size: 1.8rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -252,43 +263,48 @@ footer {
   text-align: center;
   margin-bottom: 25px;
   display: block;
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
 }
 
 .form-header::after {
   content: '';
   display: block;
-  width: 45px;
+  width: 60px;
   height: 3px;
-  background: #d4af37;
+  background: linear-gradient(to right, transparent, #d4af37, transparent);
   margin: 10px auto 0;
   border-radius: 2px;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
 .booking-form {
-  background: #111;
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
   padding: 25px;
   border-radius: 15px;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1px solid #d4af37;
   margin-bottom: 30px;
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.4), inset 0 0 20px rgba(212, 175, 55, 0.1);
 }
 
 .input-field {
   width: 100%;
   padding: 15px;
   margin-bottom: 12px;
-  background: #000;
-  border: 1.5px solid #222;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.4);
   color: #fff;
   border-radius: 12px;
   font-size: 14px;
   font-family: 'Inter', sans-serif;
   transition: all 0.3s ease;
+  box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05);
 }
 
 .input-field:focus {
   outline: none;
   border-color: #d4af37;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4), inset 0 0 10px rgba(212, 175, 55, 0.05);
+  background: rgba(0, 0, 0, 0.8);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -319,7 +335,7 @@ select.input-field optgroup {
   width: 100%;
   padding: 16px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid #d4af37;
   background: linear-gradient(135deg, #d4af37, #b8860b);
   color: #000;
   font-weight: 800;
@@ -327,12 +343,14 @@ select.input-field optgroup {
   letter-spacing: 1px;
   cursor: pointer;
   animation: goldPulse 2s infinite;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
 }
 
 .submit-btn:hover {
-  transform: scale(1.03);
-  filter: brightness(1.15);
+  transform: scale(1.05);
+  filter: brightness(1.2);
+  box-shadow: 0 0 40px rgba(212, 175, 55, 0.7);
 }
 
 /* =========================
@@ -346,8 +364,8 @@ select.input-field optgroup {
 }
 
 .barber-btn {
-  background: #000;
-  border: 1.5px solid #333;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.4);
   color: #aaa;
   padding: 14px 8px;
   border-radius: 10px;
@@ -358,17 +376,20 @@ select.input-field optgroup {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
 }
 
 .barber-btn:hover {
   border-color: #d4af37;
   color: #d4af37;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
 }
 
 .barber-btn.selected {
-  background: linear-gradient(135deg, #d4af37, #b8860b);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(184, 134, 11, 0.2));
   border-color: #d4af37;
-  color: #000;
+  color: #d4af37;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.45);
 }
 
 .barber-icon {
@@ -393,8 +414,8 @@ select.input-field optgroup {
 }
 
 .time-slot-btn {
-  background: #000;
-  border: 1.5px solid #333;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.4);
   color: #aaa;
   padding: 10px 6px;
   border-radius: 10px;
@@ -404,18 +425,21 @@ select.input-field optgroup {
   transition: all 0.2s ease;
   text-align: center;
   letter-spacing: 0.5px;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.12);
 }
 
 .time-slot-btn:hover:not(.unavailable) {
   border-color: #d4af37;
   color: #d4af37;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
 }
 
 .time-slot-btn.selected {
-  background: linear-gradient(135deg, #d4af37, #b8860b);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(184, 134, 11, 0.3));
   border-color: #d4af37;
-  color: #000;
+  color: #d4af37;
   font-weight: 800;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
 }
 
 .time-slot-btn.unavailable {
@@ -462,8 +486,8 @@ select.input-field optgroup {
 }
 
 .service-btn {
-  background: #000;
-  border: 1.5px solid #222;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(212, 175, 55, 0.4);
   color: #aaa;
   padding: 12px 14px;
   border-radius: 10px;
@@ -475,17 +499,20 @@ select.input-field optgroup {
   align-items: center;
   text-align: left;
   width: 100%;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.12);
 }
 
 .service-btn:hover {
   border-color: #d4af37;
   color: #fff;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
 }
 
 .service-btn.selected {
-  background: linear-gradient(135deg, #d4af37, #b8860b);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(184, 134, 11, 0.2));
   border-color: #d4af37;
-  color: #000;
+  color: #d4af37;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);
 }
 
 .sb-name {
@@ -603,12 +630,13 @@ select.input-field optgroup {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+  border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: 10px;
   padding: 10px 14px;
   margin-bottom: 14px;
   flex-wrap: wrap;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
 }
 
 .status-dot {
@@ -663,12 +691,13 @@ select.input-field optgroup {
 .reviews-section {
   margin: 30px auto 0;
   padding: 30px 20px;
-  background: #111;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+  border: 1px solid #d4af37;
   border-radius: 16px;
   text-align: center;
   overflow: hidden;
   width: 100%;
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.35), inset 0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 .reviews-header {
@@ -713,8 +742,8 @@ select.input-field optgroup {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(184, 134, 11, 0.1));
+  border: 1px solid rgba(212, 175, 55, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -723,6 +752,7 @@ select.input-field optgroup {
   color: #d4af37;
   font-weight: 700;
   margin-bottom: 4px;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
 }
 
 .review-platform h3 {
@@ -787,13 +817,21 @@ select.input-field optgroup {
 }
 
 .testimonial-card {
-  background: rgba(212, 175, 55, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(184, 134, 11, 0.05));
+  border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: 12px;
   padding: 18px 20px;
   min-width: 260px;
   max-width: 260px;
   flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(212, 175, 55, 0.05);
+  transition: all 0.3s ease;
+}
+
+.testimonial-card:hover {
+  border-color: #d4af37;
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.35), inset 0 0 10px rgba(212, 175, 55, 0.08);
+  transform: translateY(-5px);
 }
 
 .t-stars {
@@ -823,21 +861,23 @@ select.input-field optgroup {
   max-width: 600px;
   margin: 0 auto 15px;
   padding: 24px 20px 20px;
-  background: #111;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+  border: 1px solid #d4af37;
   border-radius: 16px;
   text-align: center;
   position: relative;
   z-index: 1;
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.35), inset 0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 .carousel-track-wrap {
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid #222;
+  border: 1px solid rgba(212, 175, 55, 0.6);
   margin: 16px 0 12px;
   background: #0a0a0a;
   width: 100%;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.25);
 }
 
 .carousel-track {
@@ -914,15 +954,16 @@ select.input-field optgroup {
 }
 
 .modal-content {
-  background: #111;
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
   padding: 25px;
-  border: 2px solid #d4af37;
+  border: 1.5px solid #d4af37;
   border-radius: 12px;
   max-width: 450px;
   width: 90%;
   position: relative;
   text-align: left;
   font-size: 0.9rem;
+  box-shadow: 0 0 45px rgba(212, 175, 55, 0.45), inset 0 0 20px rgba(212, 175, 55, 0.12);
 }
 
 .close-modal {
@@ -1049,10 +1090,11 @@ select.input-field optgroup {
    LOCATION (kept for potential use)
 ========================= */
 .location-hours-section {
-  background: #111;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+  border: 1px solid #d4af37;
   border-radius: 15px;
   padding: 25px;
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.35), inset 0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 .location-container {
@@ -1099,61 +1141,286 @@ select.input-field optgroup {
 /* =========================
    RESPONSIVE — MOBILE
 ========================= */
-@media (max-width: 600px) {
-  .main-logo { font-size: 2.6rem; }
-  .main-logo-img { width: 165px; margin-bottom: -10px; }
+@media (max-width: 768px) {
+  .main-logo { 
+    font-size: 2.6rem;
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.25));
+  }
+  
+  .main-logo-img { 
+    width: 165px; 
+    margin-bottom: -10px; 
+  }
 
-  .hero { padding: 30px 20px; }
+  .hero { 
+    padding: 25px 15px; 
+  }
+
+  .form-header {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
 
   .card,
   .booking-form,
-  .reviews-section {
-    margin-left: 20px;
-    margin-right: 20px;
+  .reviews-section,
+  .gallery-section {
+    margin-left: 15px;
+    margin-right: 15px;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.25), inset 0 0 12px rgba(212, 175, 55, 0.08) !important;
+  }
+
+  .booking-form {
+    padding: 20px;
+  }
+
+  .input-field {
+    padding: 14px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    min-height: 44px;
   }
 
   .social-buttons {
     flex-direction: column;
     align-items: stretch;
-    padding: 0 12px;
+    padding: 0 10px;
+    gap: 8px;
   }
 
   .social-buttons .btn {
     width: 100%;
+    padding: 14px 16px;
+    min-height: 44px;
   }
 
-  .location-container { flex-direction: column; }
-  .map-box { height: 220px; }
+  .location-container { 
+    flex-direction: column; 
+  }
+
+  .map-box { 
+    height: 220px; 
+  }
 
   .reviews-container {
     flex-direction: row;
     justify-content: space-around;
+    gap: 10px;
   }
 
-  .footer-links { gap: 6px; }
+  .review-platform {
+    min-width: auto;
+  }
+
+  .footer-links { 
+    gap: 5px;
+    flex-wrap: wrap;
+  }
 
   .footer-link-btn {
     padding: 6px 10px;
     font-size: 0.62rem;
     letter-spacing: 1px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+
+  .footer-address {
+    font-size: 0.75rem;
   }
 
   .time-slots-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .time-slot-btn {
+    padding: 12px 8px;
+    font-size: 0.75rem;
+    min-height: 44px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+
+  .barber-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .barber-btn {
+    padding: 14px 8px;
+    min-height: 44px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+
+  .carousel-slide img {
+    max-height: 380px;
+  }
+
+  .details-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 20px;
+    border: 1px solid #d4af37;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  }
+
+  .submit-btn {
+    padding: 14px;
+    min-height: 44px;
+    font-size: 0.9rem;
+    border: 1px solid #d4af37;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+  }
+
+  .submit-btn:hover {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  .main-logo { 
+    font-size: 2rem;
+  }
+
+  .main-logo-img { 
+    width: 140px;
+  }
+
+  .hero { 
+    padding: 20px 12px;
+  }
+
+  .form-header {
+    font-size: 1.3rem;
+  }
+
+  .card,
+  .booking-form,
+  .reviews-section,
+  .gallery-section {
+    margin-left: 12px;
+    margin-right: 12px;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.22), inset 0 0 10px rgba(212, 175, 55, 0.07) !important;
+  }
+
+  .booking-form {
+    padding: 16px;
+  }
+
+  .input-field {
+    padding: 12px;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+
+  .service-item {
+    padding: 8px 0;
+    font-size: 0.85rem;
+  }
+
+  .price {
+    font-size: 0.9rem;
+  }
+
+  .time-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
 
   .time-slot-btn {
-    padding: 8px 4px;
+    padding: 10px 6px;
     font-size: 0.7rem;
+    min-height: 40px;
   }
 
   .barber-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
 
   .barber-btn {
-    padding: 12px 6px;
+    padding: 10px 6px;
+    font-size: 0.7rem;
+    min-height: 40px;
+  }
+
+  .carousel-slide img {
+    max-height: 300px;
+  }
+
+  .reviews-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .review-platform {
+    min-width: auto;
+  }
+
+  .accordion-content {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .service-btn {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  .section-title {
+    font-size: 0.9rem;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .walk-in-tag {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    margin-bottom: 15px;
+  }
+
+  .footer-links {
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .footer-link-btn {
+    padding: 5px 8px;
+    font-size: 0.6rem;
+    min-height: 32px;
+  }
+
+  .footer-copy {
+    font-size: 0.65rem;
+  }
+
+  .modal-content {
+    width: 90%;
+    padding: 16px;
+    border: 1px solid #d4af37;
+  }
+
+  .submit-btn {
+    padding: 12px;
+    min-height: 40px;
+    font-size: 0.85rem;
   }
 }
 section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section, .gallery-section {
