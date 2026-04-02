@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "threading": "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
                 "waxing": "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
                 "shape-up-clean-up": "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-                "wash-hot-towel": "https://buy.stripe.com/5kQbJ32P79X3bv37bRg360l"
+                "wash-hot-towel": "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
             };
 
             const depositLinks = {
