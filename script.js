@@ -226,44 +226,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
 
-            if (extras.includes(service)) {
-                proceedToPayment(stripeLinks[service], 'FULL');
-            } else {
-                document.getElementById('paymentChoicePopup').style.display = 'flex';
-                document.getElementById('btnFullPayment').onclick = () => {
-                    document.getElementById('paymentChoicePopup').style.display = 'none';
-                    proceedToPayment(stripeLinks[service], 'FULL');
-                };
-                document.getElementById('btnDeposit').onclick = () => {
-                    document.getElementById('paymentChoicePopup').style.display = 'none';
-                    proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
-                };
-            }
+            // Duplicate check before payment
+            const phone = window._pendingFormData.phone;
+            const date = window._pendingFormData.date;
+            const checkUrl = 'https://script.google.com/macros/s/AKfycbwsPNhaI6hHpZgBhuLgMsi6q54-M1B4DMMGQlsQ4TKvaAdhCCuExDuKXmsdnn_kS-qv/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+
+            fetch(checkUrl)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.duplicate) {
+                        if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
+                            return;
+                        }
+                    }
+                    // Proceed with payment after duplicate check
+                    if (extras.includes(service)) {
+                        proceedToPayment(stripeLinks[service], 'FULL');
+                    } else {
+                        document.getElementById('paymentChoicePopup').style.display = 'flex';
+                        document.getElementById('btnFullPayment').onclick = () => {
+                            document.getElementById('paymentChoicePopup').style.display = 'none';
+                            proceedToPayment(stripeLinks[service], 'FULL');
+                        };
+                        document.getElementById('btnDeposit').onclick = () => {
+                            document.getElementById('paymentChoicePopup').style.display = 'none';
+                            proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                        };
+                    }
+                })
+                .catch(err => {
+                    console.log('Duplicate check failed:', err);
+                    // If check fails, continue with payment
+                    if (extras.includes(service)) {
+                        proceedToPayment(stripeLinks[service], 'FULL');
+                    } else {
+                        document.getElementById('paymentChoicePopup').style.display = 'flex';
+                        document.getElementById('btnFullPayment').onclick = () => {
+                            document.getElementById('paymentChoicePopup').style.display = 'none';
+                            proceedToPayment(stripeLinks[service], 'FULL');
+                        };
+                        document.getElementById('btnDeposit').onclick = () => {
+                            document.getElementById('paymentChoicePopup').style.display = 'none';
+                            proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                        };
+                    }
+                });
         });
     }
-
-// Duplicate kontrolü
-const phone = document.getElementById('phone').value;
-const date = document.getElementById('date').value;
-
-const checkUrl = 'https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
-
-fetch(checkUrl)
-    .then(r => r.json())
-    .then(result => {
-        if (result.duplicate) {
-            if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
-                return;
-            }
-        }
-        // devam et
-        if (extras.includes(service)) {
-            proceedToPayment(stripeLinks[service], 'FULL');
-        } else {
-            document.getElementById('paymentChoicePopup').style.display = 'flex';
-            // ...
-        }
-    });
     
     function proceedToPayment(url, type) {
         const data = window._pendingFormData;
@@ -280,7 +289,7 @@ fetch(checkUrl)
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbwsPNhaI6hHpZgBhuLgMsi6q54-M1B4DMMGQlsQ4TKvaAdhCCuExDuKXmsdnn_kS-qv/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -378,7 +387,7 @@ fetch(checkUrl)
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbwsPNhaI6hHpZgBhuLgMsi6q54-M1B4DMMGQlsQ4TKvaAdhCCuExDuKXmsdnn_kS-qv/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -485,7 +494,7 @@ fetch(checkUrl)
 
         if (bookingData) {
             bookingData.status = 'CONFIRMED';
-            fetch("https://script.google.com/macros/s/AKfycbx1B378Odyg8L0sxK1Yrae9_OmwBmFuSpp-P5X9K8awM3-G060hso7MzEdHBcUC1fLU/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbwsPNhaI6hHpZgBhuLgMsi6q54-M1B4DMMGQlsQ4TKvaAdhCCuExDuKXmsdnn_kS-qv/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
