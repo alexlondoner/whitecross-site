@@ -28,7 +28,6 @@ const stories = {
 function selectService(value) {
     const serviceEl = document.getElementById('service');
     if (serviceEl) serviceEl.value = value;
-
     closeInfo();
     document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
     const dateInput = document.getElementById('date');
@@ -59,7 +58,7 @@ document.addEventListener('click', function (event) {
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
-   /* DATE & TIME LOGIC */
+    /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -162,8 +161,13 @@ document.addEventListener('DOMContentLoaded', function () {
     /* FORM SUBMISSION & STRIPE */
     const form = document.getElementById('bookingForm');
     if (form) {
+        let isSubmitting = false; // ← double submit önleme
+
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+
+            if (isSubmitting) return; // ← çift submit engeli
+
             const service = document.getElementById('service').value;
             if (!service) return alert("Select a service.");
 
@@ -209,71 +213,65 @@ document.addEventListener('DOMContentLoaded', function () {
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
             };
-           const barberVal = document.getElementById('barber').value || 'no-preference';
-             window._pendingFormData = {
-              name: document.getElementById('name').value,
-             email: document.getElementById('email').value,
-             phone: document.getElementById('phone').value,
-             date: document.getElementById('date').value,
-             time: selectedTime,
-            service: service,
-            barber: barberVal === 'no-preference'
-        ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-            ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-            : 'no-preference')
-        : barberVal
-};
+
+            const barberVal = document.getElementById('barber').value || 'no-preference';
+            window._pendingFormData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                date: document.getElementById('date').value,
+                time: selectedTime,
+                service: service,
+                barber: barberVal === 'no-preference'
+                    ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+                        ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
+                        : 'no-preference')
+                    : barberVal
+            };
 
             const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
-
-            // Duplicate check before payment
             const phone = window._pendingFormData.phone;
             const date = window._pendingFormData.date;
+
+            isSubmitting = true; // ← kilitle
+
             const checkUrl = 'https://script.google.com/macros/s/AKfycbwsPNhaI6hHpZgBhuLgMsi6q54-M1B4DMMGQlsQ4TKvaAdhCCuExDuKXmsdnn_kS-qv/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+
+            function handlePayment() {
+                if (extras.includes(service)) {
+                    proceedToPayment(stripeLinks[service], 'FULL');
+                } else {
+                    document.getElementById('paymentChoicePopup').style.display = 'flex';
+                    document.getElementById('btnFullPayment').onclick = () => {
+                        document.getElementById('paymentChoicePopup').style.display = 'none';
+                        proceedToPayment(stripeLinks[service], 'FULL');
+                    };
+                    document.getElementById('btnDeposit').onclick = () => {
+                        document.getElementById('paymentChoicePopup').style.display = 'none';
+                        proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                    };
+                }
+            }
 
             fetch(checkUrl)
                 .then(r => r.json())
                 .then(result => {
                     if (result.duplicate) {
                         if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
+                            isSubmitting = false; // ← kullanıcı iptal etti, kilidi aç
                             return;
                         }
                     }
-                    // Proceed with payment after duplicate check
-                    if (extras.includes(service)) {
-                        proceedToPayment(stripeLinks[service], 'FULL');
-                    } else {
-                        document.getElementById('paymentChoicePopup').style.display = 'flex';
-                        document.getElementById('btnFullPayment').onclick = () => {
-                            document.getElementById('paymentChoicePopup').style.display = 'none';
-                            proceedToPayment(stripeLinks[service], 'FULL');
-                        };
-                        document.getElementById('btnDeposit').onclick = () => {
-                            document.getElementById('paymentChoicePopup').style.display = 'none';
-                            proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
-                        };
-                    }
+                    handlePayment();
                 })
                 .catch(err => {
                     console.log('Duplicate check failed:', err);
-                    // If check fails, continue with payment
-                    if (extras.includes(service)) {
-                        proceedToPayment(stripeLinks[service], 'FULL');
-                    } else {
-                        document.getElementById('paymentChoicePopup').style.display = 'flex';
-                        document.getElementById('btnFullPayment').onclick = () => {
-                            document.getElementById('paymentChoicePopup').style.display = 'none';
-                            proceedToPayment(stripeLinks[service], 'FULL');
-                        };
-                        document.getElementById('btnDeposit').onclick = () => {
-                            document.getElementById('paymentChoicePopup').style.display = 'none';
-                            proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
-                        };
-                    }
+                    isSubmitting = false; // ← hata olursa kilidi aç
+                    handlePayment();
                 });
         });
     }
-    
+
     function proceedToPayment(url, type) {
         const data = window._pendingFormData;
         data.paymentType = type;
@@ -283,9 +281,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const popup = document.getElementById('successPopup');
         if (popup) {
-          document.getElementById('popup-icon').innerText = "⏳";
-          document.getElementById('popup-title').innerText = "Redirecting to payment...";
-        document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking. Please do not close this page.";
+            document.getElementById('popup-icon').innerText = "⏳";
+            document.getElementById('popup-title').innerText = "Redirecting to payment...";
+            document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking. Please do not close this page.";
             popup.style.display = 'flex';
         }
 
@@ -306,12 +304,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const durationMap = {
             "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
-      "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
-      "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
-      "clipper-cut": 15, "senior-haircut": 20, "young-gents": 20,
-      "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
-      "face-mask": 10, "face-steam": 10, "threading": 5,
-      "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
+            "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
+            "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
+            "clipper-cut": 15, "senior-haircut": 20, "young-gents": 20,
+            "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
+            "face-mask": 10, "face-steam": 10, "threading": 5,
+            "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
         };
         const duration = durationMap[service] || 30;
 
@@ -394,8 +392,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 renderSlots((slotMs, slotEnd) => {
                     function isBusy(busyList) {
-                     return (busyList || []).some(b => slotMs >= b.start && slotMs < b.end);
-            }
+                        return (busyList || []).some(b => slotMs >= b.start && slotMs < b.end);
+                    }
                     if (data.mode === 'single') return isBusy(data.busy);
                     if (data.mode === 'preference') return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
                     return false;
@@ -435,8 +433,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(err => console.log('Availability check failed:', err));
     }
 
-    
-/* Barber & Service listeners */
+    /* Barber & Service listeners */
     const barberHidden = document.getElementById('barber');
     document.querySelectorAll('.barber-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -476,12 +473,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-  /* STRIPE SUCCESS CHECK */
+    /* STRIPE SUCCESS CHECK */
     if (window.isStripeSuccess) {
         const popup = document.getElementById('successPopup');
         const pending = sessionStorage.getItem('pendingBooking');
         const bookingData = pending ? JSON.parse(pending) : null;
-        
+
         if (popup) {
             const name = bookingData ? bookingData.name.split(' ')[0] : '';
             const date = bookingData ? bookingData.date : '';
