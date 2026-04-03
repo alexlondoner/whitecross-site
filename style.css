@@ -1429,3 +1429,39 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
     margin-right: auto;
     width: 100%;
 }
+@media (max-width: 600px) {
+  .reviews-container {
+    flex-direction: row !important;
+    justify-content: space-around;
+    align-items: flex-start;
+  }
+  
+  .reviews-divider {
+    width: 1px !important;
+    height: 80px !important;
+    align-self: center;
+  }
+}
+.carousel-track-wrap {
+  overflow: hidden;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  width: 100%;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.carousel-slide img {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
