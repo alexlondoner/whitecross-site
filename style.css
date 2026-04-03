@@ -169,7 +169,6 @@ footer {
   border-radius: 10px;
 }
 
-
 .s-info {
   display: flex;
   flex-direction: column;
@@ -465,7 +464,7 @@ select.input-field optgroup {
 }
 
 /* =========================
-   SERVICE GRID (unused but kept for selectService)
+   SERVICE GRID
 ========================= */
 .service-grid {
   display: flex;
@@ -546,9 +545,7 @@ select.input-field optgroup {
   align-items: center;
 }
 
-.service-accordion-toggle:hover {
-  color: #fff;
-}
+.service-accordion-toggle:hover { color: #fff; }
 
 .service-arrow {
   font-size: 0.8rem;
@@ -567,8 +564,9 @@ select.input-field optgroup {
   gap: 10px;
   justify-content: center;
   align-items: center;
-  margin: 28px 20px;
+  margin: 20px 0 4px;
   flex-wrap: wrap;
+  padding: 0;
 }
 
 .social-buttons .btn {
@@ -598,6 +596,7 @@ select.input-field optgroup {
   border: none;
   max-width: 280px;
 }
+
 .btn-instagram:hover {
   filter: brightness(1.15);
   transform: translateY(-3px);
@@ -605,9 +604,7 @@ select.input-field optgroup {
   color: #fff;
 }
 
-.btn-instagram .insta-icon {
-  fill: #fff;
-}
+.btn-instagram .insta-icon { fill: #fff; }
 
 .insta-icon {
   width: 24px;
@@ -615,9 +612,7 @@ select.input-field optgroup {
   fill: currentColor;
 }
 
-.insta-icon path {
-  fill: currentColor;
-}
+.insta-icon path { fill: currentColor; }
 
 /* =========================
    HOURS WIDGET
@@ -690,7 +685,7 @@ select.input-field optgroup {
 ========================= */
 .reviews-section {
   margin: 30px auto 0;
-  padding: 30px 20px;
+  padding: 30px 20px 20px;
   background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
   border: 1px solid #d4af37;
   border-radius: 16px;
@@ -721,12 +716,22 @@ select.input-field optgroup {
   color: #d4af37;
 }
 
+/* Always side by side */
 .reviews-container {
   display: flex;
+  flex-direction: row !important;
   justify-content: center;
   align-items: center;
   gap: 20px;
   width: 100%;
+}
+
+.reviews-divider {
+  width: 1px !important;
+  height: 80px !important;
+  background: rgba(212,175,55,0.2);
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .review-platform {
@@ -792,9 +797,7 @@ select.input-field optgroup {
   transition: border-color 0.2s;
 }
 
-.review-link:hover {
-  border-bottom-color: #d4af37;
-}
+.review-link:hover { border-bottom-color: #d4af37; }
 
 /* =========================
    TESTIMONIALS
@@ -812,9 +815,7 @@ select.input-field optgroup {
   width: max-content;
 }
 
-.testimonials-track:hover {
-  animation-play-state: paused;
-}
+.testimonials-track:hover { animation-play-state: paused; }
 
 .testimonial-card {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(184, 134, 11, 0.05));
@@ -859,7 +860,7 @@ select.input-field optgroup {
 ========================= */
 .gallery-section {
   max-width: 600px;
-  margin: 0 auto 15px;
+  margin: 15px auto 15px;
   padding: 24px 20px 20px;
   background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
   border: 1px solid #d4af37;
@@ -875,18 +876,20 @@ select.input-field optgroup {
   border-radius: 12px;
   border: 1px solid rgba(212, 175, 55, 0.6);
   margin: 16px 0 12px;
-  background: #0a0a0a;
+  background: transparent;
   width: 100%;
   box-shadow: 0 0 20px rgba(212, 175, 55, 0.25);
 }
 
 .carousel-track {
   display: flex;
+  width: 100%;
   transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .carousel-slide {
   min-width: 100%;
+  width: 100%;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -896,9 +899,10 @@ select.input-field optgroup {
 .carousel-slide img {
   width: 100%;
   height: auto;
-  max-height: 480px;
+  max-height: 420px;
   object-fit: contain;
   display: block;
+  background: transparent;
 }
 
 .carousel-dots {
@@ -934,9 +938,7 @@ select.input-field optgroup {
   transition: border-color 0.2s;
 }
 
-.gallery-see-more:hover {
-  border-bottom-color: #d4af37;
-}
+.gallery-see-more:hover { border-bottom-color: #d4af37; }
 
 /* =========================
    MODAL
@@ -1037,25 +1039,24 @@ select.input-field optgroup {
   justify-content: center;
   gap: 10px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .footer-link-btn {
-    text-decoration: none;
-    color: #000;
-    background: #d4af37;
-    padding: 8px 10px;
-    border-radius: 4px;
-    font-family: 'Oswald', sans-serif;
-    font-size: 0.72rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    transition: filter 0.2s;
-    white-space: nowrap;
+  text-decoration: none;
+  color: #000;
+  background: #d4af37;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: filter 0.2s;
+  white-space: nowrap;
 }
 
-.footer-link-btn:hover {
-  filter: brightness(1.1);
-}
+.footer-link-btn:hover { filter: brightness(1.1); }
 
 .footer-dot {
   color: #444;
@@ -1087,7 +1088,7 @@ select.input-field optgroup {
 }
 
 /* =========================
-   LOCATION (kept for potential use)
+   LOCATION
 ========================= */
 .location-hours-section {
   background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
@@ -1139,22 +1140,30 @@ select.input-field optgroup {
 }
 
 /* =========================
-   RESPONSIVE — MOBILE
+   GLOBAL SECTION CENTERING
+========================= */
+section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section, .gallery-section {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+/* =========================
+   RESPONSIVE — TABLET
 ========================= */
 @media (max-width: 768px) {
-  .main-logo { 
+  .main-logo {
     font-size: 2.6rem;
     filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.25));
   }
-  
-  .main-logo-img { 
-    width: 165px; 
-    margin-bottom: -10px; 
+
+  .main-logo-img {
+    width: 165px;
+    margin-bottom: -10px;
   }
 
-  .hero { 
-    padding: 25px 15px; 
-  }
+  .hero { padding: 25px 15px; }
 
   .form-header {
     font-size: 1.5rem;
@@ -1169,12 +1178,9 @@ select.input-field optgroup {
     margin-right: 15px;
     padding: 18px;
     border-radius: 12px;
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.25), inset 0 0 12px rgba(212, 175, 55, 0.08) !important;
   }
 
-  .booking-form {
-    padding: 20px;
-  }
+  .booking-form { padding: 20px; }
 
   .input-field {
     padding: 14px;
@@ -1185,36 +1191,21 @@ select.input-field optgroup {
 
   .social-buttons {
     flex-direction: column;
-    align-items: stretch;
-    padding: 0 10px;
-    gap: 8px;
+    align-items: center;
+    padding: 0;
+    margin: 16px 0 4px;
   }
 
   .social-buttons .btn {
-    width: 100%;
-    padding: 14px 16px;
+    width: auto;
+    padding: 14px 24px;
     min-height: 44px;
   }
 
-  .location-container { 
-    flex-direction: column; 
-  }
+  .location-container { flex-direction: column; }
+  .map-box { height: 220px; }
 
-  .map-box { 
-    height: 220px; 
-  }
-
-  .reviews-container {
-    flex-direction: row;
-    justify-content: space-around;
-    gap: 10px;
-  }
-
-  .review-platform {
-    min-width: auto;
-  }
-
-  .footer-links { 
+  .footer-links {
     gap: 5px;
     flex-wrap: wrap;
   }
@@ -1228,12 +1219,10 @@ select.input-field optgroup {
     align-items: center;
   }
 
-  .footer-address {
-    font-size: 0.75rem;
-  }
+  .footer-address { font-size: 0.75rem; }
 
   .time-slots-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
@@ -1241,23 +1230,19 @@ select.input-field optgroup {
     padding: 12px 8px;
     font-size: 0.75rem;
     min-height: 44px;
-    border: 1px solid rgba(212, 175, 55, 0.3);
   }
 
   .barber-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
   .barber-btn {
     padding: 14px 8px;
     min-height: 44px;
-    border: 1px solid rgba(212, 175, 55, 0.3);
   }
 
-  .carousel-slide img {
-    max-height: 380px;
-  }
+  .carousel-slide img { max-height: 360px; }
 
   .details-btn {
     padding: 4px 10px;
@@ -1267,47 +1252,30 @@ select.input-field optgroup {
   .modal-content {
     width: 95%;
     padding: 20px;
-    border: 1px solid #d4af37;
   }
 
   .section-title {
     font-size: 0.95rem;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.3);
   }
 
   .submit-btn {
     padding: 14px;
     min-height: 44px;
     font-size: 0.9rem;
-    border: 1px solid #d4af37;
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
-  }
-
-  .submit-btn:hover {
-    box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
   }
 }
 
+/* =========================
+   RESPONSIVE — MOBILE
+========================= */
 @media (max-width: 480px) {
-  body {
-    font-size: 14px;
-  }
+  body { font-size: 14px; }
 
-  .main-logo { 
-    font-size: 2rem;
-  }
+  .main-logo { font-size: 2rem; }
+  .main-logo-img { width: 140px; }
+  .hero { padding: 20px 12px; }
 
-  .main-logo-img { 
-    width: 140px;
-  }
-
-  .hero { 
-    padding: 20px 12px;
-  }
-
-  .form-header {
-    font-size: 1.3rem;
-  }
+  .form-header { font-size: 1.3rem; }
 
   .card,
   .booking-form,
@@ -1317,12 +1285,9 @@ select.input-field optgroup {
     margin-right: 12px;
     padding: 16px;
     border-radius: 10px;
-    box-shadow: 0 0 18px rgba(212, 175, 55, 0.22), inset 0 0 10px rgba(212, 175, 55, 0.07) !important;
   }
 
-  .booking-form {
-    padding: 16px;
-  }
+  .booking-form { padding: 16px; }
 
   .input-field {
     padding: 12px;
@@ -1335,23 +1300,21 @@ select.input-field optgroup {
     font-size: 0.85rem;
   }
 
-  .price {
-    font-size: 0.9rem;
-  }
+  .price { font-size: 0.9rem; }
 
   .time-slots-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
 
   .time-slot-btn {
-    padding: 10px 6px;
-    font-size: 0.7rem;
+    padding: 10px 4px;
+    font-size: 0.68rem;
     min-height: 40px;
   }
 
   .barber-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
 
@@ -1361,27 +1324,11 @@ select.input-field optgroup {
     min-height: 40px;
   }
 
-  .carousel-slide img {
-    max-height: 300px;
-  }
-
-  .reviews-container {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .review-platform {
-    min-width: auto;
-  }
+  .carousel-slide img { max-height: 300px; }
 
   .accordion-content {
     padding-top: 8px;
     padding-bottom: 8px;
-  }
-
-  .service-btn {
-    padding: 10px 12px;
-    font-size: 0.8rem;
   }
 
   .section-title {
@@ -1407,14 +1354,11 @@ select.input-field optgroup {
     min-height: 32px;
   }
 
-  .footer-copy {
-    font-size: 0.65rem;
-  }
+  .footer-copy { font-size: 0.65rem; }
 
   .modal-content {
     width: 90%;
     padding: 16px;
-    border: 1px solid #d4af37;
   }
 
   .submit-btn {
@@ -1422,46 +1366,13 @@ select.input-field optgroup {
     min-height: 40px;
     font-size: 0.85rem;
   }
-}
-section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section, .gallery-section {
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    width: 100%;
-}
-@media (max-width: 600px) {
-  .reviews-container {
-    flex-direction: row !important;
-    justify-content: space-around;
-    align-items: flex-start;
+
+  .social-buttons {
+    margin: 16px 0 4px;
   }
-  
-  .reviews-divider {
-    width: 1px !important;
-    height: 80px !important;
-    align-self: center;
+
+  .btn-instagram {
+    font-size: 0.78rem;
+    padding: 12px 18px;
   }
-}
-.carousel-track-wrap {
-  overflow: hidden;
-  width: 100%;
-}
-
-.carousel-track {
-  display: flex;
-  width: 100%;
-}
-
-.carousel-slide {
-  min-width: 100%;
-  width: 100%;
-  flex-shrink: 0;
-}
-
-.carousel-slide img {
-  width: 100%;
-  height: auto;
-  max-height: 400px;
-  object-fit: cover;
-  display: block;
 }
