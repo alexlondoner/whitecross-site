@@ -112,11 +112,9 @@
     <!-- EXCLUSIVE BUNDLES -->
     <section class="card exclusive-card">
       <h2 class="section-title bundle-title accordion-toggle" data-target="exclusive">
-    Exclusive Bundle Packages
-    <span class="arrow arrow-exclusive">▼</span>
-</h2>
-<div class="accordion-content exclusive-content" style="max-height:0px;">
-
+        Exclusive Bundle Packages
+        <span class="arrow arrow-exclusive rotated">▼</span>
+      </h2>
       <div class="accordion-content exclusive-content open" style="max-height:9999px;">
         <div class="service-item highlight">
           <div class="s-info">
@@ -153,7 +151,7 @@
             <strong>The Full Experience</strong>
             <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
           </div>
-           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             <span class="price">£40</span>
             <button class="details-btn" onclick="selectService('full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
           </div>
@@ -410,6 +408,7 @@
 
         <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
     </form>
+
     <!-- MODAL -->
     <div id="infoModal" class="modal">
         <div class="modal-content">
@@ -480,7 +479,6 @@
                     <p class="t-text">"Great cut, great price, lovely chap"</p>
                     <span class="t-name">— Gunnery Sgt. Hartman</span>
                 </div>
-                <!-- Duplicates for infinite scroll -->
                 <div class="testimonial-card">
                     <div class="t-stars">★★★★★</div>
                     <p class="t-text">"Had a great service from Alex. Great to talk I had the royal package. So many different treatments I've never tried. Felt great after."</p>
@@ -508,16 +506,16 @@
                 </div>
             </div>
         </div>
-         <div class="social-buttons">
-        <a id="insta-link" href="https://www.instagram.com/whitecross_barbers"
-           target="_blank" rel="noopener noreferrer"
-           class="btn btn-instagram">
-            <svg class="insta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM18.5 6.2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
-            </svg>
-            <span class="btn-text">@WHITECROSS_BARBERS</span>
-        </a>
-    </div>
+        <div class="social-buttons">
+            <a id="insta-link" href="https://www.instagram.com/whitecross_barbers"
+               target="_blank" rel="noopener noreferrer"
+               class="btn btn-instagram">
+                <svg class="insta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM18.5 6.2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                </svg>
+                <span class="btn-text">@WHITECROSS_BARBERS</span>
+            </a>
+        </div>
     </section>
 
     <!-- GALLERY CAROUSEL -->
@@ -547,6 +545,7 @@
 <a href="https://wa.me/447470108578" class="whatsapp-float" target="_blank">
     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp I CUT Whitecross Barbers">
 </a>
+
 <script>
     (function() {
         const track = document.getElementById('carouselTrack');
@@ -583,25 +582,25 @@
 </script>
 
 <script src="script.js"></script>
+
 <script>
-  // Accordion arrow rotation logic
-  document.querySelectorAll('.accordion-toggle').forEach(function(toggle) {
-    toggle.addEventListener('click', function() {
-      var target = toggle.getAttribute('data-target');
-      var content = document.querySelector('.' + target + '-content');
-      var arrow = toggle.querySelector('.arrow');
-      var isOpen = content && content.style.maxHeight && content.style.maxHeight !== '0px';
-      if (content) {
-        if (isOpen) {
-          content.style.maxHeight = '0px';
-          arrow.classList.remove('rotated');
-        } else {
-          content.style.maxHeight = content.scrollHeight + 'px';
-          arrow.classList.add('rotated');
-        }
-      }
+    document.querySelectorAll('.accordion-toggle').forEach(function(toggle) {
+        toggle.addEventListener('click', function() {
+            var target = toggle.getAttribute('data-target');
+            var content = document.querySelector('.' + target + '-content');
+            var arrow = toggle.querySelector('.arrow');
+            var isOpen = content && content.style.maxHeight && content.style.maxHeight !== '0px';
+            if (content) {
+                if (isOpen) {
+                    content.style.maxHeight = '0px';
+                    if (arrow) arrow.classList.remove('rotated');
+                } else {
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    if (arrow) arrow.classList.add('rotated');
+                }
+            }
+        });
     });
-  });
 </script>
 
 <footer class="footer">
@@ -623,6 +622,7 @@
     <p class="footer-copy">© 2026 I CUT Whitecross Barbers. All rights reserved.</p>
     <p class="footer-powered"><em>Powered by Alex</em></p>
 </footer>
+
 <!-- ABOUT US MODAL -->
 <div id="aboutModal" class="modal" onclick="if(event.target===this)closeAboutModal()">
     <div class="modal-content" style="max-width:480px; max-height:85vh; overflow-y:auto;">
@@ -700,14 +700,15 @@
         <p style="color:#666; font-size:0.75rem; margin-top:14px; line-height:1.5;">Deposit secures your slot. Remaining balance paid on the day.</p>
     </div>
 </div>
+
 <!-- SUCCESS POPUP -->
 <div id="successPopup" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.9); z-index:999999; justify-content:center; align-items:center;">
     <div style="background:#111; padding:30px; border:2px solid #d4af37; border-radius:12px; max-width:400px; width:90%; text-align:center; position:relative;">
         <button id="closePopup" onclick="document.getElementById('successPopup').style.display='none'" style="position:absolute; top:10px; right:15px; background:none; border:none; color:#d4af37; font-size:1.4rem; cursor:pointer;">×</button>
         <div id="popup-icon" style="font-size:3rem; margin-bottom:10px;">✓</div>
         <h2 id="popup-title" style="color:#d4af37; font-family:'Oswald',sans-serif; text-transform:uppercase; margin-bottom:10px;">Booking Confirmed!</h2>
-<p id="popup-text" style="color:#fff; margin-bottom:20px;">You're being securely redirected to complete your booking. Please do not close this page.</p>
-</div>
+        <p id="popup-text" style="color:#fff; margin-bottom:20px;">You're being securely redirected to complete your booking. Please do not close this page.</p>
+    </div>
 </div>
 
 </body>
