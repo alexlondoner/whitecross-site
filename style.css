@@ -121,11 +121,13 @@ footer {
   background: #d4af37;
   color: #000;
   padding: 5px 15px;
-  font-weight: bold;
+  font-weight: absolute;
   border-radius: 50px;
   margin-bottom: 25px;
   display: inline-block;
   font-size: 0.8rem;
+  filter: drop-shadow(0 0 8px rgba(212,175,55,0.6));
+
 }
 
 /* =========================
@@ -1375,4 +1377,37 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
     font-size: 0.78rem;
     padding: 12px 18px;
   }
+}
+.logo-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 220px;
+    margin: 0 auto 8px;
+}
+
+.main-logo-img {
+    width: 220px;
+    height: auto;
+    display: block;
+}
+
+.main-logo-overlay {
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Oswald', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% auto;
+    animation: goldShine 3s linear infinite;
+    white-space: nowrap;
+    filter: drop-shadow(0 0 8px rgba(212,175,55,0.6));
+    margin: 2;
 }
