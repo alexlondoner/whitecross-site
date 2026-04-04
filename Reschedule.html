@@ -570,8 +570,8 @@
         grid.innerHTML = '';
         let availableCount = 0;
 
-        SLOTS.forEach(slot => {
-            const btn = document.createElement('button');
+    getSlots(selectedDate).forEach(slot => {
+                const btn = document.createElement('button');
             btn.className = 'slot-btn';
             btn.textContent = slot;
             const isBusy = isSlotBusy(slot, selectedDate);
