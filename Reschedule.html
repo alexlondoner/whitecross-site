@@ -354,12 +354,22 @@
 <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMWfGHgTLIQd4wUBdPQgxXMmV8-ibaixJ-nQoCEPScPU54ntL3ZFlmxI3zo2QT-s16/exec';
 
-    const SLOTS = [
+    function getSlots(dateStr) {
+    const isSunday = new Date(dateStr + 'T00:00:00').getDay() === 0;
+    const start = isSunday ? '10:00 AM' : '9:00 AM';
+    const allSlots = [
         '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
         '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
         '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
         '6:00 PM','6:30 PM'
     ];
+    const sundaySlots = allSlots.filter(s => {
+        const t = timeToMs(s, dateStr);
+        const d = new Date(t);
+        return d.getHours() >= 10 && d.getHours() < 16;
+    });
+    return isSunday ? sundaySlots : allSlots;
+}
 
     let currentBookingId = '';
     let currentEmail = '';
