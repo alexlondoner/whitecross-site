@@ -515,11 +515,17 @@
         const url = SCRIPT_URL + '?date=' + date + '&barber=' + barber;
         fetch(url)
             .then(r => r.json())
-            .then(data => {
-                document.getElementById('slotsLoading').style.display = 'none';
-                busySlots = data.busy || [];
-                renderSlots(busySlots);
-            })
+          .then(data => {
+    document.getElementById('slotsLoading').style.display = 'none';
+    if (data.mode === 'single') {
+        busySlots = data.busy || [];
+    } else if (data.mode === 'preference') {
+        busySlots = data.alexBusy || [];
+    } else {
+        busySlots = [];
+    }
+    renderSlots(busySlots);
+})
             .catch(() => {
                 document.getElementById('slotsLoading').style.display = 'none';
                 renderSlots([]);
