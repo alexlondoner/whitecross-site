@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             isSubmitting = true; // ← kilitle
 
-            const checkUrl = 'https://script.google.com/macros/s/AKfycbxMWfGHgTLIQd4wUBdPQgxXMmV8-ibaixJ-nQoCEPScPU54ntL3ZFlmxI3zo2QT-s16/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+            const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
             function handlePayment() {
                 if (extras.includes(service)) {
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function () {
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbxMWfGHgTLIQd4wUBdPQgxXMmV8-ibaixJ-nQoCEPScPU54ntL3ZFlmxI3zo2QT-s16/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbxMWfGHgTLIQd4wUBdPQgxXMmV8-ibaixJ-nQoCEPScPU54ntL3ZFlmxI3zo2QT-s16/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -497,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bookingData) {
             bookingData.status = 'CONFIRMED';   
-            fetch("https://script.google.com/macros/s/AKfycbxMWfGHgTLIQd4wUBdPQgxXMmV8-ibaixJ-nQoCEPScPU54ntL3ZFlmxI3zo2QT-s16/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
