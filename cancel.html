@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancel Booking | I CUT Whitecross Barbers</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0a0a0a 0%, #1a1410 50%, #0a0a0a 100%); }
+
+        .cancel-wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 40px 20px 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cancel-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .cancel-logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+
+        .cancel-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .cancel-subtitle {
+            color: #888;
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+        }
+
+        .cancel-card {
+            background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+            border: 1px solid #d4af37;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 0 35px rgba(212,175,55,0.3), inset 0 0 15px rgba(212,175,55,0.08);
+        }
+
+        /* STATES */
+        .state { display: none; }
+        .state.active { display: block; }
+
+        /* BOOKING DETAILS */
+        .booking-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #222;
+            font-size: 0.9rem;
+        }
+
+        .booking-detail-row:last-child { border-bottom: none; }
+
+        .detail-label {
+            color: #888;
+            font-size: 0.82rem;
+        }
+
+        .detail-value {
+            color: #fff;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .detail-value.gold { color: #d4af37; }
+
+        /* POLICY WARNING */
+        .policy-warning {
+            background: rgba(255,82,82,0.1);
+            border: 1px solid rgba(255,82,82,0.4);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 20px 0;
+            font-size: 0.85rem;
+            color: #ff8a80;
+            line-height: 1.6;
+        }
+
+        .policy-ok {
+            background: rgba(76,175,80,0.1);
+            border: 1px solid rgba(76,175,80,0.4);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 20px 0;
+            font-size: 0.85rem;
+            color: #a5d6a7;
+            line-height: 1.6;
+        }
+
+        /* BUTTONS */
+        .btn-cancel-confirm {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #ff5252;
+            background: rgba(255,82,82,0.15);
+            color: #ff5252;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn-cancel-confirm:hover {
+            background: rgba(255,82,82,0.25);
+            box-shadow: 0 0 20px rgba(255,82,82,0.3);
+        }
+
+        .btn-keep {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #d4af37;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+
+        .btn-keep:hover { filter: brightness(1.1); }
+
+        /* LOADING */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(212,175,55,0.3);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        /* INPUT */
+        .cancel-input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .cancel-input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 15px rgba(212,175,55,0.3);
+        }
+
+        .btn-lookup {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .error-msg {
+            color: #ff5252;
+            font-size: 0.82rem;
+            text-align: center;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .success-title {
+            font-family: 'Oswald', sans-serif;
+            color: #d4af37;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .success-text {
+            color: #aaa;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="cancel-wrap">
+
+    <div class="cancel-header">
+        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="cancel-logo">
+        <h1 class="cancel-title">Cancel Booking</h1>
+        <p class="cancel-subtitle">I CUT Whitecross Barbers</p>
+    </div>
+
+    <div class="cancel-card">
+
+        <!-- STATE: LOADING -->
+        <div class="state active" id="stateLoading">
+            <div style="text-align:center; padding: 30px 0;">
+                <span class="loading-spinner"></span>
+                <span style="color:#888; font-size:0.88rem;">Loading your booking...</span>
+            </div>
+        </div>
+
+        <!-- STATE: MANUAL LOOKUP (no URL params) -->
+        <div class="state" id="stateLookup">
+            <p style="color:#888; font-size:0.88rem; margin-bottom:20px; line-height:1.6;">Enter your booking ID and email address to find your booking.</p>
+            <input type="text" id="inputBookingId" class="cancel-input" placeholder="Booking ID (e.g. WCB-1234567890)">
+            <input type="email" id="inputEmail" class="cancel-input" placeholder="Email address">
+            <button onclick="lookupBooking()" class="btn-lookup">Find My Booking</button>
+            <p class="error-msg" id="lookupError">Booking not found. Please check your details.</p>
+        </div>
+
+        <!-- STATE: BOOKING FOUND -->
+        <div class="state" id="stateFound">
+            <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px;">Your Booking</p>
+
+            <div id="bookingDetails"></div>
+
+            <div id="policyMessage"></div>
+
+            <button onclick="confirmCancel()" class="btn-cancel-confirm" id="btnConfirmCancel">
+                ✕ Cancel This Booking
+            </button>
+            <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
+        </div>
+
+        <!-- STATE: CONFIRMING -->
+        <div class="state" id="stateConfirming">
+            <div style="text-align:center; padding: 30px 0;">
+                <span class="loading-spinner"></span>
+                <span style="color:#888; font-size:0.88rem;">Processing cancellation...</span>
+            </div>
+        </div>
+
+        <!-- STATE: SUCCESS -->
+        <div class="state" id="stateSuccess">
+            <div style="text-align:center;">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Booking Cancelled</h2>
+                <p class="success-text" id="successText">Your booking has been cancelled. A confirmation email has been sent to you.</p>
+                <a href="index.html" class="btn-keep">Book Again →</a>
+            </div>
+        </div>
+
+        <!-- STATE: NOT FOUND -->
+        <div class="state" id="stateNotFound">
+            <div style="text-align:center; padding: 20px 0;">
+                <div style="font-size:2.5rem; margin-bottom:12px;">❌</div>
+                <h2 style="font-family:'Oswald',sans-serif; color:#ff5252; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">Not Found</h2>
+                <p style="color:#888; font-size:0.88rem; line-height:1.6; margin-bottom:24px;">We couldn't find a booking with those details. Please check your confirmation email for the correct booking ID.</p>
+                <a href="https://wa.me/447470108578" style="display:inline-block; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; padding:14px 28px; border-radius:10px; font-weight:800; text-decoration:none; text-transform:uppercase; font-size:0.82rem; letter-spacing:1px;">💬 Contact Us</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxilmV3F-Rpyf9pMXEzgkHZuoXwk0kVR-N1eBDFCrRBYrlOEHASRvjp3UMYjM_lY8aM/exec';
+
+    let currentBookingId = '';
+    let currentEmail = '';
+    let currentBookingData = null;
+
+    function showState(id) {
+        document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function formatService(slug) {
+        const map = {
+            'full-experience': 'The Full Experience',
+            'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+            'i-cut-deluxe': 'I CUT Deluxe',
+            'i-cut-royal': 'I CUT Royal',
+            'senior-full-experience': 'Senior Full Experience',
+            'skin-fade': 'Skin Fade Cut',
+            'scissor-cut': 'Scissor Cut',
+            'classic-sbs': 'Classic Short Back & Sides',
+            'hot-towel-shave': 'Hot Towel Shave',
+            'clipper-cut': 'Clipper Cut',
+            'senior-haircut': 'Senior Haircut',
+            'young-gents': 'Young Gents',
+            'young-gents-skin-fade': 'Young Gents Skin Fade',
+            'full-facial': 'Full Facial Treatment',
+            'beard-dyeing': 'Beard Dyeing',
+            'face-mask': 'Face Mask',
+            'face-steam': 'Face Steam',
+            'threading': 'Threading',
+            'waxing': 'Waxing',
+            'shape-up-clean-up': 'Shape Up & Clean Up',
+            'wash-hot-towel': 'Wash, Style & Hot Towel'
+        };
+        return map[slug] || slug;
+    }
+
+    function loadFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        const email = params.get('email');
+
+        if (id && email) {
+            currentBookingId = id;
+            currentEmail = email;
+            fetchBooking(id, email);
+        } else {
+            showState('stateLookup');
+        }
+    }
+
+    function lookupBooking() {
+        const id = document.getElementById('inputBookingId').value.trim();
+        const email = document.getElementById('inputEmail').value.trim();
+        if (!id || !email) return;
+        currentBookingId = id;
+        currentEmail = email;
+        document.getElementById('lookupError').style.display = 'none';
+        showState('stateLoading');
+        fetchBooking(id, email);
+    }
+
+    function fetchBooking(id, email) {
+        const url = SCRIPT_URL + '?check=cancel_lookup&id=' + encodeURIComponent(id) + '&email=' + encodeURIComponent(email);
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.found) {
+                    showState('stateNotFound');
+                    return;
+                }
+                if (data.status === 'CANCELLED') {
+                    showState('stateNotFound');
+                    return;
+                }
+                currentBookingData = data;
+                renderBookingDetails(data);
+                showState('stateFound');
+            })
+            .catch(() => showState('stateNotFound'));
+    }
+
+    function renderBookingDetails(data) {
+        const detailsEl = document.getElementById('bookingDetails');
+        detailsEl.innerHTML = `
+            <div class="booking-detail-row">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">${data.name}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Date</span>
+                <span class="detail-value gold">${data.date}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Time</span>
+                <span class="detail-value">${data.time}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Service</span>
+                <span class="detail-value">${formatService(data.service) || data.service}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Barber</span>
+                <span class="detail-value">${(data.barber || 'TBC').toUpperCase()}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Amount Paid</span>
+                <span class="detail-value gold">${data.paidAmount || data.price}</span>
+            </div>
+        `;
+
+        const policyEl = document.getElementById('policyMessage');
+        if (data.withinPolicy) {
+            policyEl.innerHTML = `<div class="policy-ok">✅ This cancellation is within our 24-hour policy. A refund will be processed if applicable.</div>`;
+        } else {
+            policyEl.innerHTML = `<div class="policy-warning">⚠️ Your appointment is in less than 24 hours. According to our cancellation policy, deposits may not be refundable. If you have any questions, please contact us directly.</div>`;
+        }
+    }
+
+    function confirmCancel() {
+        if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return;
+        showState('stateConfirming');
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                action: 'cancel',
+                bookingId: currentBookingId,
+                email: currentEmail
+            })
+        }).then(() => {
+            const name = currentBookingData ? currentBookingData.name.split(' ')[0] : '';
+            document.getElementById('successText').textContent =
+                'Your booking has been cancelled, ' + name + '. A confirmation email has been sent to ' + currentEmail + '.';
+            showState('stateSuccess');
+        }).catch(() => {
+            alert('Something went wrong. Please contact us directly on WhatsApp or call 020 3621 5929.');
+            showState('stateFound');
+        });
+    }
+
+    // Init
+    loadFromUrl();
+</script>
+
+</body>
+</html>
