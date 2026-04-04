@@ -325,16 +325,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentHour = now2.getHours();
         const currentMinute = now2.getMinutes();
 
-        for (let h = 9; h <= 21; h++) {
-            for (let m of [0, 30]) {
-                if (h === 21 && m > 0) continue;
-                if (isToday) {
+        const selectedDate2 = new Date(date + 'T00:00:00');
+        const isSunday = selectedDate2.getDay() === 0;
+        const openHour = isSunday ? 10 : 9;
+        const closeHour = isSunday ? 16 : 19;
+
+        for (let h = openHour; h <= closeHour; h++) {
+        for (let m of [0, 30]) {
+        if (h === closeHour && m > 0) continue;
+        if (isToday) {
+
                     if (h < currentHour || (h === currentHour && m <= currentMinute)) continue;
                 }
                 const hour12 = h % 12 || 12;
                 const ampm = h >= 12 ? 'PM' : 'AM';
                 const label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
-                const afterHours = h >= 19;
+                const afterHours = h >= closeHour;
                 slots.push({ label, h, m, afterHours });
             }
         }
