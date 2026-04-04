@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reschedule Booking | I CUT Whitecross Barbers</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0a0a0a 0%, #1a1410 50%, #0a0a0a 100%); }
+
+        .reschedule-wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 40px 20px 60px;
+        }
+
+        .reschedule-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .reschedule-logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+
+        .reschedule-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .reschedule-subtitle {
+            color: #888;
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+        }
+
+        .reschedule-card {
+            background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
+            border: 1px solid #d4af37;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 0 35px rgba(212,175,55,0.3), inset 0 0 15px rgba(212,175,55,0.08);
+        }
+
+        .state { display: none; }
+        .state.active { display: block; }
+
+        .booking-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #222;
+            font-size: 0.9rem;
+        }
+
+        .booking-detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #888; font-size: 0.82rem; }
+        .detail-value { color: #fff; font-weight: 600; text-align: right; }
+        .detail-value.gold { color: #d4af37; }
+
+        .section-title {
+            color: #d4af37;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 20px 0 12px 0;
+        }
+
+        .reschedule-input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+
+        .reschedule-input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 15px rgba(212,175,55,0.3);
+        }
+
+        .barber-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .barber-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(212,175,55,0.3);
+            background: rgba(0,0,0,0.4);
+            color: #888;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .barber-btn.active {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.15);
+            color: #d4af37;
+        }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .slot-btn {
+            padding: 10px 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(212,175,55,0.3);
+            background: rgba(0,0,0,0.4);
+            color: #ccc;
+            font-size: 0.78rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .slot-btn:hover { border-color: #d4af37; color: #d4af37; }
+        .slot-btn.selected { border-color: #d4af37; background: rgba(212,175,55,0.2); color: #d4af37; font-weight: bold; }
+        .slot-btn.busy { border-color: #333; background: rgba(0,0,0,0.2); color: #444; cursor: not-allowed; text-decoration: line-through; }
+
+        .btn-confirm {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-confirm:hover { filter: brightness(1.1); }
+        .btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-lookup {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .btn-cancel-link {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: transparent;
+            color: #666;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-align: center;
+            margin-top: 10px;
+            display: block;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(212,175,55,0.3);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            color: #ff5252;
+            font-size: 0.82rem;
+            text-align: center;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .slots-loading {
+            text-align: center;
+            color: #888;
+            font-size: 0.82rem;
+            padding: 20px 0;
+            display: none;
+        }
+
+        .no-slots {
+            text-align: center;
+            color: #888;
+            font-size: 0.82rem;
+            padding: 20px 0;
+            display: none;
+        }
+
+        .success-icon { font-size: 3rem; margin-bottom: 16px; }
+
+        .success-title {
+            font-family: 'Oswald', sans-serif;
+            color: #d4af37;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .new-booking-box {
+            background: rgba(76,175,80,0.08);
+            border: 1px dashed rgba(76,175,80,0.4);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            text-align: left;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="reschedule-wrap">
+
+    <div class="reschedule-header">
+        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="reschedule-logo">
+        <h1 class="reschedule-title">Reschedule Booking</h1>
+        <p class="reschedule-subtitle">I CUT Whitecross Barbers</p>
+    </div>
+
+    <div class="reschedule-card">
+
+        <!-- STATE: LOADING -->
+        <div class="state active" id="stateLoading">
+            <div style="text-align:center; padding: 30px 0;">
+                <span class="loading-spinner"></span>
+                <span style="color:#888; font-size:0.88rem;">Loading your booking...</span>
+            </div>
+        </div>
+
+        <!-- STATE: MANUAL LOOKUP -->
+        <div class="state" id="stateLookup">
+            <p style="color:#888; font-size:0.88rem; margin-bottom:20px; line-height:1.6;">Enter your booking ID and email to reschedule.</p>
+            <input type="text" id="inputBookingId" class="reschedule-input" placeholder="Booking ID (e.g. WCB-1234567890)">
+            <input type="email" id="inputEmail" class="reschedule-input" placeholder="Email address">
+            <button onclick="lookupBooking()" class="btn-lookup">Find My Booking</button>
+            <p class="error-msg" id="lookupError">Booking not found. Please check your details.</p>
+        </div>
+
+        <!-- STATE: PICK NEW DATE/TIME -->
+        <div class="state" id="stateReschedule">
+            <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px;">Current Booking</p>
+            <div id="currentBookingDetails"></div>
+
+            <p class="section-title">Select New Date</p>
+            <input type="date" id="newDateInput" class="reschedule-input" min="">
+
+            <p class="section-title">Select Barber</p>
+            <div class="barber-select">
+                <button class="barber-btn active" id="btnAlex" onclick="selectBarber('alex')">✂ Alex</button>
+                <button class="barber-btn" id="btnArda" onclick="selectBarber('arda')">✂ Arda</button>
+            </div>
+
+            <p class="section-title">Select New Time</p>
+            <div class="slots-loading" id="slotsLoading">
+                <span class="loading-spinner"></span> Checking availability...
+            </div>
+            <div class="no-slots" id="noSlots">No available slots for this date. Please try another day.</div>
+            <div class="slots-grid" id="slotsGrid"></div>
+
+            <button class="btn-confirm" id="btnConfirmReschedule" onclick="confirmReschedule()" disabled>
+                🔄 Confirm Reschedule
+            </button>
+            <a href="index.html" class="btn-cancel-link">Keep Original Booking</a>
+        </div>
+
+        <!-- STATE: CONFIRMING -->
+        <div class="state" id="stateConfirming">
+            <div style="text-align:center; padding: 30px 0;">
+                <span class="loading-spinner"></span>
+                <span style="color:#888; font-size:0.88rem;">Rescheduling your booking...</span>
+            </div>
+        </div>
+
+        <!-- STATE: SUCCESS -->
+        <div class="state" id="stateSuccess">
+            <div style="text-align:center;">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Booking Rescheduled!</h2>
+                <div class="new-booking-box" id="successDetails"></div>
+                <p style="color:#aaa; font-size:0.82rem; margin-bottom:20px;">A confirmation email has been sent to you.</p>
+                <a href="index.html" style="display:inline-block; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; padding:14px 28px; border-radius:10px; font-weight:800; text-decoration:none; text-transform:uppercase; font-size:0.82rem; letter-spacing:1px;">Book Another →</a>
+            </div>
+        </div>
+
+        <!-- STATE: NOT FOUND -->
+        <div class="state" id="stateNotFound">
+            <div style="text-align:center; padding: 20px 0;">
+                <div style="font-size:2.5rem; margin-bottom:12px;">❌</div>
+                <h2 style="font-family:'Oswald',sans-serif; color:#ff5252; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">Not Found</h2>
+                <p style="color:#888; font-size:0.88rem; line-height:1.6; margin-bottom:24px;">We couldn't find a booking with those details.</p>
+                <a href="https://wa.me/447470108578" style="display:inline-block; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; padding:14px 28px; border-radius:10px; font-weight:800; text-decoration:none; text-transform:uppercase; font-size:0.82rem; letter-spacing:1px;">💬 Contact Us</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyY34SvS3t1jUdzI2BEePU0DOE2DipqM3fQR5R-FzPJMmwzpP1Qvp7qSU-wwelcWtXz/exec';
+
+    const SLOTS = [
+        '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
+        '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
+        '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
+        '6:00 PM','6:30 PM'
+    ];
+
+    let currentBookingId = '';
+    let currentEmail = '';
+    let currentBookingData = null;
+    let selectedBarber = 'alex';
+    let selectedTime = '';
+    let selectedDate = '';
+    let busySlots = [];
+
+    function showState(id) {
+        document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function formatService(slug) {
+        const map = {
+            'full-experience': 'The Full Experience',
+            'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+            'i-cut-deluxe': 'I CUT Deluxe',
+            'i-cut-royal': 'I CUT Royal',
+            'senior-full-experience': 'Senior Full Experience',
+            'skin-fade': 'Skin Fade Cut',
+            'scissor-cut': 'Scissor Cut',
+            'classic-sbs': 'Classic Short Back & Sides',
+            'hot-towel-shave': 'Hot Towel Shave',
+            'clipper-cut': 'Clipper Cut',
+            'senior-haircut': 'Senior Haircut',
+            'young-gents': 'Young Gents',
+            'young-gents-skin-fade': 'Young Gents Skin Fade',
+            'full-facial': 'Full Facial Treatment',
+            'beard-dyeing': 'Beard Dyeing',
+            'face-mask': 'Face Mask',
+            'face-steam': 'Face Steam',
+            'threading': 'Threading',
+            'waxing': 'Waxing',
+            'shape-up-clean-up': 'Shape Up & Clean Up',
+            'wash-hot-towel': 'Wash, Style & Hot Towel'
+        };
+        return map[slug] || slug;
+    }
+
+    function loadFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        const email = params.get('email');
+
+        if (id && email) {
+            currentBookingId = id;
+            currentEmail = email;
+            fetchBooking(id, email);
+        } else {
+            showState('stateLookup');
+        }
+    }
+
+    function lookupBooking() {
+        const id = document.getElementById('inputBookingId').value.trim();
+        const email = document.getElementById('inputEmail').value.trim();
+        if (!id || !email) return;
+        currentBookingId = id;
+        currentEmail = email;
+        document.getElementById('lookupError').style.display = 'none';
+        showState('stateLoading');
+        fetchBooking(id, email);
+    }
+
+    function fetchBooking(id, email) {
+        const url = SCRIPT_URL + '?check=reschedule_lookup&id=' + encodeURIComponent(id) + '&email=' + encodeURIComponent(email);
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.found || data.status === 'CANCELLED') {
+                    showState('stateNotFound');
+                    return;
+                }
+                currentBookingData = data;
+                selectedBarber = data.barber || 'alex';
+                renderCurrentBooking(data);
+                setupDatePicker();
+                updateBarberButtons();
+                showState('stateReschedule');
+            })
+            .catch(() => showState('stateNotFound'));
+    }
+
+    function renderCurrentBooking(data) {
+        document.getElementById('currentBookingDetails').innerHTML = `
+            <div class="booking-detail-row">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">${data.name}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Current Date</span>
+                <span class="detail-value gold">${data.date}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Current Time</span>
+                <span class="detail-value">${data.time}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Service</span>
+                <span class="detail-value">${formatService(data.service) || data.service}</span>
+            </div>
+            <div class="booking-detail-row">
+                <span class="detail-label">Barber</span>
+                <span class="detail-value">${(data.barber || 'TBC').toUpperCase()}</span>
+            </div>
+        `;
+    }
+
+    function setupDatePicker() {
+        const input = document.getElementById('newDateInput');
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        input.min = tomorrow.toISOString().split('T')[0];
+        input.addEventListener('change', function() {
+            selectedDate = this.value;
+            selectedTime = '';
+            document.getElementById('btnConfirmReschedule').disabled = true;
+            loadSlots(selectedDate, selectedBarber);
+        });
+    }
+
+    function selectBarber(barber) {
+        selectedBarber = barber;
+        selectedTime = '';
+        document.getElementById('btnConfirmReschedule').disabled = true;
+        updateBarberButtons();
+        if (selectedDate) loadSlots(selectedDate, selectedBarber);
+    }
+
+    function updateBarberButtons() {
+        document.getElementById('btnAlex').className = 'barber-btn' + (selectedBarber === 'alex' ? ' active' : '');
+        document.getElementById('btnArda').className = 'barber-btn' + (selectedBarber === 'arda' ? ' active' : '');
+    }
+
+    function loadSlots(date, barber) {
+        document.getElementById('slotsGrid').innerHTML = '';
+        document.getElementById('slotsLoading').style.display = 'block';
+        document.getElementById('noSlots').style.display = 'none';
+
+        const url = SCRIPT_URL + '?date=' + date + '&barber=' + barber;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('slotsLoading').style.display = 'none';
+                busySlots = data.busy || [];
+                renderSlots(busySlots);
+            })
+            .catch(() => {
+                document.getElementById('slotsLoading').style.display = 'none';
+                renderSlots([]);
+            });
+    }
+
+    function timeToMs(timeStr, dateStr) {
+        const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!parts) return 0;
+        let h = parseInt(parts[1]);
+        let m = parseInt(parts[2]);
+        const ap = parts[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setHours(h, m, 0, 0);
+        return d.getTime();
+    }
+
+    function isSlotBusy(timeStr, dateStr) {
+        const slotMs = timeToMs(timeStr, dateStr);
+        const duration = getDuration();
+        const slotEnd = slotMs + duration * 60 * 1000;
+        return busySlots.some(b => slotMs < b.end && slotEnd > b.start);
+    }
+
+    function getDuration() {
+        const durationMap = {
+            "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
+            "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
+            "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
+            "clipper-cut": 15, "senior-haircut": 20, "young-gents": 20,
+            "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
+            "face-mask": 10, "face-steam": 10, "threading": 5,
+            "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
+        };
+        return durationMap[currentBookingData?.service] || 30;
+    }
+
+    function renderSlots(busy) {
+        const grid = document.getElementById('slotsGrid');
+        grid.innerHTML = '';
+        let availableCount = 0;
+
+        SLOTS.forEach(slot => {
+            const btn = document.createElement('button');
+            btn.className = 'slot-btn';
+            btn.textContent = slot;
+            const isBusy = isSlotBusy(slot, selectedDate);
+            if (isBusy) {
+                btn.classList.add('busy');
+                btn.disabled = true;
+            } else {
+                availableCount++;
+                btn.onclick = () => selectSlot(slot, btn);
+            }
+            grid.appendChild(btn);
+        });
+
+        if (availableCount === 0) {
+            document.getElementById('noSlots').style.display = 'block';
+            grid.innerHTML = '';
+        }
+    }
+
+    function selectSlot(time, btn) {
+        document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedTime = time;
+        document.getElementById('btnConfirmReschedule').disabled = false;
+    }
+
+    function confirmReschedule() {
+        if (!selectedDate || !selectedTime) return;
+        showState('stateConfirming');
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                action: 'reschedule',
+                bookingId: currentBookingId,
+                email: currentEmail,
+                newDate: selectedDate,
+                newTime: selectedTime,
+                newBarber: selectedBarber
+            })
+        }).then(() => {
+            const newDateFormatted = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+            document.getElementById('successDetails').innerHTML = `
+                <p style="margin:6px 0;"><strong style="color:#d4af37;">📅 New Date:</strong> ${newDateFormatted}</p>
+                <p style="margin:6px 0;"><strong style="color:#d4af37;">⏰ New Time:</strong> ${selectedTime}</p>
+                <p style="margin:6px 0;"><strong style="color:#d4af37;">💈 Barber:</strong> ${selectedBarber.toUpperCase()}</p>
+                <p style="margin:6px 0;"><strong style="color:#d4af37;">✂️ Service:</strong> ${formatService(currentBookingData?.service)}</p>
+            `;
+            showState('stateSuccess');
+        }).catch(() => {
+            alert('Something went wrong. Please contact us on WhatsApp or call 020 3621 5929.');
+            showState('stateReschedule');
+        });
+    }
+
+    loadFromUrl();
+</script>
+
+</body>
+</html>
