@@ -253,7 +253,12 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             const date = window._pendingFormData.date;
 
             isSubmitting = true;
-
+            // BUTON FEEDBACK
+            const submitBtn = form.querySelector('.submit-btn');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+             submitBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span> Securing your slot...';
+                    }
             const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
             function handlePayment() {
@@ -272,25 +277,29 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
                 }
             }
 
-            function runCheck(callback) {
-                if (_dupCacheResult !== null && _dupCachePhone === phone && _dupCacheDate === date) {
-                    callback(_dupCacheResult);
-                } else {
-                    fetch(checkUrl)
-                        .then(r => r.json())
-                        .then(callback)
-                        .catch(err => {
-                            console.log('Duplicate check failed:', err);
-                            isSubmitting = false;
-                            handlePayment();
-                        });
-                }
-            }
+           function runCheck(callback) {
+    if (_dupCacheResult !== null) {
+        callback(_dupCacheResult);
+    } else {
+        fetch(checkUrl)
+            .then(r => r.json())
+            .then(callback)
+            .catch(err => {
+                console.log('Duplicate check failed:', err);
+                isSubmitting = false;
+                handlePayment();
+            });
+    }
+}
 
             runCheck(function(result) {
                 if (result.duplicate) {
                     if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
                         isSubmitting = false;
+                        if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '✂ BOOK MY APPOINTMENT';
+}
                         return;
                     }
                 }
