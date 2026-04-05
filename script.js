@@ -104,7 +104,7 @@ function prefetchDuplicate() {
     _dupCachePhone = phone;
     _dupCacheDate = date;
     _dupCacheResult = null; // sıfırla
-    const url = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+    const url = 'https://script.google.com/macros/s/AKfycbwPWJT2USOWNHQW5aVwgK4D1B8E5cOjG6Ofqz_rl2OpR_BOpDMUQL3RMGCfi_v7DXwl/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
     fetch(url).then(r => r.json()).then(result => { _dupCacheResult = result; }).catch(() => {});
 }
 
@@ -259,7 +259,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
               submitBtn.disabled = true;
              submitBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span> Securing your slot...';
                     }
-            const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+            const checkUrl = 'https://script.google.com/macros/s/AKfycbwPWJT2USOWNHQW5aVwgK4D1B8E5cOjG6Ofqz_rl2OpR_BOpDMUQL3RMGCfi_v7DXwl/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
             function handlePayment() {
                 if (extras.includes(service)) {
@@ -323,7 +323,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbwPWJT2USOWNHQW5aVwgK4D1B8E5cOjG6Ofqz_rl2OpR_BOpDMUQL3RMGCfi_v7DXwl/exec", {
             method: "POST",
             mode: "no-cors",
             body: JSON.stringify(data)
@@ -427,7 +427,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?date=' + date + '&barber=' + barber;
+        const url = 'https://script.google.com/macros/s/AKfycbwPWJT2USOWNHQW5aVwgK4D1B8E5cOjG6Ofqz_rl2OpR_BOpDMUQL3RMGCfi_v7DXwl/exec?date=' + date + '&barber=' + barber;
 
         fetch(url)
             .then(r => r.json())
@@ -533,7 +533,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
         if (bookingData) {
             bookingData.status = 'CONFIRMED';   
-            fetch("https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbwPWJT2USOWNHQW5aVwgK4D1B8E5cOjG6Ofqz_rl2OpR_BOpDMUQL3RMGCfi_v7DXwl/exec", {
                 method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
             }).finally(() => sessionStorage.removeItem('pendingBooking'));
         }
