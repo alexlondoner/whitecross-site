@@ -264,10 +264,11 @@
 
             <div id="policyMessage"></div>
 
-            <button onclick="confirmCancel()" class="btn-cancel-confirm" id="btnConfirmCancel">
-                ✕ Cancel This Booking
-            </button>
-            <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
+           <a id="btnReschedule" href="#" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#388e3c); margin-bottom:10px;">🔄 Reschedule Instead</a>
+         <button onclick="confirmCancel()" class="btn-cancel-confirm" id="btnConfirmCancel">
+        ✕ Cancel This Booking
+      </button>
+      <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
         </div>
 
         <!-- STATE: CONFIRMING -->
@@ -381,7 +382,8 @@
                 }
                 currentBookingData = data;
                 renderBookingDetails(data);
-                showState('stateFound');
+
+              showState('stateFound');
             })
             .catch(() => showState('stateNotFound'));
     }
@@ -421,6 +423,12 @@
         } else {
             policyEl.innerHTML = `<div class="policy-warning">⚠️ Your appointment is in less than 24 hours. According to our cancellation policy, deposits may not be refundable. If you have any questions, please contact us directly.</div>`;
         }
+        updateRescheduleLink();
+    }
+
+    function updateRescheduleLink() {
+        document.getElementById('btnReschedule').href =
+            'reschedule.html?id=' + encodeURIComponent(currentBookingId) + '&email=' + encodeURIComponent(currentEmail);
     }
 
     function confirmCancel() {
