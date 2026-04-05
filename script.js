@@ -254,48 +254,50 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
             isSubmitting = true; // ← kilitle
 
-const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+            const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
-function handlePayment() {
-    if (extras.includes(service)) {
-        proceedToPayment(stripeLinks[service], 'FULL');
-    } else {
-        document.getElementById('paymentChoicePopup').style.display = 'flex';
-        document.getElementById('btnFullPayment').onclick = () => {
-            document.getElementById('paymentChoicePopup').style.display = 'none';
-            proceedToPayment(stripeLinks[service], 'FULL');
-        };
-        document.getElementById('btnDeposit').onclick = () => {
-            document.getElementById('paymentChoicePopup').style.display = 'none';
-            proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
-        };
-    }
-}
+            function handlePayment() {
+                if (extras.includes(service)) {
+                    proceedToPayment(stripeLinks[service], 'FULL');
+                } else {
+                    document.getElementById('paymentChoicePopup').style.display = 'flex';
+                    document.getElementById('btnFullPayment').onclick = () => {
+                        document.getElementById('paymentChoicePopup').style.display = 'none';
+                        proceedToPayment(stripeLinks[service], 'FULL');
+                    };
+                    document.getElementById('btnDeposit').onclick = () => {
+                        document.getElementById('paymentChoicePopup').style.display = 'none';
+                        proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                    };
+                }
+            }
 
-function runCheck(callback) {
-    if (_dupCacheResult !== null && _dupCachePhone === phone && _dupCacheDate === date) {
-        callback(_dupCacheResult);
-    } else {
-        fetch(checkUrl)
-            .then(r => r.json())
-            .then(callback)
-            .catch(err => {
-                console.log('Duplicate check failed:', err);
-                isSubmitting = false;
+            function runCheck(callback) {
+                if (_dupCacheResult !== null && _dupCachePhone === phone && _dupCacheDate === date) {
+                    callback(_dupCacheResult);
+                } else {
+                    fetch(checkUrl)
+                        .then(r => r.json())
+                        .then(callback)
+                        .catch(err => {
+                            console.log('Duplicate check failed:', err);
+                            isSubmitting = false;
+                            handlePayment();
+                        });
+                }
+            }
+
+            runCheck(function(result) {
+                if (result.duplicate) {
+                    if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
+                        isSubmitting = false;
+                        return;
+                    }
+                }
                 handlePayment();
             });
+        });
     }
-}
-
-runCheck(function(result) {
-    if (result.duplicate) {
-        if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
-            isSubmitting = false;
-            return;
-        }
-    }
-    handlePayment();
-});
 
     function proceedToPayment(url, type) {
         const data = window._pendingFormData;
