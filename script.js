@@ -252,7 +252,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             const phone = window._pendingFormData.phone;
             const date = window._pendingFormData.date;
 
-            isSubmitting = true; // ← kilitle
+            isSubmitting = true;
 
             const checkUrl = 'https://script.google.com/macros/s/AKfycbzLLzGKlncQnNTxZZis_Fki_J7Xqdj6POoVT49ZZatR8UrIwu5nrxiaE7bD73kPytBA/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
