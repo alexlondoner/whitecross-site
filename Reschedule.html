@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="robots" content="noindex, nofollow">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TN2JGH5JLY"></script>
     <script>
@@ -640,5 +642,29 @@
     loadFromUrl();
 </script>
 
+<!-- GDPR COOKIE BANNER -->
+<div id="cookieBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999999; background:#111; border-top:1px solid rgba(212,175,55,0.4); padding:16px 20px; font-family:Inter,sans-serif;">
+    <div style="max-width:600px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <p style="color:#aaa; font-size:0.78rem; line-height:1.6; margin:0; flex:1; min-width:200px;">
+            We use cookies to improve your experience and analyse site traffic. By clicking <strong style="color:#fff;">Accept</strong>, you agree to our use of cookies.
+            <a href="terms.html" style="color:#d4af37; text-decoration:none; margin-left:4px;">Learn more</a>
+        </p>
+        <div style="display:flex; gap:10px; flex-shrink:0;">
+            <button onclick="setCookieConsent('declined')" style="background:transparent; color:#888; border:1px solid #444; padding:8px 16px; border-radius:6px; font-size:0.75rem; cursor:pointer;">Decline</button>
+            <button onclick="setCookieConsent('accepted')" style="background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;">Accept</button>
+        </div>
+    </div>
+</div>
+<script>
+    function setCookieConsent(val) {
+        localStorage.setItem("cookieConsent", val);
+        document.getElementById("cookieBanner").style.display = "none";
+    }
+    (function() {
+        if (!localStorage.getItem("cookieConsent")) {
+            document.getElementById("cookieBanner").style.display = "block";
+        }
+    })();
+</script>
 </body>
 </html>

@@ -17,6 +17,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Us | I CUT Whitecross Barbers – Premium Barbershop EC1Y London</title>
     <meta name="description" content="Learn about I CUT Whitecross Barbers – a premium barbershop at 136 Whitecross Street EC1Y 8QJ London. Our story, values, team and location in Clerkenwell.">
+
+    <link rel="canonical" href="https://whitecrossbarbers.com/about.html">
+
+    <meta property="og:title" content="About Us | I CUT Whitecross Barbers – Premium Barbershop EC1Y London">
+    <meta property="og:description" content="A premium barbershop at the heart of Clerkenwell. Precision cuts, beard trims, hot towel shaves. 136 Whitecross Street EC1Y 8QJ London.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://whitecrossbarbers.com/about.html">
+    <meta property="og:image" content="https://whitecrossbarbers.com/whitecross-logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:site_name" content="I CUT Whitecross Barbers">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="About Us | I CUT Whitecross Barbers EC1Y London">
+    <meta name="twitter:description" content="Premium barbershop at 136 Whitecross Street EC1Y. Our story, values and team.">
+    <meta name="twitter:image" content="https://whitecrossbarbers.com/whitecross-logo.png">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Barbershop",
+      "name": "I CUT Whitecross Barbers",
+      "url": "https://whitecrossbarbers.com",
+      "telephone": "+442036215929",
+      "image": "https://whitecrossbarbers.com/whitecross-logo.png",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "136 Whitecross Street",
+        "addressLocality": "Clerkenwell",
+        "addressRegion": "London",
+        "postalCode": "EC1Y 8QJ",
+        "addressCountry": "GB"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "51.524013",
+        "longitude": "-0.093342"
+      },
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "09:00", "closes": "19:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "10:00", "closes": "16:00" }
+      ],
+      "sameAs": [
+        "https://www.instagram.com/whitecross_barbers",
+        "https://www.yell.com/biz/i-cut-whitecross-barbers-london/",
+        "https://booksy.com/en-gb/179328_icut-whitecross-barbers_barber_311817_london"
+      ]
+    }
+    </script>
     
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
@@ -241,5 +290,29 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp I CUT Whitecross Barbers">
 </a>
 
+<!-- GDPR COOKIE BANNER -->
+<div id="cookieBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999999; background:#111; border-top:1px solid rgba(212,175,55,0.4); padding:16px 20px; font-family:Inter,sans-serif;">
+    <div style="max-width:600px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <p style="color:#aaa; font-size:0.78rem; line-height:1.6; margin:0; flex:1; min-width:200px;">
+            We use cookies to improve your experience and analyse site traffic. By clicking <strong style="color:#fff;">Accept</strong>, you agree to our use of cookies.
+            <a href="terms.html" style="color:#d4af37; text-decoration:none; margin-left:4px;">Learn more</a>
+        </p>
+        <div style="display:flex; gap:10px; flex-shrink:0;">
+            <button onclick="setCookieConsent('declined')" style="background:transparent; color:#888; border:1px solid #444; padding:8px 16px; border-radius:6px; font-size:0.75rem; cursor:pointer;">Decline</button>
+            <button onclick="setCookieConsent('accepted')" style="background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;">Accept</button>
+        </div>
+    </div>
+</div>
+<script>
+    function setCookieConsent(val) {
+        localStorage.setItem("cookieConsent", val);
+        document.getElementById("cookieBanner").style.display = "none";
+    }
+    (function() {
+        if (!localStorage.getItem("cookieConsent")) {
+            document.getElementById("cookieBanner").style.display = "block";
+        }
+    })();
+<\/script>
 </body>
 </html>
