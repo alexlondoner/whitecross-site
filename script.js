@@ -323,11 +323,34 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             popup.style.display = 'flex';
         }
 
-        fetch("https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec", {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify(data)
-        }).finally(() => { setTimeout(() => window.location.href = url, 800); });
+      const db = window._db;
+const { collection, addDoc, Timestamp } = window._firebase;
+const dateStr = data.date;
+const timeMatch = data.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+let h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+const ap = timeMatch[3].toUpperCase();
+if (ap === 'PM' && h !== 12) h += 12;
+if (ap === 'AM' && h === 12) h = 0;
+const startTime = new Date(dateStr + 'T00:00:00');
+startTime.setHours(h, m, 0, 0);
+const durationMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
+const dur = durationMap[data.service] || 30;
+const endTime = new Date(startTime.getTime() + dur * 60 * 1000);
+addDoc(collection(db, 'tenants/whitecross/bookings'), {
+    bookingId: data.bookingId,
+    tenantId: 'whitecross',
+    clientName: data.name,
+    clientEmail: data.email,
+    clientPhone: data.phone,
+    barberId: data.barber,
+    serviceId: data.service,
+    startTime: Timestamp.fromDate(startTime),
+    endTime: Timestamp.fromDate(endTime),
+    status: 'PENDING',
+    paymentType: data.paymentType,
+    source: 'website',
+    createdAt: Timestamp.fromDate(new Date()),
+}).finally(() => { setTimeout(() => window.location.href = url, 800); });
     }
 
     function checkAvailability(date) {
@@ -427,52 +450,58 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             return;
         }
 
-        const url = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec?date=' + date + '&barber=' + barber;
+       async function getFirestoreSlots() {
+    const db = window._db;
+    const { collection, query, where, getDocs, Timestamp } = window._firebase;
+    const startOfDay = new Date(date + 'T00:00:00');
+    const endOfDay = new Date(date + 'T23:59:59');
+    const q = query(
+        collection(db, 'tenants/whitecross/bookings'),
+        where('startTime', '>=', Timestamp.fromDate(startOfDay)),
+        where('startTime', '<=', Timestamp.fromDate(endOfDay))
+    );
+    const snap = await getDocs(q);
+    const alexBusy = [], ardaBusy = [];
+    snap.forEach(doc => {
+        const d = doc.data();
+        if (d.status === 'CANCELLED') return;
+        const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
+        if (d.barberId === 'alex') alexBusy.push(slot);
+        if (d.barberId === 'arda') ardaBusy.push(slot);
+    });
+    return { alexBusy, ardaBusy };
+}
 
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                renderSlots((slotMs, slotEnd) => {
-                    function isBusy(busyList) {
-                        return (busyList || []).some(b => slotMs >= b.start && slotMs < b.end);
-                    }
-                    if (data.mode === 'single') return isBusy(data.busy);
-                    if (data.mode === 'preference') return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
-                    return false;
-                });
+getFirestoreSlots().then(data => {
+    renderSlots((slotMs, slotEnd) => {
+        function isBusy(busyList) {
+            return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
+        }
+        if (barber === 'alex') return isBusy(data.alexBusy);
+        if (barber === 'arda') return isBusy(data.ardaBusy);
+        return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
+    });
 
-                if (data.mode === 'preference') {
-                    timeSlotsGrid.querySelectorAll('.time-slot-btn:not(.unavailable)').forEach(btn => {
-                        const match = btn.dataset.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                        if (!match) return;
-                        let h = parseInt(match[1]);
-                        let m = parseInt(match[2]);
-                        const ampm = match[3].toUpperCase();
-                        if (ampm === 'PM' && h !== 12) h += 12;
-                        if (ampm === 'AM' && h === 12) h = 0;
-                        const slotTime = new Date(date + 'T00:00:00');
-                        slotTime.setHours(h, m, 0, 0);
-                        const slotMs = slotTime.getTime();
-                        const slotEnd = slotMs + duration * 60 * 1000;
-
-                        function isBusy(busyList) {
-                            return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
-                        }
-
-                        const alexBusy = isBusy(data.alexBusy);
-                        const ardaBusy = isBusy(data.ardaBusy);
-
-                        if (!alexBusy) btn.dataset.assignedBarber = 'alex';
-                        else if (!ardaBusy) btn.dataset.assignedBarber = 'arda';
-                        else {
-                            const alexCount = (data.alexBusy || []).length;
-                            const ardaCount = (data.ardaBusy || []).length;
-                            btn.dataset.assignedBarber = alexCount <= ardaCount ? 'alex' : 'arda';
-                        }
-                    });
-                }
-            })
-            .catch(err => console.log('Availability check failed:', err));
+    if (barber === 'no-preference') {
+        timeSlotsGrid.querySelectorAll('.time-slot-btn:not(.unavailable)').forEach(btn => {
+            const match = btn.dataset.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return;
+            let h = parseInt(match[1]), m = parseInt(match[2]);
+            const ampm = match[3].toUpperCase();
+            if (ampm === 'PM' && h !== 12) h += 12;
+            if (ampm === 'AM' && h === 12) h = 0;
+            const slotTime = new Date(date + 'T00:00:00');
+            slotTime.setHours(h, m, 0, 0);
+            const slotMs = slotTime.getTime();
+            const slotEnd = slotMs + duration * 60 * 1000;
+            const alexBusy = data.alexBusy.some(b => slotMs < b.end && slotEnd > b.start);
+            const ardaBusy = data.ardaBusy.some(b => slotMs < b.end && slotEnd > b.start);
+            if (!alexBusy) btn.dataset.assignedBarber = 'alex';
+            else if (!ardaBusy) btn.dataset.assignedBarber = 'arda';
+            else btn.dataset.assignedBarber = 'alex';
+        });
+    }
+}).catch(err => console.log('Availability check failed:', err));
     }
 
     /* Barber & Service listeners */
@@ -530,13 +559,15 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + date + " at " + time + ". Check your email for confirmation!";
             popup.style.display = 'flex';
         }
-
-        if (bookingData) {
-            bookingData.status = 'CONFIRMED';   
-            fetch("https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec", {
-                method: "POST", mode: "no-cors", body: JSON.stringify(bookingData)
-            }).finally(() => sessionStorage.removeItem('pendingBooking'));
-        }
+if (bookingData) {
+    const db = window._db;
+    const { collection, query, where, getDocs, updateDoc, Timestamp } = window._firebase;
+    const q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', bookingData.bookingId));
+    getDocs(q).then(snap => {
+        if (!snap.empty) updateDoc(snap.docs[0].ref, { status: 'CONFIRMED' });
+        sessionStorage.removeItem('pendingBooking');
+    });
+}
 
         window.history.replaceState({}, '', window.location.pathname);
     }
