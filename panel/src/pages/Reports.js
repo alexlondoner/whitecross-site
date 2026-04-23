@@ -9,13 +9,33 @@ function parsePrice(val) {
 
 function parseDateStr(dateStr) {
   if (!dateStr) return null;
+  const raw = String(dateStr).trim();
+
+  // dd/mm/yyyy
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const d = parseInt(slash[1], 10);
+    const m = parseInt(slash[2], 10) - 1;
+    const y = parseInt(slash[3], 10);
+    return new Date(y, m, d);
+  }
+
+  // yyyy-mm-dd
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) {
+    const y = parseInt(iso[1], 10);
+    const m = parseInt(iso[2], 10) - 1;
+    const d = parseInt(iso[3], 10);
+    return new Date(y, m, d);
+  }
+
   const months = { January: 0, February: 1, March: 2, April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11 };
-  const parts = String(dateStr).split(' ');
+  const parts = raw.split(' ');
   if (parts.length === 3) {
     const d = parseInt(parts[0]), m = months[parts[1]], y = parseInt(parts[2]);
     if (!isNaN(d) && m !== undefined && !isNaN(y)) return new Date(y, m, d);
   }
-  const d = new Date(dateStr);
+  const d = new Date(raw);
   return isNaN(d) ? null : d;
 }
 
@@ -113,8 +133,14 @@ export default function Reports() {
     const fetchedBookings = bookingsSnap.docs.map(doc => {
       const d = doc.data();
       const startTime = d.startTime?.toDate();
-      const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-      const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
+      const fallbackDate = d.date || d.bookingDate || '';
+      const fallbackTime = d.time || d.bookingTime || '';
+      const date = startTime
+        ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : fallbackDate;
+      const time = startTime
+        ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase()
+        : fallbackTime;
       return {
         ...d,
         name: d.clientName || 'Walk-in',
