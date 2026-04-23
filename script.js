@@ -350,6 +350,9 @@ addDoc(collection(db, 'tenants/whitecross/bookings'), {
     paymentType: data.paymentType,
     source: 'website',
     createdAt: Timestamp.fromDate(new Date()),
+}).then((docRef) => {
+    data.firestoreDocId = docRef.id;
+    sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 }).finally(() => { setTimeout(() => window.location.href = url, 800); });
     }
 
@@ -451,25 +454,11 @@ addDoc(collection(db, 'tenants/whitecross/bookings'), {
         }
 
        async function getFirestoreSlots() {
-    const db = window._db;
-    const { collection, query, where, getDocs, Timestamp } = window._firebase;
-    const startOfDay = new Date(date + 'T00:00:00');
-    const endOfDay = new Date(date + 'T23:59:59');
-    const q = query(
-        collection(db, 'tenants/whitecross/bookings'),
-        where('startTime', '>=', Timestamp.fromDate(startOfDay)),
-        where('startTime', '<=', Timestamp.fromDate(endOfDay))
-    );
-    const snap = await getDocs(q);
-    const alexBusy = [], ardaBusy = [];
-    snap.forEach(doc => {
-        const d = doc.data();
-        if (d.status === 'CANCELLED') return;
-        const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
-        if (d.barberId === 'alex') alexBusy.push(slot);
-        if (d.barberId === 'arda') ardaBusy.push(slot);
-    });
-    return { alexBusy, ardaBusy };
+    const response = await fetch('https://us-central1-havuz-44f70.cloudfunctions.net/getAvailability?date=' + encodeURIComponent(date));
+    if (!response.ok) {
+        throw new Error('Availability request failed');
+    }
+    return response.json();
 }
 
 getFirestoreSlots().then(data => {
@@ -561,12 +550,22 @@ getFirestoreSlots().then(data => {
         }
 if (bookingData) {
     const db = window._db;
-    const { collection, query, where, getDocs, updateDoc, Timestamp } = window._firebase;
-    const q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', bookingData.bookingId));
-    getDocs(q).then(snap => {
-        if (!snap.empty) updateDoc(snap.docs[0].ref, { status: 'CONFIRMED' });
-        sessionStorage.removeItem('pendingBooking');
-    });
+    const { doc, collection, query, where, getDocs, updateDoc } = window._firebase;
+
+    if (bookingData.firestoreDocId) {
+        updateDoc(doc(db, 'tenants/whitecross/bookings', bookingData.firestoreDocId), { status: 'CONFIRMED' })
+            .finally(() => {
+                sessionStorage.removeItem('pendingBooking');
+            });
+    } else {
+        const q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', bookingData.bookingId));
+        getDocs(q).then(snap => {
+            if (!snap.empty) updateDoc(snap.docs[0].ref, { status: 'CONFIRMED' });
+            sessionStorage.removeItem('pendingBooking');
+        }).catch(() => {
+            sessionStorage.removeItem('pendingBooking');
+        });
+    }
 }
 
         window.history.replaceState({}, '', window.location.pathname);
