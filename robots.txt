@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://whitecrossbarbers.com/sitemap.xml
+Sitemap: https://www.whitecrossbarbers.com/sitemap.xml
