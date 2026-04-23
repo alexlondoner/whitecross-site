@@ -19,6 +19,17 @@ function parseDateStr(dateStr) {
   return isNaN(d) ? null : d;
 }
 
+function normalizeSource(source) {
+  const s = String(source || '').trim().toLowerCase();
+  if (!s) return 'Website';
+  if (s === 'booksy') return 'Booksy';
+  if (s === 'fresha') return 'Fresha';
+  if (s === 'website' || s === 'web') return 'Website';
+  if (s === 'walk-in' || s === 'walkin' || s === 'walk in') return 'Walk-in';
+  if (s === 'manual') return 'Manual';
+  return source;
+}
+
 function MiniBar({ value, max, color }) {
   const pct = max ? Math.max(4, (value / max) * 100) : 0;
   return (
@@ -89,7 +100,7 @@ export default function Reports() {
   const [bookings, setBookings] = useState([]);
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -104,7 +115,20 @@ export default function Reports() {
       const startTime = d.startTime?.toDate();
       const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
       const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
-      return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber: d.barberId || '', service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
+      return {
+        ...d,
+        name: d.clientName || 'Walk-in',
+        email: d.clientEmail || '',
+        phone: d.clientPhone || '',
+        barber: d.barberId || '',
+        service: d.serviceId || '',
+        date,
+        time,
+        bookingId: d.bookingId || doc.id,
+        source: normalizeSource(d.source),
+        paidAmount: d.paidAmount || '',
+        price: d.price || '',
+      };
     });
     setBookings(fetchedBookings);
     const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -114,8 +138,6 @@ export default function Reports() {
 };
     fetchData();
   }, []);
-
-  const now = new Date();
 
   const periodStart = useMemo(() => {
     const d = new Date();
@@ -130,6 +152,7 @@ export default function Reports() {
 
   const filtered = useMemo(() => {
     if (!periodStart) return bookings;
+    const now = new Date();
     return bookings.filter(b => {
       const d = parseDateStr(b.date);
       return d && d >= periodStart && d <= now;
@@ -177,7 +200,7 @@ export default function Reports() {
   // Barber stats
   const barberStats = barbers.map(barber => {
     const bs = active.filter(b => (b.barber || '').toLowerCase() === barber.name.toLowerCase());
-    const co = bs.filter(b => b.status === 'CHECKED_OUT');
+    const co = bs.filter(b => b.status === 'CHECKED_OUT' || b.status === 'COMPLETED');
     return {
       name: barber.name, color: barber.color,
       bookings: bs.length,
@@ -194,7 +217,9 @@ export default function Reports() {
     const name = svc ? svc.name : (b.service || 'Unknown');
     if (!svcMap[name]) svcMap[name] = { name, count: 0, revenue: 0 };
     svcMap[name].count++;
-    if (b.status === 'CHECKED_OUT') svcMap[name].revenue += parsePrice(b.paidAmount || b.price);
+    if (b.status === 'CHECKED_OUT' || b.status === 'COMPLETED') {
+      svcMap[name].revenue += parsePrice(b.paidAmount || b.price);
+    }
   });
   const topServices = Object.values(svcMap).sort((a, b) => b.count - a.count).slice(0, 8);
 
