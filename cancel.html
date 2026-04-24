@@ -1,544 +1,474 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/favicon.png">
-    <link rel="apple-touch-icon" href="/favicon.png">
-    <meta name="robots" content="noindex, nofollow">
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TN2JGH5JLY"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-TN2JGH5JLY');
-      gtag('config', 'AW-18017585907');
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Cancel Booking | I CUT Whitecross Barbers</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background: linear-gradient(135deg, #0a0a0a 0%, #1a1410 50%, #0a0a0a 100%); }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .cancel-wrap {
-            max-width: 520px;
-            margin: 0 auto;
-            padding: 40px 20px 60px;
-            position: relative;
-            z-index: 1;
+        body {
+            background: linear-gradient(135deg, #080808 0%, #111 50%, #080808 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
         }
 
-        .cancel-header {
+        .wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 36px 20px 80px;
+        }
+
+        .page-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 36px;
+        }
+        .back-link {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .back-link:hover { color: #fff; }
+        .nav-logo { width: 46px; height: auto; }
+
+        .page-header {
             text-align: center;
             margin-bottom: 32px;
         }
-
-        .cancel-logo {
-            width: 80px;
-            height: auto;
-            margin-bottom: 12px;
-        }
-
-        .cancel-title {
-            font-family: 'Oswald', sans-serif;
+        .page-header h1 {
+            font-family: 'Cinzel', serif;
             font-size: 1.6rem;
             letter-spacing: 4px;
             text-transform: uppercase;
-            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728);
+            background: linear-gradient(to right, #b8860b, #d4af37, #b8860b);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 6px;
         }
-
-        .cancel-subtitle {
-            color: #888;
-            font-size: 0.82rem;
-            letter-spacing: 1px;
+        .page-header p {
+            color: #666;
+            font-size: 0.78rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
         }
 
-        .cancel-card {
-            background: linear-gradient(135deg, #1a1a14 0%, #0f0f0a 100%);
-            border: 1px solid #d4af37;
+        .card {
+            background: linear-gradient(135deg, #111 0%, #0d0d0d 100%);
+            border: 1px solid rgba(212,175,55,0.25);
             border-radius: 16px;
             padding: 28px;
-            box-shadow: 0 0 35px rgba(212,175,55,0.3), inset 0 0 15px rgba(212,175,55,0.08);
+            box-shadow: 0 0 30px rgba(212,175,55,0.06), inset 0 0 12px rgba(212,175,55,0.02);
         }
 
-        /* STATES */
         .state { display: none; }
         .state.active { display: block; }
 
-        /* BOOKING DETAILS */
-        .booking-detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #222;
-            font-size: 0.9rem;
-        }
-
-        .booking-detail-row:last-child { border-bottom: none; }
-
-        .detail-label {
-            color: #888;
-            font-size: 0.82rem;
-        }
-
-        .detail-value {
-            color: #fff;
-            font-weight: 600;
-            text-align: right;
-        }
-
-        .detail-value.gold { color: #d4af37; }
-
-        /* POLICY WARNING */
-        .policy-warning {
-            background: rgba(255,82,82,0.1);
-            border: 1px solid rgba(255,82,82,0.4);
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin: 20px 0;
-            font-size: 0.85rem;
-            color: #ff8a80;
-            line-height: 1.6;
-        }
-
-        .policy-ok {
-            background: rgba(76,175,80,0.1);
-            border: 1px solid rgba(76,175,80,0.4);
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin: 20px 0;
-            font-size: 0.85rem;
-            color: #a5d6a7;
-            line-height: 1.6;
-        }
-
-        /* BUTTONS */
-        .btn-cancel-confirm {
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            border: 1px solid #ff5252;
-            background: rgba(255,82,82,0.15);
-            color: #ff5252;
-            font-family: 'Oswald', sans-serif;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 20px;
-        }
-
-        .btn-cancel-confirm:hover {
-            background: rgba(255,82,82,0.25);
-            box-shadow: 0 0 20px rgba(255,82,82,0.3);
-        }
-
-        .btn-keep {
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            border: 1px solid #d4af37;
-            background: linear-gradient(135deg, #d4af37, #b8860b);
-            color: #000;
-            font-family: 'Oswald', sans-serif;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 10px;
-            text-decoration: none;
-            display: block;
+        .loading-center {
             text-align: center;
+            padding: 32px 0;
         }
-
-        .btn-keep:hover { filter: brightness(1.1); }
-
-        /* LOADING */
-        .loading-spinner {
+        .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(212,175,55,0.3);
+            width: 22px; height: 22px;
+            border: 2px solid rgba(212,175,55,0.2);
             border-top-color: #d4af37;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-right: 8px;
             vertical-align: middle;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* INPUT */
-        .cancel-input {
+        .lookup-note {
+            color: #777;
+            font-size: 0.84rem;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+        .lookup-note strong { color: #aaa; }
+
+        .form-input {
             width: 100%;
             padding: 14px;
             margin-bottom: 12px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid rgba(212,175,55,0.4);
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(212,175,55,0.25);
             color: #fff;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 0.9rem;
             font-family: 'Inter', sans-serif;
         }
-
-        .cancel-input:focus {
+        .form-input:focus {
             outline: none;
             border-color: #d4af37;
-            box-shadow: 0 0 15px rgba(212,175,55,0.3);
+            box-shadow: 0 0 12px rgba(212,175,55,0.15);
         }
+        .form-input::placeholder { color: #555; }
 
-        .btn-lookup {
+        .btn-gold {
             width: 100%;
             padding: 14px;
             border-radius: 10px;
             border: none;
             background: linear-gradient(135deg, #d4af37, #b8860b);
             color: #000;
-            font-family: 'Oswald', sans-serif;
-            font-size: 0.9rem;
+            font-family: 'Cinzel', serif;
+            font-size: 0.82rem;
             letter-spacing: 2px;
             text-transform: uppercase;
             cursor: pointer;
             font-weight: 700;
+            transition: filter 0.2s;
+        }
+        .btn-gold:hover { filter: brightness(1.1); }
+        .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-cancel-confirm {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #ff5252;
+            background: rgba(255,82,82,0.1);
+            color: #ff5252;
+            font-family: 'Cinzel', serif;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+        .btn-cancel-confirm:hover {
+            background: rgba(255,82,82,0.2);
+            box-shadow: 0 0 16px rgba(255,82,82,0.25);
+        }
+
+        .btn-keep {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(212,175,55,0.25);
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Cinzel', serif;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            margin-top: 10px;
+            text-decoration: none;
+            text-align: center;
+            transition: filter 0.2s;
+        }
+        .btn-keep:hover { filter: brightness(1.1); }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #1e1e1a;
+            font-size: 0.88rem;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #666; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; }
+        .detail-value { color: #ddd; font-weight: 600; text-align: right; }
+        .detail-value.gold { color: #d4af37; }
+
+        .policy-ok {
+            background: rgba(76,175,80,0.08);
+            border: 1px solid rgba(76,175,80,0.35);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 18px 0;
+            font-size: 0.82rem;
+            color: #81c784;
+            line-height: 1.6;
+        }
+        .policy-warn {
+            background: rgba(255,152,0,0.08);
+            border: 1px solid rgba(255,152,0,0.35);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 18px 0;
+            font-size: 0.82rem;
+            color: #ffb74d;
+            line-height: 1.6;
         }
 
         .error-msg {
             color: #ff5252;
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             text-align: center;
-            margin-top: 12px;
-            display: none;
+            margin-top: 10px;
         }
 
-        .success-icon {
-            font-size: 3rem;
-            margin-bottom: 16px;
-        }
-
+        .success-icon { font-size: 3rem; margin-bottom: 14px; }
         .success-title {
-            font-family: 'Oswald', sans-serif;
+            font-family: 'Cinzel', serif;
             color: #d4af37;
-            font-size: 1.3rem;
-            letter-spacing: 2px;
+            font-size: 1.2rem;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
-
         .success-text {
-            color: #aaa;
-            font-size: 0.88rem;
+            color: #888;
+            font-size: 0.84rem;
             line-height: 1.7;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
     </style>
 </head>
 <body>
 
-<div class="cancel-wrap">
+<div class="wrap">
 
-    <div class="cancel-header">
-        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="cancel-logo">
-        <h1 class="cancel-title">Cancel Booking</h1>
-        <p class="cancel-subtitle">I CUT Whitecross Barbers</p>
+    <nav class="page-nav">
+        <a href="index.html" class="back-link">← Back</a>
+        <img src="img/whitecross-logo.png" alt="I CUT Whitecross Barbers" class="nav-logo">
+        <a href="index.html#booking" class="back-link">Book →</a>
+    </nav>
+
+    <div class="page-header">
+        <h1>Cancel Booking</h1>
+        <p>I CUT Whitecross Barbers · EC1Y 8QJ</p>
     </div>
 
-    <div class="cancel-card">
+    <div class="card">
 
-        <!-- STATE: LOADING -->
         <div class="state active" id="stateLoading">
-            <div style="text-align:center; padding: 30px 0;">
-                <span class="loading-spinner"></span>
-                <span style="color:#888; font-size:0.88rem;">Loading your booking...</span>
+            <div class="loading-center">
+                <span class="spinner"></span>
+                <span style="color:#666; font-size:0.84rem;">Loading your booking…</span>
             </div>
         </div>
 
-        <!-- STATE: MANUAL LOOKUP (no URL params) -->
         <div class="state" id="stateLookup">
-            <p style="color:#888; font-size:0.88rem; margin-bottom:20px; line-height:1.6;">Enter your booking ID and email address to find your booking.</p>
-            <input type="text" id="inputBookingId" class="cancel-input" placeholder="Booking ID (e.g. WCB-1234567890)">
-            <input type="email" id="inputEmail" class="cancel-input" placeholder="Email address">
-            <button onclick="lookupBooking()" class="btn-lookup">Find My Booking</button>
-            <p class="error-msg" id="lookupError">Booking not found. Please check your details.</p>
+            <p class="lookup-note">Enter your <strong>Booking ID</strong> (e.g. <strong>WCB-1234567890</strong>) and the email address you booked with.</p>
+            <input type="text" id="inputId" class="form-input" placeholder="Booking ID (WCB-…)">
+            <input type="email" id="inputEmail" class="form-input" placeholder="Email address">
+            <button class="btn-gold" onclick="lookupBooking()">Find My Booking</button>
+            <p class="error-msg" id="lookupError" style="display:none;">Booking not found. Please check your details.</p>
         </div>
 
-        <!-- STATE: BOOKING FOUND -->
         <div class="state" id="stateFound">
-            <p style="color:#d4af37; font-family:'Oswald',sans-serif; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px;">Your Booking</p>
-
+            <p style="color:#d4af37; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">Your Booking</p>
             <div id="bookingDetails"></div>
-
-            <div id="policyMessage"></div>
-
-           <a id="btnReschedule" href="#" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#388e3c); margin-bottom:10px;">🔄 Reschedule Instead</a>
-         <button onclick="confirmCancel()" class="btn-cancel-confirm" id="btnConfirmCancel">
-        ✕ Cancel This Booking
-      </button>
-      <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
+            <div id="policyMsg"></div>
+            <a id="btnReschedule" href="reschedule.html" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#2e7d32); border-color:transparent; margin-top:20px;">🔄 Reschedule Instead</a>
+            <button class="btn-cancel-confirm" onclick="confirmCancel()">✕ Cancel This Booking</button>
+            <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
         </div>
 
-        <!-- STATE: CONFIRMING -->
-        <div class="state" id="stateConfirming">
-            <div style="text-align:center; padding: 30px 0;">   
-                <span class="loading-spinner"></span>
-                <span style="color:#888; font-size:0.88rem;">Processing cancellation...</span>
+        <div class="state" id="stateProcessing">
+            <div class="loading-center">
+                <span class="spinner"></span>
+                <span style="color:#666; font-size:0.84rem;">Processing cancellation…</span>
             </div>
         </div>
 
-        <!-- STATE: SUCCESS -->
         <div class="state" id="stateSuccess">
             <div style="text-align:center;">
                 <div class="success-icon">✅</div>
                 <h2 class="success-title">Booking Cancelled</h2>
-                <p class="success-text" id="successText">Your booking has been cancelled. A confirmation email has been sent to you.</p>
-                <a href="index.html" class="btn-keep">Book Again →</a>
+                <p class="success-text" id="successText">Your booking has been cancelled.</p>
+                <a href="index.html" class="btn-gold" style="display:block; text-align:center; text-decoration:none;">Book Again →</a>
             </div>
         </div>
 
-        <!-- STATE: NOT FOUND -->
         <div class="state" id="stateNotFound">
-            <div style="text-align:center; padding: 20px 0;">
+            <div style="text-align:center; padding:20px 0;">
                 <div style="font-size:2.5rem; margin-bottom:12px;">❌</div>
-                <h2 style="font-family:'Oswald',sans-serif; color:#ff5252; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">Not Found</h2>
-                <p style="color:#888; font-size:0.88rem; line-height:1.6; margin-bottom:24px;">We couldn't find a booking with those details. Please check your confirmation email for the correct booking ID.</p>
-                <a href="https://wa.me/447470108578" style="display:inline-block; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; padding:14px 28px; border-radius:10px; font-weight:800; text-decoration:none; text-transform:uppercase; font-size:0.82rem; letter-spacing:1px;">💬 Contact Us</a>
+                <h2 style="font-family:'Cinzel',serif; color:#ff5252; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; font-size:1rem;">Not Found</h2>
+                <p style="color:#777; font-size:0.84rem; line-height:1.6; margin-bottom:22px;">We couldn't find a booking with those details. Please check your confirmation email for the correct Booking ID.</p>
+                <a href="tel:02036215929" style="display:inline-block; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; padding:12px 24px; border-radius:10px; font-weight:800; text-decoration:none; text-transform:uppercase; font-size:0.78rem; letter-spacing:1px;">📞 Call Us</a>
             </div>
         </div>
 
     </div>
 
+    <div style="margin-top:20px; text-align:center;">
+        <a href="index.html" style="color:#555; font-size:0.76rem; text-decoration:none; letter-spacing:1px; text-transform:uppercase;">← Back to Main Page</a>
+    </div>
+
 </div>
 
-<script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec';
+<script type="module">
+    import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs, updateDoc, Timestamp }
+        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+    const firebaseConfig = {
+        apiKey:            "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+        authDomain:        "havuz-44f70.firebaseapp.com",
+        projectId:         "havuz-44f70",
+        storageBucket:     "havuz-44f70.firebasestorage.app",
+        messagingSenderId: "1050766582653",
+        appId:             "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    const TENANT = 'whitecross';
+
+    const SERVICE_NAMES = {
+        'full-experience': 'The Full Experience',
+        'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+        'i-cut-deluxe': 'I CUT Deluxe',
+        'i-cut-royal': 'I CUT Royal',
+        'senior-full-experience': 'Senior Full Experience',
+        'skin-fade': 'Skin Fade Cut',
+        'scissor-cut': 'Scissor Cut',
+        'classic-sbs': 'Classic Short Back & Sides',
+        'hot-towel-shave': 'Hot Towel Shave',
+        'clipper-cut': 'Clipper Cut',
+        'senior-haircut': 'Senior Haircut (65+)',
+        'young-gents': 'Young Gents (0-12)',
+        'young-gents-skin-fade': 'Young Gents Skin Fade',
+        'full-facial': 'Full Facial Treatment',
+        'beard-dyeing': 'Beard Dyeing',
+        'face-mask': 'Face Mask',
+        'face-steam': 'Face Steam',
+        'threading': 'Threading',
+        'waxing': 'Waxing',
+        'shape-up-clean-up': 'Shape Up & Clean Up',
+        'wash-hot-towel': 'Wash, Style & Hot Towel'
+    };
+
+    let currentDocRef = null;
+    let currentBookingData = null;
     let currentBookingId = '';
     let currentEmail = '';
-    let currentBookingData = null;
 
     function showState(id) {
         document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
     }
 
-    function formatService(slug) {
-        const map = {
-            'full-experience': 'The Full Experience',
-            'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
-            'i-cut-deluxe': 'I CUT Deluxe',
-            'i-cut-royal': 'I CUT Royal',
-            'senior-full-experience': 'Senior Full Experience',
-            'skin-fade': 'Skin Fade Cut',
-            'scissor-cut': 'Scissor Cut',
-            'classic-sbs': 'Classic Short Back & Sides',
-            'hot-towel-shave': 'Hot Towel Shave',
-            'clipper-cut': 'Clipper Cut',
-            'senior-haircut': 'Senior Haircut',
-            'young-gents': 'Young Gents',
-            'young-gents-skin-fade': 'Young Gents Skin Fade',
-            'full-facial': 'Full Facial Treatment',
-            'beard-dyeing': 'Beard Dyeing',
-            'face-mask': 'Face Mask',
-            'face-steam': 'Face Steam',
-            'threading': 'Threading',
-            'waxing': 'Waxing',
-            'shape-up-clean-up': 'Shape Up & Clean Up',
-            'wash-hot-towel': 'Wash, Style & Hot Towel'
-        };
-        return map[slug] || slug;
+    function formatTimestamp(ts) {
+        if (!ts) return { date: 'N/A', time: 'N/A' };
+        const d = ts.toDate();
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const h = d.getHours(), m = d.getMinutes();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        const time = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+        const date = `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        return { date, time };
     }
 
-    function loadFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        const email = params.get('email');
+    async function lookupByParams(id, email) {
+        const snap = await getDocs(query(
+            collection(db, `tenants/${TENANT}/bookings`),
+            where('bookingId', '==', id)
+        ));
+        if (snap.empty) return null;
+        const docSnap = snap.docs[0];
+        const data = docSnap.data();
+        if ((data.clientEmail || '').toLowerCase() !== email.toLowerCase()) return null;
+        if (data.status === 'CANCELLED') return null;
+        return { ref: docSnap.ref, data };
+    }
 
-        if (id && email) {
-            currentBookingId = id;
-            currentEmail = email;
-            fetchBooking(id, email);
+    function renderBooking(data) {
+        const { date, time } = formatTimestamp(data.startTime);
+        document.getElementById('bookingDetails').innerHTML = `
+            <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${data.clientName || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value gold">${date}</span></div>
+            <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${time}</span></div>
+            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${SERVICE_NAMES[data.serviceId] || data.serviceId || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberId || 'TBC').toUpperCase()}</span></div>
+            <div class="detail-row"><span class="detail-label">Booking ID</span><span class="detail-value" style="font-size:0.78rem; color:#888;">${data.bookingId}</span></div>
+        `;
+
+        const apptMs = data.startTime ? data.startTime.toMillis() : 0;
+        const hoursUntil = (apptMs - Date.now()) / 3600000;
+        const policyEl = document.getElementById('policyMsg');
+        if (hoursUntil >= 24) {
+            policyEl.innerHTML = `<div class="policy-ok">✅ Free cancellation — your appointment is more than 24 hours away.</div>`;
+        } else if (hoursUntil > 0) {
+            policyEl.innerHTML = `<div class="policy-warn">⚠️ Your appointment is in less than 24 hours. Late cancellations may not be eligible for a refund.</div>`;
         } else {
-            showState('stateLookup');
+            policyEl.innerHTML = `<div class="policy-warn">⚠️ This appointment has already passed.</div>`;
         }
+
+        document.getElementById('btnReschedule').href =
+            `reschedule.html?id=${encodeURIComponent(currentBookingId)}&email=${encodeURIComponent(currentEmail)}`;
     }
 
-    function lookupBooking() {
-        const id = document.getElementById('inputBookingId').value.trim();
+    window.lookupBooking = async function() {
+        const id    = document.getElementById('inputId').value.trim();
         const email = document.getElementById('inputEmail').value.trim();
         if (!id || !email) return;
         currentBookingId = id;
         currentEmail = email;
         document.getElementById('lookupError').style.display = 'none';
         showState('stateLoading');
-        fetchBooking(id, email);
-    }
-
-    function fetchBooking(id, email) {
-        const url = SCRIPT_URL + '?check=cancel_lookup&id=' + encodeURIComponent(id) + '&email=' + encodeURIComponent(email);
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                if (!data.found) {
-                    showState('stateNotFound');
-                    return;
-                }
-                if (data.status === 'CANCELLED') {
-                    showState('stateNotFound');
-                    return;
-                }
-                currentBookingData = data;
-                renderBookingDetails(data);
-
-              showState('stateFound');
-            })
-            .catch(() => showState('stateNotFound'));
-    }
-
-    function renderBookingDetails(data) {
-        const detailsEl = document.getElementById('bookingDetails');
-        detailsEl.innerHTML = `
-            <div class="booking-detail-row">
-                <span class="detail-label">Name</span>
-                <span class="detail-value">${data.name}</span>
-            </div>
-            <div class="booking-detail-row">
-                <span class="detail-label">Date</span>
-                <span class="detail-value gold">${data.date}</span>
-            </div>
-            <div class="booking-detail-row">
-                <span class="detail-label">Time</span>
-                <span class="detail-value">${data.time}</span>
-            </div>
-            <div class="booking-detail-row">
-                <span class="detail-label">Service</span>
-                <span class="detail-value">${formatService(data.service) || data.service}</span>
-            </div>
-            <div class="booking-detail-row">
-                <span class="detail-label">Barber</span>
-                <span class="detail-value">${(data.barber || 'TBC').toUpperCase()}</span>
-            </div>
-            <div class="booking-detail-row">
-                <span class="detail-label">Amount Paid</span>
-                <span class="detail-value gold">${data.paidAmount || data.price}</span>
-            </div>
-        `;
-
-        const policyEl = document.getElementById('policyMessage');
-        if (data.withinPolicy) {
-            policyEl.innerHTML = `<div class="policy-ok">✅ This cancellation is within our 24-hour policy. A refund will be processed if applicable.</div>`;
-        } else {
-            policyEl.innerHTML = `<div class="policy-warning">⚠️ Your appointment is in less than 24 hours. According to our cancellation policy, deposits may not be refundable. If you have any questions, please contact us directly.</div>`;
-        }
-        updateRescheduleLink();
-    }
-    function updateRescheduleLink() {
-        document.getElementById('btnReschedule').href =
-            'Reschedule.html?id=' + encodeURIComponent(currentBookingId) + '&email=' + encodeURIComponent(currentEmail);
-    }
-
-    function confirmCancel() {
-        if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return;
-        showState('stateConfirming');
-
-        fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({
-                action: 'cancel',
-                bookingId: currentBookingId,
-                email: currentEmail
-            })
-        }).then(() => {
-            const name = currentBookingData ? currentBookingData.name.split(' ')[0] : '';
-            document.getElementById('successText').textContent =
-                'Your booking has been cancelled, ' + name + '. A confirmation email has been sent to ' + currentEmail + '.';
-            showState('stateSuccess');
-        }).catch(() => {
-            alert('Something went wrong. Please contact us directly on WhatsApp or call 020 3621 5929.');
+        try {
+            const result = await lookupByParams(id, email);
+            if (!result) { showState('stateNotFound'); return; }
+            currentDocRef = result.ref;
+            currentBookingData = result.data;
+            renderBooking(result.data);
             showState('stateFound');
-        });
-    }
+        } catch(e) {
+            console.error(e);
+            showState('stateNotFound');
+        }
+    };
 
-    // Init
-    loadFromUrl();
-</script>
+    window.confirmCancel = async function() {
+        if (!confirm('Are you sure you want to cancel this booking? This cannot be undone.')) return;
+        showState('stateProcessing');
+        try {
+            await updateDoc(currentDocRef, { status: 'CANCELLED', cancelledAt: Timestamp.fromDate(new Date()) });
+            const name = (currentBookingData.clientName || '').split(' ')[0];
+            document.getElementById('successText').textContent =
+                `Your booking has been cancelled${name ? ', ' + name : ''}. We hope to see you again soon.`;
+            showState('stateSuccess');
+        } catch(e) {
+            console.error(e);
+            alert('Something went wrong. Please call us on 020 3621 5929.');
+            showState('stateFound');
+        }
+    };
 
-<div style="max-width:520px; margin:20px auto; padding:0 20px;">
-    <a href="manage.html" style="display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:15px; border-radius:10px; background:#111; border:1px solid rgba(212,175,55,0.4); color:#d4af37; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.82rem; letter-spacing:2px; text-transform:uppercase; box-sizing:border-box;">📋 Manage My Booking</a>
-</div>
-
-<!-- GDPR COOKIE BANNER -->
-<div id="cookieBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999999; background:#111; border-top:1px solid rgba(212,175,55,0.4); padding:16px 20px; font-family:Inter,sans-serif;">
-    <div style="max-width:600px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-        <p style="color:#aaa; font-size:0.78rem; line-height:1.6; margin:0; flex:1; min-width:200px;">
-            We use cookies to improve your experience and analyse site traffic. By clicking <strong style="color:#fff;">Accept</strong>, you agree to our use of cookies.
-            <a href="terms.html" style="color:#d4af37; text-decoration:none; margin-left:4px;">Learn more</a>
-        </p>
-        <div style="display:flex; gap:10px; flex-shrink:0;">
-            <button onclick="setCookieConsent('declined')" style="background:transparent; color:#888; border:1px solid #444; padding:8px 16px; border-radius:6px; font-size:0.75rem; cursor:pointer;">Decline</button>
-            <button onclick="setCookieConsent('accepted')" style="background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;">Accept</button>
-        </div>
-    </div>
-</div>
-<script>
-    function setCookieConsent(val) {
-        localStorage.setItem("cookieConsent", val);
-        document.getElementById("cookieBanner").style.display = "none";
-    }
-    (function() {
-        if (!localStorage.getItem("cookieConsent")) {
-            document.getElementById("cookieBanner").style.display = "block";
+    (async function init() {
+        const params = new URLSearchParams(window.location.search);
+        const id    = params.get('id');
+        const email = params.get('email');
+        if (id && email) {
+            currentBookingId = id;
+            currentEmail = email;
+            try {
+                const result = await lookupByParams(id, email);
+                if (!result) { showState('stateNotFound'); return; }
+                currentDocRef = result.ref;
+                currentBookingData = result.data;
+                renderBooking(result.data);
+                showState('stateFound');
+            } catch(e) {
+                showState('stateNotFound');
+            }
+        } else {
+            showState('stateLookup');
         }
     })();
 </script>
-<!-- MANAGE BOOKING FLOATER -->
-<div id="manageFloater" style="position:fixed; bottom:90px; right:18px; z-index:99998; display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
 
-    <!-- PANEL -->
-    <div id="managePanel" style="display:none; flex-direction:column; gap:8px; align-items:flex-end;">
-        <a href="cancel.html" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(255,82,82,0.5); color:#ff5252; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>✕</span> Cancel
-        </a>
-        <a href="Reschedule.html" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(76,175,80,0.5); color:#4caf50; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>🔄</span> Reschedule
-        </a>
-        <a href="https://wa.me/447470108578?text=Hi%2C+I%27d+like+to+manage+my+booking" target="_blank" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(37,211,102,0.5); color:#25D366; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>💬</span> WhatsApp
-        </a>
-        <a href="tel:+442036215929" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(212,175,55,0.5); color:#d4af37; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>📞</span> Call Us
-        </a>
-        <a href="index.html#bookingForm" style="display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; color:#000; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(212,175,55,0.3); font-weight:700;">
-            <span>✂</span> Book Now
-        </a>
-    </div>
-
-    <!-- TRIGGER BUTTON -->
-    <button onclick="toggleManagePanel()" id="manageBtn" style="width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(212,175,55,0.4); transition:transform 0.2s ease;" title="Manage My Booking">
-        <span id="manageBtnIcon" style="font-size:1.3rem;">📋</span>
-    </button>
-</div>
-
-<script>
-    function toggleManagePanel() {
-        var panel = document.getElementById('managePanel');
-        var icon = document.getElementById('manageBtnIcon');
-        var isOpen = panel.style.display === 'flex';
-        panel.style.display = isOpen ? 'none' : 'flex';
-        icon.textContent = isOpen ? '📋' : '✕';
-    }
-    document.addEventListener('click', function(e) {
-        var floater = document.getElementById('manageFloater');
-        if (!floater.contains(e.target)) {
-            document.getElementById('managePanel').style.display = 'none';
-            document.getElementById('manageBtnIcon').textContent = '📋';
-        }
-    });
-</script>
 </body>
 </html>
