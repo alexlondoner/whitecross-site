@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
@@ -617,12 +621,16 @@
             const input = document.getElementById('newDate');
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            input.min = tomorrow.toISOString().split('T')[0];
-            input.addEventListener('change', function() {
-                selectedDate = this.value;
-                selectedTime = '';
-                document.getElementById('btnConfirm').disabled = true;
-                loadSlots();
+            flatpickr(input, {
+                minDate: tomorrow,
+                disableMobile: false,
+                dateFormat: 'Y-m-d',
+                onChange: function(selectedDates, dateStr) {
+                    selectedDate = dateStr;
+                    selectedTime = '';
+                    document.getElementById('btnConfirm').disabled = true;
+                    loadSlots();
+                }
             });
 
             showState('stateReschedule');
