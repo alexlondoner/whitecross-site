@@ -619,10 +619,9 @@
             renderBarberGrid();
 
             const input = document.getElementById('newDate');
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            const today = new Date();
             flatpickr(input, {
-                minDate: tomorrow,
+                minDate: today,
                 disableMobile: false,
                 dateFormat: 'Y-m-d',
                 onChange: function(selectedDates, dateStr) {
