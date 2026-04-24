@@ -311,7 +311,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
     function proceedToPayment(url, type) {
         const data = window._pendingFormData;
         data.paymentType = type;
-        data.status = 'PENDING';
+        data.status = 'CONFIRMED';
         data.bookingId = 'WCB-' + Date.now();
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
@@ -319,41 +319,11 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
         if (popup) {
             document.getElementById('popup-icon').innerText = "⏳";
             document.getElementById('popup-title').innerText = "Redirecting to payment...";
-            document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking. Please do not close this page.";
+            document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking.";
             popup.style.display = 'flex';
         }
 
-      const db = window._db;
-const { collection, addDoc, Timestamp } = window._firebase;
-const dateStr = data.date;
-const timeMatch = data.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-let h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
-const ap = timeMatch[3].toUpperCase();
-if (ap === 'PM' && h !== 12) h += 12;
-if (ap === 'AM' && h === 12) h = 0;
-const startTime = new Date(dateStr + 'T00:00:00');
-startTime.setHours(h, m, 0, 0);
-const durationMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
-const dur = durationMap[data.service] || 30;
-const endTime = new Date(startTime.getTime() + dur * 60 * 1000);
-addDoc(collection(db, 'tenants/whitecross/bookings'), {
-    bookingId: data.bookingId,
-    tenantId: 'whitecross',
-    clientName: data.name,
-    clientEmail: data.email,
-    clientPhone: data.phone,
-    barberId: data.barber,
-    serviceId: data.service,
-    startTime: Timestamp.fromDate(startTime),
-    endTime: Timestamp.fromDate(endTime),
-    status: 'PENDING',
-    paymentType: data.paymentType,
-    source: 'website',
-    createdAt: Timestamp.fromDate(new Date()),
-}).then((docRef) => {
-    data.firestoreDocId = docRef.id;
-    sessionStorage.setItem('pendingBooking', JSON.stringify(data));
-}).finally(() => { setTimeout(() => window.location.href = url, 800); });
+        setTimeout(() => window.location.href = url, 800);
     }
 
     function checkAvailability(date) {
@@ -454,11 +424,25 @@ addDoc(collection(db, 'tenants/whitecross/bookings'), {
         }
 
        async function getFirestoreSlots() {
-    const response = await fetch('https://us-central1-havuz-44f70.cloudfunctions.net/getAvailability?date=' + encodeURIComponent(date));
-    if (!response.ok) {
-        throw new Error('Availability request failed');
-    }
-    return response.json();
+    const db = window._db;
+    const { collection, query, where, getDocs, Timestamp } = window._firebase;
+    const startOfDay = new Date(date + 'T00:00:00');
+    const endOfDay = new Date(date + 'T23:59:59');
+    const q = query(
+        collection(db, 'tenants/whitecross/bookings'),
+        where('startTime', '>=', Timestamp.fromDate(startOfDay)),
+        where('startTime', '<=', Timestamp.fromDate(endOfDay))
+    );
+    const snap = await getDocs(q);
+    const alexBusy = [], ardaBusy = [];
+    snap.forEach(doc => {
+        const d = doc.data();
+        if (d.status === 'CANCELLED') return;
+        const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
+        if (d.barberId === 'alex') alexBusy.push(slot);
+        if (d.barberId === 'arda') ardaBusy.push(slot);
+    });
+    return { alexBusy, ardaBusy };
 }
 
 getFirestoreSlots().then(data => {
@@ -550,22 +534,34 @@ getFirestoreSlots().then(data => {
         }
 if (bookingData) {
     const db = window._db;
-    const { doc, collection, query, where, getDocs, updateDoc } = window._firebase;
+    const { collection, addDoc, Timestamp } = window._firebase;
+    const dateStr = bookingData.date;
+    const timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    let h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+    const ap = timeMatch[3].toUpperCase();
+    if (ap === 'PM' && h !== 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    const startTime = new Date(dateStr + 'T00:00:00');
+    startTime.setHours(h, m, 0, 0);
+    const durationMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
+    const dur = durationMap[bookingData.service] || 30;
+    const endTime = new Date(startTime.getTime() + dur * 60 * 1000);
 
-    if (bookingData.firestoreDocId) {
-        updateDoc(doc(db, 'tenants/whitecross/bookings', bookingData.firestoreDocId), { status: 'CONFIRMED' })
-            .finally(() => {
-                sessionStorage.removeItem('pendingBooking');
-            });
-    } else {
-        const q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', bookingData.bookingId));
-        getDocs(q).then(snap => {
-            if (!snap.empty) updateDoc(snap.docs[0].ref, { status: 'CONFIRMED' });
-            sessionStorage.removeItem('pendingBooking');
-        }).catch(() => {
-            sessionStorage.removeItem('pendingBooking');
-        });
-    }
+    addDoc(collection(db, 'tenants/whitecross/bookings'), {
+        bookingId: bookingData.bookingId,
+        tenantId: 'whitecross',
+        clientName: bookingData.name,
+        clientEmail: bookingData.email,
+        clientPhone: bookingData.phone,
+        barberId: bookingData.barber,
+        serviceId: bookingData.service,
+        startTime: Timestamp.fromDate(startTime),
+        endTime: Timestamp.fromDate(endTime),
+        status: 'CONFIRMED',
+        paymentType: bookingData.paymentType,
+        source: 'website',
+        createdAt: Timestamp.fromDate(new Date()),
+    }).then(() => sessionStorage.removeItem('pendingBooking'));
 }
 
         window.history.replaceState({}, '', window.location.pathname);
