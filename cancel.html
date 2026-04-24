@@ -268,7 +268,7 @@
             <p style="color:#d4af37; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">Your Booking</p>
             <div id="bookingDetails"></div>
             <div id="policyMsg"></div>
-            <a id="btnReschedule" href="reschedule.html" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#2e7d32); border-color:transparent; margin-top:20px;">🔄 Reschedule Instead</a>
+            <a id="btnReschedule" href="Reschedule.html" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#2e7d32); border-color:transparent; margin-top:20px;">🔄 Reschedule Instead</a>
             <button class="btn-cancel-confirm" onclick="confirmCancel()">✕ Cancel This Booking</button>
             <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
         </div>
@@ -407,7 +407,7 @@
         }
 
         document.getElementById('btnReschedule').href =
-            `reschedule.html?id=${encodeURIComponent(currentBookingId)}&email=${encodeURIComponent(currentEmail)}`;
+            `Reschedule.html?id=${encodeURIComponent(currentBookingId)}&email=${encodeURIComponent(currentEmail)}`;
     }
 
     window.lookupBooking = async function() {

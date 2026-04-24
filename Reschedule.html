@@ -348,7 +348,7 @@
 
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, updateDoc, Timestamp }
+    import { getFirestore, collection, query, where, getDocs, getDoc, updateDoc, Timestamp }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -445,6 +445,14 @@
             date: `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
             time: `${h12}:${String(m).padStart(2,'0')} ${ampm}`
         };
+    }
+
+    function toFriendlyError(err) {
+        const code = (err && err.code) ? String(err.code) : '';
+        if (code.includes('permission-denied')) return 'Permission denied while updating this booking.';
+        if (code.includes('not-found')) return 'This booking could not be found anymore.';
+        if (code.includes('failed-precondition')) return 'Booking update is currently blocked by a data rule.';
+        return 'Unable to update your booking right now.';
     }
 
     async function loadBarbers() {
@@ -575,11 +583,13 @@
             where('bookingId', '==', id)
         ));
         if (snap.empty) return null;
-        const docSnap = snap.docs[0];
-        const data = docSnap.data();
-        if ((data.clientEmail || '').toLowerCase() !== email.toLowerCase()) return null;
-        if (data.status === 'CANCELLED') return null;
-        return { ref: docSnap.ref, data };
+        const normalizedEmail = email.trim().toLowerCase();
+        const matchingDoc = snap.docs.find(d => {
+            const data = d.data();
+            return (data.clientEmail || '').toLowerCase() === normalizedEmail && data.status !== 'CANCELLED';
+        });
+        if (!matchingDoc) return null;
+        return { ref: matchingDoc.ref, data: matchingDoc.data() };
     }
 
     function renderCurrentBooking(data) {
@@ -635,8 +645,18 @@
 
     window.confirmReschedule = async function() {
         if (!selectedDate || !selectedTime || !selectedBarber) return;
+        if (!currentDocRef) {
+            alert('Booking session expired. Please look up your booking again.');
+            showState('stateLookup');
+            return;
+        }
 
         const match = selectedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) {
+            alert('Invalid time selected. Please choose another slot.');
+            document.getElementById('btnConfirm').disabled = true;
+            return;
+        }
         let h = parseInt(match[1]), m = parseInt(match[2]);
         if (match[3].toUpperCase() === 'PM' && h !== 12) h += 12;
         if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
@@ -659,12 +679,20 @@
 
         showState('stateProcessing');
         try {
+            const fresh = await getDoc(currentDocRef);
+            if (!fresh.exists() || fresh.data()?.status === 'CANCELLED') {
+                alert('This booking is no longer available to reschedule.');
+                showState('stateNotFound');
+                return;
+            }
+
             await updateDoc(currentDocRef, {
                 barberId:  selectedBarber,
                 startTime: Timestamp.fromDate(newStart),
                 endTime:   Timestamp.fromDate(newEnd),
                 status:    'CONFIRMED',
                 rescheduledAt: Timestamp.fromDate(new Date()),
+                updatedAt: Timestamp.fromDate(new Date()),
             });
 
             const newDateFmt = newStart.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -677,7 +705,7 @@
             showState('stateSuccess');
         } catch(e) {
             console.error(e);
-            alert('Something went wrong. Please call us on 020 3621 5929.');
+            alert(`${toFriendlyError(e)}\nIf this keeps happening, call us on 020 3621 5929.`);
             showState('stateReschedule');
         }
     };
