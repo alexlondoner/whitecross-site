@@ -484,11 +484,16 @@ document.addEventListener('DOMContentLoaded', function () {
         var scheduledBarbers = barbersToCheck
             .map(function(b) { return { barber: b, schedule: getBarberScheduleForDay(b, dayName) }; })
             .filter(function(x) { return x.schedule !== null; });
-
         if (scheduledBarbers.length === 0) {
-            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No barbers available on this day</div>';
-            return;
-        }
+        if (timeSlotsGrid) {
+        var offNames = barbersToCheck.map(function(b) { return b.name; }).join(' & ');
+        var msg = barber === 'no-preference'
+            ? 'No barbers available on this day. Please try another date.'
+            : offNames + ' is not available on this day. Please select another barber or try a different date.';
+        timeSlotsGrid.innerHTML = '<div class="time-slots-empty">' + msg + '</div>';
+    }
+    return;
+}
 
         var openMins = Math.min.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.open); }));
         var closeMins = Math.max.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.close); }));
