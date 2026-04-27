@@ -434,131 +434,150 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             return;
         }
 
-        const slots = [];
+        const selectedDate = getLocalDate(date);
+        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+
         const now2 = new Date();
         const todayStr2 = now2.toISOString().split('T')[0];
         const isToday = date === todayStr2;
-        const currentHour = now2.getHours();
-        const currentMinute = now2.getMinutes();
+        const nowMins = isToday ? now2.getHours() * 60 + now2.getMinutes() : 0;
 
-        const selectedDate2 = getLocalDate(date);
-        const dayIdx = JS_TO_SCHEDULE[selectedDate2.getDay()];
-        const dayConfig = SCHEDULE[dayIdx];
-        if (dayConfig.closed) {
-            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">We are closed on this day</div>';
+        function getBarberScheduleForDay(b, day) {
+            if (!b) return null;
+            const workingDays = b.workingDays || [];
+            if (!workingDays.includes(day)) return null;
+            const dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
+            return { open: dh.open || '09:00', close: dh.close || '19:00' };
+        }
+
+        function generateSlots(open, close) {
+            const slots = [];
+            const openMins = timeToMins(open);
+            const closeMins = timeToMins(close);
+            for (let mins = openMins; mins + duration <= closeMins; mins += 30) {
+                if (isToday && mins <= nowMins + 15) continue;
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const h12 = h % 12 || 12;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                slots.push({ h, m, label: `${h12}:${String(m).padStart(2, '0')} ${ampm}` });
+            }
+            return slots;
+        }
+
+        let barbersToCheck = [];
+        if (barber === 'no-preference') {
+            barbersToCheck = ACTIVE_BARBERS;
+        } else {
+            const found = ACTIVE_BARBERS.find(b => b.id === barber);
+            if (found) barbersToCheck = [found];
+        }
+
+        const scheduledBarbers = barbersToCheck
+            .map(b => ({ barber: b, schedule: getBarberScheduleForDay(b, dayName) }))
+            .filter(x => x.schedule !== null);
+
+        if (scheduledBarbers.length === 0) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No barbers available on this day</div>';
             return;
         }
-        const openMins = timeToMins(dayConfig.open);
-        const closeMins = timeToMins(dayConfig.close);
 
-        for (let mins = openMins; mins <= closeMins; mins += 30) {
-            const h = Math.floor(mins / 60);
-            const m = mins % 60;
-            if (h === Math.floor(closeMins / 60) && m > closeMins % 60) continue;
-            if (isToday && (h < currentHour || (h === currentHour && m <= currentMinute))) continue;
-            const hour12 = h % 12 || 12;
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
-            const afterHours = mins >= closeMins;
-            slots.push({ label, h, m, afterHours });
-            }
+        let openMins = Math.min(...scheduledBarbers.map(x => timeToMins(x.schedule.open)));
+        let closeMins = Math.max(...scheduledBarbers.map(x => timeToMins(x.schedule.close)));
+        const open = `${String(Math.floor(openMins / 60)).padStart(2, '0')}:${String(openMins % 60).padStart(2, '0')}`;
+        const close = `${String(Math.floor(closeMins / 60)).padStart(2, '0')}:${String(closeMins % 60).padStart(2, '0')}`;
+
+        const slots = generateSlots(open, close);
 
         if (slots.length === 0) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No available slots for today</div>';
             return;
         }
 
-        function renderSlots(busyFn) {
+        async function getFirestoreSlots() {
+            const db = window._db;
+            const { collection, query, where, getDocs, Timestamp } = window._firebase;
+            const startOfDay = getLocalDate(date, 0, 0);
+            const endOfDay = getLocalDate(date, 23, 59);
+            const q = query(
+                collection(db, 'tenants/whitecross/bookings'),
+                where('startTime', '>=', Timestamp.fromDate(startOfDay)),
+                where('startTime', '<=', Timestamp.fromDate(endOfDay))
+            );
+            const snap = await getDocs(q);
+            const busyMap = {};
+            ACTIVE_BARBERS.forEach(b => { busyMap[b.id] = []; });
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (d.status === 'CANCELLED') return;
+                if (!d.startTime || !d.endTime) return;
+                const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
+                if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);
+            });
+            return busyMap;
+        }
+
+        function renderSlots(busyMap) {
             timeSlotsGrid.innerHTML = '';
             hiddenTime.value = '';
 
             slots.forEach(slot => {
-                const slotTime = getLocalDate(date, slot.h, slot.m);
-                const slotMs = slotTime.getTime();
-                const slotEnd = slotMs + duration * 60 * 1000;
-                const busy = busyFn(slotMs, slotEnd);
+                const slotStart = getLocalDate(date, slot.h, slot.m).getTime();
+                const slotEnd = slotStart + duration * 60 * 1000;
+
+                function isBusy(barberId) {
+                    return (busyMap[barberId] || []).some(b => slotStart < b.end && slotEnd > b.start);
+                }
+
+                function isInSchedule(b) {
+                    const sch = getBarberScheduleForDay(b, dayName);
+                    if (!sch) return false;
+                    const schOpen = getLocalDate(date, ...sch.open.split(':').map(Number)).getTime();
+                    const schClose = getLocalDate(date, ...sch.close.split(':').map(Number)).getTime();
+                    return slotStart >= schOpen && slotEnd <= schClose;
+                }
+
+                let busy = false;
+                let assignedBarber = '';
+
+                if (barber === 'no-preference') {
+                    const available = ACTIVE_BARBERS.filter(b => isInSchedule(b) && !isBusy(b.id));
+                    busy = available.length === 0;
+                    if (!busy) assignedBarber = available[0].id;
+                } else {
+                    const found = ACTIVE_BARBERS.find(b => b.id === barber);
+                    busy = !found || !isInSchedule(found) || isBusy(barber);
+                    if (!busy) assignedBarber = barber;
+                }
 
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.textContent = slot.label + (slot.afterHours ? ' 🌙' : '');
-                btn.className = 'time-slot-btn' +
-                    (busy ? ' unavailable' : '') +
-                    (slot.afterHours ? ' after-hours' : '');
+                btn.textContent = slot.label;
+                btn.className = 'time-slot-btn' + (busy ? ' unavailable' : '');
                 btn.dataset.time = slot.label;
-                btn.dataset.afterHours = slot.afterHours ? 'true' : 'false';
-                btn.dataset.assignedBarber = '';
+                btn.dataset.afterHours = 'false';
+                btn.dataset.assignedBarber = assignedBarber;
                 btn.disabled = busy;
 
                 if (!busy) {
-                    btn.addEventListener('click', function () {
+                    btn.addEventListener('click', function() {
                         timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
                         btn.classList.add('selected');
                         hiddenTime.value = slot.label;
-                        hiddenTime.dataset.afterHours = slot.afterHours ? 'true' : 'false';
-                        hiddenTime.dataset.assignedBarber = btn.dataset.assignedBarber || '';
+                        hiddenTime.dataset.afterHours = 'false';
+                        hiddenTime.dataset.assignedBarber = assignedBarber;
                     });
                 }
-
                 timeSlotsGrid.appendChild(btn);
             });
         }
 
-        if (!barber || barber === '') {
-            renderSlots(() => false);
-            return;
-        }
-
-       async function getFirestoreSlots() {
-    const db = window._db;
-    const { collection, query, where, getDocs, Timestamp } = window._firebase;
-    const startOfDay = getLocalDate(date, 0, 0);
-    const endOfDay = getLocalDate(date, 23, 59);
-    const q = query(
-        collection(db, 'tenants/whitecross/bookings'),
-        where('startTime', '>=', Timestamp.fromDate(startOfDay)),
-        where('startTime', '<=', Timestamp.fromDate(endOfDay))
-    );
-    const snap = await getDocs(q);
-    const alexBusy = [], ardaBusy = [];
-    snap.forEach(doc => {
-        const d = doc.data();
-        if (d.status === 'CANCELLED') return;
-        const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
-        if (d.barberId === 'alex') alexBusy.push(slot);
-        if (d.barberId === 'arda') ardaBusy.push(slot);
-    });
-    return { alexBusy, ardaBusy };
-}
-
-getFirestoreSlots().then(data => {
-    renderSlots((slotMs, slotEnd) => {
-        function isBusy(busyList) {
-            return (busyList || []).some(b => slotMs < b.end && slotEnd > b.start);
-        }
-        if (barber === 'alex') return isBusy(data.alexBusy);
-        if (barber === 'arda') return isBusy(data.ardaBusy);
-        return isBusy(data.alexBusy) && isBusy(data.ardaBusy);
-    });
-
-    if (barber === 'no-preference') {
-        timeSlotsGrid.querySelectorAll('.time-slot-btn:not(.unavailable)').forEach(btn => {
-            const match = btn.dataset.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (!match) return;
-            let h = parseInt(match[1]), m = parseInt(match[2]);
-            const ampm = match[3].toUpperCase();
-            if (ampm === 'PM' && h !== 12) h += 12;
-            if (ampm === 'AM' && h === 12) h = 0;
-            const slotTime = getLocalDate(date, h, m);
-            const slotMs = slotTime.getTime();
-            const slotEnd = slotMs + duration * 60 * 1000;
-            const alexBusy = data.alexBusy.some(b => slotMs < b.end && slotEnd > b.start);
-            const ardaBusy = data.ardaBusy.some(b => slotMs < b.end && slotEnd > b.start);
-            if (!alexBusy) btn.dataset.assignedBarber = 'alex';
-            else if (!ardaBusy) btn.dataset.assignedBarber = 'arda';
-            else btn.dataset.assignedBarber = 'alex';
+        getFirestoreSlots().then(busyMap => {
+            renderSlots(busyMap);
+        }).catch(err => {
+            console.log('Availability check failed:', err);
+            renderSlots({});
         });
-    }
-}).catch(err => console.log('Availability check failed:', err));
     }
 
     /* Barber & Service listeners */
