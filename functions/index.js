@@ -1,5 +1,6 @@
-cd /Users/alish/Desktop/alex/whitecross-site
-[C
-cd /Users/alish/Desktop/alex/whitecross-site
+const { onRequest } = require('firebase-functions/v2/https');
 
-firebase deploy --only functions
+// Minimal HTTP function so the file is valid and deployable.
+exports.health = onRequest((req, res) => {
+	res.status(200).send('ok');
+});
