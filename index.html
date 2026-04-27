@@ -161,72 +161,12 @@
 </div>
     <div class="walk-in-tag">WALK-INS & APPOINTMENTS WELCOME</div>
 
-    <!-- EXCLUSIVE BUNDLES -->
-    <section class="card exclusive-card">
-      <h2 class="section-title bundle-title accordion-toggle" data-target="exclusive">
-        Exclusive Bundle Packages
-        <span class="arrow arrow-exclusive rotated">▼</span>
-      </h2>
-      <div class="accordion-content exclusive-content open" style="max-height:9999px;">
-        <div class="service-item highlight">
-          <div class="s-info">
-            <strong>I CUT Royal</strong>
-            <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£65</span>
-            <button class="details-btn" onclick="selectService('i-cut-royal')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>I CUT Deluxe</strong>
-            <button class="details-btn" onclick="openStory('deluxe')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£55</span>
-            <button class="details-btn" onclick="selectService('i-cut-deluxe')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>Full Skin Fade & Beard Luxury</strong>
-            <button class="details-btn" onclick="openStory('fade_service')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£48</span>
-            <button class="details-btn" onclick="selectService('full-skinfade-beard-luxury')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>The Full Experience</strong>
-            <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£40</span>
-            <button class="details-btn" onclick="selectService('full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>Senior Full Experience (65+)</strong>
-            <button class="details-btn" onclick="openStory('senior_full')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£35</span>
-            <button class="details-btn" onclick="selectService('senior-full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="card standard-card">
       <h2 class="section-title bundle-title accordion-toggle" data-target="standard">
         Standard Packages
         <span class="arrow arrow-standard">▼</span>
       </h2>
-      <div class="accordion-content standard-content">
+      <div class="accordion-content standard-content" style="max-height:0px;">
         <div class="service-item">
           <div class="s-info">
             <strong>Skin Fade Cut</strong>
@@ -310,12 +250,72 @@
       </div>
     </section>
 
+    <!-- EXCLUSIVE BUNDLES -->
+    <section class="card exclusive-card">
+      <h2 class="section-title bundle-title accordion-toggle" data-target="exclusive">
+        Exclusive Bundle Packages
+        <span class="arrow arrow-exclusive">▼</span>
+      </h2>
+      <div class="accordion-content exclusive-content" style="max-height:0px;">
+        <div class="service-item highlight">
+          <div class="s-info">
+            <strong>I CUT Royal</strong>
+            <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£65</span>
+            <button class="details-btn" onclick="selectService('i-cut-royal')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>I CUT Deluxe</strong>
+            <button class="details-btn" onclick="openStory('deluxe')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£55</span>
+            <button class="details-btn" onclick="selectService('i-cut-deluxe')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>Full Skin Fade & Beard Luxury</strong>
+            <button class="details-btn" onclick="openStory('fade_service')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£48</span>
+            <button class="details-btn" onclick="selectService('full-skinfade-beard-luxury')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>The Full Experience</strong>
+            <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£40</span>
+            <button class="details-btn" onclick="selectService('full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>Senior Full Experience (65+)</strong>
+            <button class="details-btn" onclick="openStory('senior_full')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£35</span>
+            <button class="details-btn" onclick="selectService('senior-full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card extras-card">
       <h2 class="section-title bundle-title accordion-toggle" data-target="extras">
         Extras
         <span class="arrow arrow-extras">▼</span>
       </h2>
-      <div class="accordion-content extras-content">
+      <div class="accordion-content extras-content" style="max-height:0px;">
         <div class="service-item">
           <div class="s-info">
             <strong>Full Facial Treatment</strong>
@@ -566,12 +566,12 @@
         </div>
         <div class="carousel-track-wrap">
             <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide"><img src="img/gallery1.jpeg" alt="Haircut by I CUT Whitecross Barbers Old Street"></div>
-                <div class="carousel-slide"><img src="img/gallery2.jpeg" alt="Skin fade by I CUT Whitecross Barbers Barbican"></div>
-                <div class="carousel-slide"><img src="img/gallery3.jpeg" alt="Beard trim by I CUT Whitecross Barbers EC1Y"></div>
-                <div class="carousel-slide"><img src="img/gallery4.jpeg" alt="Scissor cut by I CUT Whitecross Barbers Clerkenwell"></div>
-                <div class="carousel-slide"><img src="img/gallery5.jpeg" alt="Hot towel shave by I CUT Whitecross Barbers London"></div>
-                <div class="carousel-slide"><img src="img/gallery6.jpeg" alt="Full grooming by I CUT Whitecross Barbers"></div>
+                <div class="carousel-slide"><img src="img/SkinFadeBuzzCutWhitecrossBarbers.jpeg" alt="Skin fade haircut at I CUT Whitecross Barbers near Old Street, London EC1Y"></div>
+                <div class="carousel-slide"><img src="img/Taperfade_By_Icutwhitecrossbarbers.jpg" alt="Taper fade haircut by I CUT Whitecross Barbers in Clerkenwell, London EC1Y"></div>
+                <div class="carousel-slide"><img src="img/taperfade_byWhiteCrossBarbers_Alex.jpg" alt="Taper fade and beard line-up by Alex at Whitecross Barbers, London EC1Y"></div>
+                <div class="carousel-slide"><img src="img/skinfadebyAlexwhitecrossbarbers.jpg" alt="Clean skin fade by Alex at I CUT Whitecross Barbers, Whitecross Street London"></div>
+                <div class="carousel-slide"><img src="img/TaperFadeonCurlyHairWhitecrossBarbers.jpeg" alt="Hot towel shave service at I CUT Whitecross Barbers, Barbican London"></div>
+                <div class="carousel-slide"><img src="img/gallery6.jpeg" alt="Luxury men's grooming package at I CUT Whitecross Barbers, London EC1Y"></div>
             </div>
         </div>
         <div class="carousel-dots" id="carouselDots"></div>
