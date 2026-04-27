@@ -67,11 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const db = window._db;
             const { collection, getDocs } = window._firebase;
-            const snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
+            const snap = await getDocs(collection(db, 'tenants/' + TENANT + '/barbers'));
             ACTIVE_BARBERS = snap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(b => b && b.active !== false)
-                .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+                .filter(function(b) { return b && b.active !== false; })
+                .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
         } catch (err) {
             console.warn('Failed to load barbers:', err);
             ACTIVE_BARBERS = [];
@@ -80,26 +80,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderBarberButtons() {
         if (!barberGrid) return;
-        const dynamicBtns = ACTIVE_BARBERS.map(function (b) {
+        var dynamicBtns = ACTIVE_BARBERS.map(function(b) {
             return '<button type="button" class="barber-btn" id="barber-' + b.id + '" data-value="' + b.id + '">' +
-                '<span class="barber-icon">✂️</span>' +
+                '<span class="barber-icon">\u2702\uFE0F</span>' +
                 '<span class="barber-name">' + b.name + '</span>' +
                 '</button>';
         }).join('');
         barberGrid.innerHTML = dynamicBtns +
             '<button type="button" class="barber-btn" id="barber-no-preference" data-value="no-preference">' +
-            '<span class="barber-icon">⭐</span>' +
+            '<span class="barber-icon">\u2B50</span>' +
             '<span class="barber-name">No Preference</span>' +
             '</button>';
     }
 
     function bindBarberSelector() {
-        document.querySelectorAll('.barber-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.barber-btn').forEach(b => b.classList.remove('selected'));
+        document.querySelectorAll('.barber-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.barber-btn').forEach(function(b) { b.classList.remove('selected'); });
                 btn.classList.add('selected');
                 if (barberHidden) barberHidden.value = btn.dataset.value;
-                const d = document.getElementById('date').value;
+                var d = document.getElementById('date').value;
                 if (d) checkAvailability(d);
             });
         });
@@ -107,18 +107,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function startBarberRealtimeSync() {
         try {
-            const db = window._db;
-            const { collection, onSnapshot } = window._firebase;
-            if (typeof onSnapshot !== 'function') return;
-            const barbersRef = collection(db, `tenants/${TENANT}/barbers`);
-            onSnapshot(barbersRef, function (snap) {
+            var db = window._db;
+            var firebase = window._firebase;
+            if (typeof firebase.onSnapshot !== 'function') return;
+            var barbersRef = firebase.collection(db, 'tenants/' + TENANT + '/barbers');
+            firebase.onSnapshot(barbersRef, function(snap) {
                 ACTIVE_BARBERS = snap.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(b => b && b.active !== false)
-                    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                    .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+                    .filter(function(b) { return b && b.active !== false; })
+                    .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
                 renderBarberButtons();
                 bindBarberSelector();
-            }, function (err) {
+                var d = document.getElementById('date') && document.getElementById('date').value;
+                if (d) checkAvailability(d);
+            }, function(err) {
                 console.warn('Realtime barber sync failed:', err);
             });
         } catch (err) {
@@ -132,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
         bindBarberSelector();
     }
 
-    const SCHEDULE = [
+    var SCHEDULE = [
         { day: 'Monday', open: '09:00', close: '19:00', closed: false },
         { day: 'Tuesday', open: '09:00', close: '19:00', closed: false },
         { day: 'Wednesday', open: '09:00', close: '19:00', closed: false },
@@ -141,44 +143,44 @@ document.addEventListener('DOMContentLoaded', function () {
         { day: 'Saturday', open: '09:00', close: '19:00', closed: false },
         { day: 'Sunday', open: '10:00', close: '16:00', closed: false },
     ];
-    const JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
+    var JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
 
     function getLocalDate(dateStr, h, m) {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day, h || 0, m || 0, 0, 0);
+        var parts = dateStr.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2], h || 0, m || 0, 0, 0);
     }
 
     function timeToMins(t) {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
+        var parts = t.split(':').map(Number);
+        return parts[0] * 60 + parts[1];
     }
 
     /* DATE & TIME LOGIC */
-    const dateInput = document.getElementById('date');
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    var dateInput = document.getElementById('date');
+    var now = new Date();
+    var todayStr = now.toISOString().split('T')[0];
 
     if (dateInput) {
         dateInput.setAttribute('min', todayStr);
-        const maxDate = new Date();
+        var maxDate = new Date();
         maxDate.setDate(maxDate.getDate() + 90);
         dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
         dateInput.value = '';
-        dateInput.addEventListener('change', function () {
+        dateInput.addEventListener('change', function() {
             checkAvailability(this.value);
         });
     }
 
     /* PHONE VALIDATION */
-    const phoneInput = document.getElementById('phone');
+    var phoneInput = document.getElementById('phone');
     if (phoneInput) {
-        phoneInput.addEventListener('input', function () {
-            let v = this.value.replace(/[^0-9+\s]/g, '');
+        phoneInput.addEventListener('input', function() {
+            var v = this.value.replace(/[^0-9+\s]/g, '');
             if (v && !v.startsWith('+')) v = '+' + v;
             this.value = v;
         });
-        phoneInput.addEventListener('blur', function () {
-            const phoneRegex = /^\+[0-9]{1,3}\s?[0-9]{6,14}$/;
+        phoneInput.addEventListener('blur', function() {
+            var phoneRegex = /^\+[0-9]{1,3}\s?[0-9]{6,14}$/;
             if (this.value && !phoneRegex.test(this.value)) {
                 this.style.borderColor = '#ff6b6b';
             } else {
@@ -186,31 +188,32 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-// PREFETCH DUPLICATE CHECK
-let _dupCachePhone = '';
-let _dupCacheDate = '';
-let _dupCacheResult = null;
 
-function prefetchDuplicate() {
-    const phone = document.getElementById('phone').value.trim();
-    const date = document.getElementById('date').value;
-    if (!phone || !date) return;
-    if (phone === _dupCachePhone && date === _dupCacheDate) return; // zaten var
-    _dupCachePhone = phone;
-    _dupCacheDate = date;
-    _dupCacheResult = null; // sıfırla
-    const url = 'https://script.google.com/macros/s/AKfycbzJjVnihDm3vqoWJznZvbg6ayE71688rxXa-OyrHG3-nlrwGCBMfNc77eE-dyLcfQ7P/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
-    fetch(url).then(r => r.json()).then(result => { _dupCacheResult = result; }).catch(() => {});
-}
+    /* PREFETCH DUPLICATE CHECK */
+    var _dupCachePhone = '';
+    var _dupCacheDate = '';
+    var _dupCacheResult = null;
 
-document.getElementById('phone').addEventListener('blur', prefetchDuplicate);
-document.getElementById('date').addEventListener('change', prefetchDuplicate);
+    function prefetchDuplicate() {
+        var phone = document.getElementById('phone').value.trim();
+        var date = document.getElementById('date').value;
+        if (!phone || !date) return;
+        if (phone === _dupCachePhone && date === _dupCacheDate) return;
+        _dupCachePhone = phone;
+        _dupCacheDate = date;
+        _dupCacheResult = null;
+        var url = 'https://script.google.com/macros/s/AKfycbzJjVnihDm3vqoWJznZvbg6ayE71688rxXa-OyrHG3-nlrwGCBMfNc77eE-dyLcfQ7P/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+        fetch(url).then(function(r) { return r.json(); }).then(function(result) { _dupCacheResult = result; }).catch(function() {});
+    }
+
+    document.getElementById('phone').addEventListener('blur', prefetchDuplicate);
+    document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
     /* EMAIL VALIDATION */
-    const emailInput = document.getElementById('email');
+    var emailInput = document.getElementById('email');
     if (emailInput) {
-        emailInput.addEventListener('blur', function () {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        emailInput.addEventListener('blur', function() {
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (this.value && !emailRegex.test(this.value)) {
                 this.style.borderColor = '#ff6b6b';
             } else {
@@ -220,63 +223,62 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
     }
 
     /* HOURS WIDGET */
-    (function () {
-        const currentTime = now.getHours() * 60 + now.getMinutes();
-        const todayIdx = JS_TO_SCHEDULE[now.getDay()];
+    (function() {
+        var currentTime = now.getHours() * 60 + now.getMinutes();
+        var todayIdx = JS_TO_SCHEDULE[now.getDay()];
 
-        function timeToMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+        function timeToMinsLocal(t) { var p = t.split(':').map(Number); return p[0] * 60 + p[1]; }
         function format12(t) {
-            const [h, m] = t.split(':').map(Number);
-            return `${h % 12 || 12}:${m === 0 ? '00' : m} ${h >= 12 ? 'PM' : 'AM'}`;
+            var p = t.split(':').map(Number);
+            return (p[0] % 12 || 12) + ':' + (p[1] === 0 ? '00' : p[1]) + ' ' + (p[0] >= 12 ? 'PM' : 'AM');
         }
 
-        const today = SCHEDULE[todayIdx];
-        const isOpen = currentTime >= timeToMins(today.open) && currentTime < timeToMins(today.close);
-        const statusEl = document.getElementById('hoursStatus');
+        var today = SCHEDULE[todayIdx];
+        var isOpen = currentTime >= timeToMinsLocal(today.open) && currentTime < timeToMinsLocal(today.close);
+        var statusEl = document.getElementById('hoursStatus');
 
         if (statusEl) {
             if (isOpen) {
-                const diff = timeToMins(today.close) - currentTime;
-                statusEl.innerHTML = `<span class="status-dot open"></span> OPEN NOW (Closes in ${Math.floor(diff/60)}h ${diff%60}m)`;
+                var diff = timeToMinsLocal(today.close) - currentTime;
+                statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff/60) + 'h ' + (diff%60) + 'm)';
             } else {
-                const opensLaterToday = currentTime < timeToMins(today.open);
+                var opensLaterToday = currentTime < timeToMinsLocal(today.open);
                 if (opensLaterToday) {
-                    statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens today at ${format12(today.open)})`;
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(today.open) + ')';
                 } else {
-                    const next = schedule[(todayIdx + 1) % 7];
-                    statusEl.innerHTML = `<span class="status-dot closed"></span> CLOSED (Opens ${next.day} at ${format12(next.open)})`;
+                    var next = SCHEDULE[(todayIdx + 1) % 7];
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens ' + next.day + ' at ' + format12(next.open) + ')';
                 }
             }
         }
 
-        const grid = document.getElementById('hoursGrid');
+        var grid = document.getElementById('hoursGrid');
         if (grid) {
-            SCHEDULE.forEach((item, idx) => {
-                const isToday = idx === todayIdx;
-                const row = document.createElement('div');
+            SCHEDULE.forEach(function(item, idx) {
+                var isToday = idx === todayIdx;
+                var row = document.createElement('div');
                 row.className = 'hours-row-new' + (isToday ? ' today' : '');
-                row.innerHTML = `<span>${isToday ? '▶ ' : ''}${item.day}</span><span>${format12(item.open)} - ${format12(item.close)}</span>`;
+                row.innerHTML = '<span>' + (isToday ? '&#9658; ' : '') + item.day + '</span><span>' + format12(item.open) + ' - ' + format12(item.close) + '</span>';
                 grid.appendChild(row);
             });
         }
     })();
 
     /* FORM SUBMISSION & STRIPE */
-    const form = document.getElementById('bookingForm');
+    var form = document.getElementById('bookingForm');
     if (form) {
-        let isSubmitting = false; // ← double submit önleme
+        var isSubmitting = false;
 
-        form.addEventListener('submit', function (e) {
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (isSubmitting) return;
 
-            if (isSubmitting) return; // ← çift submit engeli
-
-            const service = document.getElementById('service').value;
+            var service = document.getElementById('service').value;
             if (!service) return alert("Select a service.");
 
-            const hiddenTime = document.getElementById('time');
-            const selectedTime = hiddenTime.value;
-            const isAfterHours = hiddenTime.dataset.afterHours === 'true';
+            var hiddenTime = document.getElementById('time');
+            var selectedTime = hiddenTime.value;
+            var isAfterHours = hiddenTime.dataset.afterHours === 'true';
 
             if (!selectedTime) {
                 alert('Please select a time slot.');
@@ -288,7 +290,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
                 return;
             }
 
-            const stripeLinks = {
+            var stripeLinks = {
                 "full-experience": "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
                 "i-cut-deluxe": "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
@@ -311,13 +313,14 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
                 "wash-hot-towel": "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
             };
 
-            const depositLinks = {
+            var depositLinks = {
                 "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
                 "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
             };
 
-            const barberVal = document.getElementById('barber').value || 'no-preference';
+            var barberVal = document.getElementById('barber').value || 'no-preference';
+            var selectedBtn = document.querySelector('.time-slot-btn.selected');
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
@@ -326,64 +329,62 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
                 time: selectedTime,
                 service: service,
                 barber: barberVal === 'no-preference'
-                    ? (document.querySelector('.time-slot-btn.selected') && document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-                        ? document.querySelector('.time-slot-btn.selected').dataset.assignedBarber
-                        : 'no-preference')
+                    ? (selectedBtn && selectedBtn.dataset.assignedBarber ? selectedBtn.dataset.assignedBarber : 'no-preference')
                     : barberVal
             };
 
-            const extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
-            const phone = window._pendingFormData.phone;
-            const date = window._pendingFormData.date;
+            var extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
+            var phone = window._pendingFormData.phone;
+            var date = window._pendingFormData.date;
 
             isSubmitting = true;
-            // BUTON FEEDBACK
-            const submitBtn = form.querySelector('.submit-btn');
+            var submitBtn = form.querySelector('.submit-btn');
             if (submitBtn) {
-              submitBtn.disabled = true;
-             submitBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span> Securing your slot...';
-                    }
-            const checkUrl = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span> Securing your slot...';
+            }
+
+            var checkUrl = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
             function handlePayment() {
                 if (extras.includes(service)) {
                     proceedToPayment(stripeLinks[service], 'FULL');
                 } else {
                     document.getElementById('paymentChoicePopup').style.display = 'flex';
-                    document.getElementById('btnFullPayment').onclick = () => {
+                    document.getElementById('btnFullPayment').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
                         proceedToPayment(stripeLinks[service], 'FULL');
                     };
-                    document.getElementById('btnDeposit').onclick = () => {
+                    document.getElementById('btnDeposit').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
                         proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
                     };
                 }
             }
 
-           function runCheck(callback) {
-    if (_dupCacheResult !== null) {
-        callback(_dupCacheResult);
-    } else {
-        fetch(checkUrl)
-            .then(r => r.json())
-            .then(callback)
-            .catch(err => {
-                console.log('Duplicate check failed:', err);
-                isSubmitting = false;
-                handlePayment();
-            });
-    }
-}
+            function runCheck(callback) {
+                if (_dupCacheResult !== null) {
+                    callback(_dupCacheResult);
+                } else {
+                    fetch(checkUrl)
+                        .then(function(r) { return r.json(); })
+                        .then(callback)
+                        .catch(function(err) {
+                            console.log('Duplicate check failed:', err);
+                            isSubmitting = false;
+                            handlePayment();
+                        });
+                }
+            }
 
             runCheck(function(result) {
                 if (result.duplicate) {
-                    if (!confirm("⚠️ You already have a booking on this date. Are you sure you want to book again?")) {
+                    if (!confirm("You already have a booking on this date. Are you sure you want to book again?")) {
                         isSubmitting = false;
                         if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '✂ BOOK MY APPOINTMENT';
-}
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '\u2702 BOOK MY APPOINTMENT';
+                        }
                         return;
                     }
                 }
@@ -393,32 +394,32 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
     }
 
     function proceedToPayment(url, type) {
-        const data = window._pendingFormData;
+        var data = window._pendingFormData;
         data.paymentType = type;
         data.status = 'CONFIRMED';
         data.bookingId = 'WCB-' + Date.now();
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
-        const popup = document.getElementById('successPopup');
+        var popup = document.getElementById('successPopup');
         if (popup) {
-            document.getElementById('popup-icon').innerText = "⏳";
+            document.getElementById('popup-icon').innerText = "\u23F3";
             document.getElementById('popup-title').innerText = "Redirecting to payment...";
             document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking.";
             popup.style.display = 'flex';
         }
 
-        setTimeout(() => window.location.href = url, 800);
+        setTimeout(function() { window.location.href = url; }, 800);
     }
 
     function checkAvailability(date) {
-        const barberEl = document.getElementById('barber');
-        const barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
-        const serviceEl = document.getElementById('service');
-        const service = serviceEl ? serviceEl.value : '';
-        const timeSlotsGrid = document.getElementById('timeSlots');
-        const hiddenTime = document.getElementById('time');
+        var barberEl = document.getElementById('barber');
+        var barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
+        var serviceEl = document.getElementById('service');
+        var service = serviceEl ? serviceEl.value : '';
+        var timeSlotsGrid = document.getElementById('timeSlots');
+        var hiddenTime = document.getElementById('time');
 
-        const durationMap = {
+        var durationMap = {
             "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
             "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
             "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
@@ -427,178 +428,134 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             "face-mask": 10, "face-steam": 10, "threading": 5,
             "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
         };
-        const duration = durationMap[service] || 30;
+        var duration = durationMap[service] || 30;
 
         if (!date) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '';
             return;
         }
 
-        const selectedDate = getLocalDate(date);
-        const DAY_MAP = {
-            'Sunday': 'Sunday', 'Monday': 'Monday', 'Tuesday': 'Tuesday',
-            'Wednesday': 'Wednesday', 'Thursday': 'Thursday', 'Friday': 'Friday', 'Saturday': 'Saturday',
-            'sunday': 'Sunday', 'monday': 'Monday', 'tuesday': 'Tuesday',
-            'wednesday': 'Wednesday', 'thursday': 'Thursday', 'friday': 'Friday', 'saturday': 'Saturday',
-            'Sun': 'Sunday', 'Mon': 'Monday', 'Tue': 'Tuesday',
-            'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday',
-        };
-        const rawDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
-        const dayName = DAY_MAP[rawDay] || rawDay;
+        var selectedDate = getLocalDate(date);
+        var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        var dayName = DAY_NAMES[selectedDate.getDay()];
 
-        const now2 = new Date();
-        const todayStr2 = now2.toISOString().split('T')[0];
-        const isToday = date === todayStr2;
-        const nowMins = isToday ? now2.getHours() * 60 + now2.getMinutes() : 0;
-
-        function normalizeDayName(day) {
-            if (!day) return null;
-            const key = String(day).trim().toLowerCase();
-            const map = {
-                sunday: 'Sunday', sun: 'Sunday',
-                monday: 'Monday', mon: 'Monday',
-                tuesday: 'Tuesday', tue: 'Tuesday', tues: 'Tuesday',
-                wednesday: 'Wednesday', wed: 'Wednesday',
-                thursday: 'Thursday', thu: 'Thursday', thur: 'Thursday', thurs: 'Thursday',
-                friday: 'Friday', fri: 'Friday',
-                saturday: 'Saturday', sat: 'Saturday'
-            };
-            return map[key] || null;
-        }
-
-        function normalizeWorkingDays(raw) {
-            if (Array.isArray(raw)) {
-                return raw.map(normalizeDayName).filter(Boolean);
-            }
-            if (raw && typeof raw === 'object') {
-                return Object.keys(raw)
-                    .filter(k => !!raw[k])
-                    .map(normalizeDayName)
-                    .filter(Boolean);
-            }
-            return [];
-        }
-
-        function normalizeHHMM(value, fallback) {
-            if (typeof value !== 'string') return fallback;
-            const m = value.match(/^(\d{1,2}):(\d{2})$/);
-            if (!m) return fallback;
-            const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
-            const mm = Math.min(59, Math.max(0, parseInt(m[2], 10)));
-            return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-        }
+        var now2 = new Date();
+        var todayStr2 = now2.toISOString().split('T')[0];
+        var isToday = date === todayStr2;
+        var nowMins = isToday ? now2.getHours() * 60 + now2.getMinutes() : 0;
 
         function getBarberScheduleForDay(b, day) {
             if (!b) return null;
-            const workingDays = Array.isArray(b.workingDays) ? b.workingDays : [];
+            var workingDays = Array.isArray(b.workingDays) ? b.workingDays : [];
             if (!workingDays.includes(day)) return null;
-            const dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
+            var dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
             return { open: dh.open || '09:00', close: dh.close || '19:00' };
         }
 
         function generateSlots(open, close) {
-            const slots = [];
-            const openMins = timeToMins(open);
-            const closeMins = timeToMins(close);
-            for (let mins = openMins; mins + duration <= closeMins; mins += 30) {
+            var slots = [];
+            var openMins = timeToMins(open);
+            var closeMins = timeToMins(close);
+            for (var mins = openMins; mins + duration <= closeMins; mins += 30) {
                 if (isToday && mins <= nowMins + 15) continue;
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                const h12 = h % 12 || 12;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                slots.push({ h, m, label: `${h12}:${String(m).padStart(2, '0')} ${ampm}` });
+                var h = Math.floor(mins / 60);
+                var m = mins % 60;
+                var h12 = h % 12 || 12;
+                var ampm = h >= 12 ? 'PM' : 'AM';
+                slots.push({ h: h, m: m, label: h12 + ':' + (m === 0 ? '00' : '30') + ' ' + ampm });
             }
             return slots;
         }
 
-        let barbersToCheck = [];
+        var barbersToCheck = [];
         if (barber === 'no-preference') {
             barbersToCheck = ACTIVE_BARBERS;
         } else {
-            const found = ACTIVE_BARBERS.find(b => b.id === barber);
+            var found = ACTIVE_BARBERS.find(function(b) { return b.id === barber; });
             if (found) barbersToCheck = [found];
         }
 
-        const scheduledBarbers = barbersToCheck
-            .map(b => ({ barber: b, schedule: getBarberScheduleForDay(b, dayName) }))
-            .filter(x => x.schedule !== null);
+        var scheduledBarbers = barbersToCheck
+            .map(function(b) { return { barber: b, schedule: getBarberScheduleForDay(b, dayName) }; })
+            .filter(function(x) { return x.schedule !== null; });
 
         if (scheduledBarbers.length === 0) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No barbers available on this day</div>';
             return;
         }
 
-        let openMins = Math.min(...scheduledBarbers.map(x => timeToMins(x.schedule.open)));
-        let closeMins = Math.max(...scheduledBarbers.map(x => timeToMins(x.schedule.close)));
-        const open = `${String(Math.floor(openMins / 60)).padStart(2, '0')}:${String(openMins % 60).padStart(2, '0')}`;
-        const close = `${String(Math.floor(closeMins / 60)).padStart(2, '0')}:${String(closeMins % 60).padStart(2, '0')}`;
+        var openMins = Math.min.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.open); }));
+        var closeMins = Math.max.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.close); }));
+        var open = String(Math.floor(openMins / 60)).padStart(2, '0') + ':' + String(openMins % 60).padStart(2, '0');
+        var close = String(Math.floor(closeMins / 60)).padStart(2, '0') + ':' + String(closeMins % 60).padStart(2, '0');
 
-        const slots = generateSlots(open, close);
+        var slots = generateSlots(open, close);
 
         if (slots.length === 0) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No available slots for today</div>';
             return;
         }
 
-        async function getFirestoreSlots() {
-            const db = window._db;
-            const { collection, query, where, getDocs, Timestamp } = window._firebase;
-            const startOfDay = getLocalDate(date, 0, 0);
-            const endOfDay = getLocalDate(date, 23, 59);
-            const q = query(
-                collection(db, 'tenants/whitecross/bookings'),
-                where('startTime', '>=', Timestamp.fromDate(startOfDay)),
-                where('startTime', '<=', Timestamp.fromDate(endOfDay))
+        function getFirestoreSlots() {
+            var db = window._db;
+            var firebase = window._firebase;
+            var startOfDay = getLocalDate(date, 0, 0);
+            var endOfDay = getLocalDate(date, 23, 59);
+            var q = firebase.query(
+                firebase.collection(db, 'tenants/whitecross/bookings'),
+                firebase.where('startTime', '>=', firebase.Timestamp.fromDate(startOfDay)),
+                firebase.where('startTime', '<=', firebase.Timestamp.fromDate(endOfDay))
             );
-            const snap = await getDocs(q);
-            const busyMap = {};
-            ACTIVE_BARBERS.forEach(b => { busyMap[b.id] = []; });
-            snap.forEach(doc => {
-                const d = doc.data();
-                if (d.status === 'CANCELLED') return;
-                if (!d.startTime || !d.endTime) return;
-                const slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
-                if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);
+            return firebase.getDocs(q).then(function(snap) {
+                var busyMap = {};
+                ACTIVE_BARBERS.forEach(function(b) { busyMap[b.id] = []; });
+                snap.forEach(function(doc) {
+                    var d = doc.data();
+                    if (d.status === 'CANCELLED') return;
+                    if (!d.startTime || !d.endTime) return;
+                    var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
+                    if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);
+                });
+                return busyMap;
             });
-            return busyMap;
         }
 
         function renderSlots(busyMap) {
             timeSlotsGrid.innerHTML = '';
             hiddenTime.value = '';
 
-            slots.forEach(slot => {
-                const slotStart = getLocalDate(date, slot.h, slot.m).getTime();
-                const slotEnd = slotStart + duration * 60 * 1000;
+            slots.forEach(function(slot) {
+                var slotStart = getLocalDate(date, slot.h, slot.m).getTime();
+                var slotEnd = slotStart + duration * 60 * 1000;
 
                 function isBusy(barberId) {
-                    return (busyMap[barberId] || []).some(b => slotStart < b.end && slotEnd > b.start);
+                    return (busyMap[barberId] || []).some(function(b) { return slotStart < b.end && slotEnd > b.start; });
                 }
 
                 function isInSchedule(b) {
-                    const sch = getBarberScheduleForDay(b, dayName);
+                    var sch = getBarberScheduleForDay(b, dayName);
                     if (!sch) return false;
-                    const schOpen = getLocalDate(date, ...sch.open.split(':').map(Number)).getTime();
-                    const schClose = getLocalDate(date, ...sch.close.split(':').map(Number)).getTime();
+                    var schOpen = getLocalDate(date, parseInt(sch.open.split(':')[0]), parseInt(sch.open.split(':')[1])).getTime();
+                    var schClose = getLocalDate(date, parseInt(sch.close.split(':')[0]), parseInt(sch.close.split(':')[1])).getTime();
                     return slotStart >= schOpen && slotEnd <= schClose;
                 }
 
-                let busy = false;
-                let assignedBarber = '';
+                var busy = false;
+                var assignedBarber = '';
 
                 if (barber === 'no-preference') {
-                    const available = scheduledBarbers
-                        .map(x => x.barber)
-                        .filter(b => isInSchedule(b) && !isBusy(b.id));
+                    var available = scheduledBarbers
+                        .map(function(x) { return x.barber; })
+                        .filter(function(b) { return isInSchedule(b) && !isBusy(b.id); });
                     busy = available.length === 0;
                     if (!busy) assignedBarber = available[0].id;
                 } else {
-                    const found = ACTIVE_BARBERS.find(b => b.id === barber);
-                    busy = !found || !isInSchedule(found) || isBusy(barber);
+                    var foundB = ACTIVE_BARBERS.find(function(b) { return b.id === barber; });
+                    busy = !foundB || !isInSchedule(foundB) || isBusy(barber);
                     if (!busy) assignedBarber = barber;
                 }
 
-                const btn = document.createElement('button');
+                var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.textContent = slot.label;
                 btn.className = 'time-slot-btn' + (busy ? ' unavailable' : '');
@@ -609,7 +566,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
                 if (!busy) {
                     btn.addEventListener('click', function() {
-                        timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
+                        timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(function(b) { b.classList.remove('selected'); });
                         btn.classList.add('selected');
                         hiddenTime.value = slot.label;
                         hiddenTime.dataset.afterHours = 'false';
@@ -620,32 +577,31 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             });
         }
 
-        getFirestoreSlots().then(busyMap => {
+        getFirestoreSlots().then(function(busyMap) {
             renderSlots(busyMap);
-        }).catch(err => {
+        }).catch(function(err) {
             console.log('Availability check failed:', err);
             renderSlots({});
         });
     }
 
     /* Barber & Service listeners */
-
-    const serviceHidden = document.getElementById('service');
-    document.querySelectorAll('.service-btn').forEach(btn => {
+    var serviceHidden = document.getElementById('service');
+    document.querySelectorAll('.service-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.service-btn').forEach(function(b) { b.classList.remove('selected'); });
             btn.classList.add('selected');
             serviceHidden.value = btn.dataset.value;
-            const selectedDate = dateInput && dateInput.value;
+            var selectedDate = dateInput && dateInput.value;
             if (selectedDate) checkAvailability(selectedDate);
         });
     });
 
     /* ACCORDION */
-    document.querySelectorAll(".accordion-toggle").forEach(t => {
-        t.addEventListener("click", () => {
-            const target = document.querySelector(`.${t.dataset.target}-content`);
-            const arrow = document.querySelector(`.arrow-${t.dataset.target}`);
+    document.querySelectorAll(".accordion-toggle").forEach(function(t) {
+        t.addEventListener("click", function() {
+            var target = document.querySelector('.' + t.dataset.target + '-content');
+            var arrow = document.querySelector('.arrow-' + t.dataset.target);
             if (target.classList.contains("open")) {
                 target.style.maxHeight = "0px";
                 target.classList.remove("open");
@@ -660,50 +616,51 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
     /* STRIPE SUCCESS CHECK */
     if (window.isStripeSuccess) {
-        const popup = document.getElementById('successPopup');
-        const pending = sessionStorage.getItem('pendingBooking');
-        const bookingData = pending ? JSON.parse(pending) : null;
+        var popup = document.getElementById('successPopup');
+        var pending = sessionStorage.getItem('pendingBooking');
+        var bookingData = pending ? JSON.parse(pending) : null;
 
         if (popup) {
-            const name = bookingData ? bookingData.name.split(' ')[0] : '';
-            const date = bookingData ? bookingData.date : '';
-            const time = bookingData ? bookingData.time : '';
-            document.getElementById('popup-icon').innerText = "✂️";
+            var name = bookingData ? bookingData.name.split(' ')[0] : '';
+            var bDate = bookingData ? bookingData.date : '';
+            var bTime = bookingData ? bookingData.time : '';
+            document.getElementById('popup-icon').innerText = "\u2702\uFE0F";
             document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
-            document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + date + " at " + time + ". Check your email for confirmation!";
+            document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + bDate + " at " + bTime + ". Check your email for confirmation!";
             popup.style.display = 'flex';
         }
-if (bookingData) {
-    const db = window._db;
-    const { collection, addDoc, Timestamp } = window._firebase;
-    const dateStr = bookingData.date;
-    const timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    let h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
-    const ap = timeMatch[3].toUpperCase();
-    if (ap === 'PM' && h !== 12) h += 12;
-    if (ap === 'AM' && h === 12) h = 0;
-    const startTime = new Date(dateStr + 'T00:00:00');
-    startTime.setHours(h, m, 0, 0);
-    const durationMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
-    const dur = durationMap[bookingData.service] || 30;
-    const endTime = new Date(startTime.getTime() + dur * 60 * 1000);
 
-    addDoc(collection(db, 'tenants/whitecross/bookings'), {
-        bookingId: bookingData.bookingId,
-        tenantId: 'whitecross',
-        clientName: bookingData.name,
-        clientEmail: bookingData.email,
-        clientPhone: bookingData.phone,
-        barberId: bookingData.barber,
-        serviceId: bookingData.service,
-        startTime: Timestamp.fromDate(startTime),
-        endTime: Timestamp.fromDate(endTime),
-        status: 'CONFIRMED',
-        paymentType: bookingData.paymentType,
-        source: 'website',
-        createdAt: Timestamp.fromDate(new Date()),
-    }).then(() => sessionStorage.removeItem('pendingBooking'));
-}
+        if (bookingData) {
+            var db = window._db;
+            var firebase = window._firebase;
+            var dateStr = bookingData.date;
+            var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+            var ap = timeMatch[3].toUpperCase();
+            if (ap === 'PM' && h !== 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+            var startTime = new Date(dateStr + 'T00:00:00');
+            startTime.setHours(h, m, 0, 0);
+            var durMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
+            var dur = durMap[bookingData.service] || 30;
+            var endTime = new Date(startTime.getTime() + dur * 60 * 1000);
+
+            firebase.addDoc(firebase.collection(db, 'tenants/whitecross/bookings'), {
+                bookingId: bookingData.bookingId,
+                tenantId: 'whitecross',
+                clientName: bookingData.name,
+                clientEmail: bookingData.email,
+                clientPhone: bookingData.phone,
+                barberId: bookingData.barber,
+                serviceId: bookingData.service,
+                startTime: firebase.Timestamp.fromDate(startTime),
+                endTime: firebase.Timestamp.fromDate(endTime),
+                status: 'CONFIRMED',
+                paymentType: bookingData.paymentType,
+                source: 'website',
+                createdAt: firebase.Timestamp.fromDate(new Date()),
+            }).then(function() { sessionStorage.removeItem('pendingBooking'); });
+        }
 
         window.history.replaceState({}, '', window.location.pathname);
     }
