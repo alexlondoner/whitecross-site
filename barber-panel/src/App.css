@@ -1,0 +1,56 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0a0a;
+  color: #e8e0cc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --gold: #d4af37;
+  --gold-light: #f5e17a;
+  --gold-dark: #8b6914;
+  --bg: #0a0a0a;
+  --dark: #111111;
+  --card: #161610;
+  --card2: #0f0f0a;
+  --border: rgba(212,175,55,0.15);
+  --border-hover: rgba(212,175,55,0.35);
+  --text: #e8e0cc;
+  --muted: #7a7260;
+  --success: #4caf50;
+  --danger: #ff5252;
+  --warning: #ff9800;
+  --grid-bg: #161610;
+  --slot-bg: transparent;
+  --slot-hover: rgba(212,175,55,0.04);
+  --slot-past: rgba(0,0,0,0.12);
+  --time-color: #444;
+}
+body.light {
+  background: #f0efe8;
+  color: #1a1a14;
+  --bg: #f0efe8;
+  --dark: #e8e7e0;
+  --card: #ffffff;
+  --card2: #f5f4ee;
+  --border: rgba(139,105,20,0.18);
+  --border-hover: rgba(139,105,20,0.35);
+  --text: #1a1a14;
+  --muted: #6b6050;
+  --grid-bg: #ffffff;
+  --slot-bg: transparent;
+  --slot-hover: rgba(212,175,55,0.06);
+  --slot-past: rgba(0,0,0,0.04);
+  --time-color: #999;
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--dark); }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+
+input, select, textarea { font-family: inherit; }

@@ -132,6 +132,27 @@ document.addEventListener('DOMContentLoaded', function () {
         bindBarberSelector();
     }
 
+    const SCHEDULE = [
+        { day: 'Monday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Tuesday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Wednesday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Thursday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Friday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Saturday', open: '09:00', close: '19:00', closed: false },
+        { day: 'Sunday', open: '10:00', close: '16:00', closed: false },
+    ];
+    const JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
+
+    function getLocalDate(dateStr, h, m) {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day, h || 0, m || 0, 0, 0);
+    }
+
+    function timeToMins(t) {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+
     /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const now = new Date();
@@ -200,19 +221,8 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
     /* HOURS WIDGET */
     (function () {
-        const schedule = [
-            { day: 'Monday', open: '09:00', close: '19:00' },
-            { day: 'Tuesday', open: '09:00', close: '19:00' },
-            { day: 'Wednesday', open: '09:00', close: '19:00' },
-            { day: 'Thursday', open: '09:00', close: '19:00' },
-            { day: 'Friday', open: '09:00', close: '19:00' },
-            { day: 'Saturday', open: '09:00', close: '19:00' },
-            { day: 'Sunday', open: '10:00', close: '16:00' },
-        ];
-
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        const jsToSchedule = [6, 0, 1, 2, 3, 4, 5];
-        const todayIdx = jsToSchedule[now.getDay()];
+        const todayIdx = JS_TO_SCHEDULE[now.getDay()];
 
         function timeToMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
         function format12(t) {
@@ -220,7 +230,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             return `${h % 12 || 12}:${m === 0 ? '00' : m} ${h >= 12 ? 'PM' : 'AM'}`;
         }
 
-        const today = schedule[todayIdx];
+        const today = SCHEDULE[todayIdx];
         const isOpen = currentTime >= timeToMins(today.open) && currentTime < timeToMins(today.close);
         const statusEl = document.getElementById('hoursStatus');
 
@@ -241,7 +251,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
         const grid = document.getElementById('hoursGrid');
         if (grid) {
-            schedule.forEach((item, idx) => {
+            SCHEDULE.forEach((item, idx) => {
                 const isToday = idx === todayIdx;
                 const row = document.createElement('div');
                 row.className = 'hours-row-new' + (isToday ? ' today' : '');
@@ -431,25 +441,27 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
         const currentHour = now2.getHours();
         const currentMinute = now2.getMinutes();
 
-        const selectedDate2 = new Date(date + 'T00:00:00');
-        const isSunday = selectedDate2.getDay() === 0;
-        const openHour = isSunday ? 10 : 9;
-        const closeHour = isSunday ? 16 : 19;
-
-        for (let h = openHour; h <= closeHour; h++) {
-        for (let m of [0, 30]) {
-        if (h === closeHour && m > 0) continue;
-        if (isToday) {
-
-                    if (h < currentHour || (h === currentHour && m <= currentMinute)) continue;
-                }
-                const hour12 = h % 12 || 12;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
-                const afterHours = h >= closeHour;
-                slots.push({ label, h, m, afterHours });
-            }
+        const selectedDate2 = getLocalDate(date);
+        const dayIdx = JS_TO_SCHEDULE[selectedDate2.getDay()];
+        const dayConfig = SCHEDULE[dayIdx];
+        if (dayConfig.closed) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">We are closed on this day</div>';
+            return;
         }
+        const openMins = timeToMins(dayConfig.open);
+        const closeMins = timeToMins(dayConfig.close);
+
+        for (let mins = openMins; mins <= closeMins; mins += 30) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            if (h === Math.floor(closeMins / 60) && m > closeMins % 60) continue;
+            if (isToday && (h < currentHour || (h === currentHour && m <= currentMinute))) continue;
+            const hour12 = h % 12 || 12;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const label = `${hour12}:${m === 0 ? '00' : '30'} ${ampm}`;
+            const afterHours = mins >= closeMins;
+            slots.push({ label, h, m, afterHours });
+            }
 
         if (slots.length === 0) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No available slots for today</div>';
@@ -461,8 +473,7 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
             hiddenTime.value = '';
 
             slots.forEach(slot => {
-                const slotTime = new Date(date + 'T00:00:00');
-                slotTime.setHours(slot.h, slot.m, 0, 0);
+                const slotTime = getLocalDate(date, slot.h, slot.m);
                 const slotMs = slotTime.getTime();
                 const slotEnd = slotMs + duration * 60 * 1000;
                 const busy = busyFn(slotMs, slotEnd);
@@ -500,8 +511,8 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
        async function getFirestoreSlots() {
     const db = window._db;
     const { collection, query, where, getDocs, Timestamp } = window._firebase;
-    const startOfDay = new Date(date + 'T00:00:00');
-    const endOfDay = new Date(date + 'T23:59:59');
+    const startOfDay = getLocalDate(date, 0, 0);
+    const endOfDay = getLocalDate(date, 23, 59);
     const q = query(
         collection(db, 'tenants/whitecross/bookings'),
         where('startTime', '>=', Timestamp.fromDate(startOfDay)),
@@ -537,8 +548,7 @@ getFirestoreSlots().then(data => {
             const ampm = match[3].toUpperCase();
             if (ampm === 'PM' && h !== 12) h += 12;
             if (ampm === 'AM' && h === 12) h = 0;
-            const slotTime = new Date(date + 'T00:00:00');
-            slotTime.setHours(h, m, 0, 0);
+            const slotTime = getLocalDate(date, h, m);
             const slotMs = slotTime.getTime();
             const slotEnd = slotMs + duration * 60 * 1000;
             const alexBusy = data.alexBusy.some(b => slotMs < b.end && slotEnd > b.start);
