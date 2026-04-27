@@ -72,7 +72,7 @@ footer {
 }
 
 .main-logo-img {
-  width: 200px;
+  width: 230px;
   height: auto;
   display: block;
   margin: 0 auto -12px;
@@ -1225,8 +1225,12 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   }
 
   .main-logo-img {
-    width: 165px;
+    width: 180px;
     margin-bottom: -10px;
+  }
+
+  .logo-wrapper {
+    width: 180px;
   }
 
   .hero { padding: 25px 15px; }
@@ -1338,7 +1342,8 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   body { font-size: 14px; }
 
   .main-logo { font-size: 2rem; }
-  .main-logo-img { width: 140px; }
+  .main-logo-img { width: 160px; }
+  .logo-wrapper { width: 160px; }
   .hero { padding: 20px 12px; }
 
   .form-header { font-size: 1.3rem; }
@@ -1446,12 +1451,12 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
 .logo-wrapper {
     position: relative;
     display: inline-block;
-  width: 280px;
+  width: 230px;
     margin: 0 auto 8px;
 }
 
 .main-logo-img {
-  width: 280px;
+  width: 230px;
     height: auto;
     display: block;
 }
