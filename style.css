@@ -670,6 +670,10 @@ select.input-field optgroup {
 ========================= */
 .hours-widget {
   margin-top: 15px;
+  background: linear-gradient(135deg, #1a1a14, #0f0f0a);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 12px;
+  padding: 16px;
 }
 
 .hours-status {
@@ -713,9 +717,9 @@ select.input-field optgroup {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: #aaa;
   transition: background 0.2s;
 }
@@ -795,8 +799,8 @@ select.input-field optgroup {
 }
 
 .review-icon {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(184, 134, 11, 0.1));
   border: 1px solid rgba(212, 175, 55, 0.5);
@@ -804,7 +808,7 @@ select.input-field optgroup {
   align-items: center;
   justify-content: center;
   font-family: 'Oswald', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   color: #d4af37;
   font-weight: 700;
   margin-bottom: 4px;
@@ -828,15 +832,15 @@ select.input-field optgroup {
 
 .rating-number {
   font-family: 'Oswald', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   color: #d4af37;
 }
 
 .stars {
   color: #d4af37;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
+  font-size: 1rem;
+  letter-spacing: 2px;
 }
 
 .review-link {
@@ -857,6 +861,8 @@ select.input-field optgroup {
   overflow: hidden;
   margin-top: 24px;
   position: relative;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
 }
 
 .testimonials-track {
@@ -872,9 +878,9 @@ select.input-field optgroup {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(184, 134, 11, 0.05));
   border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: 12px;
-  padding: 18px 20px;
-  min-width: 260px;
-  max-width: 260px;
+  padding: 16px;
+  min-width: 240px;
+  max-width: 240px;
   flex-shrink: 0;
   box-shadow: 0 0 20px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(212, 175, 55, 0.05);
   transition: all 0.3s ease;
@@ -950,8 +956,8 @@ select.input-field optgroup {
 .carousel-slide img {
   width: 100%;
   height: auto;
-  max-height: 420px;
-  object-fit: contain;
+  max-height: 500px;
+  object-fit: cover;
   display: block;
   background: transparent;
 }
@@ -979,17 +985,22 @@ select.input-field optgroup {
 
 .gallery-see-more {
   display: inline-block;
-  color: #d4af37;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  color: #000;
+  font-weight: 800;
+  border-radius: 8px;
+  border-bottom: none;
+  letter-spacing: 2px;
   text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
-.gallery-see-more:hover { border-bottom-color: #d4af37; }
+.gallery-see-more:hover {
+  filter: brightness(1.1);
+  border-bottom: none;
+}
 
 /* =========================
    MODAL
@@ -1095,19 +1106,23 @@ select.input-field optgroup {
 
 .footer-link-btn {
   text-decoration: none;
-  color: #000;
-  background: #d4af37;
-  padding: 8px 10px;
-  border-radius: 4px;
+  background: transparent;
+  color: #d4af37;
+  border: 1px solid rgba(212,175,55,0.4);
+  padding: 8px 12px;
+  border-radius: 20px;
   font-family: 'Oswald', sans-serif;
-  font-size: 0.72rem;
-  letter-spacing: 2px;
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  transition: filter 0.2s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
-.footer-link-btn:hover { filter: brightness(1.1); }
+.footer-link-btn:hover {
+  background: rgba(212,175,55,0.1);
+  filter: none;
+}
 
 .footer-dot {
   color: #444;
@@ -1293,7 +1308,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
     min-height: 44px;
   }
 
-  .carousel-slide img { max-height: 360px; }
+  .carousel-slide img { max-height: 460px; object-fit: cover; }
 
   .details-btn {
     padding: 4px 10px;
@@ -1375,7 +1390,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
     min-height: 40px;
   }
 
-  .carousel-slide img { max-height: 300px; }
+  .carousel-slide img { max-height: 420px; object-fit: cover; }
 
   .accordion-content {
     padding-top: 8px;
@@ -1391,14 +1406,19 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
 
   
   .footer-links {
-    gap: 4px;
+    gap: 6px;
     justify-content: center;
   }
 
   .footer-link-btn {
-    padding: 5px 8px;
+    padding: 6px 10px;
     font-size: 0.6rem;
+    letter-spacing: 1px;
     min-height: 32px;
+  }
+
+  .footer-dot {
+    display: none;
   }
 
   .footer-copy { font-size: 0.65rem; }
