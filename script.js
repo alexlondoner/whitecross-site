@@ -435,19 +435,77 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
         }
 
         const selectedDate = getLocalDate(date);
-        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+        const DAY_MAP = {
+            'Sunday': 'Sunday', 'Monday': 'Monday', 'Tuesday': 'Tuesday',
+            'Wednesday': 'Wednesday', 'Thursday': 'Thursday', 'Friday': 'Friday', 'Saturday': 'Saturday',
+            'sunday': 'Sunday', 'monday': 'Monday', 'tuesday': 'Tuesday',
+            'wednesday': 'Wednesday', 'thursday': 'Thursday', 'friday': 'Friday', 'saturday': 'Saturday',
+            'Sun': 'Sunday', 'Mon': 'Monday', 'Tue': 'Tuesday',
+            'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday',
+        };
+        const rawDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+        const dayName = DAY_MAP[rawDay] || rawDay;
 
         const now2 = new Date();
         const todayStr2 = now2.toISOString().split('T')[0];
         const isToday = date === todayStr2;
         const nowMins = isToday ? now2.getHours() * 60 + now2.getMinutes() : 0;
 
+        function normalizeDayName(day) {
+            if (!day) return null;
+            const key = String(day).trim().toLowerCase();
+            const map = {
+                sunday: 'Sunday', sun: 'Sunday',
+                monday: 'Monday', mon: 'Monday',
+                tuesday: 'Tuesday', tue: 'Tuesday', tues: 'Tuesday',
+                wednesday: 'Wednesday', wed: 'Wednesday',
+                thursday: 'Thursday', thu: 'Thursday', thur: 'Thursday', thurs: 'Thursday',
+                friday: 'Friday', fri: 'Friday',
+                saturday: 'Saturday', sat: 'Saturday'
+            };
+            return map[key] || null;
+        }
+
+        function normalizeWorkingDays(raw) {
+            if (Array.isArray(raw)) {
+                return raw.map(normalizeDayName).filter(Boolean);
+            }
+            if (raw && typeof raw === 'object') {
+                return Object.keys(raw)
+                    .filter(k => !!raw[k])
+                    .map(normalizeDayName)
+                    .filter(Boolean);
+            }
+            return [];
+        }
+
+        function normalizeHHMM(value, fallback) {
+            if (typeof value !== 'string') return fallback;
+            const m = value.match(/^(\d{1,2}):(\d{2})$/);
+            if (!m) return fallback;
+            const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+            const mm = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+            return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        }
+
         function getBarberScheduleForDay(b, day) {
             if (!b) return null;
-            const workingDays = b.workingDays || [];
+            const workingDays = normalizeWorkingDays(b.workingDays);
             if (!workingDays.includes(day)) return null;
-            const dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
-            return { open: dh.open || '09:00', close: dh.close || '19:00' };
+
+            let dayHours = null;
+            if (b.dayHours && typeof b.dayHours === 'object') {
+                const dayKey = Object.keys(b.dayHours).find(function(k) {
+                    return normalizeDayName(k) === day;
+                });
+                if (dayKey) dayHours = b.dayHours[dayKey];
+            }
+
+            const source = dayHours || b.hours || { open: '09:00', close: '19:00' };
+            const open = normalizeHHMM(source.open, '09:00');
+            const close = normalizeHHMM(source.close, '19:00');
+            if (timeToMins(close) <= timeToMins(open)) return null;
+            return { open, close };
         }
 
         function generateSlots(open, close) {
@@ -541,7 +599,9 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
                 let assignedBarber = '';
 
                 if (barber === 'no-preference') {
-                    const available = ACTIVE_BARBERS.filter(b => isInSchedule(b) && !isBusy(b.id));
+                    const available = scheduledBarbers
+                        .map(x => x.barber)
+                        .filter(b => isInSchedule(b) && !isBusy(b.id));
                     busy = available.length === 0;
                     if (!busy) assignedBarber = available[0].id;
                 } else {
