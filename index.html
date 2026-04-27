@@ -161,6 +161,68 @@
 </div>
     <div class="walk-in-tag">WALK-INS & APPOINTMENTS WELCOME</div>
 
+    <section class="card exclusive-card">
+      <h2 class="section-title bundle-title accordion-toggle" data-target="exclusive">
+        Exclusive Bundle Packages
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:0.55rem;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;padding:2px 8px;border-radius:20px;font-family:Oswald,sans-serif;letter-spacing:2px;font-weight:700;">PREMIUM</span>
+          <span class="arrow arrow-exclusive">▼</span>
+        </div>
+      </h2>
+      <div class="accordion-content exclusive-content" style="max-height:0px;">
+        <div class="service-item highlight">
+          <div class="s-info">
+            <strong>I CUT Royal</strong>
+            <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£65</span>
+            <button class="details-btn" onclick="selectService('i-cut-royal')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>I CUT Deluxe</strong>
+            <button class="details-btn" onclick="openStory('deluxe')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£55</span>
+            <button class="details-btn" onclick="selectService('i-cut-deluxe')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>Full Skin Fade & Beard Luxury</strong>
+            <button class="details-btn" onclick="openStory('fade_service')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£48</span>
+            <button class="details-btn" onclick="selectService('full-skinfade-beard-luxury')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>The Full Experience</strong>
+            <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£40</span>
+            <button class="details-btn" onclick="selectService('full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="s-info">
+            <strong>Senior Full Experience (65+)</strong>
+            <button class="details-btn" onclick="openStory('senior_full')">Journey Details</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="price">£35</span>
+            <button class="details-btn" onclick="selectService('senior-full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card standard-card">
       <h2 class="section-title bundle-title accordion-toggle" data-target="standard">
         Standard Packages
@@ -245,66 +307,6 @@
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             <span class="price">£24</span>
             <button class="details-btn" onclick="selectService('young-gents-skin-fade')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- EXCLUSIVE BUNDLES -->
-    <section class="card exclusive-card">
-      <h2 class="section-title bundle-title accordion-toggle" data-target="exclusive">
-        Exclusive Bundle Packages
-        <span class="arrow arrow-exclusive">▼</span>
-      </h2>
-      <div class="accordion-content exclusive-content" style="max-height:0px;">
-        <div class="service-item highlight">
-          <div class="s-info">
-            <strong>I CUT Royal</strong>
-            <button class="details-btn" onclick="openStory('royal')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£65</span>
-            <button class="details-btn" onclick="selectService('i-cut-royal')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>I CUT Deluxe</strong>
-            <button class="details-btn" onclick="openStory('deluxe')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£55</span>
-            <button class="details-btn" onclick="selectService('i-cut-deluxe')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>Full Skin Fade & Beard Luxury</strong>
-            <button class="details-btn" onclick="openStory('fade_service')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£48</span>
-            <button class="details-btn" onclick="selectService('full-skinfade-beard-luxury')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>The Full Experience</strong>
-            <button class="details-btn" onclick="openStory('experience')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£40</span>
-            <button class="details-btn" onclick="selectService('full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
-          </div>
-        </div>
-        <div class="service-item">
-          <div class="s-info">
-            <strong>Senior Full Experience (65+)</strong>
-            <button class="details-btn" onclick="openStory('senior_full')">Journey Details</button>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <span class="price">£35</span>
-            <button class="details-btn" onclick="selectService('senior-full-experience')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>
           </div>
         </div>
       </div>
@@ -408,6 +410,7 @@
         <input type="tel" name="phone" placeholder="+XXX XXX XXXXXX" required class="input-field" id="phone">
         <input type="date" name="date" required class="input-field" id="date">
 
+        <div style="font-size:0.62rem;color:#d4af37;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-left:4px;font-family:Oswald,sans-serif;">Select Service</div>
         <select id="service" name="service" required class="input-field">
             <option value="" disabled selected>Select Service</option>
             <optgroup label="Exclusive Bundle Packages">
@@ -445,7 +448,7 @@
         <div id="timeSlots" class="time-slots-grid"></div>
         <input type="hidden" id="time" name="time">
 
-        <button type="submit" class="submit-btn">Book My Seat & Coffee</button>
+        <button type="submit" class="submit-btn">✂ Book My Seat & Coffee</button>
     </form>
 
     <!-- MODAL -->

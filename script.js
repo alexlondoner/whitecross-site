@@ -82,13 +82,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!barberGrid) return;
         var dynamicBtns = ACTIVE_BARBERS.map(function(b) {
             return '<button type="button" class="barber-btn" id="barber-' + b.id + '" data-value="' + b.id + '">' +
-                '<span class="barber-icon">\u2702\uFE0F</span>' +
+'<span class="barber-icon" style="font-family:Oswald,sans-serif;font-size:1.1rem;font-weight:700;color:#d4af37;">' + b.name[0].toUpperCase() + '</span>' +
                 '<span class="barber-name">' + b.name + '</span>' +
                 '</button>';
         }).join('');
         barberGrid.innerHTML = dynamicBtns +
             '<button type="button" class="barber-btn" id="barber-no-preference" data-value="no-preference">' +
-            '<span class="barber-icon">\u2B50</span>' +
+'<span class="barber-icon" style="font-size:1.1rem;color:#d4af37;">★</span>' +
             '<span class="barber-name">No Preference</span>' +
             '</button>';
     }
