@@ -55,11 +55,11 @@ document.addEventListener('click', function (event) {
     if (modal && event.target === modal) closeInfo();
 });
 
+const TENANT = 'whitecross';
+let ACTIVE_BARBERS = [];
+
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
-
-    const TENANT = 'whitecross';
-    let ACTIVE_BARBERS = [];
     const barberGrid = document.getElementById('barberGrid');
     const barberHidden = document.getElementById('barber');
 
