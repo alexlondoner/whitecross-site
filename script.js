@@ -490,22 +490,10 @@ document.getElementById('date').addEventListener('change', prefetchDuplicate);
 
         function getBarberScheduleForDay(b, day) {
             if (!b) return null;
-            const workingDays = normalizeWorkingDays(b.workingDays);
+            const workingDays = Array.isArray(b.workingDays) ? b.workingDays : [];
             if (!workingDays.includes(day)) return null;
-
-            let dayHours = null;
-            if (b.dayHours && typeof b.dayHours === 'object') {
-                const dayKey = Object.keys(b.dayHours).find(function(k) {
-                    return normalizeDayName(k) === day;
-                });
-                if (dayKey) dayHours = b.dayHours[dayKey];
-            }
-
-            const source = dayHours || b.hours || { open: '09:00', close: '19:00' };
-            const open = normalizeHHMM(source.open, '09:00');
-            const close = normalizeHHMM(source.close, '19:00');
-            if (timeToMins(close) <= timeToMins(open)) return null;
-            return { open, close };
+            const dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
+            return { open: dh.open || '09:00', close: dh.close || '19:00' };
         }
 
         function generateSlots(open, close) {
