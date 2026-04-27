@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -17,7 +17,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   window._db = db;
-  window._firebase = { collection, addDoc, getDocs, query, where, updateDoc, Timestamp };
+  window._firebase = { collection, addDoc, getDocs, query, where, updateDoc, Timestamp, onSnapshot };
 </script>
     <!-- STRIPE SUCCESS CHECK -->
     <script>
@@ -439,20 +439,7 @@
             </optgroup>
         </select>
 
-        <div class="barber-grid">
-            <button type="button" class="barber-btn" data-value="alex">
-                <span class="barber-icon">✂️</span>
-                <span class="barber-name">Alex</span>
-            </button>
-            <button type="button" class="barber-btn" data-value="arda">
-                <span class="barber-icon">✂️</span>
-                <span class="barber-name">Arda</span>
-            </button>
-            <button type="button" class="barber-btn" data-value="no-preference">
-                <span class="barber-icon">⭐</span>
-                <span class="barber-name">No Preference</span>
-            </button>
-        </div>
+        <div class="barber-grid" id="barberGrid"></div>
         <input type="hidden" id="barber" name="barber">
 
         <div id="timeSlots" class="time-slots-grid"></div>

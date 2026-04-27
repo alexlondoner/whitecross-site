@@ -58,6 +58,80 @@ document.addEventListener('click', function (event) {
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', function () {
 
+    const TENANT = 'whitecross';
+    let ACTIVE_BARBERS = [];
+    const barberGrid = document.getElementById('barberGrid');
+    const barberHidden = document.getElementById('barber');
+
+    async function fetchActiveBarbers() {
+        try {
+            const db = window._db;
+            const { collection, getDocs } = window._firebase;
+            const snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
+            ACTIVE_BARBERS = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(b => b && b.active !== false)
+                .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        } catch (err) {
+            console.warn('Failed to load barbers:', err);
+            ACTIVE_BARBERS = [];
+        }
+    }
+
+    function renderBarberButtons() {
+        if (!barberGrid) return;
+        const dynamicBtns = ACTIVE_BARBERS.map(function (b) {
+            return '<button type="button" class="barber-btn" id="barber-' + b.id + '" data-value="' + b.id + '">' +
+                '<span class="barber-icon">✂️</span>' +
+                '<span class="barber-name">' + b.name + '</span>' +
+                '</button>';
+        }).join('');
+        barberGrid.innerHTML = dynamicBtns +
+            '<button type="button" class="barber-btn" id="barber-no-preference" data-value="no-preference">' +
+            '<span class="barber-icon">⭐</span>' +
+            '<span class="barber-name">No Preference</span>' +
+            '</button>';
+    }
+
+    function bindBarberSelector() {
+        document.querySelectorAll('.barber-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.barber-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                if (barberHidden) barberHidden.value = btn.dataset.value;
+                const d = document.getElementById('date').value;
+                if (d) checkAvailability(d);
+            });
+        });
+    }
+
+    function startBarberRealtimeSync() {
+        try {
+            const db = window._db;
+            const { collection, onSnapshot } = window._firebase;
+            if (typeof onSnapshot !== 'function') return;
+            const barbersRef = collection(db, `tenants/${TENANT}/barbers`);
+            onSnapshot(barbersRef, function (snap) {
+                ACTIVE_BARBERS = snap.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(b => b && b.active !== false)
+                    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                renderBarberButtons();
+                bindBarberSelector();
+            }, function (err) {
+                console.warn('Realtime barber sync failed:', err);
+            });
+        } catch (err) {
+            console.warn('Realtime barber sync failed:', err);
+        }
+    }
+
+    async function initBarberSelector() {
+        await fetchActiveBarbers();
+        renderBarberButtons();
+        bindBarberSelector();
+    }
+
     /* DATE & TIME LOGIC */
     const dateInput = document.getElementById('date');
     const now = new Date();
@@ -478,16 +552,6 @@ getFirestoreSlots().then(data => {
     }
 
     /* Barber & Service listeners */
-    const barberHidden = document.getElementById('barber');
-    document.querySelectorAll('.barber-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.barber-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            barberHidden.value = btn.dataset.value;
-            const selectedDate = dateInput && dateInput.value;
-            if (selectedDate) checkAvailability(selectedDate);
-        });
-    });
 
     const serviceHidden = document.getElementById('service');
     document.querySelectorAll('.service-btn').forEach(btn => {
@@ -566,4 +630,7 @@ if (bookingData) {
 
         window.history.replaceState({}, '', window.location.pathname);
     }
+
+    initBarberSelector();
+    startBarberRealtimeSync();
 });
