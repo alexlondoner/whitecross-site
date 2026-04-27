@@ -1446,8 +1446,19 @@ if (!barbersSnap.empty) {
       .sort((a,b) => convertTo24(a.time) - convertTo24(b.time));
   };
 
-  const activeBarbers = barberFilter === 'all' ? barbers : barbers.filter(b => b.id === barberFilter);
-  const statsBookings = view === 'day' ? getForDate(selectedDate)
+const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+const activeBarbersForDay = barbers.filter(b => {
+  if (!b.workingDays || b.workingDays.length === 0) return true;
+  const dayName = DAYS_FULL[selectedDate.getDay()];
+  if (!b.workingDays.includes(dayName)) return false;
+  if (b.dayHours && b.dayHours[dayName] && b.dayHours[dayName].closed) return false;
+  return true;
+});
+
+const activeBarbers = barberFilter === 'all'
+  ? activeBarbersForDay
+  : activeBarbersForDay.filter(b => b.id === barberFilter);  const statsBookings = view === 'day' ? getForDate(selectedDate)
     : view === 'week' ? getWeekDates(selectedDate).flatMap(d => getForDate(d))
     : (() => { const y=currentMonth.getFullYear(), m=currentMonth.getMonth(); return Array.from({length:getDaysInMonth(y,m)},(_,i)=>new Date(y,m,i+1)).flatMap(d=>getForDate(d)); })();
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
