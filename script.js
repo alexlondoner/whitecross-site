@@ -671,6 +671,8 @@ document.addEventListener('DOMContentLoaded', function () {
         window.history.replaceState({}, '', window.location.pathname);
     }
 
-    initBarberSelector();
-    startBarberRealtimeSync();
+   setTimeout(function() {
+        initBarberSelector();
+        startBarberRealtimeSync();
+    }, 500);
 });
