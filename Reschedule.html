@@ -512,7 +512,62 @@
         const dateStr = selectedDate;
         const selDate = getLocalDate(dateStr);
         const dayIdx  = JS_TO_SCHEDULE[selDate.getDay()];
-        const day     = SCHEDULE[dayIdx];
+        let day       = Object.assign({}, SCHEDULE[dayIdx]);
+        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = DAY_NAMES[selDate.getDay()];
+
+        function isWorkingDay(list, targetDay) {
+            if (!Array.isArray(list)) return false;
+            return list.some(function(d) {
+                return String(d).toLowerCase() === String(targetDay).toLowerCase();
+            });
+        }
+
+        // Prefer selected barber schedule; if barber is off, auto-switch to another available barber.
+        const selectedBarberData = activeBarbers.find(b => b.id === selectedBarber);
+        if (selectedBarberData) {
+            const workingDays = Array.isArray(selectedBarberData.workingDays) ? selectedBarberData.workingDays : [];
+            const dayHours = selectedBarberData.dayHours && selectedBarberData.dayHours[dayName];
+            const isOff = (workingDays.length > 0 && !isWorkingDay(workingDays, dayName)) || (dayHours && dayHours.closed);
+
+            if (isOff) {
+                const fallback = activeBarbers.find(function(b) {
+                    if (b.id === selectedBarber) return false;
+                    const wd = Array.isArray(b.workingDays) ? b.workingDays : [];
+                    if (wd.length > 0 && !isWorkingDay(wd, dayName)) return false;
+                    const dh = b.dayHours && b.dayHours[dayName];
+                    if (dh && dh.closed) return false;
+                    return true;
+                });
+
+                if (fallback) {
+                    selectedBarber = fallback.id;
+                    selectedTime = '';
+                    document.getElementById('btnConfirm').disabled = true;
+                    document.querySelectorAll('.barber-btn').forEach(function(x) { x.classList.remove('selected'); });
+                    const fallbackBtn = Array.from(document.querySelectorAll('.barber-btn'))
+                        .find(function(btn) { return btn.textContent.includes(fallback.name || fallback.id); });
+                    if (fallbackBtn) fallbackBtn.classList.add('selected');
+
+                    container.innerHTML = '<div class="slots-status" style="color:#ff9800;">' +
+                        (selectedBarberData.name || selectedBarberData.id) + ' is off today - switched to ' + (fallback.name || fallback.id) + ' automatically.' +
+                    '</div>';
+
+                    setTimeout(function() { loadSlots(); }, 1200);
+                    return;
+                }
+
+                container.innerHTML = '<div class="slots-status">No barbers available on this day. Please pick another date.</div>';
+                return;
+            }
+
+            const barberDayHours = dayHours || selectedBarberData.hours;
+
+            if (barberDayHours && barberDayHours.open && barberDayHours.close) {
+                day.open = barberDayHours.open;
+                day.close = barberDayHours.close;
+            }
+        }
 
         if (day.closed) {
             container.innerHTML = '<div class="slots-status">We are closed on this day. Please pick another date.</div>';
