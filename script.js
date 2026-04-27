@@ -59,7 +59,7 @@ const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
 
 /* --- MAIN INIT --- */
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     const barberGrid = document.getElementById('barberGrid');
     const barberHidden = document.getElementById('barber');
 
@@ -149,7 +149,45 @@ document.addEventListener('DOMContentLoaded', function () {
         { day: 'Saturday', open: '09:00', close: '19:00', closed: false },
         { day: 'Sunday', open: '10:00', close: '16:00', closed: false },
     ];
+    var DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    async function fetchShopHours() {
+        try {
+            var attempts = 0;
+            while ((!window._db || !window._firebase) && attempts < 20) {
+                await new Promise(function(r) { setTimeout(r, 100); });
+                attempts++;
+            }
+
+            var db = window._db;
+            var firebase = window._firebase;
+            if (!db || !firebase || typeof firebase.getDoc !== 'function' || typeof firebase.doc !== 'function') {
+                return;
+            }
+
+            var settingsDoc = await firebase.getDoc(firebase.doc(db, 'tenants', TENANT, 'settings', 'settings'));
+            if (!settingsDoc.exists()) {
+                // Backward compatibility for older settings path.
+                settingsDoc = await firebase.getDoc(firebase.doc(db, 'tenants', TENANT, 'config', 'settings'));
+            }
+
+            if (settingsDoc.exists()) {
+                var data = settingsDoc.data();
+                if (data && data.hours) {
+                    SCHEDULE = DAY_NAMES.map(function(day) {
+                        var h = data.hours[day] || { open: '09:00', close: '19:00', closed: false };
+                        return { day: day, open: h.open || '09:00', close: h.close || '19:00', closed: !!h.closed };
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Could not fetch shop hours:', err);
+        }
+    }
+
     var JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
+
+    await fetchShopHours();
 
     function getLocalDate(dateStr, h, m) {
         var parts = dateStr.split('-').map(Number);

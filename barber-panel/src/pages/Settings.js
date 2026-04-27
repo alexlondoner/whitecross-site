@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 
-const TENANT = 'whitecross';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TENANT = 'whitecross';
 
 const defaultSettings = {
-  shopName: 'I CUT Whitecross Barbers',
-  shopAddress: '136 Whitecross Street, London EC1Y 8QJ',
-  shopPhone: '020 3621 5929',
-  shopEmail: 'whitecrossbarbers@gmail.com',
+  shopName: config.shopName,
+  shopAddress: config.shopAddress,
+  shopPhone: config.shopPhone,
+  shopEmail: config.shopEmail,
   hours: {
     Monday:    { open: '09:00', close: '19:00', closed: false },
     Tuesday:   { open: '09:00', close: '19:00', closed: false },
@@ -20,8 +21,14 @@ const defaultSettings = {
     Sunday:    { open: '10:00', close: '16:00', closed: false },
   },
   platforms: {
-    booksy: { depositEnabled: true, depositAmount: 10 },
-    fresha: { depositEnabled: false, depositAmount: 0 },
+    booksy: {
+      depositEnabled: config.platforms?.booksy?.depositEnabled ?? true,
+      depositAmount: config.platforms?.booksy?.depositAmount ?? 10,
+    },
+    fresha: {
+      depositEnabled: config.platforms?.fresha?.depositEnabled ?? false,
+      depositAmount: config.platforms?.fresha?.depositAmount ?? 0,
+    },
   },
 };
 
@@ -31,16 +38,16 @@ export default function Settings({ theme, onToggleTheme }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [googleReminder, setGoogleReminder] = useState(false);
 
   useEffect(function() { fetchSettings(); }, []);
 
   const fetchSettings = async function() {
     try {
-      setLoading(true);
-      const snap = await getDoc(doc(db, `tenants/${TENANT}/config`, 'settings'));
+      const snap = await getDoc(doc(db, `tenants/${TENANT}/settings`));
       if (snap.exists()) {
         const data = snap.data();
-        setSettings({ ...defaultSettings, ...data, hours: { ...defaultSettings.hours, ...(data.hours || {}) }, platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) } });
+        setSettings({ ...defaultSettings, ...data, platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) } });
       }
     } catch (err) {
       console.error('fetchSettings error:', err);
@@ -49,16 +56,122 @@ export default function Settings({ theme, onToggleTheme }) {
     }
   };
 
+  // O gün booking var mı kontrol et
+  const checkBookingsForDay = async function(dayName) {
+    try {
+      const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const today = new Date();
+      const results = [];
+      // Önümüzdeki 90 gün içinde o güne denk gelen tarihleri bul
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        if (DAY_NAMES[d.getDay()] === dayName) {
+          const start = new Date(d); start.setHours(0,0,0,0);
+          const end = new Date(d); end.setHours(23,59,59,999);
+          const q = query(
+            collection(db, `tenants/${TENANT}/bookings`),
+            where('startTime', '>=', Timestamp.fromDate(start)),
+            where('startTime', '<=', Timestamp.fromDate(end)),
+            where('status', '==', 'CONFIRMED')
+          );
+          const snap = await getDocs(q);
+          snap.forEach(d => results.push(d.data()));
+        }
+      }
+      return results;
+    } catch(err) {
+      console.error('checkBookings error:', err);
+      return [];
+    }
+  };
+
+  // Tüm barber'ların o günkü dayHours'unu güncelle
+  const updateAllBarbersDay = async function(dayName, newHours) {
+    try {
+      const snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
+      const updates = snap.docs.map(async barberDoc => {
+        const barber = barberDoc.data();
+        const currentDayHours = barber.dayHours || {};
+        const updatedDayHours = {
+          ...currentDayHours,
+          [dayName]: { ...( currentDayHours[dayName] || {}), ...newHours }
+        };
+        // workingDays güncelle
+        let workingDays = Array.isArray(barber.workingDays) ? [...barber.workingDays] : [];
+        if (newHours.closed) {
+          workingDays = workingDays.filter(d => d !== dayName);
+        } else {
+          if (!workingDays.includes(dayName)) workingDays.push(dayName);
+        }
+        await setDoc(doc(db, `tenants/${TENANT}/barbers`, barberDoc.id), {
+          ...barber,
+          dayHours: updatedDayHours,
+          workingDays,
+        });
+      });
+      await Promise.all(updates);
+    } catch(err) {
+      console.error('updateAllBarbersDay error:', err);
+    }
+  };
+
+  const handleToggleClosed = async function(day, currentClosed) {
+    const newClosed = !currentClosed;
+
+    if (newClosed) {
+      // Kapatmak istiyoruz — önce booking kontrolü
+      const bookings = await checkBookingsForDay(day);
+      if (bookings.length > 0) {
+        setError(`⚠️ ${day} has ${bookings.length} upcoming confirmed booking(s). Please cancel them first before closing this day.`);
+        return;
+      }
+      // Booking yok — confirm
+      if (!window.confirm(`Close ${day} for all barbers? This will remove it from available booking days.`)) return;
+    } else {
+      if (!window.confirm(`Reopen ${day} for all barbers?`)) return;
+    }
+
+    // Settings güncelle
+    const newHours = { ...settings.hours[day], closed: newClosed };
+    const newSettings = {
+      ...settings,
+      hours: { ...settings.hours, [day]: newHours }
+    };
+    setSettings(newSettings);
+
+    // Firestore'a kaydet
+    await setDoc(doc(db, `tenants/${TENANT}/settings`), newSettings);
+    // Tüm barber'ları güncelle
+    await updateAllBarbersDay(day, newHours);
+
+    setGoogleReminder(true);
+    setError('');
+  };
+
+  const handleTimeChange = async function(day, key, value) {
+    if (!window.confirm(`Change ${day} ${key === 'open' ? 'opening' : 'closing'} time to ${value} for all barbers?`)) return;
+
+    const newHours = { ...settings.hours[day], [key]: value };
+    const newSettings = {
+      ...settings,
+      hours: { ...settings.hours, [day]: newHours }
+    };
+    setSettings(newSettings);
+
+    await setDoc(doc(db, `tenants/${TENANT}/settings`), newSettings);
+    await updateAllBarbersDay(day, newHours);
+    setGoogleReminder(true);
+  };
+
   const handleSave = async function() {
     setSaving(true);
     setError('');
     try {
-      await setDoc(doc(db, `tenants/${TENANT}/config`, 'settings'), settings);
-      localStorage.setItem('shopHours', JSON.stringify(settings.hours));
+      await setDoc(doc(db, `tenants/${TENANT}/settings`), settings);
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 3000);
     } catch (err) {
-      console.error('handleSave error:', err);
       setError('Could not save settings.');
     } finally {
       setSaving(false);
@@ -69,16 +182,11 @@ export default function Settings({ theme, onToggleTheme }) {
     setSettings(Object.assign({}, settings, { [key]: value }));
   };
 
-  const updateHours = function(day, key, value) {
-    setSettings(Object.assign({}, settings, {
-      hours: Object.assign({}, settings.hours, {
-        [day]: Object.assign({}, settings.hours[day], { [key]: value })
-      })
-    }));
-  };
-
   const updatePlatform = function(platform, key, value) {
-    setSettings(s => ({ ...s, platforms: { ...s.platforms, [platform]: { ...s.platforms[platform], [key]: value } } }));
+    setSettings(s => ({
+      ...s,
+      platforms: { ...s.platforms, [platform]: { ...s.platforms[platform], [key]: value } }
+    }));
   };
 
   if (loading) {
@@ -88,30 +196,62 @@ export default function Settings({ theme, onToggleTheme }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '680px' }}>
 
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Settings</h1>
+          <h1 style={{ fontSize: '1.4rem', color: '#c0c0c0', marginBottom: '4px' }}>Settings</h1>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Shop info, opening hours & platform settings</p>
         </div>
         <button onClick={handleSave} disabled={saving}
-          style={{ padding: '12px 28px', background: saving ? 'rgba(212,175,55,0.4)' : 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
+          style={{ padding: '12px 28px', background: saving ? 'rgba(180,180,180,0.4)' : 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
           {saving ? 'Saving...' : '💾 Save Changes'}
         </button>
       </div>
 
-      {saved && <div style={{ padding: '12px 16px', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)', borderRadius: '8px', color: '#4caf50', fontSize: '0.85rem' }}>✅ Settings saved successfully</div>}
-      {error && <div style={{ padding: '12px 16px', background: 'rgba(255,82,82,0.15)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '8px', color: '#ff5252', fontSize: '0.85rem' }}>❌ {error}</div>}
+      {saved && (
+        <div style={{ padding: '12px 16px', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)', borderRadius: '8px', color: '#4caf50', fontSize: '0.85rem' }}>
+          ✅ Settings saved successfully
+        </div>
+      )}
+
+      {error && (
+        <div style={{ padding: '12px 16px', background: 'rgba(255,82,82,0.15)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '8px', color: '#ff5252', fontSize: '0.85rem' }}>
+          {error}
+          <button onClick={() => setError('')} style={{ marginLeft: '12px', background: 'transparent', border: 'none', color: '#ff5252', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+        </div>
+      )}
+
+      {/* Google Reminder */}
+      {googleReminder && (
+        <div style={{ padding: '14px 16px', background: 'rgba(66,133,244,0.12)', border: '1px solid rgba(66,133,244,0.4)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', color: '#4285f4', fontWeight: '700', marginBottom: '4px' }}>📍 Don't forget Google Business!</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Update your opening hours on Google Business Profile to match.</div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+            <a href="https://business.google.com" target="_blank" rel="noreferrer"
+              style={{ padding: '7px 14px', background: '#4285f4', border: 'none', borderRadius: '6px', color: '#fff', fontSize: '0.72rem', fontWeight: '700', textDecoration: 'none', cursor: 'pointer' }}>
+              Open Google
+            </a>
+            <button onClick={() => setGoogleReminder(false)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Theme */}
       <div style={cardStyle}>
         <h2 style={sectionTitle}>Appearance</h2>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.88rem', color: 'var(--text)', fontWeight: '600', marginBottom: '4px' }}>{theme === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode'}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Switch between dark and light interface</div>
+            <div style={{ fontSize:'0.88rem', color:'var(--text)', fontWeight:'600', marginBottom:'4px' }}>
+              {theme === 'light' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            </div>
+            <div style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Switch between dark and light interface</div>
           </div>
-          <div onClick={() => onToggleTheme()} style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: theme === 'light' ? '#d4af37' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-            <div style={{ position: 'absolute', top: '4px', left: theme === 'light' ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          <div onClick={() => onToggleTheme()}
+            style={{ width:'52px', height:'28px', borderRadius:'14px', cursor:'pointer', background: theme === 'light' ? '#c0c0c0' : 'var(--muted)', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+            <div style={{ position:'absolute', top:'4px', left: theme === 'light' ? '27px' : '4px', width:'20px', height:'20px', borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
           </div>
         </div>
       </div>
@@ -139,66 +279,44 @@ export default function Settings({ theme, onToggleTheme }) {
         </div>
       </div>
 
-      {/* Platform Settings */}
-      <div style={cardStyle}>
-        <h2 style={sectionTitle}>Platform Settings</h2>
-        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '20px' }}>Configure deposit settings for each booking platform.</p>
-
-        {['booksy', 'fresha'].map(platform => {
-          const colors = { booksy: '#9c27b0', fresha: '#2196f3' };
-          const color = colors[platform];
-          const p = settings.platforms[platform];
-          return (
-            <div key={platform} style={{ marginBottom: platform === 'booksy' ? '20px' : 0, padding: '16px', background: color + '10', border: '1px solid ' + color + '33', borderRadius: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
-                <span style={{ fontSize: '0.88rem', fontWeight: '700', color, letterSpacing: '1px' }}>{platform.toUpperCase()}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div onClick={() => updatePlatform(platform, 'depositEnabled', !p.depositEnabled)}
-                    style={{ width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer', background: p.depositEnabled ? color : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                    <div style={{ position: 'absolute', top: '3px', left: p.depositEnabled ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                  </div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text)' }}>Deposit active</span>
-                </div>
-                {p.depositEnabled && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Amount £</span>
-                    <input type="number" min="0" value={p.depositAmount} onChange={e => updatePlatform(platform, 'depositAmount', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, width: '80px', padding: '8px 10px' }} />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {/* Opening Hours */}
       <div style={cardStyle}>
         <h2 style={sectionTitle}>Opening Hours</h2>
-        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '20px' }}>These hours control slot availability on the booking site.</p>
+        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '20px' }}>
+          Changes apply to all barbers immediately. Closing a day will check for existing bookings first.
+        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {DAYS.map(function(day) {
-            var dh = (settings.hours && settings.hours[day]) || { open: '09:00', close: '19:00', closed: false };
-            var isToday = new Date().toLocaleDateString('en-GB', { weekday: 'long' }) === day;
+            const dayHours = (settings.hours && settings.hours[day]) || { open: '09:00', close: '19:00', closed: false };
+            const isToday = new Date().toLocaleDateString('en-GB', { weekday: 'long' }) === day;
             return (
-              <div key={day} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', borderRadius: '10px', background: dh.closed ? 'rgba(255,82,82,0.05)' : 'rgba(212,175,55,0.04)', border: '1px solid ' + (isToday ? 'rgba(212,175,55,0.3)' : 'rgba(212,175,55,0.1)') }}>
+              <div key={day} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderRadius: '10px', background: dayHours.closed ? 'rgba(255,82,82,0.05)' : 'rgba(180,180,180,0.04)', border: '1px solid ' + (isToday ? 'rgba(180,180,180,0.3)' : 'rgba(180,180,180,0.1)'), flexWrap: 'wrap' }}>
                 <div style={{ width: '100px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: isToday ? '700' : '500', color: isToday ? '#d4af37' : 'var(--text)' }}>{isToday ? '▶ ' : ''}{day}</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: isToday ? '700' : '500', color: isToday ? '#c0c0c0' : 'var(--text)' }}>
+                    {isToday ? '▶ ' : ''}{day}
+                  </span>
                 </div>
-                <div onClick={() => updateHours(day, 'closed', !dh.closed)} style={{ width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer', background: dh.closed ? '#ff5252' : '#4caf50', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: '3px', left: dh.closed ? '3px' : '23px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                <div onClick={() => handleToggleClosed(day, dayHours.closed)}
+                  style={{ width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer', background: dayHours.closed ? '#ff5252' : '#4caf50', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: '3px', left: dayHours.closed ? '3px' : '23px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
                 </div>
-                <span style={{ fontSize: '0.72rem', color: dh.closed ? '#ff5252' : '#4caf50', width: '40px', flexShrink: 0 }}>{dh.closed ? 'Closed' : 'Open'}</span>
-                {!dh.closed ? (
+                <span style={{ fontSize: '0.72rem', color: dayHours.closed ? '#ff5252' : '#4caf50', width: '40px', flexShrink: 0 }}>
+                  {dayHours.closed ? 'Closed' : 'Open'}
+                </span>
+                {!dayHours.closed ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                    <input type="time" value={dh.open || '09:00'} onChange={e => updateHours(day, 'open', e.target.value)} style={timeInputStyle} />
+                    <input type="time" value={dayHours.open || '09:00'}
+                      onChange={e => handleTimeChange(day, 'open', e.target.value)}
+                      style={timeInputStyle} />
                     <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>—</span>
-                    <input type="time" value={dh.close || '19:00'} onChange={e => updateHours(day, 'close', e.target.value)} style={timeInputStyle} />
+                    <input type="time" value={dayHours.close || '19:00'}
+                      onChange={e => handleTimeChange(day, 'close', e.target.value)}
+                      style={timeInputStyle} />
                   </div>
                 ) : (
-                  <div style={{ flex: 1, fontSize: '0.78rem', color: 'var(--muted)', fontStyle: 'italic' }}>Not available for bookings</div>
+                  <div style={{ flex: 1, fontSize: '0.78rem', color: 'var(--muted)', fontStyle: 'italic' }}>
+                    Not available for bookings
+                  </div>
                 )}
               </div>
             );
@@ -206,7 +324,63 @@ export default function Settings({ theme, onToggleTheme }) {
         </div>
       </div>
 
-      {/* Danger zone */}
+      {/* Platform Settings */}
+      <div style={cardStyle}>
+        <h2 style={sectionTitle}>Platform Settings</h2>
+        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '20px' }}>
+          Configure deposit settings for each booking platform.
+        </p>
+        {/* Booksy */}
+        <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(156,39,176,0.06)', border: '1px solid rgba(156,39,176,0.2)', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9c27b0' }} />
+            <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#9c27b0', letterSpacing: '1px' }}>BOOKSY</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div onClick={() => updatePlatform('booksy', 'depositEnabled', !settings.platforms.booksy.depositEnabled)}
+                style={{ width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer', background: settings.platforms.booksy.depositEnabled ? '#9c27b0' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: '3px', left: settings.platforms.booksy.depositEnabled ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text)' }}>Deposit active</span>
+            </div>
+            {settings.platforms.booksy.depositEnabled && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Amount £</span>
+                <input type="number" min="0" value={settings.platforms.booksy.depositAmount}
+                  onChange={e => updatePlatform('booksy', 'depositAmount', parseFloat(e.target.value) || 0)}
+                  style={{ ...inputStyle, width: '80px', padding: '8px 10px' }} />
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Fresha */}
+        <div style={{ padding: '16px', background: 'rgba(33,150,243,0.06)', border: '1px solid rgba(33,150,243,0.2)', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2196f3' }} />
+            <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#2196f3', letterSpacing: '1px' }}>FRESHA</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div onClick={() => updatePlatform('fresha', 'depositEnabled', !settings.platforms.fresha.depositEnabled)}
+                style={{ width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer', background: settings.platforms.fresha.depositEnabled ? '#2196f3' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: '3px', left: settings.platforms.fresha.depositEnabled ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text)' }}>Deposit active</span>
+            </div>
+            {settings.platforms.fresha.depositEnabled && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Amount £</span>
+                <input type="number" min="0" value={settings.platforms.fresha.depositAmount}
+                  onChange={e => updatePlatform('fresha', 'depositAmount', parseFloat(e.target.value) || 0)}
+                  style={{ ...inputStyle, width: '80px', padding: '8px 10px' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
       <div style={{ ...cardStyle, borderColor: 'rgba(255,82,82,0.2)' }}>
         <h2 style={{ ...sectionTitle, color: '#ff5252' }}>Danger Zone</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '16px' }}>These actions cannot be undone.</p>
@@ -214,51 +388,13 @@ export default function Settings({ theme, onToggleTheme }) {
           🗑️ Clear All Pending Bookings
         </button>
       </div>
+
     </div>
   );
 }
 
-const cardStyle = {
-  background: 'var(--card)',
-  border: '1px solid var(--border)',
-  borderRadius: '12px',
-  padding: '24px',
-};
-
-const sectionTitle = {
-  fontSize: '0.96rem',
-  color: '#d4af37',
-  marginBottom: '16px',
-  letterSpacing: '1px',
-  textTransform: 'uppercase',
-};
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '0.72rem',
-  color: 'var(--muted)',
-  marginBottom: '8px',
-  textTransform: 'uppercase',
-  letterSpacing: '1px',
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '12px 14px',
-  background: 'var(--card2)',
-  border: '1px solid var(--border)',
-  borderRadius: '8px',
-  color: 'var(--text)',
-  fontSize: '0.9rem',
-  outline: 'none',
-};
-
-const timeInputStyle = {
-  background: 'var(--card2)',
-  border: '1px solid var(--border)',
-  color: 'var(--text)',
-  borderRadius: '8px',
-  padding: '8px 10px',
-  fontSize: '0.85rem',
-  outline: 'none',
-};
+const cardStyle = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' };
+const sectionTitle = { fontSize: '0.95rem', fontWeight: '700', color: 'var(--text)', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' };
+const labelStyle = { display: 'block', fontSize: '0.68rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' };
+const inputStyle = { width: '100%', padding: '11px 14px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.88rem', outline: 'none' };
+const timeInputStyle = { padding: '8px 12px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none' };

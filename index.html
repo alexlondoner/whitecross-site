@@ -3,7 +3,7 @@
 <head>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+  import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -17,7 +17,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   window._db = db;
-  window._firebase = { collection, addDoc, getDocs, query, where, updateDoc, Timestamp, onSnapshot };
+  window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
 </script>
     <!-- STRIPE SUCCESS CHECK -->
     <script>
