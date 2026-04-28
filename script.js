@@ -662,60 +662,66 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         });
     });
+/* STRIPE SUCCESS CHECK */
+if (window.isStripeSuccess) {
+    var popup = document.getElementById('successPopup');
+    var pending = sessionStorage.getItem('pendingBooking');
+    var bookingData = pending ? JSON.parse(pending) : null;
 
-    /* STRIPE SUCCESS CHECK */
-    if (window.isStripeSuccess) {
-        var popup = document.getElementById('successPopup');
-        var pending = sessionStorage.getItem('pendingBooking');
-        var bookingData = pending ? JSON.parse(pending) : null;
-
-        if (popup) {
-            var name = bookingData ? bookingData.name.split(' ')[0] : '';
-            var bDate = bookingData ? bookingData.date : '';
-            var bTime = bookingData ? bookingData.time : '';
-            document.getElementById('popup-icon').innerText = "\u2702\uFE0F";
-            document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
-            document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + bDate + " at " + bTime + ". Check your email for confirmation!";
-            popup.style.display = 'flex';
-        }
-
-        if (bookingData) {
-            var db = window._db;
-            var firebase = window._firebase;
-            var dateStr = bookingData.date;
-            var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
-            var ap = timeMatch[3].toUpperCase();
-            if (ap === 'PM' && h !== 12) h += 12;
-            if (ap === 'AM' && h === 12) h = 0;
-            var startTime = new Date(dateStr + 'T00:00:00');
-            startTime.setHours(h, m, 0, 0);
-            var durMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
-            var dur = durMap[bookingData.service] || 30;
-            var endTime = new Date(startTime.getTime() + dur * 60 * 1000);
-
-            firebase.addDoc(firebase.collection(db, 'tenants/whitecross/bookings'), {
-                bookingId: bookingData.bookingId,
-                tenantId: 'whitecross',
-                clientName: bookingData.name,
-                clientEmail: bookingData.email,
-                clientPhone: bookingData.phone,
-                barberId: bookingData.barber,
-                serviceId: bookingData.service,
-                startTime: firebase.Timestamp.fromDate(startTime),
-                endTime: firebase.Timestamp.fromDate(endTime),
-                status: 'CONFIRMED',
-                paymentType: bookingData.paymentType,
-                source: 'website',
-                createdAt: firebase.Timestamp.fromDate(new Date()),
-            }).then(function() { sessionStorage.removeItem('pendingBooking'); });
-        }
-
-        window.history.replaceState({}, '', window.location.pathname);
+    if (popup) {
+        var name = bookingData ? bookingData.name.split(' ')[0] : '';
+        var bDate = bookingData ? bookingData.date : '';
+        var bTime = bookingData ? bookingData.time : '';
+        document.getElementById('popup-icon').innerText = "\u2702\uFE0F";
+        document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
+        document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + bDate + " at " + bTime + ". Check your email for confirmation!";
+        popup.style.display = 'flex';
     }
 
-   setTimeout(function() {
-        initBarberSelector();
-        startBarberRealtimeSync();
-    }, 500);
-});
+    // ✅ GA4 + Google Ads conversion event
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'purchase', {
+            transaction_id: bookingData ? bookingData.bookingId : Date.now().toString(),
+            value: bookingData ? (parseFloat(bookingData.price) || 1) : 1,
+            currency: 'GBP',
+            items: [{
+                item_name: bookingData ? bookingData.service : 'Haircut',
+                quantity: 1
+            }]
+        });
+    }
+
+    if (bookingData) {
+        var db = window._db;
+        var firebase = window._firebase;
+        var dateStr = bookingData.date;
+        var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+        var ap = timeMatch[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        var startTime = new Date(dateStr + 'T00:00:00');
+        startTime.setHours(h, m, 0, 0);
+        var durMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
+        var dur = durMap[bookingData.service] || 30;
+        var endTime = new Date(startTime.getTime() + dur * 60 * 1000);
+
+        firebase.addDoc(firebase.collection(db, 'tenants/whitecross/bookings'), {
+            bookingId: bookingData.bookingId,
+            tenantId: 'whitecross',
+            clientName: bookingData.name,
+            clientEmail: bookingData.email,
+            clientPhone: bookingData.phone,
+            barberId: bookingData.barber,
+            serviceId: bookingData.service,
+            startTime: firebase.Timestamp.fromDate(startTime),
+            endTime: firebase.Timestamp.fromDate(endTime),
+            status: 'CONFIRMED',
+            paymentType: bookingData.paymentType,
+            source: 'website',
+            createdAt: firebase.Timestamp.fromDate(new Date()),
+        }).then(function() { sessionStorage.removeItem('pendingBooking'); });
+    }
+
+    window.history.replaceState({}, '', window.location.pathname);
+}
