@@ -202,8 +202,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     /* DATE & TIME LOGIC */
     var dateInput = document.getElementById('date');
     var now = new Date();
-    var todayStr = now.toISOString().split('T')[0];
-
+var todayStr = now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(now.getDate()).padStart(2, '0');
+    
     if (dateInput) {
         dateInput.setAttribute('min', todayStr);
         var maxDate = new Date();
