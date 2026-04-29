@@ -684,6 +684,33 @@ var todayStr = now.getFullYear() + '-' +
         var pending = sessionStorage.getItem('pendingBooking');
         var bookingData = pending ? JSON.parse(pending) : null;
 
+        // GA4 Purchase Event
+        if (typeof gtag !== 'undefined') {
+            var priceMap = {
+                'i-cut-royal': 65, 'i-cut-deluxe': 55, 'full-skinfade-beard-luxury': 48,
+                'full-experience': 40, 'senior-full-experience': 35, 'skin-fade': 32,
+                'scissor-cut': 30, 'classic-sbs': 28, 'hot-towel-shave': 22,
+                'clipper-cut': 22, 'senior-haircut': 23, 'young-gents': 20,
+                'young-gents-skin-fade': 24, 'full-facial': 24, 'beard-dyeing': 24,
+                'face-mask': 12, 'face-steam': 12, 'threading': 10,
+                'waxing': 10, 'shape-up-clean-up': 20, 'wash-hot-towel': 10
+            };
+            var serviceId = bookingData ? bookingData.service : '';
+            var fullPrice = priceMap[serviceId] || 30;
+            var paidValue = bookingData && bookingData.paymentType === 'DEPOSIT' ? 10 : fullPrice;
+            gtag('event', 'purchase', {
+                transaction_id: bookingData ? bookingData.bookingId : 'WCB-' + Date.now(),
+                value: paidValue,
+                currency: 'GBP',
+                items: [{
+                    item_id: serviceId,
+                    item_name: serviceId,
+                    price: fullPrice,
+                    quantity: 1
+                }]
+            });
+        }
+
         if (popup) {
             var name = bookingData ? bookingData.name.split(' ')[0] : '';
             var bDate = bookingData ? bookingData.date : '';
@@ -694,11 +721,14 @@ var todayStr = now.getFullYear() + '-' +
             popup.style.display = 'flex';
         }
 
-        if (bookingData) {
+        if (bookingData && bookingData.date && bookingData.time) {
             var db = window._db;
             var firebase = window._firebase;
             var dateStr = bookingData.date;
             var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!timeMatch) {
+                return;
+            }
             var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
             var ap = timeMatch[3].toUpperCase();
             if (ap === 'PM' && h !== 12) h += 12;
