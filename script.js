@@ -458,12 +458,25 @@ var todayStr = now.getFullYear() + '-' +
     }
 
     function checkAvailability(date) {
+        var timeSlotsGrid = document.getElementById('timeSlots');
+        var hiddenTime = document.getElementById('time');
+
+        // Geçmiş tarih kontrolü
+        var today = new Date();
+        var todayStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+        if (date < todayStr) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '';
+            if (hiddenTime) hiddenTime.value = '';
+            return;
+        }
+
         var barberEl = document.getElementById('barber');
         var barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
         var serviceEl = document.getElementById('service');
         var service = serviceEl ? serviceEl.value : '';
-        var timeSlotsGrid = document.getElementById('timeSlots');
-        var hiddenTime = document.getElementById('time');
 
         var durationMap = {
             "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
