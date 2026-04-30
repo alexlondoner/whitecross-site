@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage } from '../firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const TENANT = 'whitecross';
 
@@ -73,30 +73,34 @@ export default function Gallery() {
     if (!file) return;
     setUploading(true);
     setUploadProgress(0);
+
+    // animate fake progress so user sees something
+    var fakeTimer = setInterval(function() {
+      setUploadProgress(function(p) { return p < 85 ? p + 5 : p; });
+    }, 300);
+
     try {
       const id = 'gallery-' + Date.now();
       const storagePath = `tenants/${TENANT}/gallery/${id}_${file.name}`;
       const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
 
-      await new Promise(function(resolve, reject) {
-        uploadTask.on(
-          'state_changed',
-          function(snapshot) {
-            var pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setUploadProgress(pct);
-          },
-          function(err) { reject(err); },
-          function() { resolve(); }
-        );
-      });
+      const snapshot = await uploadBytes(storageRef, file);
+      setUploadProgress(100);
 
-      const url = await getDownloadURL(uploadTask.snapshot.ref);
+      const url = await getDownloadURL(snapshot.ref);
       await saveToFirestore(url, storagePath);
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed: ' + err.message + '\n\nMake sure Firebase Storage rules allow authenticated writes.');
+      var msg = err.message || String(err);
+      if (err.code === 'storage/unauthorized') {
+        alert('Upload blocked: Storage rules do not allow writes.\n\nGo to Firebase Console → Storage → Rules and allow authenticated writes.');
+      } else if (err.code === 'storage/unknown' || msg.includes('CORS')) {
+        alert('Upload failed: CORS error.\n\nGo to Firebase Console → Storage → Rules and make sure the bucket is set up.');
+      } else {
+        alert('Upload failed: ' + msg);
+      }
     } finally {
+      clearInterval(fakeTimer);
       setUploading(false);
       setUploadProgress(0);
     }
