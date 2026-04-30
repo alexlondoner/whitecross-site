@@ -140,14 +140,15 @@ export default function Reports() {
     });
   }, [bookings, periodStart]);
 
-  const active = filtered.filter(b => b.status !== 'CANCELLED');
+  const active = filtered.filter(b => b.status !== 'CANCELLED' && b.status !== 'BLOCKED');
   const checkedOut = filtered.filter(b => b.status === 'CHECKED_OUT');
   const cancelled = filtered.filter(b => b.status === 'CANCELLED');
 
-  const totalRevenue = checkedOut.reduce((s, b) => s + parsePrice(b.paidAmount || b.price), 0);
+  // Always use full service price (not paidAmount which is only the remaining after deposit)
+  const totalRevenue = checkedOut.reduce((s, b) => s + parsePrice(b.price), 0);
   const totalTips = checkedOut.reduce((s, b) => s + parsePrice(b.tip), 0);
   const totalDiscount = checkedOut.reduce((s, b) => s + parsePrice(b.discount), 0);
-  const netRevenue = totalRevenue + totalTips - totalDiscount;
+  const netRevenue = totalRevenue - totalDiscount + totalTips;
 
   // Daily revenue for chart
   const dailyRevenue = useMemo(() => {
@@ -157,7 +158,7 @@ export default function Reports() {
       if (!d) return;
       const key = d.toISOString().split('T')[0];
       if (!map[key]) map[key] = { date: key, revenue: 0, tips: 0, count: 0 };
-      map[key].revenue += parsePrice(b.paidAmount || b.price);
+      map[key].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
       map[key].tips += parsePrice(b.tip);
       map[key].count++;
     });
@@ -166,7 +167,11 @@ export default function Reports() {
 
   // Source breakdown
   const sourceMap = {};
-  active.forEach(b => { sourceMap[b.source || 'Unknown'] = (sourceMap[b.source || 'Unknown'] || 0) + 1; });
+  active.forEach(b => {
+    const src = b.source ? (b.source.charAt(0).toUpperCase() + b.source.slice(1).toLowerCase()).replace('Walk-in','Walk-in') : 'Unknown';
+    const normalized = src === 'Walk-in' ? 'Walk-in' : src.charAt(0).toUpperCase() + src.slice(1);
+    sourceMap[normalized] = (sourceMap[normalized] || 0) + 1;
+  });
   const sourceColors = { Booksy: '#9c27b0', Fresha: '#2196f3', Website: '#4caf50', 'Walk-in': '#ff9800', Manual: '#ff5252', Unknown: '#607d8b' };
   const sourceSegments = Object.entries(sourceMap).map(([k, v]) => ({ label: k, value: v, color: sourceColors[k] || '#999' }));
 
@@ -183,7 +188,7 @@ export default function Reports() {
     return {
       name: barber.name, color: barber.color,
       bookings: bs.length,
-      revenue: co.reduce((s, b) => s + parsePrice(b.paidAmount || b.price), 0),
+      revenue: co.reduce((s, b) => s + Math.max(0, parsePrice(b.price) - parsePrice(b.discount)), 0),
       tips: co.reduce((s, b) => s + parsePrice(b.tip), 0),
       checkedOut: co.length,
     };
@@ -196,7 +201,7 @@ export default function Reports() {
     const name = svc ? svc.name : (b.service || 'Unknown');
     if (!svcMap[name]) svcMap[name] = { name, count: 0, revenue: 0 };
     svcMap[name].count++;
-    if (b.status === 'CHECKED_OUT') svcMap[name].revenue += parsePrice(b.paidAmount || b.price);
+    if (b.status === 'CHECKED_OUT') svcMap[name].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
   });
   const topServices = Object.values(svcMap).sort((a, b) => b.count - a.count).slice(0, 8);
 
@@ -206,7 +211,7 @@ export default function Reports() {
     const key = b.phone || b.email || b.name;
     if (!key || b.name === 'Walk-in') return;
     if (!clientMap[key]) clientMap[key] = { name: b.name, spent: 0, visits: 0 };
-    clientMap[key].spent += parsePrice(b.paidAmount || b.price);
+    clientMap[key].spent += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
     clientMap[key].visits++;
   });
   const topClients = Object.values(clientMap).sort((a, b) => b.spent - a.spent).slice(0, 10);
@@ -218,7 +223,7 @@ export default function Reports() {
     if (!d) return;
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     if (!monthlyMap[key]) monthlyMap[key] = { label: key, revenue: 0, count: 0, tips: 0 };
-    monthlyMap[key].revenue += parsePrice(b.paidAmount || b.price);
+    monthlyMap[key].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
     monthlyMap[key].tips += parsePrice(b.tip);
     monthlyMap[key].count++;
   });

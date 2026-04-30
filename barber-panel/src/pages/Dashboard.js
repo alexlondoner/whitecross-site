@@ -1464,7 +1464,7 @@ const activeBarbers = barberFilter === 'all'
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
   const revenue = statsBookings
     .filter(b => b.status === 'CHECKED_OUT')
-    .reduce((s, b) => s + (parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0), 0);
+    .reduce((s, b) => s + Math.max(0, (parseFloat(String(b.price || '0').replace('£', '')) || 0) - (parseFloat(String(b.discount || '0').replace('£', '')) || 0)), 0);
 
   const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
   const calDays = [...Array(getFirstDay(year,month)).fill(null), ...Array.from({length:getDaysInMonth(year,month)},(_,i)=>i+1)];
@@ -1531,10 +1531,10 @@ const activeBarbers = barberFilter === 'all'
         <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" />
         <StatPill label="Revenue" value={'£'+revenue} color="#d4af37" />
         <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />
-        <StatPill label="Booksy" value={statsBookings.filter(b=>b.source==='Booksy').length} color="#9c27b0" />
-        <StatPill label="Fresha" value={statsBookings.filter(b=>b.source==='Fresha').length} color="#2196f3" />
-        <StatPill label="Website" value={statsBookings.filter(b=>b.source==='Website').length} color="#4caf50" />
-        <StatPill label="Walk-in" value={statsBookings.filter(b=>b.source==='Walk-in'||!b.source).length} color="#ff9800" />
+        <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" />
+        <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" />
+        <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" />
+        <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" />
       </div>
 
       <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', position:'relative' }}>
