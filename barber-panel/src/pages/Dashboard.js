@@ -54,9 +54,11 @@ function getBookingName(booking) {
   const raw = booking?.name || booking?.customerName || booking?.clientName || booking?.fullName || booking?.customer || firstLast;
   return String(raw || '').trim() || 'Walk-in';
 }
-function StatPill({ label, value, color }) {
+function StatPill({ label, value, color, onClick, active }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background:color+'10', border:'1px solid '+color+'30', borderRadius:'10px', minWidth:'90px' }}>
+    <div onClick={onClick} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background:active?color+'25':color+'10', border:'1px solid '+(active?color:color+'30'), borderRadius:'10px', minWidth:'90px', cursor:onClick?'pointer':'default', transition:'all 0.15s' }}
+      onMouseEnter={e=>{if(onClick)e.currentTarget.style.background=color+'20';}}
+      onMouseLeave={e=>{e.currentTarget.style.background=active?color+'25':color+'10';}}>
       <span style={{ fontSize:'1.4rem', fontWeight:'800', color }}>{value}</span>
       <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{label}</span>
     </div>
@@ -453,11 +455,25 @@ const handleCheckout = async (method) => {
   );
 }
 
-function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onViewReceipt }) {
+function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onViewReceipt, allBookings }) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   if (!booking) return null;
   const color = getBColor(booking.barber, barbers);
+
+  const clientKey = booking.phone || booking.email || booking.name;
+  const isWalkIn = !booking.name || booking.name === 'Walk-in';
+  const clientVisits = (!isWalkIn && clientKey && allBookings)
+    ? allBookings.filter(b =>
+        b.status === 'CHECKED_OUT' &&
+        b.bookingId !== booking.bookingId &&
+        (b.phone === booking.phone || b.email === booking.email || b.name === booking.name) &&
+        (booking.phone ? b.phone === booking.phone : booking.email ? b.email === booking.email : b.name === booking.name)
+      ).length
+    : 0;
+  const totalVisits = clientVisits + (booking.status === 'CHECKED_OUT' ? 1 : 0);
+  const isReturning = clientVisits > 0;
+  const visitOrdinal = n => { if(n===1)return '1st'; if(n===2)return '2nd'; if(n===3)return '3rd'; return n+'th'; };
   const serviceLabel = config.services ? (config.services.find(s => s.id === booking.service) || {}).name || booking.service : booking.service;
   return (
     <div style={{ width:'300px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 200px)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)', position:'relative' }}>
@@ -482,9 +498,18 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
       </div>
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'12px', padding:'14px', background:'rgba(212,175,55,0.05)', borderRadius:'12px', border:'1px solid var(--border)' }}>
-          <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:color+'22', border:'2px solid '+color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', fontWeight:'800', color, flexShrink:0 }}>
-            {(booking.name||'?')[0].toUpperCase()}
+          <div style={{ position:'relative', flexShrink:0 }}>
+            <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:color+'22', border:'2px solid '+color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', fontWeight:'800', color }}>
+              {(booking.name||'?')[0].toUpperCase()}
+            </div>
+            {isReturning && (
+              <div style={{ position:'absolute', bottom:'-4px', right:'-4px', background:'#d4af37', borderRadius:'8px', padding:'1px 5px', fontSize:'0.52rem', fontWeight:'800', color:'#000', whiteSpace:'nowrap' }}>
+                {visitOrdinal(clientVisits+1)} visit
+              </div>
+            )}
           </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:'0.9rem', fontWeight:'700', color:'var(--text)', marginBottom:'6px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{booking.name||'Walk-in'}</div>
           <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
             <span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'0.58rem', fontWeight:'700', color:STATUS_COLORS[booking.status]||'var(--muted)', background:(STATUS_COLORS[booking.status]||'#888')+'18', letterSpacing:'1px' }}>{booking.status}</span>
             {booking.source && (
@@ -497,7 +522,21 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
               <button onClick={onViewReceipt} style={{ padding:'2px 8px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'6px', color:'#d4af37', fontSize:'0.6rem', fontWeight:'600', cursor:'pointer' }}>Receipt</button>
             )}
           </div>
+          </div>
         </div>
+        {!isWalkIn && totalVisits > 0 && (
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background: isReturning?'rgba(212,175,55,0.08)':'rgba(76,175,80,0.08)', borderRadius:'10px', border:'1px solid '+(isReturning?'rgba(212,175,55,0.25)':'rgba(76,175,80,0.25)') }}>
+            <span style={{ fontSize:'1.4rem' }}>{isReturning ? '⭐' : '🆕'}</span>
+            <div>
+              <div style={{ fontSize:'0.78rem', fontWeight:'700', color: isReturning?'#d4af37':'#4caf50' }}>
+                {isReturning ? `Returning customer · ${totalVisits} visits` : 'New customer'}
+              </div>
+              {isReturning && booking.status !== 'CHECKED_OUT' && (
+                <div style={{ fontSize:'0.65rem', color:'var(--muted)' }}>This will be their {visitOrdinal(clientVisits+1)} visit</div>
+              )}
+            </div>
+          </div>
+        )}
         <div style={{ display:'flex', flexDirection:'column', gap:'1px', background:'rgba(212,175,55,0.06)', borderRadius:'10px', overflow:'hidden' }}>
           {[
             { label:'Service', value:serviceLabel },
@@ -1360,6 +1399,7 @@ export default function Dashboard() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [clientData, setClientData] = useState(null);
   const [view, setView] = useState('day');
+  const [pillFilter, setPillFilter] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -1525,80 +1565,132 @@ const activeBarbers = barberFilter === 'all'
       </div>
 
       <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-        <StatPill label="Total" value={statsBookings.length} color="#d4af37" />
-        <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" />
-        <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" />
-        <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" />
-        <StatPill label="Revenue" value={'£'+revenue} color="#d4af37" />
+        <StatPill label="Total" value={statsBookings.length} color="#d4af37" active={pillFilter==='total'} onClick={()=>setPillFilter(pillFilter==='total'?null:'total')} />
+        <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />
+        <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />
+        <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />
+        <StatPill label="Revenue" value={'£'+revenue} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />
         <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />
-        <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" />
-        <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" />
-        <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" />
-        <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" />
+        <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />
+        <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />
+        <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />
+        <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />
       </div>
 
+      {pillFilter && (()=>{
+        const filterMap = {
+          total: ()=>true,
+          confirmed: b=>b.status==='CONFIRMED',
+          pending: b=>b.status==='PENDING',
+          checkedout: b=>b.status==='CHECKED_OUT',
+          revenue: b=>b.status==='CHECKED_OUT',
+          booksy: b=>(b.source||'').toLowerCase()==='booksy',
+          fresha: b=>(b.source||'').toLowerCase()==='fresha',
+          website: b=>(b.source||'').toLowerCase()==='website',
+          walkin: b=>(b.source||'').toLowerCase()==='walk-in',
+        };
+        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800' };
+        const filtered = statsBookings.filter(filterMap[pillFilter]||filterMap.total);
+        const pillColor = pillColors[pillFilter]||'#d4af37';
+        return (
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', borderBottom:'1px solid var(--border)', background:pillColor+'08' }}>
+              <span style={{ fontSize:'0.72rem', fontWeight:'700', color:pillColor, letterSpacing:'1px', textTransform:'uppercase' }}>{pillFilter.toUpperCase()} — {filtered.length} booking{filtered.length!==1?'s':''}</span>
+              <button onClick={()=>setPillFilter(null)} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1.1rem', lineHeight:1 }}>✕</button>
+            </div>
+            <div style={{ maxHeight:'260px', overflowY:'auto' }}>
+              {filtered.length===0 ? (
+                <div style={{ padding:'20px', textAlign:'center', color:'var(--muted)', fontSize:'0.82rem' }}>No bookings</div>
+              ) : filtered.map((b,i)=>{
+                const svcObj = config.services ? config.services.find(s=>s.id===b.service) : null;
+                const svcName = svcObj ? svcObj.name : (b.service||'—');
+                const statusColors = { CONFIRMED:'#4caf50', PENDING:'#ff9800', CHECKED_OUT:'#2196f3', CANCELLED:'#ff5252' };
+                const amt = parseFloat(String(b.paidAmount||b.price||'0').replace('£',''))||0;
+                return (
+                  <div key={i} onClick={()=>{ if(b.startTime){ const d=b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime); setSelectedDate(d); setView('day'); } setSelectedBooking(b); setPillFilter(null); }}
+                    style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderBottom:'1px solid var(--border)', cursor:'pointer', transition:'background 0.15s' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:getBColor(b.barber,barbers), flexShrink:0 }} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.name}</div>
+                      <div style={{ fontSize:'0.68rem', color:'var(--muted)' }}>{b.date} {b.time} · {svcName}</div>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <div style={{ fontSize:'0.75rem', fontWeight:'700', color:'#d4af37' }}>{amt>0?'£'+amt.toFixed(0):''}</div>
+                      <div style={{ fontSize:'0.6rem', color:statusColors[b.status]||'var(--muted)', fontWeight:'600' }}>{b.status}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', position:'relative' }}>
-        {view === 'day' && (
-          <>
-            <div style={{ width:leftPanelWidth, flexShrink:0, display:'flex', flexDirection:'column', gap:'12px', overflow:'hidden' }}>
-              <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-                  <button onClick={()=>setCurrentMonth(new Date(year,month-1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
-                  <span style={{ fontSize:'0.8rem', fontWeight:'600', color:'var(--text)' }}>{MONTHS[month]} {year}</span>
-                  <button onClick={()=>setCurrentMonth(new Date(year,month+1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px', marginBottom:'4px' }}>
-                  {DAYS_SHORT.map(d=><div key={d} style={{ textAlign:'center', fontSize:'0.55rem', color:'var(--muted)' }}>{d}</div>)}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
-                  {calDays.map((d,i)=>{
-                    const cnt=dayCount(d), sel=isSel(d), tod=isToday(d);
-                    return (
-                      <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setSelectedBooking(null);setShowForm(false);}}}
-                        style={{ height:'26px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'4px', cursor:d?'pointer':'default', background:sel?'#d4af37':tod?'rgba(212,175,55,0.15)':'transparent', position:'relative' }}
-                        onMouseEnter={e=>{if(d&&!sel)e.currentTarget.style.background='rgba(212,175,55,0.08)';}}
-                        onMouseLeave={e=>{if(d&&!sel)e.currentTarget.style.background=tod?'rgba(212,175,55,0.15)':'transparent';}}>
-                        {d&&<>
-                          <span style={{ fontSize:'0.68rem', color:sel?'#000':tod?'#d4af37':'var(--text)', fontWeight:(sel||tod)?'700':'400', lineHeight:1 }}>{d}</span>
-                          {cnt>0&&<div style={{ position:'absolute', bottom:'1px', width:'3px', height:'3px', borderRadius:'50%', background:sel?'#000':'#d4af37' }} />}
-                        </>}
-                      </div>
-                    );
-                  })}
-                </div>
+        {/* SHARED LEFT PANEL */}
+        <div style={{ width:leftPanelWidth, flexShrink:0, display:'flex', flexDirection:'column', gap:'12px', overflow:'hidden' }}>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+              <button onClick={()=>setCurrentMonth(new Date(year,month-1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
+              <span style={{ fontSize:'0.8rem', fontWeight:'600', color:'var(--text)' }}>{MONTHS[month]} {year}</span>
+              <button onClick={()=>setCurrentMonth(new Date(year,month+1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px', marginBottom:'4px' }}>
+              {DAYS_SHORT.map(d=><div key={d} style={{ textAlign:'center', fontSize:'0.55rem', color:'var(--muted)' }}>{d}</div>)}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
+              {calDays.map((d,i)=>{
+                const cnt=dayCount(d), sel=isSel(d), tod=isToday(d);
+                return (
+                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);setShowForm(false);}}}
+                    style={{ height:'26px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'4px', cursor:d?'pointer':'default', background:sel?'#d4af37':tod?'rgba(212,175,55,0.15)':'transparent', position:'relative' }}
+                    onMouseEnter={e=>{if(d&&!sel)e.currentTarget.style.background='rgba(212,175,55,0.08)';}}
+                    onMouseLeave={e=>{if(d&&!sel)e.currentTarget.style.background=tod?'rgba(212,175,55,0.15)':'transparent';}}>
+                    {d&&<>
+                      <span style={{ fontSize:'0.68rem', color:sel?'#000':tod?'#d4af37':'var(--text)', fontWeight:(sel||tod)?'700':'400', lineHeight:1 }}>{d}</span>
+                      {cnt>0&&<div style={{ position:'absolute', bottom:'1px', width:'3px', height:'3px', borderRadius:'50%', background:sel?'#000':'#d4af37' }} />}
+                    </>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px', flex:1 }}>
+            <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'10px' }}>
+              {periodLabel}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
+              <div style={{ textAlign:'center', padding:'10px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
+                <div style={{ fontSize:'1.5rem', fontWeight:'700', color:'#d4af37' }}>{statsBookings.length}</div>
+                <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>BOOKINGS</div>
               </div>
-              <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px', flex:1 }}>
-                <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'10px' }}>
-                  {selectedDate.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.5rem', fontWeight:'700', color:'#d4af37' }}>{getForDate(selectedDate).length}</div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>BOOKINGS</div>
-                  </div>
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.2rem', fontWeight:'700', color:'#4caf50' }}>
-                      {getForDate(selectedDate).filter(b=>b.status==='CONFIRMED').reduce((s,b)=>s+(parseInt(String(b.price||'0').replace('£',''))||0),0)}
-                    </div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>REVENUE</div>
-                  </div>
-                </div>
-                {activeBarbers.map(barber=>{
-                  const cnt=getForDate(selectedDate).filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
-                  return (
-                    <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid var(--border)' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:barber.color }} />
-                        <span style={{ fontSize:'0.75rem', color:'var(--text)' }}>{barber.name}</span>
-                      </div>
-                      <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{cnt}</span>
-                    </div>
-                  );
-                })}
+              <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
+                <div style={{ fontSize:'1.2rem', fontWeight:'700', color:'#4caf50' }}>£{revenue.toFixed(0)}</div>
+                <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>REVENUE</div>
               </div>
             </div>
-            <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
-            <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', marginLeft:'8px' }}>
+            {activeBarbers.map(barber=>{
+              const cnt=statsBookings.filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
+              return (
+                <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                    <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:barber.color }} />
+                    <span style={{ fontSize:'0.75rem', color:'var(--text)' }}>{barber.name}</span>
+                  </div>
+                  <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{cnt}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
+
+        {/* RIGHT PANEL */}
+        <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', marginLeft:'8px' }}>
+          {view === 'day' && (
+            <>
               {loading ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)' }}>Loading...</div>
               ) : (
@@ -1607,7 +1699,7 @@ const activeBarbers = barberFilter === 'all'
               {(selectedBooking || showForm || showWalkIn || showBlockTime) && <ResizeHandle onResize={() => {}} />}
               {selectedBooking && !showForm && !showWalkIn && !showBlockTime && (
                 <BookingDetail
-                  booking={selectedBooking} barbers={barbers}
+                  booking={selectedBooking} barbers={barbers} allBookings={bookings}
                   onClose={()=>setSelectedBooking(null)}
                   onEdit={(b)=>{ setFormPreset({booking:b,date:selectedDate}); setShowForm(true); setShowWalkIn(false); setShowBlockTime(false); }}
                   onDelete={(b)=>{ fetchAll(); setSelectedBooking(null); }}
@@ -1649,10 +1741,9 @@ const activeBarbers = barberFilter === 'all'
               {showReceipt && selectedBooking && (
                 <ReceiptPanel booking={selectedBooking} barbers={barbers} clientData={clientData} onClose={()=>setShowReceipt(false)} onEdit={()=>{ setShowReceipt(false); setIsEditCheckout(true); setShowCheckout(true); }} />
               )}
-            </div>
-          </>
-        )}
-        {view === 'week' && (
+            </>
+          )}
+          {view === 'week' && (
           <div style={{ flex:1, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:'1px solid var(--border)' }}>
               {weekDates.map((wd,i)=>{
@@ -1738,7 +1829,8 @@ const activeBarbers = barberFilter === 'all'
     onMouseEnter={e=>e.currentTarget.style.transform='scale(1.1)'}
     onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>+</button>
 </div>
-    </div>
+        </div>
+      </div>
     </div>
   );
 }
