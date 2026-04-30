@@ -216,10 +216,16 @@ export default function Gallery() {
                     onMouseOut={function(e) { e.target.style.transform = 'scale(1)'; }}
                   />
                 </div>
-                <div style={{ padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {img.caption || 'No caption'}
                   </span>
+                  <button
+                    onClick={function() { openEdit(img); }}
+                    style={{ padding: '5px 9px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '6px', color: '#d4af37', cursor: 'pointer', fontSize: '0.75rem', flexShrink: 0 }}
+                  >
+                    ✏️
+                  </button>
                   <button
                     onClick={function() { handleDelete(img); }}
                     style={{ padding: '5px 9px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem', flexShrink: 0 }}
@@ -359,6 +365,59 @@ export default function Gallery() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {editModal && (
+        <div
+          onClick={function() { if (!editSaving) setEditModal(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+        >
+          <div
+            onClick={function(e) { e.stopPropagation(); }}
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '420px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '1.1rem', color: '#d4af37', fontWeight: '700' }}>Edit Photo</h2>
+              <button onClick={function() { setEditModal(false); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {editImage && (
+              <div style={{ marginBottom: '20px', borderRadius: '10px', overflow: 'hidden', aspectRatio: '16/9', background: '#0a0a0a' }}>
+                <img src={editImage.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            )}
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Caption</label>
+              <input
+                value={editCaption}
+                onChange={function(e) { setEditCaption(e.target.value); }}
+                placeholder="e.g. Skin Fade by Alex – Old Street London"
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={labelStyle}>Order (lower = first)</label>
+              <input
+                type="number"
+                value={editOrder}
+                onChange={function(e) { setEditOrder(e.target.value); }}
+                style={inputStyle}
+                min="0"
+              />
+            </div>
+
+            <button
+              onClick={handleEditSave}
+              disabled={editSaving}
+              style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: editSaving ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.88rem', opacity: editSaving ? 0.7 : 1 }}
+            >
+              {editSaving ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </div>
       )}
