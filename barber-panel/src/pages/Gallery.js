@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage } from '../firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const TENANT = 'whitecross';
 
@@ -17,6 +17,7 @@ export default function Gallery() {
   const [caption, setCaption] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [linkPreview, setLinkPreview] = useState(false);
 
   const fetchImages = async function() {
@@ -71,18 +72,33 @@ export default function Gallery() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
+    setUploadProgress(0);
     try {
       const id = 'gallery-' + Date.now();
       const storagePath = `tenants/${TENANT}/gallery/${id}_${file.name}`;
       const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      await new Promise(function(resolve, reject) {
+        uploadTask.on(
+          'state_changed',
+          function(snapshot) {
+            var pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setUploadProgress(pct);
+          },
+          function(err) { reject(err); },
+          function() { resolve(); }
+        );
+      });
+
+      const url = await getDownloadURL(uploadTask.snapshot.ref);
       await saveToFirestore(url, storagePath);
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed. Make sure Firebase Storage rules allow authenticated writes.');
+      alert('Upload failed: ' + err.message + '\n\nMake sure Firebase Storage rules allow authenticated writes.');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
     e.target.value = '';
   };
@@ -228,19 +244,32 @@ export default function Gallery() {
 
             {/* UPLOAD TAB */}
             {tab === 'upload' && (
-              <label style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: '10px', padding: '32px 20px', border: '2px dashed rgba(212,175,55,0.3)',
-                borderRadius: '12px', cursor: uploading ? 'not-allowed' : 'pointer',
-                background: 'rgba(212,175,55,0.04)', transition: 'all 0.2s',
-              }}>
-                <span style={{ fontSize: '2rem' }}>{uploading ? '⏳' : '📷'}</span>
-                <span style={{ color: uploading ? 'var(--muted)' : '#d4af37', fontSize: '0.88rem', fontWeight: '700' }}>
-                  {uploading ? 'Uploading to Firebase Storage...' : 'Click to select a photo'}
-                </span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>JPG, PNG, WEBP — any size</span>
-                <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} disabled={uploading} />
-              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '10px', padding: '32px 20px', border: '2px dashed rgba(212,175,55,0.3)',
+                  borderRadius: '12px', cursor: uploading ? 'not-allowed' : 'pointer',
+                  background: 'rgba(212,175,55,0.04)', transition: 'all 0.2s',
+                }}>
+                  <span style={{ fontSize: '2rem' }}>{uploading ? '⏳' : '📷'}</span>
+                  <span style={{ color: uploading ? 'var(--muted)' : '#d4af37', fontSize: '0.88rem', fontWeight: '700' }}>
+                    {uploading ? `Uploading... ${uploadProgress}%` : 'Click to select a photo'}
+                  </span>
+                  <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>JPG, PNG, WEBP — any size</span>
+                  <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} disabled={uploading} />
+                </label>
+
+                {uploading && (
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: '99px',
+                      background: 'linear-gradient(90deg, #d4af37, #b8860b)',
+                      width: uploadProgress + '%',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                )}
+              </div>
             )}
 
             {/* LINK TAB */}
