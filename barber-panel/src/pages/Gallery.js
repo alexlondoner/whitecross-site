@@ -27,6 +27,14 @@ export default function Gallery() {
   const [editOrder, setEditOrder] = useState(0);
   const [editSaving, setEditSaving] = useState(false);
 
+  // post-upload state
+  const [uploadedDocId, setUploadedDocId] = useState(null);
+  const [uploadedPreview, setUploadedPreview] = useState(null);
+
+  // drag state
+  const dragItem = React.useRef(null);
+  const dragOver = React.useRef(null);
+
   const fetchImages = async function() {
     try {
       setLoading(true);
@@ -51,11 +59,14 @@ export default function Gallery() {
     setLinkUrl('');
     setLinkPreview(false);
     setTab('upload');
+    setUploadedDocId(null);
+    setUploadedPreview(null);
     setModal(true);
   };
 
   const closeModal = function() {
     if (uploading) return;
+    if (uploadedDocId) { handleUploadDone(); return; }
     setModal(false);
   };
 
@@ -70,9 +81,21 @@ export default function Gallery() {
       createdAt: new Date().toISOString(),
     });
     await fetchImages();
+    setUploadedDocId(id);
+    setUploadedPreview(url);
+  };
+
+  const handleUploadDone = async function() {
+    if (uploadedDocId && caption.trim()) {
+      await updateDoc(doc(db, `tenants/${TENANT}/gallery`, uploadedDocId), { caption: caption.trim() });
+      await fetchImages();
+    }
     setSaved(true);
     setTimeout(function() { setSaved(false); }, 3000);
+    setUploadedDocId(null);
+    setUploadedPreview(null);
     setModal(false);
+    setCaption('');
   };
 
   const handleFileUpload = async function(e) {
@@ -166,6 +189,34 @@ export default function Gallery() {
     }
   };
 
+  const handleDragStart = function(index) {
+    dragItem.current = index;
+  };
+
+  const handleDragEnter = function(index) {
+    dragOver.current = index;
+    if (dragItem.current === index) return;
+    const reordered = [...images];
+    const dragged = reordered.splice(dragItem.current, 1)[0];
+    reordered.splice(index, 0, dragged);
+    dragItem.current = index;
+    setImages(reordered);
+  };
+
+  const handleDragEnd = async function() {
+    dragItem.current = null;
+    dragOver.current = null;
+    try {
+      await Promise.all(
+        images.map(function(img, i) {
+          return updateDoc(doc(db, `tenants/${TENANT}/gallery`, img.id), { order: i });
+        })
+      );
+    } catch (err) {
+      console.error('Order save error:', err);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
@@ -200,14 +251,27 @@ export default function Gallery() {
           <div style={{ fontSize: '0.9rem' }}>No photos yet. Hit Add Photo to get started.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
-          {images.map(function(img) {
+        <div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '1px' }}>✋ Drag photos to reorder</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+          {images.map(function(img, index) {
             return (
-              <div key={img.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div
+                key={img.id}
+                draggable
+                onDragStart={function() { handleDragStart(index); }}
+                onDragEnter={function() { handleDragEnter(index); }}
+                onDragEnd={handleDragEnd}
+                onDragOver={function(e) { e.preventDefault(); }}
+                style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', cursor: 'grab', transition: 'opacity 0.2s, transform 0.2s' }}
+              >
                 <div
                   onClick={function() { setLightbox(img.url); }}
-                  style={{ aspectRatio: '1', overflow: 'hidden', cursor: 'zoom-in', background: '#0a0a0a' }}
+                  style={{ aspectRatio: '1', overflow: 'hidden', cursor: 'zoom-in', background: '#0a0a0a', position: 'relative' }}
                 >
+                  <div style={{ position: 'absolute', top: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', borderRadius: '4px', padding: '2px 6px', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', zIndex: 1 }}>
+                    {index + 1}
+                  </div>
                   <img
                     src={img.url}
                     alt={img.caption || ''}
@@ -236,6 +300,7 @@ export default function Gallery() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -251,10 +316,38 @@ export default function Gallery() {
           >
             {/* Modal header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '1.1rem', color: '#d4af37', fontWeight: '700' }}>Add Photo</h2>
+              <h2 style={{ fontSize: '1.1rem', color: '#d4af37', fontWeight: '700' }}>
+                {uploadedPreview ? '✅ Uploaded — Add Caption' : 'Add Photo'}
+              </h2>
               <button onClick={closeModal} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1 }}>✕</button>
             </div>
 
+            {/* POST-UPLOAD STATE */}
+            {uploadedPreview ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ borderRadius: '10px', overflow: 'hidden', background: '#0a0a0a', border: '1px solid var(--border)', aspectRatio: '16/9' }}>
+                  <img src={uploadedPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Caption (for SEO — e.g. "Skin Fade by Alex – Old Street London")</label>
+                  <input
+                    autoFocus
+                    value={caption}
+                    onChange={function(e) { setCaption(e.target.value); }}
+                    placeholder="e.g. Skin Fade by Alex – Old Street London"
+                    style={inputStyle}
+                    onKeyDown={function(e) { if (e.key === 'Enter') handleUploadDone(); }}
+                  />
+                </div>
+                <button
+                  onClick={handleUploadDone}
+                  style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.88rem' }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
             {/* Tabs */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '4px' }}>
               {[['upload', '📁 Upload File'], ['link', '🔗 Add by Link']].map(function(t) {
@@ -364,6 +457,8 @@ export default function Gallery() {
                   {uploading ? 'Saving...' : 'Add to Gallery'}
                 </button>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>
