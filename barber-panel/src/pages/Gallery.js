@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage } from '../firebase';
-import { collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const TENANT = 'whitecross';
@@ -19,6 +19,13 @@ export default function Gallery() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [linkPreview, setLinkPreview] = useState(false);
+
+  // edit modal state
+  const [editModal, setEditModal] = useState(false);
+  const [editImage, setEditImage] = useState(null);
+  const [editCaption, setEditCaption] = useState('');
+  const [editOrder, setEditOrder] = useState(0);
+  const [editSaving, setEditSaving] = useState(false);
 
   const fetchImages = async function() {
     try {
@@ -130,6 +137,32 @@ export default function Gallery() {
       await fetchImages();
     } catch (err) {
       alert('Error deleting image.');
+    }
+  };
+
+  const openEdit = function(image) {
+    setEditImage(image);
+    setEditCaption(image.caption || '');
+    setEditOrder(image.order || 0);
+    setEditModal(true);
+  };
+
+  const handleEditSave = async function() {
+    if (!editImage) return;
+    setEditSaving(true);
+    try {
+      await updateDoc(doc(db, `tenants/${TENANT}/gallery`, editImage.id), {
+        caption: editCaption.trim(),
+        order: Number(editOrder),
+      });
+      await fetchImages();
+      setSaved(true);
+      setTimeout(function() { setSaved(false); }, 3000);
+      setEditModal(false);
+    } catch (err) {
+      alert('Error saving changes.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
