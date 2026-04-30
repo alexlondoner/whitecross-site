@@ -463,15 +463,18 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
 
   const clientKey = booking.phone || booking.email || booking.name;
   const isWalkIn = !booking.name || booking.name === 'Walk-in';
-  const clientVisits = (!isWalkIn && clientKey && allBookings)
+  const clientMatchedBookings = (!isWalkIn && clientKey && allBookings)
     ? allBookings.filter(b =>
         b.status === 'CHECKED_OUT' &&
         b.bookingId !== booking.bookingId &&
-        (b.phone === booking.phone || b.email === booking.email || b.name === booking.name) &&
         (booking.phone ? b.phone === booking.phone : booking.email ? b.email === booking.email : b.name === booking.name)
-      ).length
-    : 0;
-  const totalVisits = clientVisits + (booking.status === 'CHECKED_OUT' ? 1 : 0);
+      )
+    : [];
+  // Count unique dates — same-day checkouts (e.g. test duplicates) count as one visit
+  const clientVisits = new Set(clientMatchedBookings.map(b => b.date)).size;
+  const currentDate = booking.status === 'CHECKED_OUT' ? booking.date : null;
+  const allVisitDates = new Set([...clientMatchedBookings.map(b => b.date), ...(currentDate ? [currentDate] : [])]);
+  const totalVisits = allVisitDates.size;
   const isReturning = clientVisits > 0;
   const visitOrdinal = n => { if(n===1)return '1st'; if(n===2)return '2nd'; if(n===3)return '3rd'; return n+'th'; };
   const serviceLabel = config.services ? (config.services.find(s => s.id === booking.service) || {}).name || booking.service : booking.service;
@@ -931,6 +934,8 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, onClose, on
   const [showClientList, setShowClientList] = useState(false);
   const [service, setService] = useState(config.services ? config.services[0].id : '');
   const [barber, setBarber] = useState(preBarber ? preBarber.name.toLowerCase() : (barbers[0] ? barbers[0].name.toLowerCase() : ''));
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
   const now = new Date();
@@ -976,8 +981,8 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, onClose, on
     const price = svc ? svc.price : 0;
     const bookingData = {
       name: selectedClient ? selectedClient.name : (search.trim() || 'Walk-in'),
-      email: selectedClient ? selectedClient.email : '',
-      phone: selectedClient ? selectedClient.phone : '',
+      email: selectedClient ? selectedClient.email : email.trim(),
+      phone: selectedClient ? selectedClient.phone : phone.trim(),
       date,
       time,
       service,
@@ -1054,6 +1059,20 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, onClose, on
             </div>
           )}
         </div>
+
+        {/* Phone & Email — only when no existing client selected */}
+        {!selectedClient && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+            <div>
+              <label style={lbl}>Phone <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+44 7..." style={inp} type="tel" />
+            </div>
+            <div>
+              <label style={lbl}>Email <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@..." style={inp} type="email" />
+            </div>
+          </div>
+        )}
 
         {/* Service */}
         <div>
@@ -1409,6 +1428,8 @@ export default function Dashboard() {
   const [formPreset, setFormPreset] = useState({});
   const [leftPanelWidth, setLeftPanelWidth] = useState(240);
   const [slotHeight, setSlotHeight] = useState(24);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [customRange, setCustomRange] = useState({ start: null, end: null });
   const today = new Date(); today.setHours(0,0,0,0);
 
 useEffect(() => {
@@ -1498,19 +1519,44 @@ const activeBarbersForDay = barbers.filter(b => {
 
 const activeBarbers = barberFilter === 'all'
   ? activeBarbersForDay
-  : activeBarbersForDay.filter(b => b.id === barberFilter);  const statsBookings = view === 'day' ? getForDate(selectedDate)
+  : activeBarbersForDay.filter(b => b.id === barberFilter);
+  const statsBookings = view === 'day' ? getForDate(selectedDate)
     : view === 'week' ? getWeekDates(selectedDate).flatMap(d => getForDate(d))
+    : view === 'custom' && customRange.start && customRange.end ? (() => {
+        const days = [];
+        const cur = new Date(customRange.start); cur.setHours(0,0,0,0);
+        const end = new Date(customRange.end); end.setHours(23,59,59,999);
+        while (cur <= end) { days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+        return days.flatMap(d => getForDate(d));
+      })()
     : (() => { const y=currentMonth.getFullYear(), m=currentMonth.getMonth(); return Array.from({length:getDaysInMonth(y,m)},(_,i)=>new Date(y,m,i+1)).flatMap(d=>getForDate(d)); })();
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
   const revenue = statsBookings
     .filter(b => b.status === 'CHECKED_OUT')
-    .reduce((s, b) => s + Math.max(0, (parseFloat(String(b.price || '0').replace('£', '')) || 0) - (parseFloat(String(b.discount || '0').replace('£', '')) || 0)), 0);
+    .reduce((s, b) => {
+      const pp = v => parseFloat(String(v||'0').replace('£',''))||0;
+      const price = pp(b.price) > 0 ? pp(b.price) : Math.max(0, pp(b.paidAmount) - pp(b.tip));
+      return s + Math.max(0, price - pp(b.discount));
+    }, 0);
+  const now = new Date();
+  const needsCheckoutBookings = statsBookings.filter(b => {
+    if (b.status !== 'CONFIRMED' && b.status !== 'PENDING') return false;
+    const dateKey = b.date || '';
+    const timeStr = b.time || '';
+    if (!dateKey || !timeStr) return false;
+    const mins = convertTo24(timeStr);
+    const parts = dateKey.match(/(\d+)\s+(\w+)\s+(\d{4})/);
+    if (!parts) return false;
+    const bDate = new Date(parts[3], MONTHS.indexOf(parts[2]), parseInt(parts[1]), Math.floor(mins/60), mins%60);
+    return bDate < now;
+  });
+  const needsCheckoutCount = needsCheckoutBookings.length;
 
   const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
   const calDays = [...Array(getFirstDay(year,month)).fill(null), ...Array.from({length:getDaysInMonth(year,month)},(_,i)=>i+1)];
   const isToday = (d) => { if(!d) return false; const t=new Date(year,month,d); t.setHours(0,0,0,0); return t.getTime()===today.getTime(); };
   const isSel = (d) => d && selectedDate.getDate()===d && selectedDate.getMonth()===month && selectedDate.getFullYear()===year;
-  const dayCount = (d) => { if(!d) return 0; return (bookingsByDate[formatDateKey(new Date(year,month,d))]||[]).filter(b=>b.status!=='CANCELLED').length; };
+  const dayCount = (d) => { if(!d) return 0; return (bookingsByDate[formatDateKey(new Date(year,month,d))]||[]).filter(b=>b.status!=='CANCELLED'&&b.status!=='BLOCKED').length; };
 
   const navPrev = () => {
     if (view==='day') setSelectedDate(new Date(selectedDate.getTime()-86400000));
@@ -1527,6 +1573,8 @@ const activeBarbers = barberFilter === 'all'
     ? selectedDate.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})
     : view==='week'
       ? (()=>{const w=getWeekDates(selectedDate);return w[0].toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' - '+w[6].toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});})()
+    : view==='custom' && customRange.start && customRange.end
+      ? (()=>{const fmt=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});return fmt(customRange.start)+' – '+fmt(customRange.end);})()
       : MONTHS[month]+' '+year;
 
   const weekDates = getWeekDates(selectedDate);
@@ -1537,14 +1585,26 @@ const activeBarbers = barberFilter === 'all'
     <div style={{ display:'flex', flexDirection:'column', gap:'14px', height:'calc(100vh - 64px)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
         <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
-          {['day','week','month'].map(v=>(
+          {['day','week','month','custom'].map(v=>(
             <button key={v} onClick={()=>{setView(v);setSelectedBooking(null);setShowForm(false);}}
               style={{ padding:'8px 16px', border:'none', cursor:'pointer', background:view===v?'#d4af37':'transparent', color:view===v?'#000':'var(--muted)', fontWeight:view===v?'700':'400', fontSize:'0.82rem', textTransform:'capitalize', transition:'all 0.2s' }}>{v}</button>
           ))}
         </div>
-        <button onClick={navPrev} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
-        <span style={{ fontSize:'0.9rem', fontWeight:'600', color:'var(--text)', minWidth:'180px', textAlign:'center' }}>{periodLabel}</span>
-        <button onClick={navNext} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
+        {view !== 'custom' && <>
+          <button onClick={navPrev} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
+          <span style={{ fontSize:'0.9rem', fontWeight:'600', color:'var(--text)', minWidth:'180px', textAlign:'center' }}>{periodLabel}</span>
+          <button onClick={navNext} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
+        </>}
+        {view === 'custom' && (
+          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+            <input type="date" value={customRange.start ? customRange.start.toISOString().slice(0,10) : ''} onChange={e=>{ const d=e.target.value?new Date(e.target.value):null; setCustomRange(r=>({...r,start:d})); }}
+              style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.82rem', cursor:'pointer' }} />
+            <span style={{ color:'var(--muted)', fontSize:'0.82rem' }}>→</span>
+            <input type="date" value={customRange.end ? customRange.end.toISOString().slice(0,10) : ''} onChange={e=>{ const d=e.target.value?new Date(e.target.value):null; setCustomRange(r=>({...r,end:d})); }}
+              style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.82rem', cursor:'pointer' }} />
+            {customRange.start && customRange.end && <span style={{ fontSize:'0.78rem', color:'var(--muted)' }}>{periodLabel}</span>}
+          </div>
+        )}
         <button onClick={()=>{setSelectedDate(new Date());setCurrentMonth(new Date());setSelectedBooking(null);setShowForm(false);}}
           style={{ padding:'7px 14px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'6px', color:'#d4af37', fontSize:'0.78rem', cursor:'pointer' }}>Today</button>
         <div style={{ flex:1 }} />
@@ -1569,6 +1629,7 @@ const activeBarbers = barberFilter === 'all'
         <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />
         <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />
         <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />
+        <StatPill label="Needs Checkout" value={needsCheckoutCount} color="#ff5252" active={pillFilter==='needscheckout'} onClick={()=>setPillFilter(pillFilter==='needscheckout'?null:'needscheckout')} />
         <StatPill label="Revenue" value={'£'+revenue} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />
         <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />
         <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />
@@ -1583,14 +1644,22 @@ const activeBarbers = barberFilter === 'all'
           confirmed: b=>b.status==='CONFIRMED',
           pending: b=>b.status==='PENDING',
           checkedout: b=>b.status==='CHECKED_OUT',
+          needscheckout: b=>{
+            if(b.status!=='CONFIRMED'&&b.status!=='PENDING') return false;
+            const mins=convertTo24(b.time||'');
+            const parts=(b.date||'').match(/(\d+)\s+(\w+)\s+(\d{4})/);
+            if(!parts) return false;
+            const bDate=new Date(parts[3],MONTHS.indexOf(parts[2]),parseInt(parts[1]),Math.floor(mins/60),mins%60);
+            return bDate<now;
+          },
           revenue: b=>b.status==='CHECKED_OUT',
           booksy: b=>(b.source||'').toLowerCase()==='booksy',
           fresha: b=>(b.source||'').toLowerCase()==='fresha',
           website: b=>(b.source||'').toLowerCase()==='website',
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
         };
-        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800' };
-        const filtered = statsBookings.filter(filterMap[pillFilter]||filterMap.total);
+        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800' };
+        const filtered = pillFilter === 'needscheckout' ? needsCheckoutBookings : statsBookings.filter(filterMap[pillFilter]||filterMap.total);
         const pillColor = pillColors[pillFilter]||'#d4af37';
         return (
           <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden' }}>
@@ -1790,7 +1859,7 @@ const activeBarbers = barberFilter === 'all'
             <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(7,1fr)', gridAutoRows:'1fr', overflowY:'auto' }}>
               {calDays.map((d,i)=>{
                 const tod=isToday(d);
-                const dayBs=d?(bookingsByDate[formatDateKey(new Date(year,month,d))]||[]).filter(b=>b.status!=='CANCELLED').filter(b=>barberFilter==='all'||(b.barber||'').toLowerCase()===(barbers.find(bar=>bar.id===barberFilter)||{name:''}).name.toLowerCase()):[];
+                const dayBs=d?(bookingsByDate[formatDateKey(new Date(year,month,d))]||[]).filter(b=>b.status!=='CANCELLED'&&b.status!=='BLOCKED').filter(b=>barberFilter==='all'||(b.barber||'').toLowerCase()===(barbers.find(bar=>bar.id===barberFilter)||{name:''}).name.toLowerCase()):[];
                 return (
                   <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);}}}
                     style={{ padding:'5px', borderRight:(i+1)%7!==0?'1px solid var(--border)':'none', borderBottom:'1px solid var(--border)', cursor:d?'pointer':'default', background:tod?'rgba(212,175,55,0.04)':'transparent', minHeight:'68px' }}
@@ -1816,19 +1885,28 @@ const activeBarbers = barberFilter === 'all'
         )}
 
         <div style={{ position:'fixed', bottom:'32px', right:'32px', display:'flex', flexDirection:'column', gap:'8px', alignItems:'flex-end', zIndex:200 }}>
-  <button onClick={()=>{setSelectedBooking(null);setShowWalkIn(false);setFormPreset({date:selectedDate});setShowForm(true);}}
-    style={{ padding:'10px 16px', borderRadius:'24px', background:'var(--card)', border:'1px solid var(--border)', color:'var(--text)', fontSize:'0.78rem', cursor:'pointer', fontWeight:'600', boxShadow:'0 4px 12px rgba(0,0,0,0.2)' }}>
-    📅 Booking
-  </button>
-  <button onClick={()=>{setSelectedBooking(null);setShowForm(false);setFormPreset({date:selectedDate});setShowWalkIn(true);}}
-    style={{ padding:'10px 16px', borderRadius:'24px', background:'var(--card)', border:'1px solid var(--border)', color:'var(--text)', fontSize:'0.78rem', cursor:'pointer', fontWeight:'600', boxShadow:'0 4px 12px rgba(0,0,0,0.2)' }}>
-    🚶 Walk-in
-  </button>
-  <button onClick={()=>{setSelectedBooking(null);setShowWalkIn(false);setFormPreset({date:selectedDate});setShowForm(true);}}
-    style={{ width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', color:'#000', fontSize:'1.6rem', cursor:'pointer', boxShadow:'0 4px 20px rgba(212,175,55,0.4)', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s' }}
-    onMouseEnter={e=>e.currentTarget.style.transform='scale(1.1)'}
-    onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>+</button>
-</div>
+          {fabOpen && (
+            <>
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowWalkIn(false); setShowBlockTime(false); setFormPreset({date:selectedDate}); setShowForm(true); }}
+                style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(212,175,55,0.4)', color:'#d4af37', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
+                📅 Booking
+              </button>
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowBlockTime(false); setFormPreset({date:selectedDate}); setShowWalkIn(true); }}
+                style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(255,152,0,0.4)', color:'#ff9800', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
+                🚶 Walk-in
+              </button>
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowWalkIn(false); setFormPreset({date:selectedDate}); setShowBlockTime(true); }}
+                style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(255,82,82,0.4)', color:'#ff5252', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
+                🚫 Block Time
+              </button>
+            </>
+          )}
+          <button
+            onClick={()=>setFabOpen(o=>!o)}
+            style={{ width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', color:'#000', fontSize:'1.6rem', cursor:'pointer', boxShadow:'0 4px 20px rgba(212,175,55,0.4)', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', transform: fabOpen?'rotate(45deg)':'rotate(0deg)' }}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow='0 6px 24px rgba(212,175,55,0.6)'}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow='0 4px 20px rgba(212,175,55,0.4)'}>+</button>
+        </div>
         </div>
       </div>
     </div>

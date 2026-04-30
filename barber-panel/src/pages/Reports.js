@@ -10,6 +10,15 @@ function getBColor(barber, barbers) {
 function parsePrice(val) {
   return parseFloat(String(val || '0').replace('£', '').replace('-', '')) || 0;
 }
+function effectivePrice(b) {
+  const p = parsePrice(b.price);
+  if (p > 0) return p;
+  // For old walk-in records stored without price field, paidAmount at checkout = total (includes tip)
+  // Use paidAmount minus tip as the best approximation of service price
+  const paid = parsePrice(b.paidAmount);
+  const tip = parsePrice(b.tip);
+  return Math.max(0, paid - tip);
+}
 
 function parseDateStr(dateStr) {
   if (!dateStr) return null;
@@ -144,8 +153,7 @@ export default function Reports() {
   const checkedOut = filtered.filter(b => b.status === 'CHECKED_OUT');
   const cancelled = filtered.filter(b => b.status === 'CANCELLED');
 
-  // Always use full service price (not paidAmount which is only the remaining after deposit)
-  const totalRevenue = checkedOut.reduce((s, b) => s + parsePrice(b.price), 0);
+  const totalRevenue = checkedOut.reduce((s, b) => s + effectivePrice(b), 0);
   const totalTips = checkedOut.reduce((s, b) => s + parsePrice(b.tip), 0);
   const totalDiscount = checkedOut.reduce((s, b) => s + parsePrice(b.discount), 0);
   const netRevenue = totalRevenue - totalDiscount + totalTips;
@@ -158,7 +166,7 @@ export default function Reports() {
       if (!d) return;
       const key = d.toISOString().split('T')[0];
       if (!map[key]) map[key] = { date: key, revenue: 0, tips: 0, count: 0 };
-      map[key].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
+      map[key].revenue += Math.max(0, effectivePrice(b) - parsePrice(b.discount));
       map[key].tips += parsePrice(b.tip);
       map[key].count++;
     });
@@ -188,7 +196,7 @@ export default function Reports() {
     return {
       name: barber.name, color: barber.color,
       bookings: bs.length,
-      revenue: co.reduce((s, b) => s + Math.max(0, parsePrice(b.price) - parsePrice(b.discount)), 0),
+      revenue: co.reduce((s, b) => s + Math.max(0, effectivePrice(b) - parsePrice(b.discount)), 0),
       tips: co.reduce((s, b) => s + parsePrice(b.tip), 0),
       checkedOut: co.length,
     };
@@ -199,22 +207,27 @@ export default function Reports() {
   active.forEach(b => {
     const svc = config.services ? config.services.find(s => s.id === b.service) : null;
     const name = svc ? svc.name : (b.service || 'Unknown');
-    if (!svcMap[name]) svcMap[name] = { name, count: 0, revenue: 0 };
+    if (!svcMap[name]) svcMap[name] = { name, count: 0, checkedOut: 0, revenue: 0 };
     svcMap[name].count++;
-    if (b.status === 'CHECKED_OUT') svcMap[name].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
+    if (b.status === 'CHECKED_OUT') {
+      svcMap[name].checkedOut++;
+      svcMap[name].revenue += Math.max(0, effectivePrice(b) - parsePrice(b.discount));
+    }
   });
   const topServices = Object.values(svcMap).sort((a, b) => b.count - a.count).slice(0, 8);
 
-  // Client stats
+  // Client stats — deduplicate visits by date (same-day duplicates count as 1 visit)
   const clientMap = {};
   checkedOut.forEach(b => {
     const key = b.phone || b.email || b.name;
     if (!key || b.name === 'Walk-in') return;
-    if (!clientMap[key]) clientMap[key] = { name: b.name, spent: 0, visits: 0 };
-    clientMap[key].spent += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
-    clientMap[key].visits++;
+    if (!clientMap[key]) clientMap[key] = { name: b.name, spent: 0, dates: new Set() };
+    clientMap[key].spent += Math.max(0, effectivePrice(b) - parsePrice(b.discount));
+    if (b.date) clientMap[key].dates.add(b.date);
   });
-  const topClients = Object.values(clientMap).sort((a, b) => b.spent - a.spent).slice(0, 10);
+  const topClients = Object.values(clientMap)
+    .map(c => ({ ...c, visits: c.dates.size }))
+    .sort((a, b) => b.spent - a.spent).slice(0, 10);
 
   // Monthly revenue trend
   const monthlyMap = {};
@@ -223,7 +236,7 @@ export default function Reports() {
     if (!d) return;
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     if (!monthlyMap[key]) monthlyMap[key] = { label: key, revenue: 0, count: 0, tips: 0 };
-    monthlyMap[key].revenue += Math.max(0, parsePrice(b.price) - parsePrice(b.discount));
+    monthlyMap[key].revenue += Math.max(0, effectivePrice(b) - parsePrice(b.discount));
     monthlyMap[key].tips += parsePrice(b.tip);
     monthlyMap[key].count++;
   });
@@ -242,7 +255,7 @@ export default function Reports() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Reports</h1>
-          <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '4px 0 0' }}>{filtered.length} bookings in period</p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '4px 0 0' }}>{active.length} bookings in period</p>
         </div>
         {/* Period selector */}
         <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -276,7 +289,7 @@ export default function Reports() {
               { label: 'Revenue', value: '£' + totalRevenue.toFixed(2), sub: '+£' + totalTips.toFixed(2) + ' tips', color: '#4caf50' },
               { label: 'Net Revenue', value: '£' + netRevenue.toFixed(2), sub: '-£' + totalDiscount.toFixed(2) + ' discount', color: '#d4af37' },
               { label: 'Tips', value: '£' + totalTips.toFixed(2), sub: checkedOut.length ? (checkedOut.filter(b => parsePrice(b.tip) > 0).length) + ' bookings tipped' : '--', color: '#4caf50' },
-              { label: 'Avg Sale', value: checkedOut.length ? '£' + (totalRevenue / checkedOut.length).toFixed(2) : '--', sub: 'per checkout', color: '#2196f3' },
+              { label: 'Avg Sale', value: checkedOut.length ? '£' + ((totalRevenue - totalDiscount) / checkedOut.length).toFixed(2) : '--', sub: 'per checkout', color: '#2196f3' },
             ].map(k => (
               <div key={k.label} style={{ ...card, borderTop: '2px solid ' + k.color + '40' }}>
                 <div style={lbl}>{k.label}</div>
@@ -499,7 +512,7 @@ export default function Reports() {
                     <td style={{ padding: '9px 12px', fontSize: '0.78rem', color: 'var(--text)', fontWeight: '500' }}>{s.name}</td>
                     <td style={{ padding: '9px 12px', fontSize: '0.78rem', color: 'var(--muted)' }}>{s.count}</td>
                     <td style={{ padding: '9px 12px', fontSize: '0.78rem', color: '#d4af37', fontWeight: '600' }}>£{s.revenue.toFixed(2)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: '0.78rem', color: 'var(--muted)' }}>{s.count ? '£' + (s.revenue / s.count).toFixed(2) : '--'}</td>
+                    <td style={{ padding: '9px 12px', fontSize: '0.78rem', color: 'var(--muted)' }}>{s.checkedOut ? '£' + (s.revenue / s.checkedOut).toFixed(2) : '--'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -515,8 +528,8 @@ export default function Reports() {
             {[
               { label: 'Unique Clients', value: Object.keys(clientMap).length, color: '#d4af37' },
               { label: 'Walk-ins', value: active.filter(b => !b.name || b.name === 'Walk-in').length, color: '#ff9800' },
-              { label: 'Returning', value: Object.values(clientMap).filter(c => c.visits > 1).length, color: '#4caf50' },
-              { label: 'New Clients', value: Object.values(clientMap).filter(c => c.visits === 1).length, color: '#2196f3' },
+              { label: 'Returning', value: Object.values(clientMap).filter(c => c.dates.size > 1).length, color: '#4caf50' },
+              { label: 'New Clients', value: Object.values(clientMap).filter(c => c.dates.size === 1).length, color: '#2196f3' },
             ].map(k => (
               <div key={k.label} style={{ ...card, borderLeft: '3px solid ' + k.color }}>
                 <div style={lbl}>{k.label}</div>

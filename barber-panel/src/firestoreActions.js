@@ -61,7 +61,8 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
     endTime: Timestamp.fromDate(endTime),
     status: 'CONFIRMED',
     paymentType: paymentType || 'CASH',
-    paidAmount: price || 0,
+    price: price || 0,
+    paidAmount: '',
     source: source || 'Walk-in',
     createdAt: Timestamp.fromDate(new Date()),
   });

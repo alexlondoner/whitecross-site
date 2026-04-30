@@ -81,6 +81,7 @@ const fetchAll = async () => {
 };
   const filtered = useMemo(() => {
     return bookings
+      .filter(b => b.status !== 'BLOCKED')
       .filter(b => search === '' ||
         (b.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.service || '').toLowerCase().includes(search.toLowerCase()) ||
