@@ -202,8 +202,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     /* DATE & TIME LOGIC */
     var dateInput = document.getElementById('date');
     var now = new Date();
-    var todayStr = now.toISOString().split('T')[0];
-
+var todayStr = now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(now.getDate()).padStart(2, '0');
+    
     if (dateInput) {
         dateInput.setAttribute('min', todayStr);
         var maxDate = new Date();
@@ -456,12 +458,25 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function checkAvailability(date) {
+        var timeSlotsGrid = document.getElementById('timeSlots');
+        var hiddenTime = document.getElementById('time');
+
+        // Geçmiş tarih kontrolü
+        var today = new Date();
+        var todayStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+        if (date < todayStr) {
+            if (timeSlotsGrid) timeSlotsGrid.innerHTML = '';
+            if (hiddenTime) hiddenTime.value = '';
+            return;
+        }
+
         var barberEl = document.getElementById('barber');
         var barber = barberEl ? barberEl.value || 'no-preference' : 'no-preference';
         var serviceEl = document.getElementById('service');
         var service = serviceEl ? serviceEl.value : '';
-        var timeSlotsGrid = document.getElementById('timeSlots');
-        var hiddenTime = document.getElementById('time');
 
         var durationMap = {
             "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
@@ -673,6 +688,33 @@ document.addEventListener('DOMContentLoaded', async function () {
         var pending = sessionStorage.getItem('pendingBooking');
         var bookingData = pending ? JSON.parse(pending) : null;
 
+        // GA4 Purchase Event
+        if (typeof gtag !== 'undefined') {
+            var priceMap = {
+                'i-cut-royal': 65, 'i-cut-deluxe': 55, 'full-skinfade-beard-luxury': 48,
+                'full-experience': 40, 'senior-full-experience': 35, 'skin-fade': 32,
+                'scissor-cut': 30, 'classic-sbs': 28, 'hot-towel-shave': 22,
+                'clipper-cut': 22, 'senior-haircut': 23, 'young-gents': 20,
+                'young-gents-skin-fade': 24, 'full-facial': 24, 'beard-dyeing': 24,
+                'face-mask': 12, 'face-steam': 12, 'threading': 10,
+                'waxing': 10, 'shape-up-clean-up': 20, 'wash-hot-towel': 10
+            };
+            var serviceId = bookingData ? bookingData.service : '';
+            var fullPrice = priceMap[serviceId] || 30;
+            var paidValue = bookingData && bookingData.paymentType === 'DEPOSIT' ? 10 : fullPrice;
+            gtag('event', 'purchase', {
+                transaction_id: bookingData ? bookingData.bookingId : 'WCB-' + Date.now(),
+                value: paidValue,
+                currency: 'GBP',
+                items: [{
+                    item_id: serviceId,
+                    item_name: serviceId,
+                    price: fullPrice,
+                    quantity: 1
+                }]
+            });
+        }
+
         if (popup) {
             var name = bookingData ? bookingData.name.split(' ')[0] : '';
             var bDate = bookingData ? bookingData.date : '';
@@ -683,11 +725,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             popup.style.display = 'flex';
         }
 
-        if (bookingData) {
+        if (bookingData && bookingData.date && bookingData.time) {
             var db = window._db;
             var firebase = window._firebase;
             var dateStr = bookingData.date;
             var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!timeMatch) {
+                return;
+            }
             var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
             var ap = timeMatch[3].toUpperCase();
             if (ap === 'PM' && h !== 12) h += 12;
