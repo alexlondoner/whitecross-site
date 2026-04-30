@@ -433,6 +433,7 @@
                 img.src = data.url;
                 img.alt = data.caption ? data.caption + ' at I CUT Whitecross Barbers, London EC1Y' : 'Haircut at I CUT Whitecross Barbers, Whitecross Street London';
                 img.loading = 'lazy';
+                img.onerror = function() { card.style.display = 'none'; };
                 var overlay = document.createElement('div');
                 overlay.className = 'gallery-overlay';
                 if (data.caption) {
