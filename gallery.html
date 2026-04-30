@@ -281,47 +281,8 @@
 
     <!-- GALLERY GRID -->
     <div class="gallery-grid-full" id="galleryGrid">
-
-        <div class="gallery-card">
-            <img src="img/SkinFadeBuzzCutWhitecrossBarbers.jpeg" alt="Skin fade haircut at I CUT Whitecross Barbers near Old Street, London EC1Y">
-            <div class="gallery-overlay"></div>
-        </div>
-
-        <div class="gallery-card">
-            <img src="img/Taperfade_By_Icutwhitecrossbarbers.jpg" alt="Taper fade haircut by I CUT Whitecross Barbers in Clerkenwell, London EC1Y">
-            <div class="gallery-overlay"></div>
-        </div>
-
-        <div class="gallery-card">
-            <img src="img/taperfade_byWhiteCrossBarbers_Alex.jpg" alt="Taper fade and beard line-up by Alex at Whitecross Barbers, London EC1Y">
-            <div class="gallery-overlay"></div>
-        </div>
-
-        <div class="gallery-card">
-            <img src="img/skinfadebyAlexwhitecrossbarbers.jpg" alt="Clean skin fade by Alex at I CUT Whitecross Barbers, Whitecross Street London">
-            <div class="gallery-overlay"></div>
-        </div>
-
-        <div class="gallery-card">
-            <img src="img/TaperFadeonCurlyHairWhitecrossBarbers.jpeg" alt="Hot towel shave service at I CUT Whitecross Barbers, Barbican London">
-            <div class="gallery-overlay"></div>
-        </div>
-
-        <div class="gallery-card">
-            <img src="img/gallery6.jpeg" alt="Luxury men's grooming package at I CUT Whitecross Barbers, London EC1Y">
-            <div class="gallery-overlay"></div>
-        </div>
-        <div class="gallery-card">
-            <img src="img/gallery7.jpeg" alt="Premium men's haircut by I CUT Whitecross Barbers in Clerkenwell, London EC1Y">
-            <div class="gallery-overlay"></div>
-        </div>
-         <div class="gallery-card">
-            <img src="img/gallery8.jpeg" alt="Skin fade and beard styling by I CUT Whitecross Barbers, Whitecross Street London">
-            <div class="gallery-overlay"></div>
-        </div>
-         <div class="gallery-card">
-            <img src="img/gallery9.jpeg" alt="Luxury barber grooming experience at I CUT Whitecross Barbers in Clerkenwell, London">
-            <div class="gallery-overlay"></div>
+        <div style="grid-column:1/-1; text-align:center; padding:40px 20px; color:#555; font-size:0.85rem; letter-spacing:1px;">
+            Loading gallery...
         </div>
     </div>
 
@@ -420,22 +381,75 @@
 </footer>
 
 <script>
-    document.querySelectorAll('.gallery-card').forEach(card => {
-        card.addEventListener('click', function () {
-            const img = this.querySelector('img');
-            document.getElementById('lightboxImg').src = img.src;
-            document.getElementById('lightboxCaption').textContent = '';
-            document.getElementById('lightbox').classList.add('active');
-        });
-    });
-
     function closeLightbox() {
         document.getElementById('lightbox').classList.remove('active');
     }
 
+    document.getElementById('galleryGrid').addEventListener('click', function(e) {
+        var card = e.target.closest('.gallery-card');
+        if (!card) return;
+        var img = card.querySelector('img');
+        document.getElementById('lightboxImg').src = img.src;
+        document.getElementById('lightboxCaption').textContent = card.dataset.caption || '';
+        document.getElementById('lightbox').classList.add('active');
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeLightbox();
     });
+</script>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const app = initializeApp({
+        apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+        authDomain: "havuz-44f70.firebaseapp.com",
+        projectId: "havuz-44f70",
+        storageBucket: "havuz-44f70.firebasestorage.app",
+        messagingSenderId: "1050766582653",
+        appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    });
+    const db = getFirestore(app);
+    const grid = document.getElementById('galleryGrid');
+
+    onSnapshot(
+        collection(db, 'tenants/whitecross/gallery'),
+        function(snap) {
+            if (snap.empty) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#555;font-size:0.85rem;letter-spacing:1px;">Follow us on Instagram for the latest cuts</div>';
+                return;
+            }
+            var items = snap.docs
+                .map(function(d) { return d.data(); })
+                .sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
+            grid.innerHTML = '';
+            items.forEach(function(data) {
+                var card = document.createElement('div');
+                card.className = 'gallery-card';
+                card.dataset.caption = data.caption || '';
+                var img = document.createElement('img');
+                img.src = data.url;
+                img.alt = data.caption ? data.caption + ' at I CUT Whitecross Barbers, London EC1Y' : 'Haircut at I CUT Whitecross Barbers, Whitecross Street London';
+                img.loading = 'lazy';
+                var overlay = document.createElement('div');
+                overlay.className = 'gallery-overlay';
+                if (data.caption) {
+                    var label = document.createElement('span');
+                    label.textContent = data.caption;
+                    overlay.appendChild(label);
+                }
+                card.appendChild(img);
+                card.appendChild(overlay);
+                grid.appendChild(card);
+            });
+        },
+        function(err) {
+            console.error('Gallery load error:', err);
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#555;font-size:0.85rem;">Unable to load gallery right now.</div>';
+        }
+    );
 </script>
 
 <!-- GDPR COOKIE BANNER -->

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import Barbers from './pages/Barbers';
+import Gallery from './pages/Gallery';
 import Calendar from './pages/Calendar';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
@@ -38,6 +39,7 @@ function App() {
       case 'dashboard': return <Dashboard tenantId={tenantId} />;
       case 'bookings': return <Bookings tenantId={tenantId} />;
       case 'barbers': return <Barbers tenantId={tenantId} />;
+      case 'gallery': return <Gallery tenantId={tenantId} />;
       case 'calendar': return <Calendar tenantId={tenantId} />;
       case 'clients': return <Clients tenantId={tenantId} />;
       case 'reports': return <Reports tenantId={tenantId} />;

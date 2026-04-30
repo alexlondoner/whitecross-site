@@ -569,12 +569,7 @@
         </div>
         <div class="carousel-track-wrap">
             <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide"><img src="img/SkinFadeBuzzCutWhitecrossBarbers.jpeg" alt="Skin fade haircut at I CUT Whitecross Barbers near Old Street, London EC1Y"></div>
-                <div class="carousel-slide"><img src="img/Taperfade_By_Icutwhitecrossbarbers.jpg" alt="Taper fade haircut by I CUT Whitecross Barbers in Clerkenwell, London EC1Y"></div>
-                <div class="carousel-slide"><img src="img/taperfade_byWhiteCrossBarbers_Alex.jpg" alt="Taper fade and beard line-up by Alex at Whitecross Barbers, London EC1Y"></div>
-                <div class="carousel-slide"><img src="img/skinfadebyAlexwhitecrossbarbers.jpg" alt="Clean skin fade by Alex at I CUT Whitecross Barbers, Whitecross Street London"></div>
-                <div class="carousel-slide"><img src="img/TaperFadeonCurlyHairWhitecrossBarbers.jpeg" alt="Hot towel shave service at I CUT Whitecross Barbers, Barbican London"></div>
-                <div class="carousel-slide"><img src="img/gallery6.jpeg" alt="Luxury men's grooming package at I CUT Whitecross Barbers, London EC1Y"></div>
+                <!-- loaded from Firestore gallery -->
             </div>
         </div>
         <div class="carousel-dots" id="carouselDots"></div>
@@ -631,38 +626,88 @@
 </a>
 
 <script>
-    (function() {
-        const track = document.getElementById('carouselTrack');
-        const dotsContainer = document.getElementById('carouselDots');
+    window._carouselTimer = null;
+    window.startCarousel = function() {
+        clearInterval(window._carouselTimer);
+        var track = document.getElementById('carouselTrack');
+        var dotsContainer = document.getElementById('carouselDots');
         if (!track) return;
-        const slides = track.querySelectorAll('.carousel-slide');
-        let current = 0;
-        let timer;
-        slides.forEach((_, i) => {
-            const dot = document.createElement('span');
+        var slides = track.querySelectorAll('.carousel-slide');
+        if (!slides.length) return;
+        var current = 0;
+        dotsContainer.innerHTML = '';
+        slides.forEach(function(_, i) {
+            var dot = document.createElement('span');
             dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
-            dot.addEventListener('click', () => goTo(i));
+            dot.addEventListener('click', function() { goTo(i); });
             dotsContainer.appendChild(dot);
         });
         function goTo(index) {
             current = index;
-            track.style.transform = `translateX(-${current * 100}%)`;
-            dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === current));
+            track.style.transform = 'translateX(-' + (current * 100) + '%)';
+            dotsContainer.querySelectorAll('.carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === current); });
         }
         function next() { goTo((current + 1) % slides.length); }
-        function startTimer() { timer = setInterval(next, 3000); }
-        function stopTimer() { clearInterval(timer); }
+        function startTimer() { window._carouselTimer = setInterval(next, 3000); }
+        function stopTimer() { clearInterval(window._carouselTimer); }
         startTimer();
-        track.parentElement.addEventListener('mouseenter', stopTimer);
-        track.parentElement.addEventListener('mouseleave', startTimer);
-        let startX = 0;
-        track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; stopTimer(); }, { passive: true });
-        track.addEventListener('touchend', e => {
-            const diff = startX - e.changedTouches[0].clientX;
-            if (Math.abs(diff) > 40) diff > 0 ? next() : goTo((current - 1 + slides.length) % slides.length);
-            startTimer();
-        });
-    })();
+        if (!track.parentElement._carouselBound) {
+            track.parentElement.addEventListener('mouseenter', stopTimer);
+            track.parentElement.addEventListener('mouseleave', startTimer);
+            track.parentElement._carouselBound = true;
+        }
+        if (!track._touchBound) {
+            var startX = 0;
+            track.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; stopTimer(); }, { passive: true });
+            track.addEventListener('touchend', function(e) {
+                var diff = startX - e.changedTouches[0].clientX;
+                if (Math.abs(diff) > 40) diff > 0 ? next() : goTo((current - 1 + slides.length) % slides.length);
+                startTimer();
+            });
+            track._touchBound = true;
+        }
+    };
+</script>
+
+<script type="module">
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    var app = getApps().length ? getApps()[0] : initializeApp({
+        apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+        authDomain: "havuz-44f70.firebaseapp.com",
+        projectId: "havuz-44f70",
+        storageBucket: "havuz-44f70.firebasestorage.app",
+        messagingSenderId: "1050766582653",
+        appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    });
+    var db = getFirestore(app);
+    var track = document.getElementById('carouselTrack');
+
+    onSnapshot(
+        collection(db, 'tenants/whitecross/gallery'),
+        function(snap) {
+            if (snap.empty) return;
+            var items = snap.docs
+                .map(function(d) { return d.data(); })
+                .sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
+            track.innerHTML = '';
+            items.forEach(function(data) {
+                var slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+                var img = document.createElement('img');
+                img.src = data.url;
+                img.alt = data.caption ? data.caption + ' at I CUT Whitecross Barbers, London EC1Y' : 'Haircut at I CUT Whitecross Barbers, Whitecross Street London';
+                img.loading = 'lazy';
+                slide.appendChild(img);
+                track.appendChild(slide);
+            });
+            if (window.startCarousel) window.startCarousel();
+        },
+        function(err) {
+            console.error('Carousel load error:', err);
+        }
+    );
 </script>
 
 <script src="script.js?v=2"></script>

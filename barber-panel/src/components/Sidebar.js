@@ -5,6 +5,7 @@ const navItems = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard' },
   { id: 'bookings', icon: '📅', label: 'Bookings' },
   { id: 'barbers', icon: '✂️', label: 'Barbers' },
+  { id: 'gallery', icon: '🖼️', label: 'Gallery' },
   { id: 'clients', icon: '👥', label: 'Clients' },
   { id: 'reports', icon: '📈', label: 'Reports' },
   { id: 'calendar', icon: '🗓️', label: 'Calendar' },

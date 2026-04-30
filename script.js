@@ -557,7 +557,11 @@ document.addEventListener('DOMContentLoaded', async function () {
             );
             return firebase.getDocs(q).then(function(snap) {
                 var busyMap = {};
-                ACTIVE_BARBERS.forEach(function(b) { busyMap[b.id] = []; });
+                ACTIVE_BARBERS.forEach(function(b) {
+                    busyMap[b.id] = [];
+                    // also index by lowercase name so Booksy/Fresha bookings match
+                    if (b.name) busyMap[b.name.toLowerCase()] = busyMap[b.id];
+                });
                 snap.forEach(function(doc) {
                     var d = doc.data();
                     if (d.status === 'CANCELLED') return;
