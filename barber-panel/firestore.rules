@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Bookings: publicly readable (availability check) + publicly creatable (booking form)
+    match /tenants/{tenantId}/bookings/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // All other tenant collections: publicly readable, auth required to write
+    match /tenants/{tenantId}/{collection}/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Catch-all: require auth for anything else
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -15,6 +15,14 @@ export default function Services() {
   const [editingId, setEditingId] = useState(null); // docId or 'new'
   const [form, setForm] = useState({ name:'', price:'', duration:'', category: CATEGORIES[0], description:'', stripeUrl:'', depositUrl:'' });
   const [saving, setSaving] = useState(false);
+  const dragItem = React.useRef(null);
+  const dragCategory = React.useRef(null);
+  const servicesRef = React.useRef([]);
+
+  const syncServices = (svcs) => {
+    servicesRef.current = svcs;
+    setServices(svcs);
+  };
 
   useEffect(() => { fetchServices(); }, []);
 
@@ -23,7 +31,6 @@ export default function Services() {
       const snap = await getDocs(query(collection(db, `tenants/${TENANT}/services`), orderBy('order', 'asc')));
       if (!snap.empty) {
         const svcs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-        // Back-fill descriptions for services that were seeded before description field existed
         const needsBackfill = svcs.filter(s => !s.description || !s.stripeUrl || !s.category);
         if (needsBackfill.length > 0) {
           await Promise.all(needsBackfill.map(s => {
@@ -47,17 +54,16 @@ export default function Services() {
             }
           });
         }
-        setServices(svcs);
+        syncServices(svcs);
         config.services = svcs.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
       } else {
-        // Seed from hardcoded config on first load
         const seeded = await Promise.all(
           config.services.map(async (s, i) => {
             const ref = await addDoc(collection(db, `tenants/${TENANT}/services`), { ...s, order: i, active: true });
             return { docId: ref.id, ...s, order: i, active: true };
           })
         );
-        setServices(seeded);
+        syncServices(seeded);
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -92,14 +98,14 @@ export default function Services() {
       };
       let updated;
       if (editingId === 'new') {
-        data.order = services.length;
+        data.order = servicesRef.current.length;
         const ref = await addDoc(collection(db, `tenants/${TENANT}/services`), data);
-        updated = [...services, { docId: ref.id, ...data }];
+        updated = [...servicesRef.current, { docId: ref.id, ...data }];
       } else {
         await updateDoc(doc(db, `tenants/${TENANT}/services`, editingId), data);
-        updated = services.map(s => s.docId === editingId ? { ...s, ...data } : s);
+        updated = servicesRef.current.map(s => s.docId === editingId ? { ...s, ...data } : s);
       }
-      setServices(updated);
+      syncServices(updated);
       config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
       setEditingId(null);
     } catch (e) { console.error(e); }
@@ -110,24 +116,43 @@ export default function Services() {
     if (!window.confirm(`Delete "${svc.name}"? This won't affect existing bookings.`)) return;
     try {
       await deleteDoc(doc(db, `tenants/${TENANT}/services`, svc.docId));
-      const updated = services.filter(s => s.docId !== svc.docId);
-      setServices(updated);
+      const updated = servicesRef.current.filter(s => s.docId !== svc.docId);
+      syncServices(updated);
       config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
     } catch (e) { console.error(e); }
   };
 
-  const moveService = async (docId, dir) => {
-    const idx = services.findIndex(s => s.docId === docId);
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= services.length) return;
-    const updated = [...services];
-    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
-    setServices(updated);
-    config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '' }));
-    await Promise.all([
-      updateDoc(doc(db, `tenants/${TENANT}/services`, updated[idx].docId), { order: idx }),
-      updateDoc(doc(db, `tenants/${TENANT}/services`, updated[newIdx].docId), { order: newIdx }),
-    ]);
+  const handleDragStart = (docId, cat) => {
+    dragItem.current = docId;
+    dragCategory.current = cat;
+  };
+
+  const handleDragEnter = (targetDocId, cat) => {
+    if (dragCategory.current !== cat) return;
+    if (dragItem.current === targetDocId) return;
+    const updated = [...servicesRef.current];
+    const fromIdx = updated.findIndex(s => s.docId === dragItem.current);
+    const toIdx = updated.findIndex(s => s.docId === targetDocId);
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    dragItem.current = targetDocId;
+    syncServices(updated);
+  };
+
+  const handleDragEnd = async () => {
+    dragItem.current = null;
+    dragCategory.current = null;
+    const latest = servicesRef.current;
+    const ordered = [
+      ...latest.filter(s => (s.category || CATEGORIES[1]) === 'Exclusive Bundles'),
+      ...latest.filter(s => (s.category || CATEGORIES[1]) === 'Standard'),
+      ...latest.filter(s => (s.category || CATEGORIES[1]) === 'Extras'),
+    ];
+    syncServices(ordered);
+    config.services = ordered.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
+    await Promise.all(
+      ordered.map((s, i) => updateDoc(doc(db, `tenants/${TENANT}/services`, s.docId), { order: i }))
+    );
   };
 
   if (loading) return (
@@ -207,12 +232,22 @@ export default function Services() {
         if (!catSvcs.length) return null;
         return (
           <div key={cat} style={card}>
-            <div style={{ fontSize:'0.6rem', color:'#d4af37', letterSpacing:'2.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'14px' }}>{cat}</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+              <div style={{ fontSize:'0.6rem', color:'#d4af37', letterSpacing:'2.5px', textTransform:'uppercase', fontWeight:'700' }}>{cat}</div>
+              <div style={{ fontSize:'0.6rem', color:'var(--muted)', letterSpacing:'1px' }}>✋ drag to reorder</div>
+            </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
               {catSvcs.map(svc => (
-                <div key={svc.docId} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--border)', borderRadius:'10px', transition:'background 0.15s' }}
+                <div key={svc.docId}
+                  draggable
+                  onDragStart={() => handleDragStart(svc.docId, cat)}
+                  onDragEnter={() => handleDragEnter(svc.docId, cat)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={e => e.preventDefault()}
+                  style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--border)', borderRadius:'10px', cursor:'grab', transition:'background 0.15s' }}
                   onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.04)'}
                   onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.02)'}>
+                  <span style={{ color:'var(--muted)', fontSize:'0.8rem', flexShrink:0, cursor:'grab' }}>⠿</span>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:'0.88rem', fontWeight:'600', color:'var(--text)' }}>{svc.name}</div>
                     <div style={{ fontSize:'0.65rem', color:'var(--muted)', marginTop:'3px' }}>{svc.duration} min</div>
@@ -224,10 +259,6 @@ export default function Services() {
                   </div>
                   <span style={{ fontSize:'1rem', fontWeight:'800', color:'#d4af37', flexShrink:0 }}>£{svc.price}</span>
                   <div style={{ display:'flex', gap:'5px', flexShrink:0 }}>
-                    <button onClick={()=>moveService(svc.docId,-1)} title="Move up"
-                      style={{ width:'28px', height:'28px', background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--muted)', cursor:'pointer', fontSize:'0.72rem' }}>↑</button>
-                    <button onClick={()=>moveService(svc.docId,1)} title="Move down"
-                      style={{ width:'28px', height:'28px', background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--muted)', cursor:'pointer', fontSize:'0.72rem' }}>↓</button>
                     <button onClick={()=>openEdit(svc)} title="Edit"
                       style={{ width:'28px', height:'28px', background:'transparent', border:'1px solid rgba(212,175,55,0.35)', borderRadius:'6px', color:'#d4af37', cursor:'pointer', fontSize:'0.8rem' }}>✏️</button>
                     <button onClick={()=>handleDelete(svc)} title="Delete"
