@@ -626,6 +626,34 @@ function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers
     return { name:'', email:'', phone:'', service:config.services?config.services[0].id:'', barber:preBarber?preBarber.name.toLowerCase():(barbers[0]?barbers[0].name.toLowerCase():''), date:preDate?preDate.toISOString().split('T')[0]:new Date().toISOString().split('T')[0], time:preHour!==undefined?minsToLabel(preHour*60+(preMins||0)):'9:00 AM', paymentType:'CASH', _countryCode:'+44', _phoneLocal:'' };
   });
   const [saving, setSaving] = useState(false);
+  const [allClients, setAllClients] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    const map = {};
+    (existingBookings || []).forEach(b => {
+      if (!b.name || b.name === 'Walk-in') return;
+      const key = b.phone || b.email || b.name;
+      if (!map[key]) map[key] = { name: b.name, phone: b.phone || '', email: b.email || '', visits: 0, totalSpent: 0 };
+      const c = map[key];
+      if (b.status !== 'CANCELLED') {
+        c.visits++;
+        const _deposit = b.source === 'Booksy' && config.platforms?.booksy?.depositEnabled ? (config.platforms.booksy.depositAmount || 0) : 0;
+        const _raw = parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0;
+        c.totalSpent += b.source === 'Booksy' ? (b.status === 'CHECKED_OUT' ? _raw + _deposit : _deposit) : _raw;
+      }
+    });
+    getDocs(collection(db, 'tenants/whitecross/clients'))
+      .then(snap => {
+        snap.docs.forEach(d => { const m = d.data(); if (m.hidden) return; const key = m.phone || m.email || m.name; if (!map[key]) map[key] = { name: m.name || '', phone: m.phone || '', email: m.email || '', visits: 0, totalSpent: 0 }; });
+        setAllClients(Object.values(map));
+      })
+      .catch(() => setAllClients(Object.values(map)));
+  }, [existingBookings]);
+
+  const suggestions = !isEdit && form.name.length > 1
+    ? allClients.filter(c => c.name.toLowerCase().includes(form.name.toLowerCase()) || c.phone.includes(form.name))
+    : [];
 
   const handlePhoneChange = (local) => {
     const digits = local.replace(/[^\d\s]/g, '');
@@ -739,9 +767,33 @@ const handleSave = async (goCheckout = false) => {
         <button onClick={onClose} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1rem', width:'24px', height:'24px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'50%' }}>x</button>
       </div>
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
-        <div>
+        <div style={{ position:'relative' }}>
           <label style={lbl}>Customer Name *</label>
-          <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Full name" style={inp} />
+          <input value={form.name}
+            onChange={e=>{ setForm({...form,name:e.target.value}); setShowSuggestions(true); }}
+            onBlur={()=>setTimeout(()=>setShowSuggestions(false),150)}
+            placeholder="Full name or search existing..." style={inp} />
+          {showSuggestions && suggestions.length > 0 && (
+            <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', zIndex:30, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', maxHeight:'200px', overflowY:'auto', marginTop:'4px' }}>
+              {suggestions.map((c,i) => (
+                <div key={i} onClick={()=>{
+                  let code='+44', local=String(c.phone||'');
+                  for (const cc of COUNTRY_CODES) { if(local.startsWith(cc.code)){code=cc.code;local=local.slice(cc.code.length).trim();break;} }
+                  setForm({...form, name:c.name, email:c.email||'', phone:c.phone||'', _countryCode:code, _phoneLocal:local});
+                  setShowSuggestions(false);
+                }}
+                style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.08)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div>
+                    <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
+                    <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{c.phone}{c.visits>0?' · '+c.visits+' visits':''}</div>
+                  </div>
+                  {c.totalSpent>0 && <span style={{ fontSize:'0.68rem', color:'#d4af37', fontWeight:'600' }}>£{c.totalSpent.toFixed(0)}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <label style={lbl}>Phone</label>
@@ -927,7 +979,7 @@ const handleSave = async () => {
   );
 }
 
-function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, onClose, onSaved }) {
+function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, onClose, onSaved }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
@@ -944,11 +996,27 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, onClose, on
   const date = preDate ? (preDate.getDate() + ' ' + preDate.toLocaleDateString('en-GB', {month:'long'}) + ' ' + preDate.getFullYear()) : formatDateKey(new Date());
 
   useEffect(() => {
-    fetch(config.scriptUrl + '?action=getClients')
-      .then(r => r.json())
-      .then(d => setClients(d.clients || []))
-      .catch(() => {});
-  }, []);
+    const map = {};
+    (existingBookings || []).forEach(b => {
+      if (!b.name || b.name === 'Walk-in') return;
+      const key = b.phone || b.email || b.name;
+      if (!map[key]) map[key] = { name: b.name, phone: b.phone || '', email: b.email || '', visits: 0, totalSpent: 0, lastService: '' };
+      const c = map[key];
+      if (b.status !== 'CANCELLED') {
+        c.visits++;
+        const _deposit = b.source === 'Booksy' && config.platforms?.booksy?.depositEnabled ? (config.platforms.booksy.depositAmount || 0) : 0;
+        const _raw = parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0;
+        c.totalSpent += b.source === 'Booksy' ? (b.status === 'CHECKED_OUT' ? _raw + _deposit : _deposit) : _raw;
+        c.lastService = b.service || c.lastService;
+      }
+    });
+    getDocs(collection(db, 'tenants/whitecross/clients'))
+      .then(snap => {
+        snap.docs.forEach(d => { const m = d.data(); if (m.hidden) return; const key = m.phone || m.email || m.name; if (!map[key]) map[key] = { name: m.name || '', phone: m.phone || '', email: m.email || '', visits: 0, totalSpent: 0, lastService: '' }; });
+        setClients(Object.values(map));
+      })
+      .catch(() => setClients(Object.values(map)));
+  }, [existingBookings]);
 
   const filteredClients = clients.filter(c =>
     search.length > 1 && (
@@ -1793,7 +1861,7 @@ const activeBarbers = barberFilter === 'all'
               )}
               {showWalkIn && (
                 <WalkInForm
-                  preBarber={formPreset.barber} preHour={formPreset.hour} preMins={formPreset.mins} preDate={formPreset.date} barbers={barbers}
+                  preBarber={formPreset.barber} preHour={formPreset.hour} preMins={formPreset.mins} preDate={formPreset.date} barbers={barbers} existingBookings={bookings}
                   onClose={() => setShowWalkIn(false)}
                   onSaved={(savedBooking, goCheckout) => {
                     setTimeout(() => fetchAll(), 2000); setTimeout(() => fetchAll(), 5000);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
 
@@ -39,6 +39,10 @@ export default function Clients() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
   const [addSaving, setAddSaving] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,7 +92,11 @@ export default function Clients() {
       c.bookings.push(b);
       if (b.status !== 'CANCELLED') {
         c.visits++;
-        const price = parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0;
+        const booksyDeposit = b.source === 'Booksy' && config.platforms?.booksy?.depositEnabled ? (config.platforms.booksy.depositAmount || 0) : 0;
+        const rawAmount = parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0;
+        const price = b.source === 'Booksy'
+          ? (b.status === 'CHECKED_OUT' ? rawAmount + booksyDeposit : booksyDeposit)
+          : rawAmount;
         const tip = parseFloat(String(b.tip || '0').replace('£', '')) || 0;
         const discount = parseFloat(String(b.discount || '0').replace('£', '').replace('-', '')) || 0;
         c.totalSpent += price;
@@ -195,6 +203,31 @@ export default function Clients() {
       setShowAddForm(false);
     } catch (e) { console.error(e); }
     finally { setAddSaving(false); }
+  };
+
+  const openEditClient = (client) => {
+    setEditingClient(client);
+    setEditForm({ name: client.name, phone: client.phone, email: client.email, birthday: client.birthday || '', notes: client.notes || '' });
+    setShowEditForm(true);
+  };
+
+  const handleEditClient = async () => {
+    if (!editForm.name.trim()) return;
+    setEditSaving(true);
+    try {
+      const data = { name: editForm.name.trim(), phone: editForm.phone.trim(), email: editForm.email.trim(), birthday: editForm.birthday, notes: editForm.notes.trim() };
+      if (editingClient.manualId) {
+        await updateDoc(doc(db, `tenants/${TENANT}/clients`, editingClient.manualId), data);
+        setManualClients(prev => prev.map(m => m.id === editingClient.manualId ? { ...m, ...data } : m));
+      } else {
+        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { ...data, createdAt: serverTimestamp() });
+        setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
+      }
+      setSelectedClient(prev => prev ? { ...prev, ...data } : null);
+      setShowEditForm(false);
+      setEditingClient(null);
+    } catch (e) { console.error(e); }
+    finally { setEditSaving(false); }
   };
 
   const handleDeleteClient = async (client) => {
@@ -386,7 +419,17 @@ export default function Clients() {
             <div style={{ width: '300px', flexShrink: 0, background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.04)', flexShrink: 0 }}>
                 <span style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '600' }}>Client Profile</span>
-                <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button onClick={() => openEditClient(selectedClient)} title="Edit client"
+                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '6px', color: '#d4af37', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                    Edit
+                  </button>
+                  <button onClick={() => handleDeleteClient(selectedClient)} title="Delete client"
+                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+                    Delete
+                  </button>
+                  <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>
+                </div>
               </div>
               <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '12px', border: '1px solid var(--border)' }}>
@@ -531,6 +574,53 @@ export default function Clients() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT CLIENT MODAL ── */}
+      {showEditForm && editingClient && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowEditForm(false); setEditingClient(null); } }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', width: '420px', maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>✦ EDIT CLIENT</span>
+              <button onClick={() => { setShowEditForm(false); setEditingClient(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div>
+                <label style={lbl}>Full Name *</label>
+                <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Client name" style={inp} autoFocus />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={lbl}>Phone</label>
+                  <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} placeholder="+44..." style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Email</label>
+                  <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="email@..." style={inp} />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Birthday</label>
+                <input type="date" value={editForm.birthday} onChange={e => setEditForm(f => ({ ...f, birthday: e.target.value }))} style={{ ...inp, colorScheme: 'dark' }} />
+              </div>
+              <div>
+                <label style={lbl}>Notes</label>
+                <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Preferences, allergies, any notes..." rows={3} style={{ ...inp, resize: 'vertical', lineHeight: '1.5' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+              <button onClick={() => { setShowEditForm(false); setEditingClient(null); }}
+                style={{ padding: '10px 18px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.82rem' }}>
+                Cancel
+              </button>
+              <button onClick={handleEditClient} disabled={editSaving || !editForm.name.trim()}
+                style={{ padding: '10px 22px', background: (editSaving || !editForm.name.trim()) ? 'rgba(212,175,55,0.25)' : 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: (editSaving || !editForm.name.trim()) ? 'var(--muted)' : '#000', fontWeight: '700', fontSize: '0.82rem', cursor: (editSaving || !editForm.name.trim()) ? 'not-allowed' : 'pointer' }}>
+                {editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
