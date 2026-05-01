@@ -112,12 +112,14 @@ export default function Reports() {
       getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
       getDocs(collection(db, 'tenants/whitecross/barbers')),
     ]);
-    const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
     const activeBarbers = fetchedBarbers.length > 0 ? fetchedBarbers : [];
     if (activeBarbers.length > 0) setBarbers(activeBarbers);
 
     const barberNameById = activeBarbers.reduce((acc, b) => {
-      if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+      if (!b?.name) return acc;
+      const keys = [b.docId, b.id].filter(Boolean);
+      keys.forEach((k) => { acc[String(k).toLowerCase()] = b.name; });
       return acc;
     }, {});
 

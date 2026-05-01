@@ -49,11 +49,13 @@ export default function Clients() {
           getDocs(collection(db, `tenants/${TENANT}/clients`)).catch(() => ({ docs: [] })),
         ]);
 
-        const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
         setBarbers(fetchedBarbers);
 
         const barberNameById = fetchedBarbers.reduce((acc, b) => {
-          if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+          if (!b?.name) return acc;
+          const keys = [b.docId, b.id].filter(Boolean);
+          keys.forEach((k) => { acc[String(k).toLowerCase()] = b.name; });
           return acc;
         }, {});
 

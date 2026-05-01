@@ -1446,12 +1446,14 @@ useEffect(() => {
       ]);
 
       const fetchedBarbers = !barbersSnap.empty
-        ? barbersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        ? barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }))
         : (config.barbers || []);
       setBarbers(fetchedBarbers);
 
       const barberNameById = fetchedBarbers.reduce((acc, b) => {
-        if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+        if (!b?.name) return acc;
+        const keys = [b.docId, b.id].filter(Boolean);
+        keys.forEach((k) => { acc[String(k).toLowerCase()] = b.name; });
         return acc;
       }, {});
 
