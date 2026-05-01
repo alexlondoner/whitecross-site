@@ -135,7 +135,6 @@ export default function Services() {
     const toIdx = updated.findIndex(s => s.docId === targetDocId);
     const [moved] = updated.splice(fromIdx, 1);
     updated.splice(toIdx, 0, moved);
-    dragItem.current = targetDocId;
     syncServices(updated);
   };
 
@@ -241,7 +240,7 @@ export default function Services() {
                 <div key={svc.docId}
                   draggable
                   onDragStart={() => handleDragStart(svc.docId, cat)}
-                  onDragEnter={() => handleDragEnter(svc.docId, cat)}
+                  onDragEnter={e => { if (!e.currentTarget.contains(e.relatedTarget)) handleDragEnter(svc.docId, cat); }}
                   onDragEnd={handleDragEnd}
                   onDragOver={e => e.preventDefault()}
                   style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--border)', borderRadius:'10px', cursor:'grab', transition:'background 0.15s' }}
