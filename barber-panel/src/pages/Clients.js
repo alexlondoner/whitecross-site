@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
 
@@ -48,15 +48,25 @@ export default function Clients() {
           getDocs(collection(db, `tenants/${TENANT}/barbers`)),
           getDocs(collection(db, `tenants/${TENANT}/clients`)).catch(() => ({ docs: [] })),
         ]);
+
+        const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setBarbers(fetchedBarbers);
+
+        const barberNameById = fetchedBarbers.reduce((acc, b) => {
+          if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+          return acc;
+        }, {});
+
         const fetchedBookings = bookingsSnap.docs.map(doc => {
           const d = doc.data();
           const startTime = d.startTime?.toDate() || null;
           const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
           const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
-          return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber: d.barberId || '', service: d.serviceId || '', date, time, startTimeRaw: startTime, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
+          const rawBarber = String(d.barberId || '').trim();
+          const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+          return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, startTimeRaw: startTime, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
         });
         setBookings(fetchedBookings);
-        setBarbers(barbersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setManualClients(clientsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -98,11 +108,17 @@ export default function Clients() {
   }, [bookings]);
 
   const allClients = useMemo(() => {
-    const merged = bookingClients.map(c => {
-      const manual = manualClients.find(m => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name.toLowerCase());
-      return { ...c, birthday: manual?.birthday || '', notes: manual?.notes || '', manualId: manual?.id };
-    });
-    manualClients.forEach(m => {
+    const hiddenKeys = new Set(
+      manualClients.filter(m => m.hidden)
+        .flatMap(m => [m.phone, m.email, m.name?.toLowerCase()].filter(Boolean))
+    );
+    const merged = bookingClients
+      .filter(c => !hiddenKeys.has(c.phone) && !hiddenKeys.has(c.email) && !hiddenKeys.has(c.name?.toLowerCase()))
+      .map(c => {
+        const manual = manualClients.find(m => !m.hidden && ((m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name.toLowerCase()));
+        return { ...c, birthday: manual?.birthday || '', notes: manual?.notes || '', manualId: manual?.id };
+      });
+    manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
@@ -177,6 +193,24 @@ export default function Clients() {
       setShowAddForm(false);
     } catch (e) { console.error(e); }
     finally { setAddSaving(false); }
+  };
+
+  const handleDeleteClient = async (client) => {
+    if (!window.confirm(`Delete "${client.name}" from the system? This will hide them from the client list.`)) return;
+    try {
+      if (client.manualId && client.isManualOnly) {
+        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId));
+        setManualClients(prev => prev.filter(m => m.id !== client.manualId));
+      } else if (client.manualId) {
+        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId));
+        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { name: client.name, phone: client.phone, email: client.email, hidden: true, createdAt: serverTimestamp() });
+        setManualClients(prev => [...prev.filter(m => m.id !== client.manualId), { id: ref.id, name: client.name, phone: client.phone, email: client.email, hidden: true }]);
+      } else {
+        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { name: client.name, phone: client.phone, email: client.email, hidden: true, createdAt: serverTimestamp() });
+        setManualClients(prev => [...prev, { id: ref.id, name: client.name, phone: client.phone, email: client.email, hidden: true }]);
+      }
+      setSelectedClient(null);
+    } catch (e) { console.error(e); }
   };
 
   const toggleSort = (col) => {

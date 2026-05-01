@@ -42,6 +42,15 @@ const fetchAll = async () => {
       getDocs(collection(db, 'tenants/whitecross/barbers')),
     ]);
 
+    const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const activeBarbers = fetchedBarbers.length > 0 ? fetchedBarbers : (config.barbers || []);
+    if (activeBarbers.length > 0) setBarbers(activeBarbers);
+
+    const barberNameById = activeBarbers.reduce((acc, b) => {
+      if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+      return acc;
+    }, {});
+
     const fetchedBookings = bookingsSnap.docs.map(doc => {
       const d = doc.data();
       const startTime = d.startTime?.toDate();
@@ -51,12 +60,14 @@ const fetchAll = async () => {
       const time = startTime ? startTime.toLocaleTimeString('en-GB', {
         hour: 'numeric', minute: '2-digit', hour12: true
       }).toUpperCase() : '';
+      const rawBarber = String(d.barberId || '').trim();
+      const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
       return {
         ...d,
         name: d.clientName || 'Walk-in',
         email: d.clientEmail || '',
         phone: d.clientPhone || '',
-        barber: d.barberId || '',
+        barber,
         service: d.serviceId || '',
         date,
         time,
@@ -68,9 +79,6 @@ const fetchAll = async () => {
     });
 
     setBookings(fetchedBookings);
-
-    const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (fetchedBarbers.length > 0) setBarbers(fetchedBarbers);
 
   } catch (err) {
     console.error('fetchAll error:', err);

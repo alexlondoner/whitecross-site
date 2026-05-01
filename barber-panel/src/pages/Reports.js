@@ -112,16 +112,25 @@ export default function Reports() {
       getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
       getDocs(collection(db, 'tenants/whitecross/barbers')),
     ]);
+    const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const activeBarbers = fetchedBarbers.length > 0 ? fetchedBarbers : [];
+    if (activeBarbers.length > 0) setBarbers(activeBarbers);
+
+    const barberNameById = activeBarbers.reduce((acc, b) => {
+      if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+      return acc;
+    }, {});
+
     const fetchedBookings = bookingsSnap.docs.map(doc => {
       const d = doc.data();
       const startTime = d.startTime?.toDate();
       const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
       const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
-      return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber: d.barberId || '', service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
+      const rawBarber = String(d.barberId || '').trim();
+      const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+      return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
     });
     setBookings(fetchedBookings);
-    const fetchedBarbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (fetchedBarbers.length > 0) setBarbers(fetchedBarbers);
   } catch (e) { console.log(e); }
   finally { setLoading(false); }
 };

@@ -1440,10 +1440,21 @@ useEffect(() => {
 
   const fetchAll = async () => {
     try {
-      const bookingsRef = collection(db, 'tenants/whitecross/bookings');
-      const q = query(bookingsRef, orderBy('startTime', 'desc'));
-      const snapshot = await getDocs(q);
-      
+      const [snapshot, barbersSnap] = await Promise.all([
+        getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
+        getDocs(collection(db, 'tenants/whitecross/barbers')),
+      ]);
+
+      const fetchedBarbers = !barbersSnap.empty
+        ? barbersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        : (config.barbers || []);
+      setBarbers(fetchedBarbers);
+
+      const barberNameById = fetchedBarbers.reduce((acc, b) => {
+        if (b?.id && b?.name) acc[String(b.id).toLowerCase()] = b.name;
+        return acc;
+      }, {});
+
       const fetchedBookings = snapshot.docs.map(doc => {
         const d = doc.data();
         const startTime = d.startTime?.toDate();
@@ -1453,12 +1464,14 @@ useEffect(() => {
         const time = startTime ? startTime.toLocaleTimeString('en-GB', {
           hour: 'numeric', minute: '2-digit', hour12: true
         }).toUpperCase() : '';
+        const rawBarber = String(d.barberId || '').trim();
+        const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
         return {
           ...d,
           name: d.clientName || 'Walk-in',
           email: d.clientEmail || '',
           phone: d.clientPhone || '',
-          barber: d.barberId || '',
+          barber,
           service: d.serviceId || '',
           date,
           time,
@@ -1471,15 +1484,6 @@ useEffect(() => {
 
       const normalizedBookings = fetchedBookings.map(b => ({ ...b, name: getBookingName(b) }));
       setBookings(normalizedBookings);
-
-      // Barbers - config'den al şimdilik
-const barbersSnap = await getDocs(collection(db, 'tenants/whitecross/barbers'));
-if (!barbersSnap.empty) {
-  const fetchedBarbers = barbersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  setBarbers(fetchedBarbers);
-} else if (config.barbers && config.barbers.length > 0) {
-  setBarbers(config.barbers);
-}
     } catch (err) {
       console.error('fetchAll error:', err);
     } finally {
