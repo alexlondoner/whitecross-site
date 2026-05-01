@@ -1423,7 +1423,7 @@ export default function Dashboard() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [barberFilter, setBarberFilter] = useState('all');
-  const [barbers, setBarbers] = useState(config.barbers || []);
+  const [barbers, setBarbers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formPreset, setFormPreset] = useState({});
   const [leftPanelWidth, setLeftPanelWidth] = useState(240);
@@ -1445,9 +1445,7 @@ useEffect(() => {
         getDocs(collection(db, 'tenants/whitecross/barbers')),
       ]);
 
-      const fetchedBarbers = !barbersSnap.empty
-        ? barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }))
-        : (config.barbers || []);
+      const fetchedBarbers = barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
       setBarbers(fetchedBarbers);
 
       const barberNameById = fetchedBarbers.reduce((acc, b) => {
@@ -1467,7 +1465,7 @@ useEffect(() => {
           hour: 'numeric', minute: '2-digit', hour12: true
         }).toUpperCase() : '';
         const rawBarber = String(d.barberId || '').trim();
-        const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+        const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
         return {
           ...d,
           name: d.clientName || 'Walk-in',

@@ -65,7 +65,7 @@ export default function Clients() {
           const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
           const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
           const rawBarber = String(d.barberId || '').trim();
-          const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+          const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
           return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, startTimeRaw: startTime, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
         });
         setBookings(fetchedBookings);

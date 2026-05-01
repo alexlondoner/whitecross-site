@@ -113,10 +113,9 @@ export default function Reports() {
       getDocs(collection(db, 'tenants/whitecross/barbers')),
     ]);
     const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
-    const activeBarbers = fetchedBarbers.length > 0 ? fetchedBarbers : [];
-    if (activeBarbers.length > 0) setBarbers(activeBarbers);
+    setBarbers(fetchedBarbers);
 
-    const barberNameById = activeBarbers.reduce((acc, b) => {
+    const barberNameById = fetchedBarbers.reduce((acc, b) => {
       if (!b?.name) return acc;
       const keys = [b.docId, b.id].filter(Boolean);
       keys.forEach((k) => { acc[String(k).toLowerCase()] = b.name; });
@@ -129,7 +128,7 @@ export default function Reports() {
       const date = startTime ? startTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
       const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
       const rawBarber = String(d.barberId || '').trim();
-      const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+      const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
       return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
     });
     setBookings(fetchedBookings);

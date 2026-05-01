@@ -483,6 +483,11 @@ var todayStr = now.getFullYear() + '-' +
 
             var barberVal = document.getElementById('barber').value || 'no-preference';
             var selectedBtn = document.querySelector('.time-slot-btn.selected');
+            var resolvedBarberId = barberVal === 'no-preference'
+                ? (selectedBtn && selectedBtn.dataset.assignedBarber ? selectedBtn.dataset.assignedBarber : 'no-preference')
+                : barberVal;
+            var resolvedBarberObj = ACTIVE_BARBERS.find(function(b) { return b.id === resolvedBarberId; });
+            var resolvedBarberName = resolvedBarberObj ? resolvedBarberObj.name : '';
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
@@ -490,9 +495,8 @@ var todayStr = now.getFullYear() + '-' +
                 date: document.getElementById('date').value,
                 time: selectedTime,
                 service: service,
-                barber: barberVal === 'no-preference'
-                    ? (selectedBtn && selectedBtn.dataset.assignedBarber ? selectedBtn.dataset.assignedBarber : 'no-preference')
-                    : barberVal
+                barber: resolvedBarberId,
+                barberName: resolvedBarberName
             };
 
             var phone = window._pendingFormData.phone;
@@ -849,6 +853,7 @@ var todayStr = now.getFullYear() + '-' +
                 clientEmail: bookingData.email,
                 clientPhone: bookingData.phone,
                 barberId: bookingData.barber,
+                barberName: bookingData.barberName || '',
                 serviceId: bookingData.service,
                 startTime: firebase.Timestamp.fromDate(startTime),
                 endTime: firebase.Timestamp.fromDate(endTime),

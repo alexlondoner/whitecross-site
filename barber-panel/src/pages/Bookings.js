@@ -25,7 +25,7 @@ function parsePrice(p) {
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
-  const [barbers, setBarbers] = useState(config.barbers || []);
+  const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -43,10 +43,9 @@ const fetchAll = async () => {
     ]);
 
     const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
-    const activeBarbers = fetchedBarbers.length > 0 ? fetchedBarbers : (config.barbers || []);
-    if (activeBarbers.length > 0) setBarbers(activeBarbers);
+    setBarbers(fetchedBarbers);
 
-    const barberNameById = activeBarbers.reduce((acc, b) => {
+    const barberNameById = fetchedBarbers.reduce((acc, b) => {
       if (!b?.name) return acc;
       const keys = [b.docId, b.id].filter(Boolean);
       keys.forEach((k) => { acc[String(k).toLowerCase()] = b.name; });
@@ -63,7 +62,7 @@ const fetchAll = async () => {
         hour: 'numeric', minute: '2-digit', hour12: true
       }).toUpperCase() : '';
       const rawBarber = String(d.barberId || '').trim();
-      const barber = barberNameById[rawBarber.toLowerCase()] || rawBarber;
+      const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
       return {
         ...d,
         name: d.clientName || 'Walk-in',
