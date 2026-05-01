@@ -192,15 +192,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    function renderServiceCards() {
-        var _svcs = window.SERVICES || SERVICES;
+    function renderServiceCards(freshSvcs) {
+        var _svcs = freshSvcs || window.SERVICES || SERVICES;
         if (!_svcs.length) return;
         var cats = [
             { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
             { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
             { key: 'Extras',            contentId: 'extras-items',    btnLabel: 'Service Details' }
         ];
-        cats.forEach(function(cat, catIdx) {
+        cats.forEach(function(cat) {
             var content = document.getElementById(cat.contentId);
             if (!content) return;
             var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat.key; });
@@ -216,11 +216,14 @@ document.addEventListener('DOMContentLoaded', async function () {
                     '<button class="details-btn" onclick="selectService(\'' + svc.id + '\')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>' +
                     '</div></div>';
             }).join('');
+            if (content.classList.contains('open')) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+            }
         });
     }
 
-    function renderServiceDropdown() {
-        var _svcs = window.SERVICES || SERVICES;
+    function renderServiceDropdown(freshSvcs) {
+        var _svcs = freshSvcs || window.SERVICES || SERVICES;
         var select = document.getElementById('service');
         if (!select || !_svcs.length) return;
         var current = select.value;
@@ -265,8 +268,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                     .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
                     .filter(function(s) { return s.active !== false; })
                     .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
-                renderServiceCards();
-                renderServiceDropdown();
+                window.SERVICES = SERVICES;
+                renderServiceCards(SERVICES);
+                renderServiceDropdown(SERVICES);
             }, function(err) {
                 console.warn('Realtime service sync failed:', err);
             });

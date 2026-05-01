@@ -539,6 +539,9 @@
                         +'<button class="details-btn" onclick="selectService(\''+s.id+'\')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>'
                         +'</div></div>';
                 }).join('');
+                if (el.classList.contains('open')) {
+                    el.style.maxHeight = el.scrollHeight + 'px';
+                }
             });
 
             /* Render booking dropdown */
