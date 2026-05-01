@@ -67,4 +67,6 @@ const config = {
 ],
 };
 
+export const seedServices = config.services.map(s => Object.assign({}, s));
+
 export default config;

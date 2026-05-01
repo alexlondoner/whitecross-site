@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import config from '../config';
+import config, { seedServices } from '../config';
 import { db } from '../firebase';
 import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
@@ -24,24 +24,26 @@ export default function Services() {
       if (!snap.empty) {
         const svcs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
         // Back-fill descriptions for services that were seeded before description field existed
-        const needsBackfill = svcs.filter(s => !s.description || !s.stripeUrl);
+        const needsBackfill = svcs.filter(s => !s.description || !s.stripeUrl || !s.category);
         if (needsBackfill.length > 0) {
           await Promise.all(needsBackfill.map(s => {
-            const seed = config.services.find(c => c.id === (s.id || s.docId));
+            const seed = seedServices.find(c => c.id === (s.id || s.docId));
             if (!seed) return Promise.resolve();
             const updates = {};
             if (!s.description && seed.description) updates.description = seed.description;
             if (!s.stripeUrl && seed.stripeUrl) updates.stripeUrl = seed.stripeUrl;
             if (s.depositUrl === undefined && seed.depositUrl !== undefined) updates.depositUrl = seed.depositUrl;
+            if (!s.category && seed.category) updates.category = seed.category;
             if (Object.keys(updates).length > 0) return updateDoc(doc(db, `tenants/${TENANT}/services`, s.docId), updates);
             return Promise.resolve();
           }));
           needsBackfill.forEach(s => {
-            const seed = config.services.find(c => c.id === (s.id || s.docId));
+            const seed = seedServices.find(c => c.id === (s.id || s.docId));
             if (seed) {
               if (!s.description && seed.description) s.description = seed.description;
               if (!s.stripeUrl && seed.stripeUrl) s.stripeUrl = seed.stripeUrl;
               if (s.depositUrl === undefined && seed.depositUrl !== undefined) s.depositUrl = seed.depositUrl;
+              if (!s.category && seed.category) s.category = seed.category;
             }
           });
         }
