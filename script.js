@@ -57,6 +57,23 @@ document.addEventListener('click', function (event) {
 
 const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
+var SERVICES = [];
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openServiceStory(serviceId) {
+    var svc = SERVICES.find(function(s) { return s.id === serviceId; });
+    var modal = document.getElementById('infoModal');
+    var title = document.getElementById('modal-title');
+    var desc = document.getElementById('modal-desc');
+    if (modal && svc && svc.description) {
+        title.innerHTML = escapeHtml(svc.name);
+        desc.innerHTML = '<p>' + escapeHtml(svc.description) + '</p>';
+        modal.style.display = 'flex';
+    }
+}
 
 /* --- MAIN INIT --- */
 document.addEventListener('DOMContentLoaded', async function () {
@@ -138,6 +155,101 @@ document.addEventListener('DOMContentLoaded', async function () {
         await fetchActiveBarbers();
         renderBarberButtons();
         bindBarberSelector();
+    }
+
+    async function fetchActiveServices() {
+        try {
+            var db = window._db;
+            var firebase = window._firebase;
+            if (!db || !firebase || typeof firebase.getDocs !== 'function') return;
+            var snap = await firebase.getDocs(firebase.collection(db, 'tenants/' + TENANT + '/services'));
+            SERVICES = snap.docs
+                .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+                .filter(function(s) { return s.active !== false; })
+                .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+        } catch (err) {
+            console.warn('Failed to load services:', err);
+        }
+    }
+
+    function renderServiceCards() {
+        var cats = [
+            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
+            { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
+            { key: 'Extras',            contentId: 'extras-items',    btnLabel: 'Service Details' }
+        ];
+        cats.forEach(function(cat, catIdx) {
+            var content = document.getElementById(cat.contentId);
+            if (!content) return;
+            var catSvcs = SERVICES.filter(function(s) { return (s.category || 'Standard') === cat.key; });
+            content.innerHTML = catSvcs.map(function(svc, idx) {
+                var isHighlight = cat.key === 'Exclusive Bundles' && idx === 0;
+                var detailsBtn = svc.description
+                    ? '<button class="details-btn" onclick="openServiceStory(\'' + svc.id + '\')">' + cat.btnLabel + '</button>'
+                    : '';
+                return '<div class="service-item' + (isHighlight ? ' highlight' : '') + '">' +
+                    '<div class="s-info"><strong>' + escapeHtml(svc.name) + '</strong>' + detailsBtn + '</div>' +
+                    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">' +
+                    '<span class="price">£' + svc.price + '</span>' +
+                    '<button class="details-btn" onclick="selectService(\'' + svc.id + '\')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>' +
+                    '</div></div>';
+            }).join('');
+        });
+    }
+
+    function renderServiceDropdown() {
+        var select = document.getElementById('service');
+        if (!select || !SERVICES.length) return;
+        var current = select.value;
+        select.innerHTML = '<option value="" disabled selected>Select Service</option>';
+        var catOrder = ['Exclusive Bundles', 'Standard', 'Extras'];
+        var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
+        catOrder.forEach(function(cat) {
+            var catSvcs = SERVICES.filter(function(s) { return (s.category || 'Standard') === cat; });
+            if (!catSvcs.length) return;
+            var group = document.createElement('optgroup');
+            group.label = catLabels[cat] || cat;
+            catSvcs.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name + ' – \xa3' + s.price;
+                if (s.id === current) opt.selected = true;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        });
+    }
+
+    async function initServiceSelector() {
+        var attempts = 0;
+        while ((!window._db || !window._firebase) && attempts < 20) {
+            await new Promise(function(r) { setTimeout(r, 100); });
+            attempts++;
+        }
+        await fetchActiveServices();
+        renderServiceCards();
+        renderServiceDropdown();
+    }
+
+    function startServiceRealtimeSync() {
+        try {
+            var db = window._db;
+            var firebase = window._firebase;
+            if (!db || !firebase || typeof firebase.onSnapshot !== 'function') return;
+            var servicesRef = firebase.collection(db, 'tenants/' + TENANT + '/services');
+            firebase.onSnapshot(servicesRef, function(snap) {
+                SERVICES = snap.docs
+                    .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+                    .filter(function(s) { return s.active !== false; })
+                    .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+                renderServiceCards();
+                renderServiceDropdown();
+            }, function(err) {
+                console.warn('Realtime service sync failed:', err);
+            });
+        } catch (err) {
+            console.warn('Realtime service sync failed:', err);
+        }
     }
 
     var SCHEDULE = [
@@ -336,34 +448,11 @@ var todayStr = now.getFullYear() + '-' +
                 return;
             }
 
-            var stripeLinks = {
-                "full-experience": "https://buy.stripe.com/bJe8wRcpH8SZ0Qp7bRg360d",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/4gM14p0GZ0mt6aJbs7g360c",
-                "i-cut-deluxe": "https://buy.stripe.com/5kQ5kFahzfhnaqZgMrg360b",
-                "i-cut-royal": "https://buy.stripe.com/5kQ9AVcpH0mt56F2VBg360a",
-                "skin-fade": "https://buy.stripe.com/bJefZjgFXd9f1UtgMrg3602",
-                "scissor-cut": "https://buy.stripe.com/bJe9AV89rfhn2YxeEjg3609",
-                "classic-sbs": "https://buy.stripe.com/bJe28t0GZb176aJ67Ng360m",
-                "hot-towel-shave": "https://buy.stripe.com/00wfZj89r8SZ1Ut9jZg3605",
-                "clipper-cut": "https://buy.stripe.com/eVqeVffBT3yF42B53Jg3606",
-                "senior-haircut": "https://buy.stripe.com/eVq4gB75nc5b8iR8fVg3607",
-                "young-gents": "https://buy.stripe.com/fZu6oJexPc5b56F3ZFg3604",
-                "young-gents-skin-fade": "https://buy.stripe.com/eVqcN74Xfd9f2Yx67Ng3608",
-                "full-facial": "https://buy.stripe.com/3cI5kFahz4CJ0QpgMrg360n",
-                "beard-dyeing": "https://buy.stripe.com/7sY28tfBT9X356F7bRg360f",
-                "face-mask": "https://buy.stripe.com/4gM7sN3Tb3yF9mV9jZg360g",
-                "face-steam": "https://buy.stripe.com/8x2cN7ahz0mtaqZ1Rxg360h",
-                "threading": "https://buy.stripe.com/aFafZj9dv2uB8iR0Ntg360i",
-                "waxing": "https://buy.stripe.com/bJe4gB89r4CJ7eNfIng360j",
-                "shape-up-clean-up": "https://buy.stripe.com/8x23cxgFXc5b1Ut3ZFg360k",
-                "wash-hot-towel": "https://buy.stripe.com/test_dRmbJ3gFX7OVgPn0Ntg3600"
-            };
-
-            var depositLinks = {
-                "i-cut-royal": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "i-cut-deluxe": "https://buy.stripe.com/dRm8wR75n3yF9mV0Ntg360q",
-                "full-skinfade-beard-luxury": "https://buy.stripe.com/bJe5kFgFX1qxgPn53Jg360p"
-            };
+            var _svcObj = SERVICES.find(function(s) { return s.id === service; });
+            var _stripeUrl = (_svcObj && _svcObj.stripeUrl) ? _svcObj.stripeUrl : '';
+            var _depositUrl = (_svcObj && _svcObj.depositUrl) ? _svcObj.depositUrl : 'https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o';
+            var _isExtra = _svcObj ? _svcObj.category === 'Extras' : false;
+            var _hasDeposit = _depositUrl && !_isExtra;
 
             var barberVal = document.getElementById('barber').value || 'no-preference';
             var selectedBtn = document.querySelector('.time-slot-btn.selected');
@@ -379,7 +468,6 @@ var todayStr = now.getFullYear() + '-' +
                     : barberVal
             };
 
-            var extras = ["full-facial","beard-dyeing","face-mask","face-steam","threading","waxing","shape-up-clean-up","wash-hot-towel"];
             var phone = window._pendingFormData.phone;
             var date = window._pendingFormData.date;
 
@@ -393,17 +481,17 @@ var todayStr = now.getFullYear() + '-' +
             var checkUrl = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
 
             function handlePayment() {
-                if (extras.includes(service)) {
-                    proceedToPayment(stripeLinks[service], 'FULL');
+                if (_isExtra || !_hasDeposit) {
+                    proceedToPayment(_stripeUrl, 'FULL');
                 } else {
                     document.getElementById('paymentChoicePopup').style.display = 'flex';
                     document.getElementById('btnFullPayment').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
-                        proceedToPayment(stripeLinks[service], 'FULL');
+                        proceedToPayment(_stripeUrl, 'FULL');
                     };
                     document.getElementById('btnDeposit').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
-                        proceedToPayment(depositLinks[service] || "https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o", 'DEPOSIT');
+                        proceedToPayment(_depositUrl, 'DEPOSIT');
                     };
                 }
             }
@@ -478,16 +566,8 @@ var todayStr = now.getFullYear() + '-' +
         var serviceEl = document.getElementById('service');
         var service = serviceEl ? serviceEl.value : '';
 
-        var durationMap = {
-            "i-cut-royal": 60, "i-cut-deluxe": 50, "full-skinfade-beard-luxury": 40,
-            "full-experience": 30, "senior-full-experience": 30, "skin-fade": 30,
-            "scissor-cut": 30, "classic-sbs": 20, "hot-towel-shave": 15,
-            "clipper-cut": 15, "senior-haircut": 20, "young-gents": 20,
-            "young-gents-skin-fade": 25, "full-facial": 10, "beard-dyeing": 20,
-            "face-mask": 10, "face-steam": 10, "threading": 5,
-            "waxing": 10, "shape-up-clean-up": 15, "wash-hot-towel": 10
-        };
-        var duration = durationMap[service] || 30;
+        var _svcForDuration = SERVICES.find(function(s) { return s.id === service; });
+        var duration = _svcForDuration ? (parseInt(_svcForDuration.duration) || 30) : 30;
 
         if (!date) {
             if (timeSlotsGrid) timeSlotsGrid.innerHTML = '';
@@ -690,17 +770,9 @@ var todayStr = now.getFullYear() + '-' +
 
         // GA4 Purchase Event
         if (typeof gtag !== 'undefined') {
-            var priceMap = {
-                'i-cut-royal': 65, 'i-cut-deluxe': 55, 'full-skinfade-beard-luxury': 48,
-                'full-experience': 40, 'senior-full-experience': 35, 'skin-fade': 32,
-                'scissor-cut': 30, 'classic-sbs': 28, 'hot-towel-shave': 22,
-                'clipper-cut': 22, 'senior-haircut': 23, 'young-gents': 20,
-                'young-gents-skin-fade': 24, 'full-facial': 24, 'beard-dyeing': 24,
-                'face-mask': 12, 'face-steam': 12, 'threading': 10,
-                'waxing': 10, 'shape-up-clean-up': 20, 'wash-hot-towel': 10
-            };
             var serviceId = bookingData ? bookingData.service : '';
-            var fullPrice = priceMap[serviceId] || 30;
+            var _svcForPrice = SERVICES.find(function(s) { return s.id === serviceId; });
+            var fullPrice = _svcForPrice ? (_svcForPrice.price || 30) : 30;
             var paidValue = bookingData && bookingData.paymentType === 'DEPOSIT' ? 10 : fullPrice;
             gtag('event', 'purchase', {
                 transaction_id: bookingData ? bookingData.bookingId : 'WCB-' + Date.now(),
@@ -766,5 +838,7 @@ var todayStr = now.getFullYear() + '-' +
    setTimeout(function() {
         initBarberSelector();
         startBarberRealtimeSync();
+        initServiceSelector();
+        startServiceRealtimeSync();
     }, 500);
 });
