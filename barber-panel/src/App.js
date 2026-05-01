@@ -9,6 +9,10 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Clients from './pages/Clients';
 import Reports from './pages/Reports';
+import Services from './pages/Services';
+import config from './config';
+import { db } from './firebase';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import './App.css';
 
 function App() {
@@ -17,11 +21,26 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light');
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  // Load services from Firestore and patch config so all components get live data
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'tenants/whitecross/services'), orderBy('order', 'asc')));
+        if (!snap.empty) {
+          config.services = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        }
+      } catch (e) { /* fallback to hardcoded config.services */ }
+      setConfigReady(true);
+    };
+    loadConfig();
+  }, []);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
@@ -29,6 +48,10 @@ function App() {
     setTenantId(tid);
     setIsLoggedIn(true);
   };
+
+  if (!configReady) {
+    return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#0a0a08', color:'#d4af37', fontSize:'0.9rem', letterSpacing:'2px' }}>Loading...</div>;
+  }
 
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
@@ -42,6 +65,7 @@ function App() {
       case 'gallery': return <Gallery tenantId={tenantId} />;
       case 'calendar': return <Calendar tenantId={tenantId} />;
       case 'clients': return <Clients tenantId={tenantId} />;
+      case 'services': return <Services tenantId={tenantId} />;
       case 'reports': return <Reports tenantId={tenantId} />;
       case 'settings': return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} />;
       default: return <Dashboard tenantId={tenantId} />;

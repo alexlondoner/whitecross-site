@@ -7,6 +7,7 @@ const navItems = [
   { id: 'barbers', icon: '✂️', label: 'Barbers' },
   { id: 'gallery', icon: '🖼️', label: 'Gallery' },
   { id: 'clients', icon: '👥', label: 'Clients' },
+  { id: 'services', icon: '💈', label: 'Services' },
   { id: 'reports', icon: '📈', label: 'Reports' },
   { id: 'calendar', icon: '🗓️', label: 'Calendar' },
   { id: 'settings', icon: '⚙️', label: 'Settings' },

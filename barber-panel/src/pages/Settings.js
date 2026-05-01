@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -188,6 +188,7 @@ export default function Settings({ theme, onToggleTheme }) {
       platforms: { ...s.platforms, [platform]: { ...s.platforms[platform], [key]: value } }
     }));
   };
+
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)' }}>⏳ Loading settings...</div>;
