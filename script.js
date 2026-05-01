@@ -57,14 +57,14 @@ document.addEventListener('click', function (event) {
 
 const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
-var SERVICES = window.SERVICES || [];
+window.SERVICES = window.SERVICES || [];
 
 function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function openServiceStory(serviceId) {
-    var svc = SERVICES.find(function(s) { return s.id === serviceId; });
+    var svc = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
     var modal = document.getElementById('infoModal');
     var title = document.getElementById('modal-title');
     var desc = document.getElementById('modal-desc');
@@ -451,7 +451,7 @@ var todayStr = now.getFullYear() + '-' +
                 return;
             }
 
-            var _svcObj = SERVICES.find(function(s) { return s.id === service; });
+            var _svcObj = (window.SERVICES || []).find(function(s) { return s.id === service; });
             var _stripeUrl = (_svcObj && _svcObj.stripeUrl) ? _svcObj.stripeUrl : '';
             var _depositUrl = (_svcObj && _svcObj.depositUrl) ? _svcObj.depositUrl : 'https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o';
             var _isExtra = _svcObj ? _svcObj.category === 'Extras' : false;
@@ -569,7 +569,7 @@ var todayStr = now.getFullYear() + '-' +
         var serviceEl = document.getElementById('service');
         var service = serviceEl ? serviceEl.value : '';
 
-        var _svcForDuration = SERVICES.find(function(s) { return s.id === service; });
+        var _svcForDuration = (window.SERVICES || []).find(function(s) { return s.id === service; });
         var duration = _svcForDuration ? (parseInt(_svcForDuration.duration) || 30) : 30;
 
         if (!date) {
@@ -774,7 +774,7 @@ var todayStr = now.getFullYear() + '-' +
         // GA4 Purchase Event
         if (typeof gtag !== 'undefined') {
             var serviceId = bookingData ? bookingData.service : '';
-            var _svcForPrice = SERVICES.find(function(s) { return s.id === serviceId; });
+            var _svcForPrice = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
             var fullPrice = _svcForPrice ? (_svcForPrice.price || 30) : 30;
             var paidValue = bookingData && bookingData.paymentType === 'DEPOSIT' ? 10 : fullPrice;
             gtag('event', 'purchase', {
