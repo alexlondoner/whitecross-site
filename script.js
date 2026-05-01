@@ -68,15 +68,7 @@ function openServiceStory(serviceId) {
     var title = document.getElementById('modal-title');
     var desc = document.getElementById('modal-desc');
     if (!modal) return;
-    // Try live Firestore data first
-    var svc = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
-    if (svc && svc.description) {
-        title.innerHTML = escapeHtml(svc.name);
-        desc.innerHTML = '<p>' + escapeHtml(svc.description) + '</p>';
-        modal.style.display = 'flex';
-        return;
-    }
-    // Fall back to hardcoded stories
+    // Rich hardcoded stories take priority over short Firestore descriptions
     var storyMap = {
         'i-cut-royal':'royal','i-cut-deluxe':'deluxe','full-skinfade-beard-luxury':'fade_service',
         'full-experience':'experience','senior-full-experience':'senior_full','skin-fade':'skin_fade',
@@ -91,6 +83,14 @@ function openServiceStory(serviceId) {
     if (key && stories[key]) {
         title.innerHTML = stories[key].title;
         desc.innerHTML = stories[key].content;
+        modal.style.display = 'flex';
+        return;
+    }
+    // Fall back to live Firestore description for services without a hardcoded story
+    var svc = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
+    if (svc && svc.description) {
+        title.innerHTML = escapeHtml(svc.name);
+        desc.innerHTML = '<p>' + escapeHtml(svc.description) + '</p>';
         modal.style.display = 'flex';
     }
 }
