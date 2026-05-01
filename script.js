@@ -488,6 +488,13 @@ var todayStr = now.getFullYear() + '-' +
                 : barberVal;
             var resolvedBarberObj = ACTIVE_BARBERS.find(function(b) { return b.id === resolvedBarberId; });
             var resolvedBarberName = resolvedBarberObj ? resolvedBarberObj.name : '';
+            if (!resolvedBarberName && selectedBtn && selectedBtn.dataset.assignedBarberName) {
+                resolvedBarberName = selectedBtn.dataset.assignedBarberName;
+            }
+            if (!resolvedBarberName && barberVal !== 'no-preference') {
+                var selectedBarberNameEl = document.querySelector('.barber-btn.selected .barber-name');
+                if (selectedBarberNameEl) resolvedBarberName = selectedBarberNameEl.textContent.trim();
+            }
             window._pendingFormData = {
                 name: document.getElementById('name').value,
                 email: document.getElementById('email').value,
@@ -721,17 +728,24 @@ var todayStr = now.getFullYear() + '-' +
 
                 var busy = false;
                 var assignedBarber = '';
+                var assignedBarberName = '';
 
                 if (barber === 'no-preference') {
                     var available = scheduledBarbers
                         .map(function(x) { return x.barber; })
                         .filter(function(b) { return isInSchedule(b) && !isBusy(b.id); });
                     busy = available.length === 0;
-                    if (!busy) assignedBarber = available[0].id;
+                    if (!busy) {
+                        assignedBarber = available[0].id;
+                        assignedBarberName = available[0].name || '';
+                    }
                 } else {
                     var foundB = ACTIVE_BARBERS.find(function(b) { return b.id === barber; });
                     busy = !foundB || !isInSchedule(foundB) || isBusy(barber);
-                    if (!busy) assignedBarber = barber;
+                    if (!busy) {
+                        assignedBarber = barber;
+                        assignedBarberName = foundB && foundB.name ? foundB.name : '';
+                    }
                 }
 
                 var btn = document.createElement('button');
@@ -741,6 +755,7 @@ var todayStr = now.getFullYear() + '-' +
                 btn.dataset.time = slot.label;
                 btn.dataset.afterHours = 'false';
                 btn.dataset.assignedBarber = assignedBarber;
+                btn.dataset.assignedBarberName = assignedBarberName;
                 btn.disabled = busy;
 
                 if (!busy) {
@@ -750,6 +765,7 @@ var todayStr = now.getFullYear() + '-' +
                         hiddenTime.value = slot.label;
                         hiddenTime.dataset.afterHours = 'false';
                         hiddenTime.dataset.assignedBarber = assignedBarber;
+                        hiddenTime.dataset.assignedBarberName = assignedBarberName;
                     });
                 }
                 timeSlotsGrid.appendChild(btn);
