@@ -489,8 +489,48 @@
                 .filter(function(s) { return s.active !== false; })
                 .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
             window.SERVICES = svcs;
-            if (typeof renderServiceCards === 'function') renderServiceCards();
-            if (typeof renderServiceDropdown === 'function') renderServiceDropdown();
+
+            /* Render service cards */
+            var cats = [
+                { key: 'Exclusive Bundles', id: 'exclusive-items', btn: 'Journey Details' },
+                { key: 'Standard',          id: 'standard-items',  btn: 'Service Details' },
+                { key: 'Extras',            id: 'extras-items',    btn: 'Service Details' }
+            ];
+            cats.forEach(function(cat) {
+                var el = document.getElementById(cat.id);
+                if (!el) return;
+                var list = svcs.filter(function(s) { return (s.category || 'Standard') === cat.key; });
+                el.innerHTML = list.map(function(s, i) {
+                    var nm = s.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    var detBtn = s.description ? '<button class="details-btn" onclick="openServiceStory(\''+s.id+'\')">'+cat.btn+'</button>' : '';
+                    return '<div class="service-item'+(cat.key==='Exclusive Bundles'&&i===0?' highlight':'')+'">'
+                        +'<div class="s-info"><strong>'+nm+'</strong>'+detBtn+'</div>'
+                        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
+                        +'<span class="price">£'+s.price+'</span>'
+                        +'<button class="details-btn" onclick="selectService(\''+s.id+'\')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button>'
+                        +'</div></div>';
+                }).join('');
+            });
+
+            /* Render booking dropdown */
+            var sel = document.getElementById('service');
+            if (!sel) return;
+            var cur = sel.value;
+            sel.innerHTML = '<option value="" disabled selected>Select Service</option>';
+            [['Exclusive Bundles','Exclusive Bundle Packages'],['Standard','Standard Packages'],['Extras','Extras']].forEach(function(c) {
+                var list = svcs.filter(function(s) { return (s.category || 'Standard') === c[0]; });
+                if (!list.length) return;
+                var grp = document.createElement('optgroup');
+                grp.label = c[1];
+                list.forEach(function(s) {
+                    var o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name + ' – £' + s.price;
+                    if (s.id === cur) o.selected = true;
+                    grp.appendChild(o);
+                });
+                sel.appendChild(grp);
+            });
         },
         function(err) { console.warn('Services sync error:', err); }
     );
