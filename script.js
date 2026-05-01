@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             ACTIVE_BARBERS = snap.docs
                 .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
                 .filter(function(b) { return b && b.active !== false; })
-                .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+                .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
         } catch (err) {
             console.warn('Failed to load barbers:', err);
             ACTIVE_BARBERS = [];
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 ACTIVE_BARBERS = snap.docs
                     .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
                     .filter(function(b) { return b && b.active !== false; })
-                    .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+                    .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
                 renderBarberButtons();
                 bindBarberSelector();
                 var d = document.getElementById('date') && document.getElementById('date').value;
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             SERVICES = snap.docs
                 .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
                 .filter(function(s) { return s.active !== false; })
-                .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+                .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
         } catch (err) {
             console.warn('Failed to load services:', err);
         }
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 SERVICES = snap.docs
                     .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
                     .filter(function(s) { return s.active !== false; })
-                    .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+                    .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
                 window.SERVICES = SERVICES;
                 renderServiceCards(SERVICES);
                 renderServiceDropdown(SERVICES);
