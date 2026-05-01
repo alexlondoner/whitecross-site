@@ -237,7 +237,36 @@
         <input type="date" name="date" required class="input-field" id="date">
 
         <div style="font-size:0.62rem;color:#d4af37;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-left:4px;font-family:Oswald,sans-serif;">Select Service</div>
-        <select id="service" name="service" required class="input-field"><option value="" disabled selected>Select Service</option></select>
+        <select id="service" name="service" required class="input-field">
+            <option value="" disabled selected>Select Service</option>
+            <optgroup label="Exclusive Bundle Packages">
+                <option value="i-cut-royal">I CUT Royal – £65</option>
+                <option value="i-cut-deluxe">I CUT Deluxe – £55</option>
+                <option value="full-skinfade-beard-luxury">Full Skin Fade &amp; Beard Luxury – £48</option>
+                <option value="full-experience">The Full Experience – £40</option>
+                <option value="senior-full-experience">Senior Full Experience (65+) – £35</option>
+            </optgroup>
+            <optgroup label="Standard Packages">
+                <option value="skin-fade">Skin Fade Cut – £32</option>
+                <option value="scissor-cut">Scissor Cut – £30</option>
+                <option value="classic-sbs">Classic Short Back &amp; Sides – £28</option>
+                <option value="hot-towel-shave">Hot Towel Shave – £22</option>
+                <option value="clipper-cut">Clipper Cut – £22</option>
+                <option value="senior-haircut">Senior Haircut (65+) – £23</option>
+                <option value="young-gents">Young Gents (0–12) – £20</option>
+                <option value="young-gents-skin-fade">Young Gents Skin Fade (4–12) – £24</option>
+            </optgroup>
+            <optgroup label="Extras">
+                <option value="full-facial">Full Facial Treatment – £24</option>
+                <option value="beard-dyeing">Beard Dyeing – £24</option>
+                <option value="face-mask">Face Mask – £12</option>
+                <option value="face-steam">Face Steam – £12</option>
+                <option value="threading">Threading – £10</option>
+                <option value="waxing">Waxing (Nose &amp; Ears) – £10</option>
+                <option value="shape-up-clean-up">Shape Up &amp; Clean Up – £20</option>
+                <option value="wash-hot-towel">Wash, Style &amp; Hot Towel – £10</option>
+            </optgroup>
+        </select>
 
         <div class="barber-grid" id="barberGrid"></div>
         <input type="hidden" id="barber" name="barber">

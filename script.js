@@ -64,13 +64,33 @@ function escapeHtml(str) {
 }
 
 function openServiceStory(serviceId) {
-    var svc = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
     var modal = document.getElementById('infoModal');
     var title = document.getElementById('modal-title');
     var desc = document.getElementById('modal-desc');
-    if (modal && svc && svc.description) {
+    if (!modal) return;
+    // Try live Firestore data first
+    var svc = (window.SERVICES || []).find(function(s) { return s.id === serviceId; });
+    if (svc && svc.description) {
         title.innerHTML = escapeHtml(svc.name);
         desc.innerHTML = '<p>' + escapeHtml(svc.description) + '</p>';
+        modal.style.display = 'flex';
+        return;
+    }
+    // Fall back to hardcoded stories
+    var storyMap = {
+        'i-cut-royal':'royal','i-cut-deluxe':'deluxe','full-skinfade-beard-luxury':'fade_service',
+        'full-experience':'experience','senior-full-experience':'senior_full','skin-fade':'skin_fade',
+        'scissor-cut':'scissor','classic-sbs':'short_back','hot-towel-shave':'shave',
+        'clipper-cut':'clipper','senior-haircut':'senior','young-gents':'young',
+        'young-gents-skin-fade':'young_gents_skin_fade','full-facial':'full_facial',
+        'beard-dyeing':'beard_dye','face-mask':'face_mask','face-steam':'face_steam',
+        'threading':'threading','waxing':'waxing','shape-up-clean-up':'shape_up_clean_up',
+        'wash-hot-towel':'wash_style_hot_towel'
+    };
+    var key = storyMap[serviceId];
+    if (key && stories[key]) {
+        title.innerHTML = stories[key].title;
+        desc.innerHTML = stories[key].content;
         modal.style.display = 'flex';
     }
 }
