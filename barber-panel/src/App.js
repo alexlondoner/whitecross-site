@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Clients from './pages/Clients';
 import Reports from './pages/Reports';
 import Services from './pages/Services';
+import Finance from './pages/Finance';
 import config from './config';
 import { db } from './firebase';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
@@ -67,6 +68,7 @@ function App() {
       case 'clients': return <Clients tenantId={tenantId} />;
       case 'services': return <Services tenantId={tenantId} />;
       case 'reports': return <Reports tenantId={tenantId} />;
+      case 'finance': return <Finance tenantId={tenantId} />;
       case 'settings': return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} />;
       default: return <Dashboard tenantId={tenantId} />;
     }

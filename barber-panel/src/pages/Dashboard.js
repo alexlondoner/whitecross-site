@@ -710,6 +710,7 @@ const handleSave = async (goCheckout = false) => {
   setSaving(true);
   const service = config.services ? config.services.find(s => s.id === form.service) : null;
   const price = service ? service.price : 0;
+  const duration = service ? (parseInt(service.duration) || 30) : 30;
   const [yr2, mo2, dy2] = form.date.split('-');
   const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dateStr = parseInt(dy2) + ' ' + months2[parseInt(mo2)-1] + ' ' + yr2;
@@ -725,6 +726,7 @@ const handleSave = async (goCheckout = false) => {
         time: bookingData.time,
         service: bookingData.service,
         barber: bookingData.barber,
+        duration,
       });
     } else {
       const newId = await createWalkIn({
@@ -738,6 +740,7 @@ const handleSave = async (goCheckout = false) => {
         price: bookingData.price,
         paymentType: bookingData.paymentType,
         source: 'Walk-in',
+        duration,
       });
       bookingData.bookingId = newId;
     }
@@ -1047,6 +1050,7 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
     setSaving(true);
     const svc = config.services ? config.services.find(s => s.id === service) : null;
     const price = svc ? svc.price : 0;
+    const duration = svc ? (parseInt(svc.duration) || 30) : 30;
     const bookingData = {
       name: selectedClient ? selectedClient.name : (search.trim() || 'Walk-in'),
       email: selectedClient ? selectedClient.email : email.trim(),
@@ -1056,6 +1060,7 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
       service,
       barber,
       price,
+      duration,
       paymentType: 'CASH',
       status: 'CONFIRMED',
       source: 'Walk-in',

@@ -30,7 +30,7 @@ export async function saveUnpaidBooking({ bookingId }) {
 }
 
 // ── WALK-IN ───────────────────────────────────────────────────────────────
-export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source }) {
+export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source, duration: durationParam }) {
   const bookingId = 'WCB-' + Date.now();
   const months = { January:0, February:1, March:2, April:3, May:4, June:5, July:6, August:7, September:8, October:9, November:10, December:11 };
   const parts = date.split(' ');
@@ -40,14 +40,7 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
   if (ap === 'PM' && h !== 12) h += 12;
   if (ap === 'AM' && h === 12) h = 0;
   const startTime = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]), h, m, 0);
-  const durationMap = {
-    "i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,
-    "senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,
-    "hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,
-    "young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,
-    "face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10
-  };
-  const duration = durationMap[service] || 30;
+  const duration = durationParam || 30;
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
   await addDoc(collection(db, `${TENANT}/bookings`), {
     bookingId,
@@ -100,7 +93,7 @@ export async function blockTime({ date, startTime, endTime, barber, note }) {
 }
 
 // ── EDIT BOOKING ──────────────────────────────────────────────────────────
-export async function editBooking({ bookingId, name, email, phone, date, time, service, barber }) {
+export async function editBooking({ bookingId, name, email, phone, date, time, service, barber, duration: durationParam }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
@@ -112,14 +105,7 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
   if (ap === 'PM' && h !== 12) h += 12;
   if (ap === 'AM' && h === 12) h = 0;
   const startTime = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]), h, m, 0);
-  const durationMap = {
-    "i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,
-    "senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,
-    "hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,
-    "young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,
-    "face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10
-  };
-  const duration = durationMap[service] || 30;
+  const duration = durationParam || 30;
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
   await updateDoc(snap.docs[0].ref, {
     clientName: name,
