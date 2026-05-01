@@ -57,7 +57,7 @@ document.addEventListener('click', function (event) {
 
 const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
-var SERVICES = [];
+var SERVICES = window.SERVICES || [];
 
 function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -173,6 +173,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function renderServiceCards() {
+        var _svcs = window.SERVICES || SERVICES;
+        if (!_svcs.length) return;
         var cats = [
             { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
             { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
@@ -181,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         cats.forEach(function(cat, catIdx) {
             var content = document.getElementById(cat.contentId);
             if (!content) return;
-            var catSvcs = SERVICES.filter(function(s) { return (s.category || 'Standard') === cat.key; });
+            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat.key; });
             content.innerHTML = catSvcs.map(function(svc, idx) {
                 var isHighlight = cat.key === 'Exclusive Bundles' && idx === 0;
                 var detailsBtn = svc.description
@@ -198,14 +200,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function renderServiceDropdown() {
+        var _svcs = window.SERVICES || SERVICES;
         var select = document.getElementById('service');
-        if (!select || !SERVICES.length) return;
+        if (!select || !_svcs.length) return;
         var current = select.value;
         select.innerHTML = '<option value="" disabled selected>Select Service</option>';
         var catOrder = ['Exclusive Bundles', 'Standard', 'Extras'];
         var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
         catOrder.forEach(function(cat) {
-            var catSvcs = SERVICES.filter(function(s) { return (s.category || 'Standard') === cat; });
+            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat; });
             if (!catSvcs.length) return;
             var group = document.createElement('optgroup');
             group.label = catLabels[cat] || cat;

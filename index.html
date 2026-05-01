@@ -479,6 +479,22 @@
         appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
     });
     var db = getFirestore(app);
+
+    /* Services realtime sync */
+    onSnapshot(
+        collection(db, 'tenants/whitecross/services'),
+        function(snap) {
+            var svcs = snap.docs
+                .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+                .filter(function(s) { return s.active !== false; })
+                .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+            window.SERVICES = svcs;
+            if (typeof renderServiceCards === 'function') renderServiceCards();
+            if (typeof renderServiceDropdown === 'function') renderServiceDropdown();
+        },
+        function(err) { console.warn('Services sync error:', err); }
+    );
+
     var track = document.getElementById('carouselTrack');
 
     onSnapshot(
