@@ -126,6 +126,7 @@ export default function Finance() {
   const now = new Date();
   const [activeTab, setActiveTab] = useState('daily');
   const [showEmptyDays, setShowEmptyDays] = useState(false);
+  const [monthMode, setMonthMode] = useState('selected'); // selected | all
   const [selectedMonth, setSelectedMonth] = useState(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   );
@@ -151,7 +152,7 @@ export default function Finance() {
   // Payment form
   const [payForm, setPayForm] = useState({ date: '', barberName: '', amount: '', method: 'Cash', notes: '' });
   const [payLoading, setPayLoading] = useState(false);
-  const [paymentMonthMode, setPaymentMonthMode] = useState('selected');
+  const [paymentMonthMode, setPaymentMonthMode] = useState('all');
   const [paymentBarberFilter, setPaymentBarberFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
 
@@ -168,20 +169,22 @@ export default function Finance() {
     return [y, m - 1];
   }, [selectedMonth]);
 
+  useEffect(() => {
+    if (monthMode !== 'selected') return;
+    const first = new Date(year, month, 1, 12, 0, 0);
+    const last = new Date(year, month + 1, 0, 12, 0, 0);
+    if (selectedDay < first || selectedDay > last) {
+      setSelectedDay(first);
+    }
+  }, [year, month, selectedDay, monthMode]);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const startOfMonth = new Date(year, month, 1, 0, 0, 0);
-      const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
-
       const [bookSnap, barberSnap, expSnap, paySnap, invSnap, advSnap] = await Promise.all([
-        getDocs(query(
-          collection(db, `tenants/${TENANT}/bookings`),
-          where('startTime', '>=', Timestamp.fromDate(startOfMonth)),
-          where('startTime', '<=', Timestamp.fromDate(endOfMonth))
-        )),
+        getDocs(collection(db, `tenants/${TENANT}/bookings`)),
         getDocs(collection(db, `tenants/${TENANT}/barbers`)),
-        getDocs(query(collection(db, `tenants/${TENANT}/finance_expenses`), where('month', '==', selectedMonth))),
+        getDocs(collection(db, `tenants/${TENANT}/finance_expenses`)),
         getDocs(query(collection(db, `tenants/${TENANT}/finance_payments`), orderBy('date', 'desc'))),
         getDocs(collection(db, `tenants/${TENANT}/finance_initial_investments`)),
         getDocs(collection(db, `tenants/${TENANT}/advances`)),
@@ -254,17 +257,25 @@ export default function Finance() {
       console.error('Finance fetchAll error:', err);
     }
     setLoading(false);
-  }, [selectedMonth, year, month]);
+  }, [selectedMonth]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // Compute daily rows
   const dailyData = useMemo(() => {
-    const numDays = daysInMonth(year, month);
-    return Array.from({ length: numDays }, (_, i) => {
-      const day = i + 1;
-      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dayBookings = bookings.filter(b => b.dateKey === dateKey && isWalkInBooking(b));
+    const inScope = (dateKey) => monthMode === 'all' || String(dateKey || '').startsWith(selectedMonth);
+    const scopedBookings = bookings.filter(b => isWalkInBooking(b) && b.dateKey && inScope(b.dateKey));
+    const scopedExpenseKeys = Object.keys(expenses).filter(inScope);
+
+    const dateKeys = monthMode === 'selected'
+      ? Array.from({ length: daysInMonth(year, month) }, (_, i) => `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`)
+      : Array.from(new Set([...scopedBookings.map(b => b.dateKey), ...scopedExpenseKeys])).sort();
+
+    return dateKeys.map((dateKey) => {
+      const parts = String(dateKey).split('-').map(Number);
+      const day = parts[2] || 1;
+      const rowDate = new Date((parts[0] || year), (parts[1] || (month + 1)) - 1, day);
+      const dayBookings = scopedBookings.filter(b => b.dateKey === dateKey);
       const exp = expenses[dateKey] || {};
       const kasaMasraf = parseFloat(exp.kasaMasraf || 0);
       const bankaMasraf = parseFloat(exp.bankaMasraf || 0);
@@ -293,11 +304,11 @@ export default function Finance() {
       const fixedCost = activeBarbersToday.length > 0 ? fixedDailyRate : 0;
       const netKarZarar = netCiro - totalWages - fixedCost;
 
-      const dayOfWeek = new Date(year, month, day).toLocaleDateString('en-GB', { weekday: 'short' });
+      const dayOfWeek = rowDate.toLocaleDateString('en-GB', { weekday: 'short' });
 
       return { day, dateKey, dayOfWeek, barberRevenue, kasaMasraf, bankaMasraf, toplamCiro, netCiro, totalWages, fixedCost, netKarZarar, hasData: toplamCiro > 0, exp };
     });
-  }, [bookings, barbers, expenses, wageRates, fixedDailyRate, year, month]);
+  }, [bookings, barbers, expenses, wageRates, fixedDailyRate, year, month, selectedMonth, monthMode]);
 
   const monthlySummary = useMemo(() => {
     return barbers.map(b => {
@@ -363,7 +374,9 @@ export default function Finance() {
     today.setHours(23, 59, 59, 999);
     return dailyData.filter(d => {
       const date = new Date(year, month, d.day, 12, 0, 0);
-      if (date > today) return false;
+      const fromKey = String(d.dateKey || '').split('-').map(Number);
+      const rowDate = new Date(fromKey[0] || year, (fromKey[1] || (month + 1)) - 1, fromKey[2] || d.day, 12, 0, 0);
+      if (rowDate > today) return false;
       if (!showEmptyDays && !d.hasData) return false;
 
       if (dailyRangeMode === 'day') {
@@ -373,11 +386,15 @@ export default function Finance() {
       if (dailyRangeMode === 'week') {
         const ws = startOfWeek(selectedDay);
         const we = endOfWeek(selectedDay);
-        return date >= ws && date <= we;
+        return rowDate >= ws && rowDate <= we;
+      }
+      if (dailyRangeMode === 'month') {
+        if (monthMode === 'all') return true;
+        return String(d.dateKey || '').startsWith(selectedMonth);
       }
       return true;
     });
-  }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, year, month]);
+  }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, year, month, monthMode, selectedMonth]);
 
   const saveExpense = async (dateKey) => {
     setExpenseSaving(true);
@@ -491,8 +508,13 @@ export default function Finance() {
           <input
             type="month" value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 12px' }}
+            style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 12px', opacity: monthMode === 'all' ? 0.6 : 1 }}
+            disabled={monthMode === 'all'}
           />
+          <select value={monthMode} onChange={e => setMonthMode(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '7px 10px' }}>
+            <option value="selected">Seçili Ay</option>
+            <option value="all">Tüm Aylar</option>
+          </select>
           <button onClick={() => setShowSettings(s => !s)}
             style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
             ⚙ Ayarlar
@@ -578,6 +600,7 @@ export default function Finance() {
                 if (!e.target.value) return;
                 const d = new Date(e.target.value + 'T12:00:00');
                 setSelectedDay(d);
+                if (monthMode === 'selected') setSelectedMonth(monthKey(d));
               }}
               style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 10px' }}
             />
