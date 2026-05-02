@@ -44,7 +44,7 @@ export default function Settings({ theme, onToggleTheme }) {
 
   const fetchSettings = async function() {
     try {
-      const snap = await getDoc(doc(db, `tenants/${TENANT}/settings`));
+      const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
       if (snap.exists()) {
         const data = snap.data();
         setSettings({ ...defaultSettings, ...data, platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) } });
@@ -141,7 +141,7 @@ export default function Settings({ theme, onToggleTheme }) {
     setSettings(newSettings);
 
     // Firestore'a kaydet
-    await setDoc(doc(db, `tenants/${TENANT}/settings`), newSettings);
+    await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), newSettings);
     // Tüm barber'ları güncelle
     await updateAllBarbersDay(day, newHours);
 
@@ -149,26 +149,25 @@ export default function Settings({ theme, onToggleTheme }) {
     setError('');
   };
 
-  const handleTimeChange = async function(day, key, value) {
-    if (!window.confirm(`Change ${day} ${key === 'open' ? 'opening' : 'closing'} time to ${value} for all barbers?`)) return;
-
+  const handleTimeChange = function(day, key, value) {
     const newHours = { ...settings.hours[day], [key]: value };
-    const newSettings = {
-      ...settings,
-      hours: { ...settings.hours, [day]: newHours }
-    };
-    setSettings(newSettings);
-
-    await setDoc(doc(db, `tenants/${TENANT}/settings`), newSettings);
-    await updateAllBarbersDay(day, newHours);
-    setGoogleReminder(true);
+    setSettings(s => ({
+      ...s,
+      hours: { ...s.hours, [day]: newHours }
+    }));
   };
 
   const handleSave = async function() {
     setSaving(true);
     setError('');
     try {
-      await setDoc(doc(db, `tenants/${TENANT}/settings`), settings);
+      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), settings);
+      // Propagate all hours to every barber
+      if (settings.hours) {
+        await Promise.all(
+          Object.entries(settings.hours).map(([day, hours]) => updateAllBarbersDay(day, hours))
+        );
+      }
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 3000);
     } catch (err) {

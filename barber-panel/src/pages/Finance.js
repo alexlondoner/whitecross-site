@@ -121,12 +121,12 @@ function fmt(n, sign = false) {
 
 function fmtSigned(n) {
   if (!Number.isFinite(n)) return '–';
-  return (n >= 0 ? '+' : '') + '£' + Math.round(Math.abs(n));
+  return (n >= 0 ? '+£' : '-£') + Math.round(Math.abs(n));
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const inp = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(212,175,55,0.25)',
+  background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.25)',
   borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '0.82rem',
   width: '100%', boxSizing: 'border-box', outline: 'none',
 };
@@ -142,7 +142,7 @@ const thS = {
 function tdS(hi) {
   return {
     padding: '6px 10px', fontSize: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    borderBottom: '1px solid var(--border)',
     color: hi === 'green' ? '#4caf50' : hi === 'red' ? '#ff5252' : 'var(--text)',
     fontWeight: hi ? '700' : '400',
   };
@@ -568,8 +568,8 @@ export default function Finance() {
   // ── Tab button style ──────────────────────────────────────────────────────
   const tabBtn = id => ({
     padding: '8px 18px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '700',
-    letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-    background: activeTab === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'rgba(255,255,255,0.05)',
+    letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer', border: '1px solid var(--border)',
+    background: activeTab === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'var(--card)',
     color: activeTab === id ? '#000' : 'var(--muted)', transition: 'all 0.2s',
   });
 
@@ -577,7 +577,7 @@ export default function Finance() {
     <button key={id} onClick={() => setSummaryView(id)} style={{
       padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       fontSize: '0.7rem', fontWeight: '700', letterSpacing: '1px',
-      background: cur === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'rgba(255,255,255,0.05)',
+      background: cur === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'var(--card)',
       color: cur === id ? '#000' : 'var(--muted)',
     }}>{label}</button>
   );
@@ -606,7 +606,7 @@ export default function Finance() {
             <option value="all">All Months</option>
           </select>
           <button onClick={openSettings}
-            style={{ padding: '8px 14px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
+            style={{ padding: '8px 14px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
             ⚙ Settings
           </button>
         </div>
@@ -627,7 +627,7 @@ export default function Finance() {
               </thead>
               <tbody>
                 {Object.entries(settingsDraft.partnerConfig).map(([name, cfg]) => (
-                  <tr key={name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '6px 12px', color: BARBER_COLORS[name] || '#d4af37', fontWeight: '700', fontSize: '0.82rem' }}>{name}</td>
                     <td style={{ padding: '6px 12px' }}>
                       <input type="number" value={cfg.share} min="0" max="100"
@@ -661,7 +661,7 @@ export default function Finance() {
               Save
             </button>
             <button onClick={() => setShowSettings(false)}
-              style={{ padding: '9px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--muted)', fontSize: '0.78rem', cursor: 'pointer', marginTop: '18px' }}>
+              style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', fontSize: '0.78rem', cursor: 'pointer', marginTop: '18px' }}>
               Cancel
             </button>
           </div>
@@ -694,7 +694,7 @@ export default function Finance() {
         <button style={tabBtn('overview')} onClick={() => setActiveTab('overview')}>Overview</button>
         {activeTab === 'daily' && (
           <button onClick={() => setShowEmptyDays(v => !v)}
-            style={{ ...tabBtn('empty'), background: 'rgba(255,255,255,0.03)', color: showEmptyDays ? '#d4af37' : 'var(--muted)', border: `1px solid ${showEmptyDays ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
+            style={{ ...tabBtn('empty'), background: 'var(--card2)', color: showEmptyDays ? '#d4af37' : 'var(--muted)', border: `1px solid ${showEmptyDays ? 'rgba(212,175,55,0.35)' : 'var(--border)'}` }}>
             {showEmptyDays ? 'Empty Days: On' : 'Empty Days: Off'}
           </button>
         )}
@@ -750,7 +750,7 @@ export default function Finance() {
                   <th style={{ ...thS, textAlign: 'left', minWidth: '150px' }}>Notes</th>
                   <th style={{ ...thS, color: '#d4af37' }}>Gross</th>
                   <th style={{ ...thS, color: '#9c27b0' }}>Net Rev.</th>
-                  <th style={{ ...thS, color: 'rgba(255,255,255,0.35)' }}>Wages</th>
+                  <th style={{ ...thS, color: 'var(--muted)' }}>Wages</th>
                   <th style={{ ...thS, color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' }}>Net P&L</th>
                 </tr>
               </thead>
@@ -769,12 +769,12 @@ export default function Finance() {
                         const cardTotal = rev.card + rev.monzo;
                         return (
                           <React.Fragment key={b.name}>
-                            <td style={{ ...tdS(), color: rev.cash > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)' }}>
+                            <td style={{ ...tdS(), color: rev.cash > 0 ? 'var(--text)' : 'var(--muted)' }}>
                               {rev.cash > 0 ? '£' + Math.round(rev.cash) : '–'}
                             </td>
-                            <td style={{ ...tdS(), color: cardTotal > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>
+                            <td style={{ ...tdS(), color: cardTotal > 0 ? 'var(--text)' : 'var(--muted)', fontSize: '0.72rem' }}>
                               {cardTotal > 0 ? '£' + Math.round(cardTotal) : '–'}
-                              {rev.monzo > 0 && rev.card > 0 && <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', marginLeft: '2px' }}>m</span>}
+                              {rev.monzo > 0 && rev.card > 0 && <span style={{ fontSize: '0.55rem', color: 'var(--muted)', marginLeft: '2px' }}>m</span>}
                             </td>
                           </React.Fragment>
                         );
@@ -788,7 +788,7 @@ export default function Finance() {
                               onChange={e => setExpenseDraft(d => ({ ...d, cashExpense: e.target.value }))}
                               style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }}
                               autoFocus onClick={e => e.stopPropagation()} />
-                          : row.cashExpense > 0 ? '£' + Math.round(row.cashExpense) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
+                          : row.cashExpense > 0 ? '£' + Math.round(row.cashExpense) : <span style={{ color: 'var(--muted)', fontSize: '0.65rem' }}>+</span>
                         }
                       </td>
 
@@ -810,18 +810,18 @@ export default function Finance() {
                                 {expenseSaving ? '...' : '✓ Save'}
                               </button>
                               <button onClick={e => { e.stopPropagation(); setEditingExpense(null); }}
-                                style={{ padding: '4px 6px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'var(--muted)', fontSize: '0.65rem', cursor: 'pointer' }}>✕</button>
+                                style={{ padding: '4px 6px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--muted)', fontSize: '0.65rem', cursor: 'pointer' }}>✕</button>
                             </div>
-                          : row.bankExpense > 0 ? '£' + Math.round(row.bankExpense) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
+                          : row.bankExpense > 0 ? '£' + Math.round(row.bankExpense) : <span style={{ color: 'var(--muted)', fontSize: '0.65rem' }}>+</span>
                         }
                       </td>
 
-                      <td style={{ ...tdS(), textAlign: 'left', color: row.expenseNotes ? 'var(--muted)' : 'rgba(255,255,255,0.12)', fontSize: '0.7rem' }}>
+                      <td style={{ ...tdS(), textAlign: 'left', color: row.expenseNotes ? 'var(--text)' : 'var(--muted)', fontSize: '0.7rem' }}>
                         {row.expenseNotes || '–'}
                       </td>
                       <td style={tdS()}>{row.grossRevenue > 0 ? '£' + Math.round(row.grossRevenue) : '–'}</td>
                       <td style={{ ...tdS(), color: '#9c27b0', fontWeight: row.netRevenue > 0 ? '700' : '400' }}>{row.netRevenue > 0 ? '£' + Math.round(row.netRevenue) : '–'}</td>
-                      <td style={{ ...tdS(), color: 'rgba(255,255,255,0.3)', fontSize: '0.68rem' }}>{row.totalWages > 0 ? '£' + Math.round(row.totalWages) : '–'}</td>
+                      <td style={{ ...tdS(), color: 'var(--muted)', fontSize: '0.68rem' }}>{row.totalWages > 0 ? '£' + Math.round(row.totalWages) : '–'}</td>
                       <td style={tdS(row.hasData ? (row.netPL >= 0 ? 'green' : 'red') : null)}>
                         {row.hasData ? (row.netPL >= 0 ? '+' : '') + '£' + Math.round(row.netPL) : '–'}
                       </td>
@@ -846,10 +846,10 @@ export default function Finance() {
                   })}
                   <td style={{ ...tdS(), fontWeight: '700', color: '#ff7043' }}>{fmt(visibleDailyRows.reduce((s, d) => s + d.cashExpense, 0))}</td>
                   <td style={{ ...tdS(), fontWeight: '700', color: '#ff7043' }}>{fmt(visibleDailyRows.reduce((s, d) => s + d.bankExpense, 0))}</td>
-                  <td style={{ ...tdS(), textAlign: 'left', color: 'rgba(255,255,255,0.3)' }}>–</td>
+                  <td style={{ ...tdS(), textAlign: 'left', color: 'var(--muted)' }}>–</td>
                   <td style={{ ...tdS(), fontWeight: '800', color: '#d4af37' }}>£{Math.round(visibleDailyRows.reduce((s, d) => s + d.grossRevenue, 0))}</td>
                   <td style={{ ...tdS(), fontWeight: '800', color: '#9c27b0' }}>£{Math.round(visibleDailyRows.reduce((s, d) => s + d.netRevenue, 0))}</td>
-                  <td style={{ ...tdS(), color: 'rgba(255,255,255,0.35)' }}>–</td>
+                  <td style={{ ...tdS(), color: 'var(--muted)' }}>–</td>
                   <td style={{ ...tdS(visibleDailyRows.reduce((s, d) => s + d.netPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
                     {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.netPL, 0); return (t >= 0 ? '+' : '') + '£' + Math.round(t); })()}
                   </td>
@@ -872,7 +872,7 @@ export default function Finance() {
             <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
               PAYMENTS & ADVANCES
             </div>
-            <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
               <select value={paymentMonthMode} onChange={e => setPaymentMonthMode(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '6px 10px' }}>
                 <option value="selected">This Month</option>
                 <option value="all">All Time</option>
@@ -897,12 +897,12 @@ export default function Finance() {
                       const barber = barbers.find(b => normalizeName(b.name) === normalizeName(p.barberName));
                       const bColor = barber?.color || BARBER_COLORS[p.barberName] || '#d4af37';
                       return (
-                        <tr key={p.id + p.sourceType} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <tr key={p.id + p.sourceType} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{p.__date.toLocaleDateString('en-GB')}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: bColor, fontWeight: '600' }}>{p.barberName}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#ff7043' }}>£{Math.round(parseFloat(p.amount || 0))}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.method}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>{p.sourceType === 'advances' ? 'imported' : 'manual'}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.65rem', color: 'var(--muted)' }}>{p.sourceType === 'advances' ? 'imported' : 'manual'}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.notes || '–'}</td>
                           <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                             <button onClick={() => deletePayment(p)}
@@ -975,7 +975,7 @@ export default function Finance() {
                     { label: 'Fixed Cost',       value: '£' + Math.round(selectedMonthPartnership.fixedCostTotal), color: '#78909c' },
                     { label: 'Company Net P&L',  value: (selectedMonthPartnership.companyNetPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.companyNetPL), color: selectedMonthPartnership.companyNetPL >= 0 ? '#4caf50' : '#ff5252' },
                   ].map(c => (
-                    <div key={c.label} style={{ ...card, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div key={c.label} style={{ ...card, padding: '12px 14px', border: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.57rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '5px' }}>{c.label}</div>
                       <div style={{ fontSize: '1.1rem', fontWeight: '800', color: c.color }}>{c.value}</div>
                     </div>
@@ -997,7 +997,7 @@ export default function Finance() {
                           <tr style={{ background: 'rgba(212,175,55,0.06)' }}>
                             <th style={{ ...thS, textAlign: 'left' }}>Partner</th>
                             <th style={thS}>Share</th>
-                            <th style={{ ...thS, color: 'rgba(255,255,255,0.5)' }}>Days</th>
+                            <th style={{ ...thS, color: 'var(--muted)' }}>Days</th>
                             <th style={{ ...thS, color: '#4caf50' }}>Wages Earned</th>
                             <th style={{ ...thS, color: '#ff7043' }}>Advances</th>
                             <th style={{ ...thS, color: '#2196f3' }}>EL EMEĞİ<br/><span style={{ fontSize: '0.5rem', letterSpacing: '0' }}>Wages – Advances</span></th>
@@ -1011,7 +1011,7 @@ export default function Finance() {
                             if (!p) return null;
                             const col = BARBER_COLORS[name] || '#d4af37';
                             return (
-                              <tr key={name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700', color: col }}>{name}</td>
                                 <td style={{ ...tdS(), fontSize: '0.7rem', color: 'var(--muted)' }}>{p.share}%</td>
                                 <td style={tdS()}>{p.workedDays || '–'}</td>
@@ -1031,7 +1031,7 @@ export default function Finance() {
 
               {/* Employee wages note */}
               {selectedMonthPartnership && (
-                <div style={{ ...card, padding: '12px 16px', border: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: 'var(--muted)' }}>
+                <div style={{ ...card, padding: '12px 16px', border: '1px solid var(--border)', fontSize: '0.68rem', color: 'var(--muted)' }}>
                   <span style={{ color: '#b39ddb', fontWeight: '700' }}>Tuncay</span> earns wages via employees:{' '}
                   {Object.entries(partnerConfig).filter(([, c]) => c.creditTo === 'Tuncay').map(([n, c]) => `${n} (£${c.wage}/day)`).join(', ')}.
                   Company Net P&L = Net Revenue – All Wages – Fixed Cost (£{fixedDailyRate}×{selectedMonthPartnership.shopDays} days).
@@ -1069,7 +1069,7 @@ export default function Finance() {
                         const wages = workedDays * (partnerConfig[b.name]?.wage ?? 100);
                         const col   = b.color || BARBER_COLORS[b.name];
                         return (
-                          <tr key={b.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <tr key={b.name} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700', color: col }}>{b.name}</td>
                             <td style={tdS()}>{workedDays || '–'}</td>
                             <td style={tdS()}>{cash > 0 ? fmt(cash) : '–'}</td>
@@ -1101,7 +1101,7 @@ export default function Finance() {
                         { label: '  Fixed Cost',      value: -monthlyTotals.fixedCost,   color: '#78909c' },
                         { label: 'Net P&L',           value: monthlyTotals.netPL,        color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252', bold: true, border: true },
                       ].map(r => (
-                        <tr key={r.label} style={{ borderBottom: r.border ? '2px solid rgba(212,175,55,0.25)' : '1px solid rgba(255,255,255,0.03)', background: r.bold ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
+                        <tr key={r.label} style={{ borderBottom: r.border ? '2px solid rgba(212,175,55,0.25)' : '1px solid var(--border)', background: r.bold ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
                           <td style={{ padding: '10px 16px', fontSize: r.bold ? '0.8rem' : '0.75rem', fontWeight: r.bold ? '700' : '400', color: 'var(--text)', minWidth: '200px' }}>{r.label}</td>
                           <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: r.bold ? '800' : '500', color: r.color, fontSize: r.bold ? '0.88rem' : '0.78rem' }}>
                             {r.value < 0 ? '–£' + Math.round(Math.abs(r.value)) : '£' + Math.round(r.value)}
@@ -1146,7 +1146,7 @@ export default function Finance() {
                     </thead>
                     <tbody>
                       {partnershipByMonth.map(row => (
-                        <tr key={row.mk} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: row.mk === selectedMonth ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
+                        <tr key={row.mk} style={{ borderBottom: '1px solid var(--border)', background: row.mk === selectedMonth ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
                           <td style={{ ...tdS(), textAlign: 'left', fontWeight: row.mk === selectedMonth ? '700' : '400', color: row.mk === selectedMonth ? '#d4af37' : 'var(--text)', fontSize: '0.78rem' }}>
                             {row.label}
                           </td>
@@ -1219,7 +1219,7 @@ export default function Finance() {
                     const required = INITIAL_TOTAL * (r.share / 100);
                     const balance  = r.paid - required;
                     return (
-                      <tr key={r.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: BARBER_COLORS[r.name] || '#b39ddb' }}>{r.name}</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>{r.share}%</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>£{r.paid.toLocaleString()}</td>
@@ -1234,7 +1234,7 @@ export default function Finance() {
                     <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.78rem' }}>TOTAL</td>
                     <td style={{ padding: '10px 16px', fontWeight: '700', color: '#b39ddb', fontSize: '0.78rem' }}>100%</td>
                     <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.88rem' }}>£{INITIAL_TOTAL.toLocaleString()}</td>
-                    <td colSpan={2} style={{ padding: '10px 16px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>
+                    <td colSpan={2} style={{ padding: '10px 16px', fontSize: '0.7rem', color: 'var(--muted)' }}>
                       * Required = Total Pool × Share%
                     </td>
                   </tr>
