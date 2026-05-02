@@ -1,4 +1,7 @@
 {
+  "firestore": {
+    "rules": "barber-panel/firestore.rules"
+  },
   "storage": {
     "rules": "storage.rules"
   },

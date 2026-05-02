@@ -7,6 +7,26 @@ import {
 
 const TENANT = 'whitecross';
 
+// ── Partner / employee config ────────────────────────────────────────────────
+// Stored in localStorage so admin can adjust if needed
+const PARTNER_CONFIG_DEFAULT = {
+  Alex:   { share: 50, wage: 100, isPartner: true,  creditTo: null    },
+  Arda:   { share: 25, wage: 100, isPartner: true,  creditTo: null    },
+  Tuncay: { share: 25, wage: 0,   isPartner: true,  creditTo: null    },
+  Kadim:  { share: 0,  wage: 100, isPartner: false, creditTo: 'Tuncay' },
+  Manoj:  { share: 0,  wage: 50,  isPartner: false, creditTo: 'Tuncay' },
+};
+
+const INITIAL_INVESTMENT = [
+  { name: 'Alex',   share: 50, paid: 17743 },
+  { name: 'Arda',   share: 25, paid: 5500  },
+  { name: 'Tuncay', share: 25, paid: 2700  },
+];
+const INITIAL_TOTAL = INITIAL_INVESTMENT.reduce((s, r) => s + r.paid, 0);
+
+const FIXED_DAILY_COST_DEFAULT = 100; // £/day
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function parsePrice(val) {
   return parseFloat(String(val || '0').replace(/[£,]/g, '').replace('-', '').trim()) || 0;
 }
@@ -21,17 +41,17 @@ function effectiveRevenue(b) {
   return parsePrice(b.paidAmount);
 }
 
-function isCash(b) {
-  const m = (b.paymentMethod || '').toLowerCase();
-  if (m === 'cash') return true;
-  if (m && m !== '') return false;
-  return (b.paymentType || '').toUpperCase() === 'CASH';
+function paymentMethod(b) {
+  const m = String(b.paymentMethod || b.paymentType || '').toLowerCase();
+  if (m === 'cash') return 'CASH';
+  if (m === 'monzo') return 'MONZO';
+  return 'CARD';
 }
 
 function isWalkInBooking(b) {
-  const source = String(b.source || '').trim().toLowerCase();
-  if (source === 'walk_in' || source === 'walk-in' || source === 'walkin' || source === 'historical') return true;
-  if (source === '' && String(b.clientName || '').trim().toLowerCase() === 'walk-in') return true;
+  const src = String(b.source || '').trim().toLowerCase();
+  if (src === 'walk_in' || src === 'walk-in' || src === 'walkin' || src === 'historical') return true;
+  if (src === '' && String(b.clientName || '').trim().toLowerCase() === 'walk-in') return true;
   return false;
 }
 
@@ -46,18 +66,14 @@ function paymentToDate(v) {
     return Number.isNaN(d.getTime()) ? null : d;
   }
   if (v?.seconds && Number.isFinite(v.seconds)) {
-    const d = new Date(v.seconds * 1000);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return new Date(v.seconds * 1000);
   }
   if (typeof v === 'string') {
     const s = v.trim();
     const d1 = new Date(s);
     if (!Number.isNaN(d1.getTime())) return d1;
     const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    if (m) {
-      const d2 = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12, 0, 0);
-      return Number.isNaN(d2.getTime()) ? null : d2;
-    }
+    if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12, 0, 0);
   }
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -68,11 +84,22 @@ function monthKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function toDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function toInputDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
 function startOfWeek(d) {
   const x = new Date(d);
   const day = x.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
+  x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
   x.setHours(0, 0, 0, 0);
   return x;
 }
@@ -85,49 +112,57 @@ function endOfWeek(d) {
   return e;
 }
 
-function toInputDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function fmt(n, sign = false) {
+  if (!n && n !== 0) return '–';
+  const v = parseFloat(n);
+  if (!Number.isFinite(v) || v === 0) return '–';
+  return (sign && v > 0 ? '+' : '') + '£' + Math.round(v);
 }
 
-function resolveCanonicalBarberName(rawName, canonicalByName) {
-  const n = normalizeName(rawName);
-  if (!n) return '';
-  if (canonicalByName[n]) return canonicalByName[n];
-  if (n.includes('alex') && canonicalByName.alex) return canonicalByName.alex;
-  if (n.includes('arda') && canonicalByName.arda) return canonicalByName.arda;
-  if (n.includes('kadim') && canonicalByName.kadim) return canonicalByName.kadim;
-  if (n.includes('manoj') && canonicalByName.manoj) return canonicalByName.manoj;
-  return rawName;
+function fmtSigned(n) {
+  if (!Number.isFinite(n)) return '–';
+  return (n >= 0 ? '+' : '') + '£' + Math.round(Math.abs(n));
 }
 
-function toDateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function daysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function fmt(n) {
-  if (!n) return '–';
-  return '£' + parseFloat(n).toFixed(0);
-}
-
+// ── Styles ───────────────────────────────────────────────────────────────────
 const inp = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(212,175,55,0.25)',
   borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '0.82rem',
   width: '100%', boxSizing: 'border-box', outline: 'none',
 };
-const lbl = { fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '5px', display: 'block' };
+const lbl = {
+  fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px',
+  textTransform: 'uppercase', fontWeight: '600', marginBottom: '5px', display: 'block',
+};
+const thS = {
+  padding: '8px 10px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px',
+  textTransform: 'uppercase', fontWeight: '700', textAlign: 'right', whiteSpace: 'nowrap',
+  borderBottom: '1px solid rgba(212,175,55,0.15)',
+};
+function tdS(hi) {
+  return {
+    padding: '6px 10px', fontSize: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap',
+    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    color: hi === 'green' ? '#4caf50' : hi === 'red' ? '#ff5252' : 'var(--text)',
+    fontWeight: hi ? '700' : '400',
+  };
+}
+const card = { background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '16px' };
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DEFAULT_FINANCE_BARBERS = [
-  { name: 'Alex',  color: '#4caf50', order: 1 },
-  { name: 'Arda',  color: '#2196f3', order: 2 },
-  { name: 'Kadim', color: '#ff9800', order: 3 },
-  { name: 'Manoj', color: '#e91e63', order: 4 },
-];
+const BARBER_COLORS = { Alex: '#4caf50', Arda: '#2196f3', Kadim: '#ff9800', Manoj: '#e91e63', Tuncay: '#b39ddb' };
 
+const resolveBarberName = (rawName, canonMap) => {
+  const n = normalizeName(rawName);
+  if (!n) return '';
+  if (canonMap[n]) return canonMap[n];
+  for (const [k, v] of Object.entries(canonMap)) {
+    if (n.includes(k)) return v;
+  }
+  return rawName;
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
 export default function Finance() {
   const now = new Date();
   const [activeTab, setActiveTab] = useState('daily');
@@ -140,29 +175,25 @@ export default function Finance() {
   const [barbers, setBarbers] = useState([]);
   const [expenses, setExpenses] = useState({});
   const [payments, setPayments] = useState([]);
-  const [initialInvestments, setInitialInvestments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [summaryView, setSummaryView] = useState('live');
   const [dailyRangeMode, setDailyRangeMode] = useState('month');
   const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const [summaryView, setSummaryView] = useState('partnership');
 
-  const [wageRates, setWageRates] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('financeWageRates') || '{}'); } catch { return {}; }
+  const [partnerConfig, setPartnerConfig] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('partnerConfig') || 'null') || PARTNER_CONFIG_DEFAULT; }
+    catch { return PARTNER_CONFIG_DEFAULT; }
   });
   const [fixedDailyRate, setFixedDailyRate] = useState(() =>
-    parseFloat(localStorage.getItem('financeFixedRate') || '100')
+    parseFloat(localStorage.getItem('financeFixedRate') || String(FIXED_DAILY_COST_DEFAULT))
   );
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState(null);
 
   const [payForm, setPayForm] = useState({ date: '', barberName: '', amount: '', method: 'Cash', notes: '' });
   const [payLoading, setPayLoading] = useState(false);
   const [paymentMonthMode, setPaymentMonthMode] = useState('all');
   const [paymentBarberFilter, setPaymentBarberFilter] = useState('all');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
-
-  const [investmentForm, setInvestmentForm] = useState({ date: '', amount: '', method: 'Cash', notes: '' });
-  const [investmentSaving, setInvestmentSaving] = useState(false);
-
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseDraft, setExpenseDraft] = useState({ cashExpense: '', bankExpense: '', notes: '' });
   const [expenseSaving, setExpenseSaving] = useState(false);
@@ -179,40 +210,36 @@ export default function Finance() {
     if (selectedDay < first || selectedDay > last) setSelectedDay(first);
   }, [year, month, selectedDay, monthMode]);
 
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [bookSnap, barberSnap, expSnap, paySnap, invSnap, advSnap, legacyExpSnap] = await Promise.all([
+      const [bookSnap, barberSnap, expSnap, paySnap, advSnap, legacyExpSnap] = await Promise.all([
         getDocs(collection(db, `tenants/${TENANT}/bookings`)),
         getDocs(collection(db, `tenants/${TENANT}/barbers`)),
         getDocs(collection(db, `tenants/${TENANT}/finance_expenses`)),
         getDocs(query(collection(db, `tenants/${TENANT}/finance_payments`), orderBy('date', 'desc'))),
-        getDocs(collection(db, `tenants/${TENANT}/finance_initial_investments`)),
         getDocs(collection(db, `tenants/${TENANT}/advances`)),
         getDocs(collection(db, `tenants/${TENANT}/expenses`)),
       ]);
 
       // Barbers
-      const fetchedBarbersRaw = barberSnap.docs
+      const fetchedBarbers = barberSnap.docs
         .map(d => ({ docId: d.id, ...d.data() }))
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
-      const existingByName = new Set(fetchedBarbersRaw.map(b => normalizeName(b.name)));
-      const missingDefaults = DEFAULT_FINANCE_BARBERS
-        .filter(b => !existingByName.has(normalizeName(b.name)))
-        .map(b => ({ ...b, active: false, id: b.name.toLowerCase(), docId: `default-${b.name.toLowerCase()}` }));
+      // Ensure Alex/Arda/Kadim/Manoj are present
+      const byName = new Set(fetchedBarbers.map(b => normalizeName(b.name)));
+      const defaults = ['Alex','Arda','Kadim','Manoj'].filter(n => !byName.has(n.toLowerCase()))
+        .map((n, i) => ({ name: n, color: BARBER_COLORS[n], order: 10 + i, id: n.toLowerCase(), docId: `default-${n.toLowerCase()}` }));
+      const allBarbers = [...fetchedBarbers, ...defaults].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      setBarbers(allBarbers);
 
-      const fetchedBarbers = [...fetchedBarbersRaw, ...missingDefaults]
-        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      setBarbers(fetchedBarbers);
-
-      const canonicalByName = fetchedBarbers.reduce((acc, b) => {
-        if (!b?.name) return acc;
-        acc[normalizeName(b.name)] = b.name;
+      const canonMap = allBarbers.reduce((acc, b) => {
+        if (b?.name) acc[normalizeName(b.name)] = b.name;
         return acc;
       }, {});
-
-      const barberNameById = fetchedBarbers.reduce((acc, b) => {
+      const barberById = allBarbers.reduce((acc, b) => {
         if (!b.name) return acc;
         [b.docId, b.id].filter(Boolean).forEach(k => { acc[String(k).toLowerCase()] = b.name; });
         return acc;
@@ -221,196 +248,125 @@ export default function Finance() {
       // Bookings
       const fetchedBookings = bookSnap.docs.map(d => {
         const data = d.data();
-        const rawBarber = String(data.barberId || '').trim();
-        const rawResolvedName = data.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
-        const barber = resolveCanonicalBarberName(rawResolvedName, canonicalByName);
-        const startTime = data.startTime?.toDate();
+        const rawBarber = data.barberName || barberById[String(data.barberId || '').toLowerCase()] || data.barberId || '';
+        const barber = resolveBarberName(rawBarber, canonMap);
+        const startTime = data.startTime?.toDate?.();
         return { ...data, barber, startTime, dateKey: startTime ? toDateKey(startTime) : null };
       }).filter(b => b.status !== 'CANCELLED' && b.dateKey);
       setBookings(fetchedBookings);
 
-      // Expenses — merge legacy `expenses` collection with new `finance_expenses`
+      // Expenses — merge legacy `expenses` collection with manual `finance_expenses`
       const expMap = {};
-
-      // 1) Seed from legacy imported expenses (CASH = cashExpense, BANK = bankExpense)
       legacyExpSnap.docs.forEach(d => {
         const data = d.data();
         const dt = paymentToDate(data.date);
         if (!dt) return;
-        const dateKey = toDateKey(dt);
-        if (!expMap[dateKey]) expMap[dateKey] = { cashExpense: 0, bankExpense: 0, notes: '' };
+        const dk = toDateKey(dt);
+        if (!expMap[dk]) expMap[dk] = { cashExpense: 0, bankExpense: 0, notes: '' };
         const amt = parseFloat(data.amount || 0);
         const type = String(data.type || '').toUpperCase();
-        if (type === 'CASH' || type === 'KASA') expMap[dateKey].cashExpense += amt;
-        else expMap[dateKey].bankExpense += amt;
-        if (data.note && !expMap[dateKey].notes) expMap[dateKey].notes = data.note;
+        if (type === 'CASH' || type === 'KASA') expMap[dk].cashExpense += amt;
+        else expMap[dk].bankExpense += amt;
+        if (data.note && !expMap[dk].notes) expMap[dk].notes = data.note;
       });
-
-      // 2) Overlay with manually-entered finance_expenses (these take precedence)
       expSnap.docs.forEach(d => {
         const data = d.data();
-        // Support both old field names (kasaMasraf/bankaMasraf) and new (cashExpense/bankExpense)
         expMap[data.date] = {
           id: d.id,
-          cashExpense:  parseFloat(data.cashExpense  ?? data.kasaMasraf  ?? 0),
-          bankExpense:  parseFloat(data.bankExpense   ?? data.bankaMasraf ?? 0),
+          cashExpense: parseFloat(data.cashExpense ?? data.kasaMasraf ?? 0),
+          bankExpense:  parseFloat(data.bankExpense  ?? data.bankaMasraf ?? 0),
           notes:        data.notes || data.aciklama || '',
           ...data,
         };
       });
       setExpenses(expMap);
 
-      // Payments (finance_payments + legacy advances)
-      const fetchedPayments = paySnap.docs.map(d => ({ id: d.id, sourceType: 'finance_payments', ...d.data() }));
-      const fetchedLegacyAdvances = advSnap.docs.map(d => {
+      // Payments — merge finance_payments + legacy advances
+      const manualPays = paySnap.docs.map(d => ({ id: d.id, sourceType: 'finance_payments', ...d.data() }));
+      const legacyAdv  = advSnap.docs.map(d => {
         const data = d.data() || {};
         return {
-          id: d.id,
-          sourceType: 'advances',
-          date: data.date || null,
+          id: d.id, sourceType: 'advances',
+          date:       data.date || null,
           barberName: data.barberName || data.barber || '',
-          amount: parseFloat(data.amount || 0) || 0,
-          method: data.method || data.paymentMethod || 'Other',
-          notes: data.notes || data.note || '',
+          amount:     parseFloat(data.amount || 0) || 0,
+          method:     data.method || data.paymentMethod || 'Cash',
+          notes:      data.notes || data.note || '',
         };
       });
-      const mergedPayments = [...fetchedPayments, ...fetchedLegacyAdvances].sort((a, b) => {
-        const ad = paymentToDate(a.date);
-        const bd = paymentToDate(b.date);
+      const merged = [...manualPays, ...legacyAdv].sort((a, b) => {
+        const ad = paymentToDate(a.date), bd = paymentToDate(b.date);
         return (bd?.getTime() || 0) - (ad?.getTime() || 0);
       });
-      setPayments(mergedPayments);
-
-      // Initial investments
-      const fetchedInvestments = invSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => {
-          const ad = paymentToDate(a.date);
-          const bd = paymentToDate(b.date);
-          return (bd?.getTime() || 0) - (ad?.getTime() || 0);
-        });
-      setInitialInvestments(fetchedInvestments);
-
+      setPayments(merged);
     } catch (err) {
       console.error('Finance fetchAll error:', err);
     }
     setLoading(false);
-  }, [selectedMonth]);
+  }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Daily rows
+  // ── Daily rows ────────────────────────────────────────────────────────────
   const dailyData = useMemo(() => {
-    const inScope = (dateKey) => monthMode === 'all' || String(dateKey || '').startsWith(selectedMonth);
-    const scopedBookings = bookings.filter(b => isWalkInBooking(b) && b.dateKey && inScope(b.dateKey));
-    const scopedExpenseKeys = Object.keys(expenses).filter(inScope);
+    const inScope = dk => monthMode === 'all' || String(dk || '').startsWith(selectedMonth);
+    const scopedBk = bookings.filter(b => isWalkInBooking(b) && b.dateKey && inScope(b.dateKey));
+    const scopedExpKeys = Object.keys(expenses).filter(inScope);
 
     const dateKeys = monthMode === 'selected'
       ? Array.from({ length: daysInMonth(year, month) }, (_, i) =>
           `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`)
-      : Array.from(new Set([...scopedBookings.map(b => b.dateKey), ...scopedExpenseKeys])).sort();
+      : Array.from(new Set([...scopedBk.map(b => b.dateKey), ...scopedExpKeys])).sort();
 
-    return dateKeys.map((dateKey) => {
-      const parts = String(dateKey).split('-').map(Number);
-      const day = parts[2] || 1;
-      const rowDate = new Date((parts[0] || year), (parts[1] || (month + 1)) - 1, day);
-      const dayBookings = scopedBookings.filter(b => b.dateKey === dateKey);
-      const exp = expenses[dateKey] || {};
-      const cashExpense = parseFloat(exp.cashExpense ?? exp.kasaMasraf ?? 0);
-      const bankExpense = parseFloat(exp.bankExpense ?? exp.bankaMasraf ?? 0);
-      const expenseNotes = String(exp.notes || exp.aciklama || '').trim();
+    return dateKeys.map(dk => {
+      const [py, pm, pd] = String(dk).split('-').map(Number);
+      const rowDate = new Date(py, pm - 1, pd);
+      const dayBk = scopedBk.filter(b => b.dateKey === dk);
+      const exp = expenses[dk] || {};
+      const cashExpense = parseFloat(exp.cashExpense ?? 0);
+      const bankExpense = parseFloat(exp.bankExpense ?? 0);
 
-      const barberRevenue = {};
-      barbers.forEach(b => { barberRevenue[b.name] = { cash: 0, card: 0 }; });
-
-      dayBookings.forEach(b => {
+      const barberRev = {};
+      barbers.forEach(b => { barberRev[b.name] = { cash: 0, monzo: 0, card: 0 }; });
+      dayBk.forEach(b => {
         const name = b.barber;
-        if (!barberRevenue[name]) barberRevenue[name] = { cash: 0, card: 0 };
+        if (!barberRev[name]) barberRev[name] = { cash: 0, monzo: 0, card: 0 };
         const rev = effectiveRevenue(b);
-        if (isCash(b)) barberRevenue[name].cash += rev;
-        else barberRevenue[name].card += rev;
+        const pm2 = paymentMethod(b);
+        if (pm2 === 'CASH') barberRev[name].cash += rev;
+        else if (pm2 === 'MONZO') barberRev[name].monzo += rev;
+        else barberRev[name].card += rev;
       });
 
-      const grossRevenue = Object.values(barberRevenue).reduce((s, v) => s + v.cash + v.card, 0);
+      const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
       const netRevenue   = grossRevenue - cashExpense - bankExpense;
 
-      const activeBarbersToday = Object.entries(barberRevenue)
-        .filter(([, v]) => v.cash + v.card > 0)
-        .map(([name]) => name);
-      const totalWages = activeBarbersToday.reduce((s, name) => s + parseFloat(wageRates[name] ?? 100), 0);
-      const fixedCost  = activeBarbersToday.length > 0 ? fixedDailyRate : 0;
-      const netPL      = netRevenue - totalWages - fixedCost;
-
-      const dayOfWeek = rowDate.toLocaleDateString('en-GB', { weekday: 'short' });
+      // Wages: each worker whose revenue > 0 earns their wage
+      let totalWages = 0;
+      Object.entries(barberRev).forEach(([name, v]) => {
+        if (v.cash + v.monzo + v.card > 0) {
+          totalWages += (partnerConfig[name]?.wage ?? 100);
+        }
+      });
+      const shopOpen = grossRevenue > 0;
+      const fixedCost = shopOpen ? fixedDailyRate : 0;
+      const netPL = netRevenue - totalWages - fixedCost;
 
       return {
-        day, dateKey, dayOfWeek, barberRevenue,
-        cashExpense, bankExpense, expenseNotes,
+        day: pd, dateKey: dk, dayOfWeek: rowDate.toLocaleDateString('en-GB', { weekday: 'short' }),
+        barberRev, cashExpense, bankExpense, expenseNotes: String(exp.notes || '').trim(),
         grossRevenue, netRevenue, totalWages, fixedCost, netPL,
-        hasData: grossRevenue > 0 || cashExpense > 0 || bankExpense > 0 || !!expenseNotes,
+        hasData: grossRevenue > 0 || cashExpense > 0 || bankExpense > 0 || !!String(exp.notes || '').trim(),
         exp,
       };
     });
-  }, [bookings, barbers, expenses, wageRates, fixedDailyRate, year, month, selectedMonth, monthMode]);
-
-  const monthlySummary = useMemo(() => {
-    return barbers.map(b => {
-      const bBookings   = bookings.filter(bb => bb.barber === b.name);
-      const workedDays  = new Set(bBookings.map(bb => bb.dateKey)).size;
-      const totalRev    = bBookings.reduce((s, bb) => s + effectiveRevenue(bb), 0);
-      const wages       = workedDays * parseFloat(wageRates[b.name] ?? 100);
-      const monthPayments = payments.filter(p => {
-        const d   = paymentToDate(p.date);
-        return monthKey(d) === selectedMonth && normalizeName(p.barberName) === normalizeName(b.name);
-      });
-      const totalAdvances = monthPayments.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-      const balance = wages - totalAdvances;
-      return { name: b.name, color: b.color, workedDays, totalRev, wages, totalAdvances, balance };
-    });
-  }, [bookings, barbers, payments, wageRates, selectedMonth]);
-
-  const monthlySummaryTotals = useMemo(() =>
-    monthlySummary.reduce((acc, r) => ({
-      workedDays:    acc.workedDays    + r.workedDays,
-      totalRev:      acc.totalRev      + r.totalRev,
-      wages:         acc.wages         + r.wages,
-      totalAdvances: acc.totalAdvances + r.totalAdvances,
-      balance:       acc.balance       + r.balance,
-    }), { workedDays: 0, totalRev: 0, wages: 0, totalAdvances: 0, balance: 0 }),
-  [monthlySummary]);
-
-  const paymentRows = useMemo(() => {
-    return payments
-      .map(p => ({ ...p, __date: paymentToDate(p.date) }))
-      .filter(p => p.__date)
-      .filter(p => paymentMonthMode === 'all' ? true : monthKey(p.__date) === selectedMonth)
-      .filter(p => paymentBarberFilter === 'all' ? true : normalizeName(p.barberName) === normalizeName(paymentBarberFilter))
-      .filter(p => paymentMethodFilter === 'all' ? true : normalizeName(p.method) === normalizeName(paymentMethodFilter))
-      .sort((a, b) => b.__date.getTime() - a.__date.getTime());
-  }, [payments, selectedMonth, paymentMonthMode, paymentBarberFilter, paymentMethodFilter]);
-
-  const selectedMonthInvestments = useMemo(() =>
-    initialInvestments.filter(inv => monthKey(paymentToDate(inv.date)) === selectedMonth),
-  [initialInvestments, selectedMonth]);
-
-  const initialInvestmentTotal = useMemo(() =>
-    selectedMonthInvestments.reduce((s, inv) => s + parseFloat(inv.amount || 0), 0),
-  [selectedMonthInvestments]);
-
-  const monthlyTotals = useMemo(() => ({
-    grossRevenue: dailyData.reduce((s, d) => s + d.grossRevenue, 0),
-    netRevenue:   dailyData.reduce((s, d) => s + d.netRevenue,   0),
-    cashExpense:  dailyData.reduce((s, d) => s + d.cashExpense,  0),
-    bankExpense:  dailyData.reduce((s, d) => s + d.bankExpense,  0),
-    netPL:        dailyData.reduce((s, d) => s + d.netPL,        0),
-  }), [dailyData]);
+  }, [bookings, barbers, expenses, partnerConfig, fixedDailyRate, year, month, selectedMonth, monthMode]);
 
   const visibleDailyRows = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const today = new Date(); today.setHours(23, 59, 59, 999);
     return dailyData.filter(d => {
-      const fromKey = String(d.dateKey || '').split('-').map(Number);
-      const rowDate = new Date(fromKey[0] || year, (fromKey[1] || (month + 1)) - 1, fromKey[2] || d.day, 12, 0, 0);
+      const [py, pm, pd] = String(d.dateKey).split('-').map(Number);
+      const rowDate = new Date(py, pm - 1, pd, 12, 0, 0);
       if (rowDate > today) return false;
       if (!showEmptyDays && !d.hasData) return false;
       if (dailyRangeMode === 'day') return d.dateKey === toInputDate(selectedDay);
@@ -421,28 +377,151 @@ export default function Finance() {
       if (monthMode === 'all') return true;
       return String(d.dateKey || '').startsWith(selectedMonth);
     });
-  }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, year, month, monthMode, selectedMonth]);
+  }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, monthMode, selectedMonth]);
+
+  const monthlyTotals = useMemo(() => ({
+    grossRevenue: dailyData.reduce((s, d) => s + d.grossRevenue, 0),
+    netRevenue:   dailyData.reduce((s, d) => s + d.netRevenue,   0),
+    cashExpense:  dailyData.reduce((s, d) => s + d.cashExpense,  0),
+    bankExpense:  dailyData.reduce((s, d) => s + d.bankExpense,  0),
+    totalWages:   dailyData.reduce((s, d) => s + d.totalWages,   0),
+    fixedCost:    dailyData.reduce((s, d) => s + d.fixedCost,    0),
+    netPL:        dailyData.reduce((s, d) => s + d.netPL,        0),
+  }), [dailyData]);
+
+  // ── Partnership accounting ─────────────────────────────────────────────────
+  // Per-month stats for each month that has any data
+  const partnershipByMonth = useMemo(() => {
+    const allMonths = Array.from(new Set(
+      bookings.filter(isWalkInBooking).map(b => monthKey(b.startTime)).filter(Boolean)
+    )).sort();
+
+    return allMonths.map(mk => {
+      const [my, mm] = mk.split('-').map(Number);
+      const numDays = daysInMonth(my, mm - 1);
+      const mkDates = Array.from({ length: numDays }, (_, i) =>
+        `${my}-${String(mm).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`);
+
+      // Sum all daily P&L rows for this month
+      let grossRev = 0, cashExp = 0, bankExp = 0, totalWages = 0, fixedCostTotal = 0;
+      const barberDays = {}; // name → set of dateKeys
+      const barberRev  = {}; // name → total revenue
+
+      const monthBk = bookings.filter(b => isWalkInBooking(b) && monthKey(b.startTime) === mk);
+      monthBk.forEach(b => {
+        if (!barberDays[b.barber]) barberDays[b.barber] = new Set();
+        barberDays[b.barber].add(b.dateKey);
+        if (!barberRev[b.barber]) barberRev[b.barber] = 0;
+        barberRev[b.barber] += effectiveRevenue(b);
+        grossRev += effectiveRevenue(b);
+      });
+
+      mkDates.forEach(dk => {
+        const exp = expenses[dk];
+        if (exp) { cashExp += parseFloat(exp.cashExpense ?? 0); bankExp += parseFloat(exp.bankExpense ?? 0); }
+      });
+
+      const netRevenue = grossRev - cashExp - bankExp;
+
+      // Compute wages per worker (days worked × wage)
+      Object.entries(barberDays).forEach(([name, days]) => {
+        const wage = partnerConfig[name]?.wage ?? 100;
+        totalWages += days.size * wage;
+      });
+
+      // Shop-open days = any day with revenue (for fixed cost)
+      const shopDays = new Set(monthBk.map(b => b.dateKey)).size;
+      fixedCostTotal = shopDays * fixedDailyRate;
+
+      const companyNetPL = netRevenue - totalWages - fixedCostTotal;
+
+      // Per partner accounting
+      const partners = {};
+      Object.entries(partnerConfig).filter(([, cfg]) => cfg.isPartner).forEach(([name, cfg]) => {
+        // EL EMEĞİ = wages_earned - advances
+        let wagesEarned = 0;
+        if (cfg.isPartner && cfg.wage > 0) {
+          const workedDays = barberDays[name]?.size || 0;
+          wagesEarned = workedDays * cfg.wage;
+        }
+        // Credit wages from employees who credit to this partner
+        Object.entries(partnerConfig)
+          .filter(([, c]) => c.creditTo === name)
+          .forEach(([empName, empCfg]) => {
+            const empDays = barberDays[empName]?.size || 0;
+            wagesEarned += empDays * empCfg.wage;
+          });
+
+        const advances = payments
+          .filter(p => {
+            const d = paymentToDate(p.date);
+            return d && monthKey(d) === mk && normalizeName(p.barberName) === normalizeName(name);
+          })
+          .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+
+        const elEmegi   = wagesEarned - advances;
+        const hisseden  = (cfg.share / 100) * companyNetPL;
+        const netDurum  = elEmegi + hisseden;
+
+        partners[name] = {
+          wagesEarned, advances, elEmegi,
+          hisseden, netDurum, share: cfg.share,
+          workedDays: barberDays[name]?.size || 0,
+          revenue: barberRev[name] || 0,
+        };
+      });
+
+      return {
+        mk, label: MONTH_NAMES[mm - 1] + ' ' + my,
+        grossRev, cashExp, bankExp, netRevenue, totalWages, fixedCostTotal, companyNetPL,
+        shopDays, partners,
+      };
+    });
+  }, [bookings, expenses, payments, partnerConfig, fixedDailyRate]);
+
+  const selectedMonthPartnership = useMemo(() =>
+    partnershipByMonth.find(r => r.mk === selectedMonth),
+  [partnershipByMonth, selectedMonth]);
+
+  // Cumulative NET DURUM per partner
+  const cumulativeByPartner = useMemo(() => {
+    const cum = {};
+    for (const row of partnershipByMonth) {
+      for (const [name, p] of Object.entries(row.partners)) {
+        cum[name] = (cum[name] || 0) + p.netDurum;
+      }
+    }
+    return cum;
+  }, [partnershipByMonth]);
+
+  // Payment rows
+  const paymentRows = useMemo(() =>
+    payments
+      .map(p => ({ ...p, __date: paymentToDate(p.date) }))
+      .filter(p => p.__date)
+      .filter(p => paymentMonthMode === 'all' ? true : monthKey(p.__date) === selectedMonth)
+      .filter(p => paymentBarberFilter === 'all' ? true : normalizeName(p.barberName) === normalizeName(paymentBarberFilter))
+      .sort((a, b) => b.__date.getTime() - a.__date.getTime()),
+  [payments, selectedMonth, paymentMonthMode, paymentBarberFilter]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
-
-  const saveExpense = async (dateKey) => {
+  const saveExpense = async dk => {
     setExpenseSaving(true);
     try {
       const data = {
-        date:        dateKey,
-        month:       String(dateKey).slice(0, 7),
+        date: dk, month: dk.slice(0, 7),
         cashExpense: parseFloat(expenseDraft.cashExpense) || 0,
         bankExpense: parseFloat(expenseDraft.bankExpense) || 0,
-        notes:       String(expenseDraft.notes || '').trim(),
+        notes: String(expenseDraft.notes || '').trim(),
       };
-      const existing = expenses[dateKey];
+      const existing = expenses[dk];
       if (existing?.id) {
         await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, existing.id), data);
       } else {
         const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
         data.id = ref.id;
       }
-      setExpenses(prev => ({ ...prev, [dateKey]: { ...data } }));
+      setExpenses(prev => ({ ...prev, [dk]: { ...data } }));
       setEditingExpense(null);
     } catch (e) { console.error(e); }
     setExpenseSaving(false);
@@ -454,11 +533,9 @@ export default function Finance() {
     try {
       const dateObj = new Date(payForm.date + 'T12:00:00');
       const docData = {
-        date:       Timestamp.fromDate(dateObj),
-        barberName: payForm.barberName,
-        amount:     parseFloat(payForm.amount),
-        method:     payForm.method,
-        notes:      payForm.notes || '',
+        date: Timestamp.fromDate(dateObj),
+        barberName: payForm.barberName, amount: parseFloat(payForm.amount),
+        method: payForm.method, notes: payForm.notes || '',
       };
       const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_payments`), docData);
       setPayments(prev => [{ id: ref.id, sourceType: 'finance_payments', ...docData }, ...prev]);
@@ -467,158 +544,167 @@ export default function Finance() {
     setPayLoading(false);
   };
 
-  const addInitialInvestment = async () => {
-    if (!investmentForm.amount || !investmentForm.date) return;
-    setInvestmentSaving(true);
-    try {
-      const dateObj = new Date(investmentForm.date + 'T12:00:00');
-      const docData = {
-        date:   Timestamp.fromDate(dateObj),
-        amount: parseFloat(investmentForm.amount) || 0,
-        method: investmentForm.method,
-        notes:  investmentForm.notes || '',
-      };
-      const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_initial_investments`), docData);
-      setInitialInvestments(prev => [{ id: ref.id, ...docData }, ...prev]);
-      setInvestmentForm({ date: '', amount: '', method: 'Cash', notes: '' });
-    } catch (e) { console.error(e); }
-    setInvestmentSaving(false);
-  };
-
-  const deleteInitialInvestment = async (id) => {
-    if (!window.confirm('Delete this record?')) return;
-    await deleteDoc(doc(db, `tenants/${TENANT}/finance_initial_investments`, id));
-    setInitialInvestments(prev => prev.filter(x => x.id !== id));
-  };
-
-  const deletePayment = async (payment) => {
+  const deletePayment = async payment => {
     if (!window.confirm('Delete this payment record?')) return;
     const col = payment.sourceType === 'advances' ? 'advances' : 'finance_payments';
     await deleteDoc(doc(db, `tenants/${TENANT}/${col}`, payment.id));
     setPayments(prev => prev.filter(p => !(p.id === payment.id && p.sourceType === payment.sourceType)));
   };
 
-  const saveWageSettings = () => {
-    localStorage.setItem('financeWageRates', JSON.stringify(wageRates));
-    localStorage.setItem('financeFixedRate', String(fixedDailyRate));
+  const saveSettings = () => {
+    if (!settingsDraft) return;
+    setPartnerConfig(settingsDraft.partnerConfig);
+    setFixedDailyRate(settingsDraft.fixedDailyRate);
+    localStorage.setItem('partnerConfig', JSON.stringify(settingsDraft.partnerConfig));
+    localStorage.setItem('financeFixedRate', String(settingsDraft.fixedDailyRate));
     setShowSettings(false);
   };
 
-  // ── Styles ────────────────────────────────────────────────────────────────
+  const openSettings = () => {
+    setSettingsDraft({ partnerConfig: JSON.parse(JSON.stringify(partnerConfig)), fixedDailyRate });
+    setShowSettings(true);
+  };
 
-  const tabBtn = (id) => ({
+  // ── Tab button style ──────────────────────────────────────────────────────
+  const tabBtn = id => ({
     padding: '8px 18px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '700',
     letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer', border: 'none',
     background: activeTab === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'rgba(255,255,255,0.05)',
-    color: activeTab === id ? '#000' : 'var(--muted)',
-    transition: 'all 0.2s',
+    color: activeTab === id ? '#000' : 'var(--muted)', transition: 'all 0.2s',
   });
 
-  const thS = {
-    padding: '8px 10px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px',
-    textTransform: 'uppercase', fontWeight: '700', textAlign: 'right', whiteSpace: 'nowrap',
-    borderBottom: '1px solid rgba(212,175,55,0.15)',
-  };
-  const tdS = (hi) => ({
-    padding: '6px 10px', fontSize: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
-    color: hi === 'green' ? '#4caf50' : hi === 'red' ? '#ff5252' : 'var(--text)',
-    fontWeight: hi ? '700' : '400',
-  });
+  const subBtn = (cur, id, label) => (
+    <button key={id} onClick={() => setSummaryView(id)} style={{
+      padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+      fontSize: '0.7rem', fontWeight: '700', letterSpacing: '1px',
+      background: cur === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'rgba(255,255,255,0.05)',
+      color: cur === id ? '#000' : 'var(--muted)',
+    }}>{label}</button>
+  );
 
-  const card = { background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '16px' };
+  const partnerNames = Object.keys(partnerConfig).filter(n => partnerConfig[n].isPartner);
 
   // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', letterSpacing: '2px', color: '#d4af37' }}>FINANCE</h2>
           <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--muted)', letterSpacing: '1px' }}>
-            {MONTH_NAMES[month]} {year} — Revenue / Expenses / Payments
+            {MONTH_NAMES[month]} {year} · Revenue / Expenses / Partnership
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input type="month" value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
+          <input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
             style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 12px', opacity: monthMode === 'all' ? 0.5 : 1 }}
-            disabled={monthMode === 'all'}
-          />
-          <select value={monthMode} onChange={e => setMonthMode(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '7px 10px' }}>
+            disabled={monthMode === 'all'} />
+          <select value={monthMode} onChange={e => setMonthMode(e.target.value)}
+            style={{ ...inp, width: 'auto', minWidth: '130px', padding: '7px 10px' }}>
             <option value="selected">This Month</option>
             <option value="all">All Months</option>
           </select>
-          <button onClick={() => setShowSettings(s => !s)}
+          <button onClick={openSettings}
             style={{ padding: '8px 14px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
             ⚙ Settings
           </button>
         </div>
       </div>
 
-      {/* Settings panel */}
-      {showSettings && (
+      {/* ── Settings panel ── */}
+      {showSettings && settingsDraft && (
         <div style={{ ...card, padding: '20px', marginBottom: '20px' }}>
-          <div style={{ fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px', marginBottom: '14px' }}>WAGE RATES (£/DAY)</div>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            {barbers.map(b => (
-              <div key={b.name} style={{ minWidth: '110px' }}>
-                <label style={{ ...lbl, color: b.color }}>{b.name}</label>
-                <input type="number" value={wageRates[b.name] ?? 100}
-                  onChange={e => setWageRates(r => ({ ...r, [b.name]: e.target.value }))}
-                  style={{ ...inp, width: '100px' }} />
-              </div>
-            ))}
+          <div style={{ fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px', marginBottom: '16px' }}>PARTNERSHIP SETTINGS</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', minWidth: '600px', width: '100%' }}>
+              <thead>
+                <tr>
+                  {['Name','Share %','Wage £/day','Is Partner','Credits To'].map(h => (
+                    <th key={h} style={{ ...thS, textAlign: 'left', padding: '6px 12px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(settingsDraft.partnerConfig).map(([name, cfg]) => (
+                  <tr key={name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '6px 12px', color: BARBER_COLORS[name] || '#d4af37', fontWeight: '700', fontSize: '0.82rem' }}>{name}</td>
+                    <td style={{ padding: '6px 12px' }}>
+                      <input type="number" value={cfg.share} min="0" max="100"
+                        onChange={e => setSettingsDraft(d => ({ ...d, partnerConfig: { ...d.partnerConfig, [name]: { ...d.partnerConfig[name], share: parseFloat(e.target.value) || 0 } } }))}
+                        style={{ ...inp, width: '70px', padding: '5px 8px', fontSize: '0.78rem' }} />
+                    </td>
+                    <td style={{ padding: '6px 12px' }}>
+                      <input type="number" value={cfg.wage} min="0"
+                        onChange={e => setSettingsDraft(d => ({ ...d, partnerConfig: { ...d.partnerConfig, [name]: { ...d.partnerConfig[name], wage: parseFloat(e.target.value) || 0 } } }))}
+                        style={{ ...inp, width: '70px', padding: '5px 8px', fontSize: '0.78rem' }} />
+                    </td>
+                    <td style={{ padding: '6px 12px' }}>
+                      <input type="checkbox" checked={cfg.isPartner}
+                        onChange={e => setSettingsDraft(d => ({ ...d, partnerConfig: { ...d.partnerConfig, [name]: { ...d.partnerConfig[name], isPartner: e.target.checked } } }))} />
+                    </td>
+                    <td style={{ padding: '6px 12px', fontSize: '0.78rem', color: 'var(--muted)' }}>{cfg.creditTo || '–'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
             <div>
-              <label style={lbl}>Fixed Daily Cost (£)</label>
-              <input type="number" value={fixedDailyRate}
-                onChange={e => setFixedDailyRate(parseFloat(e.target.value) || 0)}
+              <label style={lbl}>Fixed Daily Cost (£/day when shop is open)</label>
+              <input type="number" value={settingsDraft.fixedDailyRate} min="0"
+                onChange={e => setSettingsDraft(d => ({ ...d, fixedDailyRate: parseFloat(e.target.value) || 0 }))}
                 style={{ ...inp, width: '100px' }} />
             </div>
-            <button onClick={saveWageSettings}
-              style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}>
+            <button onClick={saveSettings}
+              style={{ padding: '9px 22px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', marginTop: '18px' }}>
               Save
+            </button>
+            <button onClick={() => setShowSettings(false)}
+              style={{ padding: '9px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--muted)', fontSize: '0.78rem', cursor: 'pointer', marginTop: '18px' }}>
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Summary KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+      {/* ── KPI cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Gross Revenue',  value: '£' + monthlyTotals.grossRevenue.toFixed(0), color: '#d4af37' },
           { label: 'Net Revenue',    value: '£' + monthlyTotals.netRevenue.toFixed(0),   color: '#9c27b0' },
           { label: 'Cash Expenses',  value: '£' + monthlyTotals.cashExpense.toFixed(0),  color: '#ff7043' },
           { label: 'Bank Expenses',  value: '£' + monthlyTotals.bankExpense.toFixed(0),  color: '#ff7043' },
+          { label: 'Total Wages',    value: '£' + monthlyTotals.totalWages.toFixed(0),   color: '#4caf50' },
+          { label: 'Fixed Cost',     value: '£' + monthlyTotals.fixedCost.toFixed(0),    color: '#78909c' },
           { label: 'Net P&L',        value: (monthlyTotals.netPL >= 0 ? '+' : '') + '£' + monthlyTotals.netPL.toFixed(0), color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' },
         ].map(c => (
           <div key={c.label} style={{ ...card, padding: '14px 16px' }}>
             <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</div>
-            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '800', color: c.color }}>{c.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button style={tabBtn('daily')}    onClick={() => setActiveTab('daily')}>Daily Ledger</button>
         <button style={tabBtn('payments')} onClick={() => setActiveTab('payments')}>Payments</button>
         <button style={tabBtn('summary')}  onClick={() => setActiveTab('summary')}>Monthly Summary</button>
+        <button style={tabBtn('overview')} onClick={() => setActiveTab('overview')}>Overview</button>
         {activeTab === 'daily' && (
-          <button
-            onClick={() => setShowEmptyDays(v => !v)}
+          <button onClick={() => setShowEmptyDays(v => !v)}
             style={{ ...tabBtn('empty'), background: 'rgba(255,255,255,0.03)', color: showEmptyDays ? '#d4af37' : 'var(--muted)', border: `1px solid ${showEmptyDays ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
             {showEmptyDays ? 'Empty Days: On' : 'Empty Days: Off'}
           </button>
         )}
       </div>
 
-      {/* Daily range filter */}
+      {/* Daily range selector */}
       {!loading && activeTab === 'daily' && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select value={dailyRangeMode} onChange={e => setDailyRangeMode(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '110px', padding: '7px 10px' }}>
+          <select value={dailyRangeMode} onChange={e => setDailyRangeMode(e.target.value)}
+            style={{ ...inp, width: 'auto', minWidth: '110px', padding: '7px 10px' }}>
             <option value="day">Day</option>
             <option value="week">Week</option>
             <option value="month">Month</option>
@@ -631,8 +717,7 @@ export default function Finance() {
                 setSelectedDay(d);
                 if (monthMode === 'selected') setSelectedMonth(monthKey(d));
               }}
-              style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 10px' }}
-            />
+              style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 10px' }} />
           )}
           {dailyRangeMode === 'week' && (
             <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
@@ -644,27 +729,29 @@ export default function Finance() {
 
       {loading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '60px', fontSize: '0.8rem', letterSpacing: '1px' }}>Loading...</div>}
 
-      {/* ── DAILY LEDGER ── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          DAILY LEDGER
+          ══════════════════════════════════════════════════════════════════ */}
       {!loading && activeTab === 'daily' && (
         <div style={{ ...card, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px' }}>
               <thead>
                 <tr style={{ background: 'rgba(212,175,55,0.07)' }}>
-                  <th style={{ ...thS, textAlign: 'left', minWidth: '80px' }}>Date</th>
+                  <th style={{ ...thS, textAlign: 'left', minWidth: '75px' }}>Date</th>
                   {barbers.map(b => (
                     <React.Fragment key={b.name}>
-                      <th style={{ ...thS, color: b.color }}>{b.name}<br/>Cash</th>
-                      <th style={{ ...thS, color: b.color }}>{b.name}<br/>Card</th>
+                      <th style={{ ...thS, color: b.color || BARBER_COLORS[b.name] }}>{b.name}<br/>Cash</th>
+                      <th style={{ ...thS, color: b.color || BARBER_COLORS[b.name], opacity: 0.75 }}>{b.name}<br/>Card</th>
                     </React.Fragment>
                   ))}
                   <th style={{ ...thS, color: '#ff7043' }}>Cash<br/>Exp.</th>
                   <th style={{ ...thS, color: '#ff7043' }}>Bank<br/>Exp.</th>
-                  <th style={{ ...thS, textAlign: 'left', minWidth: '160px' }}>Notes</th>
-                  <th style={{ ...thS, color: '#d4af37' }}>Gross<br/>Revenue</th>
-                  <th style={{ ...thS, color: '#9c27b0' }}>Net<br/>Revenue</th>
+                  <th style={{ ...thS, textAlign: 'left', minWidth: '150px' }}>Notes</th>
+                  <th style={{ ...thS, color: '#d4af37' }}>Gross</th>
+                  <th style={{ ...thS, color: '#9c27b0' }}>Net Rev.</th>
                   <th style={{ ...thS, color: 'rgba(255,255,255,0.35)' }}>Wages</th>
-                  <th style={{ ...thS, color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252', minWidth: '80px' }}>Net P&L</th>
+                  <th style={{ ...thS, color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' }}>Net P&L</th>
                 </tr>
               </thead>
               <tbody>
@@ -672,50 +759,42 @@ export default function Finance() {
                   const isEditing = editingExpense === row.dateKey;
                   return (
                     <tr key={row.dateKey} style={{ background: row.hasData ? 'rgba(212,175,55,0.015)' : 'transparent', opacity: row.hasData ? 1 : 0.4 }}>
-
-                      {/* Date */}
                       <td style={{ ...tdS(), textAlign: 'left', fontWeight: '600', fontSize: '0.72rem' }}>
                         <span style={{ color: '#d4af37' }}>{String(row.day).padStart(2, '0')}</span>
                         <span style={{ color: 'var(--muted)', marginLeft: '4px', fontSize: '0.6rem' }}>{row.dayOfWeek}</span>
                       </td>
 
-                      {/* Barber revenue columns */}
-                      {barbers.map(b => (
-                        <React.Fragment key={b.name}>
-                          <td style={{ ...tdS(), color: (row.barberRevenue[b.name]?.cash || 0) > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)' }}>
-                            {row.barberRevenue[b.name]?.cash > 0 ? '£' + row.barberRevenue[b.name].cash.toFixed(0) : '–'}
-                          </td>
-                          <td style={{ ...tdS(), color: (row.barberRevenue[b.name]?.card || 0) > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)' }}>
-                            {row.barberRevenue[b.name]?.card > 0 ? '£' + row.barberRevenue[b.name].card.toFixed(0) : '–'}
-                          </td>
-                        </React.Fragment>
-                      ))}
+                      {barbers.map(b => {
+                        const rev = row.barberRev[b.name] || { cash: 0, monzo: 0, card: 0 };
+                        const cardTotal = rev.card + rev.monzo;
+                        return (
+                          <React.Fragment key={b.name}>
+                            <td style={{ ...tdS(), color: rev.cash > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)' }}>
+                              {rev.cash > 0 ? '£' + Math.round(rev.cash) : '–'}
+                            </td>
+                            <td style={{ ...tdS(), color: cardTotal > 0 ? 'var(--text)' : 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>
+                              {cardTotal > 0 ? '£' + Math.round(cardTotal) : '–'}
+                              {rev.monzo > 0 && rev.card > 0 && <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', marginLeft: '2px' }}>m</span>}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
 
                       {/* Cash Expense — click to edit */}
                       <td style={{ ...tdS(), color: '#ff7043', cursor: 'pointer' }}
-                        onClick={() => {
-                          if (!isEditing) {
-                            setEditingExpense(row.dateKey);
-                            setExpenseDraft({ cashExpense: row.cashExpense || '', bankExpense: row.bankExpense || '', notes: row.expenseNotes || '' });
-                          }
-                        }}>
+                        onClick={() => { if (!isEditing) { setEditingExpense(row.dateKey); setExpenseDraft({ cashExpense: row.cashExpense || '', bankExpense: row.bankExpense || '', notes: row.expenseNotes || '' }); } }}>
                         {isEditing
                           ? <input type="number" value={expenseDraft.cashExpense}
                               onChange={e => setExpenseDraft(d => ({ ...d, cashExpense: e.target.value }))}
                               style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }}
                               autoFocus onClick={e => e.stopPropagation()} />
-                          : row.cashExpense > 0 ? '£' + row.cashExpense.toFixed(0) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
+                          : row.cashExpense > 0 ? '£' + Math.round(row.cashExpense) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
                         }
                       </td>
 
-                      {/* Bank Expense — click to edit (inline form) */}
+                      {/* Bank Expense — inline form when editing */}
                       <td style={{ ...tdS(), color: '#ff7043', cursor: 'pointer' }}
-                        onClick={() => {
-                          if (!isEditing) {
-                            setEditingExpense(row.dateKey);
-                            setExpenseDraft({ cashExpense: row.cashExpense || '', bankExpense: row.bankExpense || '', notes: row.expenseNotes || '' });
-                          }
-                        }}>
+                        onClick={() => { if (!isEditing) { setEditingExpense(row.dateKey); setExpenseDraft({ cashExpense: row.cashExpense || '', bankExpense: row.bankExpense || '', notes: row.expenseNotes || '' }); } }}>
                         {isEditing
                           ? <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                               <input type="number" value={expenseDraft.bankExpense}
@@ -724,71 +803,71 @@ export default function Finance() {
                                 onClick={e => e.stopPropagation()} />
                               <input type="text" value={expenseDraft.notes} placeholder="Notes"
                                 onChange={e => setExpenseDraft(d => ({ ...d, notes: e.target.value }))}
-                                style={{ ...inp, width: '150px', padding: '4px 7px', fontSize: '0.7rem' }}
+                                style={{ ...inp, width: '140px', padding: '4px 7px', fontSize: '0.7rem' }}
                                 onClick={e => e.stopPropagation()} />
                               <button onClick={e => { e.stopPropagation(); saveExpense(row.dateKey); }} disabled={expenseSaving}
                                 style={{ padding: '4px 8px', background: '#d4af37', border: 'none', borderRadius: '5px', color: '#000', fontWeight: '700', fontSize: '0.65rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                {expenseSaving ? '...' : 'Save'}
+                                {expenseSaving ? '...' : '✓ Save'}
                               </button>
                               <button onClick={e => { e.stopPropagation(); setEditingExpense(null); }}
                                 style={{ padding: '4px 6px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'var(--muted)', fontSize: '0.65rem', cursor: 'pointer' }}>✕</button>
                             </div>
-                          : row.bankExpense > 0 ? '£' + row.bankExpense.toFixed(0) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
+                          : row.bankExpense > 0 ? '£' + Math.round(row.bankExpense) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
                         }
                       </td>
 
-                      {/* Notes */}
                       <td style={{ ...tdS(), textAlign: 'left', color: row.expenseNotes ? 'var(--muted)' : 'rgba(255,255,255,0.12)', fontSize: '0.7rem' }}>
                         {row.expenseNotes || '–'}
                       </td>
-
-                      <td style={tdS()}>{row.grossRevenue > 0 ? '£' + row.grossRevenue.toFixed(0) : '–'}</td>
-                      <td style={{ ...tdS(), color: '#9c27b0', fontWeight: row.netRevenue > 0 ? '700' : '400' }}>{row.netRevenue > 0 ? '£' + row.netRevenue.toFixed(0) : '–'}</td>
-                      <td style={{ ...tdS(), color: 'rgba(255,255,255,0.3)', fontSize: '0.68rem' }}>{row.totalWages > 0 ? '£' + row.totalWages.toFixed(0) : '–'}</td>
+                      <td style={tdS()}>{row.grossRevenue > 0 ? '£' + Math.round(row.grossRevenue) : '–'}</td>
+                      <td style={{ ...tdS(), color: '#9c27b0', fontWeight: row.netRevenue > 0 ? '700' : '400' }}>{row.netRevenue > 0 ? '£' + Math.round(row.netRevenue) : '–'}</td>
+                      <td style={{ ...tdS(), color: 'rgba(255,255,255,0.3)', fontSize: '0.68rem' }}>{row.totalWages > 0 ? '£' + Math.round(row.totalWages) : '–'}</td>
                       <td style={tdS(row.hasData ? (row.netPL >= 0 ? 'green' : 'red') : null)}>
-                        {row.hasData ? (row.netPL >= 0 ? '+' : '') + '£' + row.netPL.toFixed(0) : '–'}
+                        {row.hasData ? (row.netPL >= 0 ? '+' : '') + '£' + Math.round(row.netPL) : '–'}
                       </td>
                     </tr>
                   );
                 })}
 
-                {/* Totals row */}
+                {/* Totals */}
                 <tr style={{ background: 'rgba(212,175,55,0.08)', borderTop: '2px solid rgba(212,175,55,0.3)' }}>
                   <td style={{ ...tdS(), textAlign: 'left', fontWeight: '800', fontSize: '0.72rem', color: '#d4af37' }}>TOTAL</td>
                   {barbers.map(b => {
-                    const cash = visibleDailyRows.reduce((s, d) => s + (d.barberRevenue[b.name]?.cash || 0), 0);
-                    const card = visibleDailyRows.reduce((s, d) => s + (d.barberRevenue[b.name]?.card || 0), 0);
+                    const cash  = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.cash  || 0), 0);
+                    const card  = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.card  || 0), 0);
+                    const monzo = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.monzo || 0), 0);
+                    const col = b.color || BARBER_COLORS[b.name];
                     return (
                       <React.Fragment key={b.name}>
-                        <td style={{ ...tdS(), fontWeight: '700', color: b.color }}>{cash > 0 ? '£' + cash.toFixed(0) : '–'}</td>
-                        <td style={{ ...tdS(), fontWeight: '700', color: b.color }}>{card > 0 ? '£' + card.toFixed(0) : '–'}</td>
+                        <td style={{ ...tdS(), fontWeight: '700', color: col }}>{cash > 0 ? '£' + Math.round(cash) : '–'}</td>
+                        <td style={{ ...tdS(), fontWeight: '700', color: col }}>{(card + monzo) > 0 ? '£' + Math.round(card + monzo) : '–'}</td>
                       </React.Fragment>
                     );
                   })}
                   <td style={{ ...tdS(), fontWeight: '700', color: '#ff7043' }}>{fmt(visibleDailyRows.reduce((s, d) => s + d.cashExpense, 0))}</td>
                   <td style={{ ...tdS(), fontWeight: '700', color: '#ff7043' }}>{fmt(visibleDailyRows.reduce((s, d) => s + d.bankExpense, 0))}</td>
                   <td style={{ ...tdS(), textAlign: 'left', color: 'rgba(255,255,255,0.3)' }}>–</td>
-                  <td style={{ ...tdS(), fontWeight: '800', color: '#d4af37' }}>£{visibleDailyRows.reduce((s, d) => s + d.grossRevenue, 0).toFixed(0)}</td>
-                  <td style={{ ...tdS(), fontWeight: '800', color: '#9c27b0' }}>£{visibleDailyRows.reduce((s, d) => s + d.netRevenue, 0).toFixed(0)}</td>
+                  <td style={{ ...tdS(), fontWeight: '800', color: '#d4af37' }}>£{Math.round(visibleDailyRows.reduce((s, d) => s + d.grossRevenue, 0))}</td>
+                  <td style={{ ...tdS(), fontWeight: '800', color: '#9c27b0' }}>£{Math.round(visibleDailyRows.reduce((s, d) => s + d.netRevenue, 0))}</td>
                   <td style={{ ...tdS(), color: 'rgba(255,255,255,0.35)' }}>–</td>
                   <td style={{ ...tdS(visibleDailyRows.reduce((s, d) => s + d.netPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
-                    {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.netPL, 0); return (t >= 0 ? '+' : '') + '£' + t.toFixed(0); })()}
+                    {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.netPL, 0); return (t >= 0 ? '+' : '') + '£' + Math.round(t); })()}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(212,175,55,0.1)', fontSize: '0.6rem', color: 'var(--muted)' }}>
-            Click any expense cell to edit. Wages = active barbers × daily rate. Net P&L = Net Revenue – Wages – Fixed Cost.
+            Click any expense cell to edit. Card total includes Monzo (shown as "m"). Net P&L = Net Revenue – Wages – Fixed Cost (£{fixedDailyRate}/day).
           </div>
         </div>
       )}
 
-      {/* ── PAYMENTS ── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          PAYMENTS / ADVANCES
+          ══════════════════════════════════════════════════════════════════ */}
       {!loading && activeTab === 'payments' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px', alignItems: 'start' }}>
-
-          {/* Payment list */}
           <div style={{ ...card, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
               PAYMENTS & ADVANCES
@@ -802,12 +881,6 @@ export default function Finance() {
                 <option value="all">All Barbers</option>
                 {barbers.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
               </select>
-              <select value={paymentMethodFilter} onChange={e => setPaymentMethodFilter(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '110px', padding: '6px 10px' }}>
-                <option value="all">All Methods</option>
-                <option value="Cash">Cash</option>
-                <option value="Bank">Bank</option>
-                <option value="Other">Other</option>
-              </select>
             </div>
             {paymentRows.length === 0
               ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8rem' }}>No payments match the current filter.</div>
@@ -815,19 +888,19 @@ export default function Finance() {
                   <thead>
                     <tr style={{ background: 'rgba(212,175,55,0.05)' }}>
                       {['Date','Barber','Amount','Method','Source','Notes',''].map(h => (
-                        <th key={h} style={{ ...thS, textAlign: h === '' ? 'center' : 'left', padding: '8px 14px' }}>{h}</th>
+                        <th key={h} style={{ ...thS, textAlign: 'left', padding: '8px 14px' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {paymentRows.map(p => {
-                      const d = p.__date;
                       const barber = barbers.find(b => normalizeName(b.name) === normalizeName(p.barberName));
+                      const bColor = barber?.color || BARBER_COLORS[p.barberName] || '#d4af37';
                       return (
                         <tr key={p.id + p.sourceType} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{d.toLocaleDateString('en-GB')}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: barber?.color || '#d4af37', fontWeight: '600' }}>{p.barberName}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#ff7043' }}>£{parseFloat(p.amount).toFixed(0)}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{p.__date.toLocaleDateString('en-GB')}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: bColor, fontWeight: '600' }}>{p.barberName}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#ff7043' }}>£{Math.round(parseFloat(p.amount || 0))}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.method}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>{p.sourceType === 'advances' ? 'imported' : 'manual'}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.notes || '–'}</td>
@@ -843,7 +916,6 @@ export default function Finance() {
             }
           </div>
 
-          {/* Add payment */}
           <div style={{ ...card, padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>NEW PAYMENT / ADVANCE</div>
             <div>
@@ -881,178 +953,295 @@ export default function Finance() {
         </div>
       )}
 
-      {/* ── MONTHLY SUMMARY ── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          MONTHLY SUMMARY
+          ══════════════════════════════════════════════════════════════════ */}
       {!loading && activeTab === 'summary' && (
         <div style={{ display: 'grid', gap: '16px' }}>
-
-          {/* Sub-tab toggle */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[['live', 'Live Summary'], ['initial', 'Initial Investments']].map(([id, label]) => (
-              <button key={id} onClick={() => setSummaryView(id)}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', letterSpacing: '1px', transition: 'all 0.2s',
-                  background: summaryView === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'rgba(255,255,255,0.05)',
-                  color: summaryView === id ? '#000' : 'var(--muted)' }}>
-                {label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {subBtn(summaryView, 'partnership', 'Partnership')}
+            {subBtn(summaryView, 'pnl', 'P&L Breakdown')}
           </div>
 
-          {summaryView === 'live' && (
-            <>
-              {/* Barber breakdown */}
+          {/* Partnership accounting — EL EMEĞİ / HİSSEDEN / NET DURUM */}
+          {summaryView === 'partnership' && (
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {/* Company P&L row */}
+              {selectedMonthPartnership && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                  {[
+                    { label: 'Shop Days Open',  value: selectedMonthPartnership.shopDays, unit: 'days', color: '#78909c' },
+                    { label: 'Total Wages',      value: '£' + Math.round(selectedMonthPartnership.totalWages), color: '#4caf50' },
+                    { label: 'Fixed Cost',       value: '£' + Math.round(selectedMonthPartnership.fixedCostTotal), color: '#78909c' },
+                    { label: 'Company Net P&L',  value: (selectedMonthPartnership.companyNetPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.companyNetPL), color: selectedMonthPartnership.companyNetPL >= 0 ? '#4caf50' : '#ff5252' },
+                  ].map(c => (
+                    <div key={c.label} style={{ ...card, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ fontSize: '0.57rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '5px' }}>{c.label}</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: '800', color: c.color }}>{c.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ ...card, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
-                  BARBER MONTHLY BREAKDOWN — {MONTH_NAMES[month].toUpperCase()} {year}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(212,175,55,0.06)' }}>
-                        <th style={{ ...thS, textAlign: 'left' }}>Barber</th>
-                        <th style={thS}>Days Worked</th>
-                        <th style={thS}>Revenue</th>
-                        <th style={{ ...thS, color: '#4caf50' }}>Wages</th>
-                        <th style={{ ...thS, color: '#ff7043' }}>Advances</th>
-                        <th style={{ ...thS, color: '#4caf50' }}>Net Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthlySummary.map(s => (
-                        <tr key={s.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700', color: s.color }}>{s.name}</td>
-                          <td style={tdS()}>{s.workedDays}</td>
-                          <td style={tdS()}>{fmt(s.totalRev)}</td>
-                          <td style={{ ...tdS(), color: '#4caf50' }}>{fmt(s.wages)}</td>
-                          <td style={{ ...tdS(), color: '#ff7043' }}>{s.totalAdvances > 0 ? fmt(s.totalAdvances) : '–'}</td>
-                          <td style={tdS(s.balance >= 0 ? 'green' : 'red')}>
-                            {(s.balance >= 0 ? '+' : '') + '£' + s.balance.toFixed(0)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr style={{ background: 'rgba(212,175,55,0.08)', borderTop: '2px solid rgba(212,175,55,0.3)' }}>
-                        <td style={{ ...tdS(), textAlign: 'left', fontWeight: '800', color: '#d4af37' }}>TOTAL</td>
-                        <td style={{ ...tdS(), fontWeight: '800' }}>{monthlySummaryTotals.workedDays}</td>
-                        <td style={{ ...tdS(), fontWeight: '800' }}>{fmt(monthlySummaryTotals.totalRev)}</td>
-                        <td style={{ ...tdS(), fontWeight: '800', color: '#4caf50' }}>{fmt(monthlySummaryTotals.wages)}</td>
-                        <td style={{ ...tdS(), fontWeight: '800', color: '#ff7043' }}>{fmt(monthlySummaryTotals.totalAdvances)}</td>
-                        <td style={{ ...tdS(monthlySummaryTotals.balance >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
-                          {(monthlySummaryTotals.balance >= 0 ? '+' : '') + '£' + monthlySummaryTotals.balance.toFixed(0)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Monthly P&L summary */}
-              <div style={{ ...card, border: '1px solid rgba(255,112,67,0.2)', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,112,67,0.15)', fontSize: '0.65rem', color: '#ff7043', fontWeight: '700', letterSpacing: '2px' }}>
-                  MONTHLY P&L — {MONTH_NAMES[month].toUpperCase()} {year}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '650px' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(255,112,67,0.05)' }}>
-                        <th style={{ ...thS, textAlign: 'left' }}>Period</th>
-                        <th style={thS}>Cash Exp.</th>
-                        <th style={thS}>Bank Exp.</th>
-                        <th style={{ ...thS, color: '#7e57c2' }}>Other Costs</th>
-                        <th style={thS}>Gross Revenue</th>
-                        <th style={thS}>Net Revenue</th>
-                        <th style={{ ...thS, color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' }}>Net P&L</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700' }}>{MONTH_NAMES[month]} {year}</td>
-                        <td style={{ ...tdS(), color: '#ff7043' }}>{fmt(monthlyTotals.cashExpense)}</td>
-                        <td style={{ ...tdS(), color: '#ff7043' }}>{fmt(monthlyTotals.bankExpense)}</td>
-                        <td style={{ ...tdS(), color: '#7e57c2' }}>{initialInvestmentTotal > 0 ? fmt(initialInvestmentTotal) : '–'}</td>
-                        <td style={{ ...tdS(), color: '#d4af37' }}>{fmt(monthlyTotals.grossRevenue)}</td>
-                        <td style={{ ...tdS(), color: '#9c27b0' }}>{fmt(monthlyTotals.netRevenue)}</td>
-                        <td style={tdS(monthlyTotals.netPL >= 0 ? 'green' : 'red')}>
-                          {(monthlyTotals.netPL >= 0 ? '+' : '') + '£' + monthlyTotals.netPL.toFixed(0)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
-          {summaryView === 'initial' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', alignItems: 'start' }}>
-              <div style={{ ...card, border: '1px solid rgba(126,87,194,0.25)', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(126,87,194,0.2)', fontSize: '0.65rem', color: '#b39ddb', fontWeight: '700', letterSpacing: '2px' }}>
-                  INITIAL INVESTMENTS — {MONTH_NAMES[month].toUpperCase()} {year}
-                </div>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Total this month</span>
-                  <span style={{ fontSize: '1rem', fontWeight: '800', color: '#b39ddb' }}>
-                    {initialInvestmentTotal > 0 ? fmt(initialInvestmentTotal) : '–'}
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
+                    PARTNERSHIP ACCOUNTING — {MONTH_NAMES[month].toUpperCase()} {year}
                   </span>
                 </div>
-                {selectedMonthInvestments.length === 0
-                  ? <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.78rem' }}>No investment records for this month.</div>
-                  : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: 'rgba(126,87,194,0.06)' }}>
-                          {['Date','Amount','Method','Notes',''].map(h => (
-                            <th key={h} style={{ ...thS, textAlign: h === '' ? 'center' : 'left', padding: '8px 12px' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedMonthInvestments.map(inv => {
-                          const d = paymentToDate(inv.date);
-                          return (
-                            <tr key={inv.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                              <td style={{ padding: '10px 12px', fontSize: '0.75rem' }}>{d ? d.toLocaleDateString('en-GB') : '–'}</td>
-                              <td style={{ padding: '10px 12px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>£{parseFloat(inv.amount || 0).toFixed(0)}</td>
-                              <td style={{ padding: '10px 12px', fontSize: '0.72rem', color: 'var(--muted)' }}>{inv.method || '–'}</td>
-                              <td style={{ padding: '10px 12px', fontSize: '0.72rem', color: 'var(--muted)' }}>{inv.notes || '–'}</td>
-                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                                <button onClick={() => deleteInitialInvestment(inv.id)}
-                                  style={{ background: 'transparent', border: 'none', color: 'rgba(255,82,82,0.5)', cursor: 'pointer', fontSize: '0.85rem' }}>✕</button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                {!selectedMonthPartnership
+                  ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8rem' }}>No data for this month.</div>
+                  : <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(212,175,55,0.06)' }}>
+                            <th style={{ ...thS, textAlign: 'left' }}>Partner</th>
+                            <th style={thS}>Share</th>
+                            <th style={{ ...thS, color: 'rgba(255,255,255,0.5)' }}>Days</th>
+                            <th style={{ ...thS, color: '#4caf50' }}>Wages Earned</th>
+                            <th style={{ ...thS, color: '#ff7043' }}>Advances</th>
+                            <th style={{ ...thS, color: '#2196f3' }}>EL EMEĞİ<br/><span style={{ fontSize: '0.5rem', letterSpacing: '0' }}>Wages – Advances</span></th>
+                            <th style={{ ...thS, color: '#9c27b0' }}>HİSSEDEN<br/><span style={{ fontSize: '0.5rem', letterSpacing: '0' }}>Share × NetPL</span></th>
+                            <th style={{ ...thS, color: '#d4af37', minWidth: '90px' }}>NET DURUM<br/><span style={{ fontSize: '0.5rem', letterSpacing: '0' }}>EL + HİSSE</span></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {partnerNames.map(name => {
+                            const p = selectedMonthPartnership.partners[name];
+                            if (!p) return null;
+                            const col = BARBER_COLORS[name] || '#d4af37';
+                            return (
+                              <tr key={name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700', color: col }}>{name}</td>
+                                <td style={{ ...tdS(), fontSize: '0.7rem', color: 'var(--muted)' }}>{p.share}%</td>
+                                <td style={tdS()}>{p.workedDays || '–'}</td>
+                                <td style={{ ...tdS(), color: '#4caf50' }}>{p.wagesEarned > 0 ? fmt(p.wagesEarned) : '–'}</td>
+                                <td style={{ ...tdS(), color: '#ff7043' }}>{p.advances > 0 ? fmt(p.advances) : '–'}</td>
+                                <td style={{ ...tdS(), color: '#2196f3', fontWeight: '700' }}>{fmtSigned(p.elEmegi)}</td>
+                                <td style={{ ...tdS(), color: p.hisseden >= 0 ? '#9c27b0' : '#ff5252', fontWeight: '700' }}>{fmtSigned(p.hisseden)}</td>
+                                <td style={{ ...tdS(p.netDurum >= 0 ? 'green' : 'red'), fontWeight: '800', fontSize: '0.82rem' }}>{fmtSigned(p.netDurum)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                 }
               </div>
 
-              <div style={{ ...card, border: '1px solid rgba(126,87,194,0.25)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ fontSize: '0.65rem', color: '#b39ddb', fontWeight: '700', letterSpacing: '2px' }}>ADD INVESTMENT</div>
-                <div>
-                  <label style={lbl}>Date</label>
-                  <input type="date" value={investmentForm.date} onChange={e => setInvestmentForm(f => ({ ...f, date: e.target.value }))} style={{ ...inp, colorScheme: 'dark' }} />
+              {/* Employee wages note */}
+              {selectedMonthPartnership && (
+                <div style={{ ...card, padding: '12px 16px', border: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: 'var(--muted)' }}>
+                  <span style={{ color: '#b39ddb', fontWeight: '700' }}>Tuncay</span> earns wages via employees:{' '}
+                  {Object.entries(partnerConfig).filter(([, c]) => c.creditTo === 'Tuncay').map(([n, c]) => `${n} (£${c.wage}/day)`).join(', ')}.
+                  Company Net P&L = Net Revenue – All Wages – Fixed Cost (£{fixedDailyRate}×{selectedMonthPartnership.shopDays} days).
                 </div>
-                <div>
-                  <label style={lbl}>Amount (£)</label>
-                  <input type="number" value={investmentForm.amount} onChange={e => setInvestmentForm(f => ({ ...f, amount: e.target.value }))} style={inp} />
+              )}
+            </div>
+          )}
+
+          {/* P&L Breakdown */}
+          {summaryView === 'pnl' && (
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {/* Barber revenue breakdown */}
+              <div style={{ ...card, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
+                  BARBER REVENUE — {MONTH_NAMES[month].toUpperCase()} {year}
                 </div>
-                <div>
-                  <label style={lbl}>Method</label>
-                  <select value={investmentForm.method} onChange={e => setInvestmentForm(f => ({ ...f, method: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
-                    <option>Cash</option>
-                    <option>Bank</option>
-                    <option>Other</option>
-                  </select>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(212,175,55,0.06)' }}>
+                        <th style={{ ...thS, textAlign: 'left' }}>Barber</th>
+                        <th style={thS}>Days</th>
+                        <th style={thS}>Cash</th>
+                        <th style={thS}>Card+Monzo</th>
+                        <th style={thS}>Total Revenue</th>
+                        <th style={{ ...thS, color: '#4caf50' }}>Wages</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {barbers.map(b => {
+                        const bBk = bookings.filter(bk => isWalkInBooking(bk) && bk.barber === b.name && String(bk.dateKey || '').startsWith(selectedMonth));
+                        const workedDays = new Set(bBk.map(bk => bk.dateKey)).size;
+                        const cash  = bBk.filter(bk => paymentMethod(bk) === 'CASH').reduce((s, bk) => s + effectiveRevenue(bk), 0);
+                        const card  = bBk.filter(bk => paymentMethod(bk) !== 'CASH').reduce((s, bk) => s + effectiveRevenue(bk), 0);
+                        const wages = workedDays * (partnerConfig[b.name]?.wage ?? 100);
+                        const col   = b.color || BARBER_COLORS[b.name];
+                        return (
+                          <tr key={b.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <td style={{ ...tdS(), textAlign: 'left', fontWeight: '700', color: col }}>{b.name}</td>
+                            <td style={tdS()}>{workedDays || '–'}</td>
+                            <td style={tdS()}>{cash > 0 ? fmt(cash) : '–'}</td>
+                            <td style={tdS()}>{card > 0 ? fmt(card) : '–'}</td>
+                            <td style={{ ...tdS(), fontWeight: '700' }}>{(cash + card) > 0 ? fmt(cash + card) : '–'}</td>
+                            <td style={{ ...tdS(), color: '#4caf50' }}>{wages > 0 ? fmt(wages) : '–'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div>
-                  <label style={lbl}>Notes</label>
-                  <input value={investmentForm.notes} onChange={e => setInvestmentForm(f => ({ ...f, notes: e.target.value }))} placeholder="Description..." style={inp} />
+              </div>
+
+              {/* Monthly P&L */}
+              <div style={{ ...card, border: '1px solid rgba(255,112,67,0.2)', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,112,67,0.15)', fontSize: '0.65rem', color: '#ff7043', fontWeight: '700', letterSpacing: '2px' }}>
+                  P&L STATEMENT — {MONTH_NAMES[month].toUpperCase()} {year}
                 </div>
-                <button onClick={addInitialInvestment} disabled={investmentSaving || !investmentForm.date || !investmentForm.amount}
-                  style={{ padding: '11px', background: 'linear-gradient(135deg,#b39ddb,#7e57c2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', opacity: (!investmentForm.date || !investmentForm.amount) ? 0.5 : 1 }}>
-                  {investmentSaving ? 'Saving...' : 'Add'}
-                </button>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                    <tbody>
+                      {[
+                        { label: 'Gross Revenue',    value: monthlyTotals.grossRevenue, color: '#d4af37', bold: true },
+                        { label: '  Cash Expenses',  value: -monthlyTotals.cashExpense, color: '#ff7043' },
+                        { label: '  Bank Expenses',  value: -monthlyTotals.bankExpense, color: '#ff7043' },
+                        { label: 'Net Revenue',       value: monthlyTotals.netRevenue,   color: '#9c27b0', bold: true, border: true },
+                        { label: '  Wages',           value: -monthlyTotals.totalWages,  color: '#4caf50' },
+                        { label: '  Fixed Cost',      value: -monthlyTotals.fixedCost,   color: '#78909c' },
+                        { label: 'Net P&L',           value: monthlyTotals.netPL,        color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252', bold: true, border: true },
+                      ].map(r => (
+                        <tr key={r.label} style={{ borderBottom: r.border ? '2px solid rgba(212,175,55,0.25)' : '1px solid rgba(255,255,255,0.03)', background: r.bold ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
+                          <td style={{ padding: '10px 16px', fontSize: r.bold ? '0.8rem' : '0.75rem', fontWeight: r.bold ? '700' : '400', color: 'var(--text)', minWidth: '200px' }}>{r.label}</td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: r.bold ? '800' : '500', color: r.color, fontSize: r.bold ? '0.88rem' : '0.78rem' }}>
+                            {r.value < 0 ? '–£' + Math.round(Math.abs(r.value)) : '£' + Math.round(r.value)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          OVERVIEW — GENELTABLO (multi-month matrix + initial investment)
+          ══════════════════════════════════════════════════════════════════ */}
+      {!loading && activeTab === 'overview' && (
+        <div style={{ display: 'grid', gap: '20px' }}>
+
+          {/* Multi-month NET DURUM matrix */}
+          <div style={{ ...card, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
+              GENERAL OVERVIEW — NET POSITION PER PARTNER
+            </div>
+            {partnershipByMonth.length === 0
+              ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8rem' }}>No data yet.</div>
+              : <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(212,175,55,0.06)' }}>
+                        <th style={{ ...thS, textAlign: 'left', minWidth: '130px' }}>Month</th>
+                        {partnerNames.map(n => (
+                          <React.Fragment key={n}>
+                            <th style={{ ...thS, color: BARBER_COLORS[n] || '#d4af37' }}>{n}<br/>NET DURUM</th>
+                          </React.Fragment>
+                        ))}
+                        <th style={{ ...thS, color: '#78909c' }}>Net P&L</th>
+                        <th style={{ ...thS, color: '#9c27b0' }}>Net Rev.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnershipByMonth.map(row => (
+                        <tr key={row.mk} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: row.mk === selectedMonth ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
+                          <td style={{ ...tdS(), textAlign: 'left', fontWeight: row.mk === selectedMonth ? '700' : '400', color: row.mk === selectedMonth ? '#d4af37' : 'var(--text)', fontSize: '0.78rem' }}>
+                            {row.label}
+                          </td>
+                          {partnerNames.map(n => {
+                            const p = row.partners[n];
+                            if (!p) return <td key={n} style={tdS()}>–</td>;
+                            return (
+                              <td key={n} style={{ ...tdS(p.netDurum >= 0 ? 'green' : 'red'), fontWeight: '700' }}>
+                                {fmtSigned(p.netDurum)}
+                              </td>
+                            );
+                          })}
+                          <td style={{ ...tdS(row.companyNetPL >= 0 ? 'green' : 'red'), fontWeight: '700' }}>
+                            {fmtSigned(row.companyNetPL)}
+                          </td>
+                          <td style={{ ...tdS(), color: '#9c27b0' }}>{fmt(row.netRevenue)}</td>
+                        </tr>
+                      ))}
+
+                      {/* Cumulative totals */}
+                      <tr style={{ background: 'rgba(212,175,55,0.1)', borderTop: '2px solid rgba(212,175,55,0.3)' }}>
+                        <td style={{ ...tdS(), textAlign: 'left', fontWeight: '800', color: '#d4af37', fontSize: '0.72rem' }}>CUMULATIVE</td>
+                        {partnerNames.map(n => (
+                          <td key={n} style={{ ...tdS((cumulativeByPartner[n] || 0) >= 0 ? 'green' : 'red'), fontWeight: '800', fontSize: '0.82rem' }}>
+                            {fmtSigned(cumulativeByPartner[n] || 0)}
+                          </td>
+                        ))}
+                        <td style={{ ...tdS(partnershipByMonth.reduce((s, r) => s + r.companyNetPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
+                          {fmtSigned(partnershipByMonth.reduce((s, r) => s + r.companyNetPL, 0))}
+                        </td>
+                        <td style={{ ...tdS(), fontWeight: '800', color: '#9c27b0' }}>
+                          {fmt(partnershipByMonth.reduce((s, r) => s + r.netRevenue, 0))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+            }
+          </div>
+
+          {/* Company Net P&L per month — mini chart style */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+            {partnershipByMonth.map(row => (
+              <div key={row.mk} style={{ ...card, padding: '12px 14px', border: `1px solid ${row.companyNetPL >= 0 ? 'rgba(76,175,80,0.2)' : 'rgba(255,82,82,0.2)'}` }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginBottom: '4px' }}>{row.label}</div>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: row.companyNetPL >= 0 ? '#4caf50' : '#ff5252' }}>
+                  {fmtSigned(row.companyNetPL)}
+                </div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>{row.shopDays} shop days</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Initial Investment table */}
+          <div style={{ ...card, border: '1px solid rgba(126,87,194,0.25)', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(126,87,194,0.2)', fontSize: '0.65rem', color: '#b39ddb', fontWeight: '700', letterSpacing: '2px' }}>
+              INITIAL INVESTMENT — SETUP
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(126,87,194,0.06)' }}>
+                    {['Partner','Share','Amount Paid','Required*','Balance'].map(h => (
+                      <th key={h} style={{ ...thS, textAlign: 'left', padding: '8px 16px' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {INITIAL_INVESTMENT.map(r => {
+                    const required = INITIAL_TOTAL * (r.share / 100);
+                    const balance  = r.paid - required;
+                    return (
+                      <tr key={r.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: BARBER_COLORS[r.name] || '#b39ddb' }}>{r.name}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>{r.share}%</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>£{r.paid.toLocaleString()}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{Math.round(required).toLocaleString()}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.8rem', fontWeight: '700', color: balance >= 0 ? '#4caf50' : '#ff5252' }}>
+                          {balance >= 0 ? '+' : ''}£{Math.round(balance).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ background: 'rgba(126,87,194,0.08)', borderTop: '2px solid rgba(126,87,194,0.25)' }}>
+                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.78rem' }}>TOTAL</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '700', color: '#b39ddb', fontSize: '0.78rem' }}>100%</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.88rem' }}>£{INITIAL_TOTAL.toLocaleString()}</td>
+                    <td colSpan={2} style={{ padding: '10px 16px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>
+                      * Required = Total Pool × Share%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </div>
