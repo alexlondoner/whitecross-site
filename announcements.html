@@ -559,19 +559,8 @@
 </script>
 </body>
 
-<script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-    var app = initializeApp({
-        apiKey: 'AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A',
-        authDomain: 'havuz-44f70.firebaseapp.com',
-        projectId: 'havuz-44f70',
-        storageBucket: 'havuz-44f70.firebasestorage.app',
-        messagingSenderId: '1050766582653',
-        appId: '1:1050766582653:web:7ddaa5acb3bec5ef122214'
-    });
-    var db = getFirestore(app);
+<script>
+    var ANNOUNCEMENTS_URL = 'https://firestore.googleapis.com/v1/projects/havuz-44f70/databases/(default)/documents/tenants/whitecross/announcements?key=AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A';
     var listEl = document.getElementById('announcementsList');
 
     function escapeHtml(value) {
@@ -633,9 +622,35 @@
         }).join('');
     }
 
-    onSnapshot(collection(db, 'tenants/whitecross/announcements'), function(snapshot) {
-        var items = snapshot.docs
-            .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+    function readFieldValue(field) {
+        if (!field) return '';
+        if (field.stringValue != null) return field.stringValue;
+        if (field.integerValue != null) return Number(field.integerValue);
+        if (field.doubleValue != null) return Number(field.doubleValue);
+        if (field.booleanValue != null) return field.booleanValue;
+        return '';
+    }
+
+    function normalizeDocument(doc) {
+        var fields = doc.fields || {};
+        return {
+            id: doc.name || '',
+            icon: readFieldValue(fields.icon) || '📢',
+            title: readFieldValue(fields.title) || '',
+            tag: readFieldValue(fields.tag) || '',
+            content: readFieldValue(fields.content) || '',
+            active: fields.active && fields.active.booleanValue === false ? false : true,
+            order: typeof readFieldValue(fields.order) === 'number' ? readFieldValue(fields.order) : 999
+        };
+    }
+
+    async function loadAnnouncements() {
+        try {
+            var response = await fetch(ANNOUNCEMENTS_URL, { cache: 'no-store' });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var data = await response.json();
+            var items = (data.documents || [])
+                .map(normalizeDocument)
             .filter(function(item) { return item.active !== false; })
             .sort(function(a, b) {
                 var ao = typeof a.order === 'number' ? a.order : 999;
@@ -643,11 +658,14 @@
                 if (ao !== bo) return ao - bo;
                 return String(a.title || '').localeCompare(String(b.title || ''));
             });
-        renderAnnouncements(items);
-    }, function(error) {
-        console.warn('Failed to load announcements:', error);
-        listEl.className = 'announcement-empty';
-        listEl.textContent = 'Announcements are temporarily unavailable.';
-    });
+            renderAnnouncements(items);
+        } catch (error) {
+            console.warn('Failed to load announcements:', error);
+            listEl.className = 'announcement-empty';
+            listEl.textContent = 'Announcements are temporarily unavailable.';
+        }
+    }
+
+    loadAnnouncements();
 </script>
 </html>
