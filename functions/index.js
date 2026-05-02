@@ -152,3 +152,128 @@ exports.sendBookingConfirmation = onDocumentCreated(
         }
     }
 );
+// Called from admin panel. Reads active announcements from Firestore,
+// generates static HTML, and updates announcements.html on GitHub via API.
+// Requires GITHUB_TOKEN secret (firebase functions:secrets:set GITHUB_TOKEN).
+// ─────────────────────────────────────────────────────────────────────────────
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderAnnouncementContent(content) {
+    var lines = String(content || '').replace(/\r/g, '').split('\n');
+    var html = '';
+    var listItems = [];
+    function flushList() {
+        if (!listItems.length) return;
+        html += '<ul>' + listItems.map(function(item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') + '</ul>';
+        listItems = [];
+    }
+    lines.forEach(function(line) {
+        var trimmed = line.trim();
+        if (!trimmed) { flushList(); return; }
+        if (trimmed.indexOf('- ') === 0) { listItems.push(trimmed.slice(2)); return; }
+        flushList();
+        html += '<p>' + escapeHtml(trimmed) + '</p>';
+    });
+    flushList();
+    return html || '<p></p>';
+}
+
+// Secret set via: firebase functions:secrets:set GITHUB_TOKEN
+exports.publishAnnouncementsToSite = onCall({ secrets: ['GITHUB_TOKEN'] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be signed in to publish.');
+    }
+
+    // 1. Fetch active announcements
+    const snap = await db.collection('tenants/whitecross/announcements').get();
+    const items = snap.docs
+        .map(function(d) { return Object.assign({ id: d.id }, d.data()); })
+        .filter(function(item) { return item.active !== false; })
+        .sort(function(a, b) {
+            var ao = typeof a.order === 'number' ? a.order : 999;
+            var bo = typeof b.order === 'number' ? b.order : 999;
+            if (ao !== bo) return ao - bo;
+            return String(a.title || '').localeCompare(String(b.title || ''));
+        });
+
+    // 2. Generate static HTML for each announcement
+    const staticHtml = items.map(function(item) {
+        return '<div class="announcement">' +
+            '<div class="announcement-header">' +
+                '<span class="announcement-icon">' + escapeHtml(item.icon || '📢') + '</span>' +
+                '<span class="announcement-title">' + escapeHtml(item.title || 'Announcement') + '</span>' +
+                (item.tag ? '<span class="announcement-tag">' + escapeHtml(item.tag) + '</span>' : '') +
+            '</div>' +
+            '<div class="announcement-body">' + renderAnnouncementContent(item.content) + '</div>' +
+        '</div>';
+    }).join('\n');
+
+    // 3. Get current file from GitHub
+    const REPO = 'alexlondoner/whitecross-site';
+    const FILE_PATH = 'announcements.html';
+    const token = process.env.GITHUB_TOKEN;
+    const apiUrl = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
+
+    const getRes = await fetch(apiUrl, {
+        headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'whitecross-publish-bot',
+        },
+    });
+
+    if (!getRes.ok) {
+        const errText = await getRes.text();
+        throw new HttpsError('internal', `GitHub GET failed: ${getRes.status} ${errText}`);
+    }
+
+    const fileData = await getRes.json();
+    const currentContent = Buffer.from(fileData.content, 'base64').toString('utf8');
+
+    // 4. Replace between markers
+    const START = '<!-- STATIC_ANNOUNCEMENTS_START -->';
+    const END = '<!-- STATIC_ANNOUNCEMENTS_END -->';
+    const startIdx = currentContent.indexOf(START);
+    const endIdx = currentContent.indexOf(END);
+
+    if (startIdx === -1 || endIdx === -1) {
+        throw new HttpsError('not-found', 'Could not find STATIC_ANNOUNCEMENTS_START/END markers in announcements.html');
+    }
+
+    const newContent =
+        currentContent.slice(0, startIdx + START.length) +
+        '\n' + staticHtml + '\n' +
+        currentContent.slice(endIdx);
+
+    // 5. Push updated file to GitHub
+    const today = new Date().toISOString().split('T')[0];
+    const putRes = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'whitecross-publish-bot',
+        },
+        body: JSON.stringify({
+            message: `SEO: update static announcements snapshot (${today})`,
+            content: Buffer.from(newContent).toString('base64'),
+            sha: fileData.sha,
+            branch: 'main',
+        }),
+    });
+
+    if (!putRes.ok) {
+        const errJson = await putRes.json().catch(function() { return {}; });
+        throw new HttpsError('internal', errJson.message || `GitHub PUT failed: ${putRes.status}`);
+    }
+
+    return { success: true, count: items.length };
+});
