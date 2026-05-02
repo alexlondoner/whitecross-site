@@ -8,3 +8,5 @@ serviceAccount*.json
 .env
 .env.*
 exports/
+import-client.mjs
+scripts/
