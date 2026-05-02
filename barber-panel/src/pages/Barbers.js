@@ -7,12 +7,6 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const COLORS = ['#d4af37', '#4caf50', '#2196f3', '#e91e63', '#ff9800', '#9c27b0', '#00bcd4'];
 const DEFAULT_WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_HOURS = { open: '09:00', close: '19:00' };
-const REQUIRED_BARBERS = [
-  { id: 'barber-alex', name: 'Alex', color: '#4caf50', order: 1 },
-  { id: 'barber-arda', name: 'Arda', color: '#2196f3', order: 2 },
-  { id: 'barber-kadim', name: 'Kadim', color: '#ff9800', order: 3 },
-  { id: 'barber-manoj', name: 'Manoj', color: '#e91e63', order: 4 },
-];
 
 const defaultActiveByName = function(name) {
   var n = String(name || '').trim().toLowerCase();
@@ -50,10 +44,6 @@ const normalizeBarberForm = function(barber) {
   return Object.assign({}, defaultBarber, barber, { workingDays, hours, dayHours });
 };
 
-const normalizeName = function(name) {
-  return String(name || '').trim().toLowerCase();
-};
-
 export default function Barbers() {
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,28 +57,6 @@ export default function Barbers() {
       setLoading(true);
       var snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
       var list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      var existingNames = new Set(list.map(function(b) { return normalizeName(b.name); }));
-      var missing = REQUIRED_BARBERS.filter(function(b) { return !existingNames.has(normalizeName(b.name)); });
-
-      if (missing.length) {
-        await Promise.all(missing.map(function(b) {
-          var active = defaultActiveByName(b.name);
-          return setDoc(doc(db, `tenants/${TENANT}/barbers`, b.id), {
-            id: b.id,
-            name: b.name,
-            color: b.color,
-            photo: '',
-            active: active,
-            order: b.order,
-            workingDays: DEFAULT_WORKING_DAYS,
-            hours: DEFAULT_HOURS,
-            dayHours: createDayHours(DEFAULT_HOURS),
-          }, { merge: true });
-        }));
-
-        snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
-        list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
 
       list.sort(function(a, b) {
         var ao = typeof a.order === 'number' ? a.order : 999;

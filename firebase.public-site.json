@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firebase.public-site.json",
+      "**/.*",
+      "**/node_modules/**",
+      "barber-panel/**",
+      "functions/**",
+      "panel/**",
+      "Site/**",
+      "workspace.code-workspace"
+    ]
+  }
+}

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const snap = await getDocs(collection(db, 'tenants/' + TENANT + '/barbers'));
             ACTIVE_BARBERS = snap.docs
                 .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
-                .filter(function(b) { return b && b.name; })
+                .filter(function(b) { return b && b.name && b.active !== false; })
                 .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
         } catch (err) {
             console.warn('Failed to load barbers:', err);
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             firebase.onSnapshot(barbersRef, function(snap) {
                 ACTIVE_BARBERS = snap.docs
                     .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
-                    .filter(function(b) { return b && b.name; })
+                    .filter(function(b) { return b && b.name && b.active !== false; })
                     .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
                 renderBarberButtons();
                 bindBarberSelector();
