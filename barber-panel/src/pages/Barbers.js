@@ -112,17 +112,17 @@ export default function Barbers() {
       setTimeout(function() { setSaved(false); }, 2000);
     } catch (err) {
       console.error('Save error:', err);
-      alert('Error saving barber.');
+      alert('Error saving team member.');
     }
   };
 
   const handleDelete = async function(id) {
-    if (!window.confirm('Remove this barber?')) return;
+    if (!window.confirm('Remove this team member?')) return;
     try {
       await deleteDoc(doc(db, `tenants/${TENANT}/barbers`, id));
       await fetchBarbers();
     } catch (err) {
-      alert('Error deleting barber.');
+      alert('Error deleting team member.');
     }
   };
 
@@ -176,11 +176,11 @@ export default function Barbers() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Barbers</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{barbers.length} barber{barbers.length !== 1 ? 's' : ''} on your team</p>
+          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Team Members</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{barbers.length} team member{barbers.length !== 1 ? 's' : ''}</p>
         </div>
         <button onClick={openAdd} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
-          + Add Barber
+          + Add Team Member
         </button>
       </div>
 
@@ -268,7 +268,7 @@ export default function Barbers() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-              <h2 style={{ fontSize: '1.1rem', color: '#d4af37', fontWeight: '700' }}>{editId ? 'Edit Barber' : 'Add New Barber'}</h2>
+              <h2 style={{ fontSize: '1.1rem', color: '#d4af37', fontWeight: '700' }}>{editId ? 'Edit Team Member' : 'Add New Team Member'}</h2>
               <button onClick={function() { setShowAdd(false); }} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.3rem' }}>✕</button>
             </div>
 
@@ -288,7 +288,7 @@ export default function Barbers() {
                 var next = Object.assign({}, form, { name: nextName });
                 if (!editId) next.active = defaultActiveByName(nextName);
                 setForm(next);
-              }} placeholder="Barber name" style={inputStyle} />
+              }} placeholder="Team member name" style={inputStyle} />
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -357,7 +357,7 @@ export default function Barbers() {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={function() { setShowAdd(false); }} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700' }}>{editId ? 'Save Changes' : 'Add Barber'}</button>
+              <button onClick={handleSave} style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700' }}>{editId ? 'Save Changes' : 'Add Team Member'}</button>
             </div>
           </div>
         </div>

@@ -4,10 +4,9 @@ import config from '../config';
 const navItems = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard' },
   { id: 'bookings', icon: '📅', label: 'Bookings' },
-  { id: 'barbers', icon: '✂️', label: 'Barbers' },
-  { id: 'gallery', icon: '🖼️', label: 'Gallery' },
+  { id: 'barbers', icon: '✂️', label: 'Team Members' },
+  { id: 'online-profile', icon: '🌐', label: 'Online Profile' },
   { id: 'clients', icon: '👥', label: 'Clients' },
-  { id: 'services', icon: '💈', label: 'Services' },
   { id: 'reports', icon: '📈', label: 'Reports' },
   { id: 'finance', icon: '💰', label: 'Finance' },
   { id: 'calendar', icon: '🗓️', label: 'Calendar' },
