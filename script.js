@@ -57,13 +57,11 @@ document.addEventListener('click', function (event) {
 
 const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
-const BOOKING_DISABLED_BARBERS = ['manoj', 'kadim'];
 window.SERVICES = window.SERVICES || [];
 
 function isBookingDisabledBarber(barber) {
     if (!barber) return false;
-    const name = String(barber.name || '').trim().toLowerCase();
-    return barber.active === false || BOOKING_DISABLED_BARBERS.includes(name);
+    return barber.active === false;
 }
 
 function escapeHtml(str) {

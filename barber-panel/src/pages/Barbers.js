@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const COLORS = ['#d4af37', '#4caf50', '#2196f3', '#e91e63', '#ff9800', '#9c27b0', '#00bcd4'];
 const DEFAULT_WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DEFAULT_HOURS = { open: '09:00', close: '19:00' };
+
+const defaultActiveByName = function(name) {
+  var n = String(name || '').trim().toLowerCase();
+  if (n === 'kadim' || n === 'manoj') return false;
+  return true;
+};
 
 const createDayHours = function(sharedHours) {
   return DAYS.reduce(function(acc, day) {
@@ -20,6 +26,7 @@ const defaultBarber = {
   name: '',
   color: '#d4af37',
   photo: '',
+  active: true,
   workingDays: DEFAULT_WORKING_DAYS,
   hours: DEFAULT_HOURS,
   dayHours: createDayHours(DEFAULT_HOURS),
@@ -76,6 +83,7 @@ export default function Barbers() {
     if (!form.name.trim()) return;
     try {
       const barberId = form.id || 'barber-' + Date.now();
+      var active = typeof form.active === 'boolean' ? form.active : defaultActiveByName(form.name);
       var primaryDay = (form.workingDays || [])[0];
       var primaryHours = primaryDay && form.dayHours && form.dayHours[primaryDay]
         ? form.dayHours[primaryDay]
@@ -88,7 +96,7 @@ export default function Barbers() {
         workingDays: form.workingDays,
         hours: { open: primaryHours.open, close: primaryHours.close },
         dayHours: form.dayHours,
-        active: true,
+        active: active,
       });
       await fetchBarbers();
       setShowAdd(false);
@@ -107,6 +115,18 @@ export default function Barbers() {
       await fetchBarbers();
     } catch (err) {
       alert('Error deleting barber.');
+    }
+  };
+
+  const toggleBarberActive = async function(barber) {
+    try {
+      const nextActive = barber.active === false ? true : false;
+      await updateDoc(doc(db, `tenants/${TENANT}/barbers`, barber.id), { active: nextActive });
+      await fetchBarbers();
+      setSaved(true);
+      setTimeout(function() { setSaved(false); }, 1500);
+    } catch (err) {
+      alert('Error updating barber status.');
     }
   };
 
@@ -181,8 +201,10 @@ export default function Barbers() {
                   <div>
                     <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>{barber.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: barber.color }} />
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Active</span>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: barber.active === false ? '#ff5252' : '#4caf50' }} />
+                      <span style={{ fontSize: '0.72rem', color: barber.active === false ? '#ff5252' : '#4caf50', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
+                        {barber.active === false ? 'Passive' : 'Active'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -217,6 +239,10 @@ export default function Barbers() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={function() { toggleBarberActive(barber); }}
+                    style={{ padding: '10px 12px', background: barber.active === false ? 'rgba(255,82,82,0.12)' : 'rgba(76,175,80,0.12)', border: '1px solid ' + (barber.active === false ? 'rgba(255,82,82,0.35)' : 'rgba(76,175,80,0.35)'), borderRadius: '8px', color: barber.active === false ? '#ff5252' : '#4caf50', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                    {barber.active === false ? 'Set Active' : 'Set Passive'}
+                  </button>
                   <button onClick={function() { openEdit(barber); }} style={{ flex: 1, padding: '10px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
                     ✏️ Edit
                   </button>
@@ -249,7 +275,26 @@ export default function Barbers() {
 
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Name</label>
-              <input value={form.name} onChange={function(e) { setForm(Object.assign({}, form, { name: e.target.value })); }} placeholder="Barber name" style={inputStyle} />
+              <input value={form.name} onChange={function(e) {
+                var nextName = e.target.value;
+                var next = Object.assign({}, form, { name: nextName });
+                if (!editId) next.active = defaultActiveByName(nextName);
+                setForm(next);
+              }} placeholder="Barber name" style={inputStyle} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Booking Status</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={function() { setForm(Object.assign({}, form, { active: true })); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid rgba(76,175,80,0.35)', background: form.active === true ? 'rgba(76,175,80,0.2)' : 'transparent', color: '#4caf50', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700' }}>
+                  Active
+                </button>
+                <button onClick={function() { setForm(Object.assign({}, form, { active: false })); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,82,82,0.35)', background: form.active === false ? 'rgba(255,82,82,0.2)' : 'transparent', color: '#ff5252', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700' }}>
+                  Passive
+                </button>
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

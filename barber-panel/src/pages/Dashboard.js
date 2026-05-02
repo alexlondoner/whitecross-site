@@ -7,12 +7,10 @@ import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBookin
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252' };
-const BOOKING_DISABLED_BARBERS = ['manoj', 'kadim'];
 
 function isBarberBookingDisabled(barber) {
   if (!barber) return false;
-  const name = String(barber.name || '').trim().toLowerCase();
-  return barber.active === false || BOOKING_DISABLED_BARBERS.includes(name);
+  return barber.active === false;
 }
 
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
