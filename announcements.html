@@ -192,6 +192,16 @@
             border-color: rgba(212,175,55,0.5);
         }
 
+        .announcement-loading,
+        .announcement-empty {
+            border: 1px solid var(--gold-border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            background: var(--bg3);
+            color: var(--muted);
+            text-align: center;
+        }
+
         .announcement-header {
             background: var(--gold-faint);
             padding: 16px 24px;
@@ -451,55 +461,7 @@
 
     <div class="section-label">Current Offers</div>
 
-    <!-- STUDENT DISCOUNT -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">🎓</span>
-            <span class="announcement-title">Student Discount</span>
-            <span class="announcement-tag">Ongoing</span>
-        </div>
-        <div class="announcement-body">
-            <p><span class="highlight">10% off</span> all services for students. Simply show a valid student ID at the time of your appointment.</p>
-            <p>Applies to all services — walk-ins and bookings both welcome.</p>
-        </div>
-    </div>
-
-    <!-- COMPLIMENTARY SERVICES -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">🎁</span>
-            <span class="announcement-title">Complimentary Add-Ons</span>
-            <span class="announcement-tag">With Every Visit</span>
-        </div>
-        <div class="announcement-body">
-            <p>Every visit includes the following <span class="highlight">complimentary extras</span>:</p>
-            <ul>
-                <li>Wash & Hot Towel</li>
-                <li>Arm & Shoulder Massage</li>
-                <li>Turkish Coffee</li>
-                <li>Turkish Tea</li>
-                <li>Soft Drinks</li>
-            </ul>
-            <p>Because a great cut deserves a great experience.</p>
-        </div>
-    </div>
-
-    <!-- AVAILABLE ON REQUEST -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">✨</span>
-            <span class="announcement-title">Available on Request</span>
-            <span class="announcement-tag">Ask Us</span>
-        </div>
-        <div class="announcement-body">
-            <p>The following services are available on request — just ask your barber:</p>
-            <ul>
-                <li>Ear Flame</li>
-                <li>Eyebrow Trimming</li>
-            </ul>
-            <p>No extra charge — part of the I CUT experience.</p>
-        </div>
-    </div>
+    <div id="announcementsList" class="announcement-loading">Loading announcements...</div>
 
     <div class="cta-box">
         <p>Ready to book your next appointment?</p>
@@ -507,111 +469,6 @@
     </div>
 
 </main>
-    <div class="section-label" style="margin-top: 48px;">Our Services</div>
-
-    <!-- EXCLUSIVE BUNDLES -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">👑</span>
-            <span class="announcement-title">Exclusive Bundle Packages</span>
-            <span class="announcement-tag">Premium</span>
-        </div>
-        <div class="announcement-body">
-            <p>Our exclusive bundles are designed for the gentleman who wants more than just a haircut. Each package is a complete grooming journey — crafted at our barbershop on <span class="highlight">136 Whitecross Street, EC1Y 8QJ</span>, steps from Old Street, Barbican and Moorgate.</p>
-            <ul>
-                <li><strong class="highlight">I CUT Royal — £65</strong> · The ultimate grooming experience. Bespoke haircut, full beard sculpt, straight razor finish, face steam, cleansing mask and scrub. For those who want a complete reset.</li>
-                <li><strong class="highlight">I CUT Deluxe — £55</strong> · Premium haircut and beard sculpting with precision razor finish, deep facial restoration, hot towel treatment and arm massage. Leave looking sharp and feeling renewed.</li>
-                <li><strong class="highlight">Full Skin Fade & Beard Luxury — £48</strong> · Professional skin fade blended to zero, full beard trim and shape-up with straight razor, hair wash, hot towel and arm massage.</li>
-                <li><strong class="highlight">The Full Experience — £40</strong> · A tailored haircut with styling, beard or detailing work and relaxation elements including hot towel and scalp massage.</li>
-                <li><strong class="highlight">Senior Full Experience (65+) — £35</strong> · A complete, comfort-focused grooming experience for clients aged 65 and above. Classic cut, gentle grooming, relaxed pace.</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- STANDARD SERVICES -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">✂️</span>
-            <span class="announcement-title">Standard Services</span>
-            <span class="announcement-tag">From £20</span>
-        </div>
-        <div class="announcement-body">
-            <p>Precision cuts and classic barbering delivered by experienced barbers in the heart of <span class="highlight">Clerkenwell, London EC1Y</span>. Whether you want a clean skin fade, a scissor cut or a classic short back and sides — we've got you covered.</p>
-            <ul>
-                <li><strong class="highlight">Skin Fade Cut — £32</strong> · A modern skin fade with clean transitions and sharp detail. Sides taken to zero and blended into your chosen style on top.</li>
-                <li><strong class="highlight">Scissor Cut — £30</strong> · Natural movement and shape through expert scissor work. Ideal for medium to longer styles with texture and flow.</li>
-                <li><strong class="highlight">Classic Short Back & Sides — £28</strong> · Timeless, versatile and smart. Neatly tapered sides with a shaped top — works for the office and every day.</li>
-                <li><strong class="highlight">Hot Towel Shave — £22</strong> · Traditional straight razor shave with warm towels to open pores and soften the beard. Close, smooth and relaxing.</li>
-                <li><strong class="highlight">Clipper Cut — £22</strong> · Clean all-clipper haircut for buzz cuts, tapers and basic fades. Sharp and easy to maintain.</li>
-                <li><strong class="highlight">Senior Haircut (65+) — £23</strong> · Comfortable, classic cut carried out gently and professionally. Neat, easy to maintain and relaxed.</li>
-                <li><strong class="highlight">Young Gents (0–12) — £20</strong> · Child-friendly haircut for boys aged 0 to 12. Quick, neat and age-appropriate.</li>
-                <li><strong class="highlight">Young Gents Skin Fade (4–12) — £24</strong> · Modern skin fade for boys aged 4 to 12. Clean sides blended into longer hair on top.</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- EXTRAS -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">💆</span>
-            <span class="announcement-title">Grooming Extras</span>
-            <span class="announcement-tag">From £10</span>
-        </div>
-        <div class="announcement-body">
-            <p>Enhance your visit with our range of grooming extras — available as standalone services or add-ons to any haircut at <span class="highlight">I CUT Whitecross Barbers, Old Street London</span>.</p>
-            <ul>
-                <li><strong class="highlight">Full Facial Treatment — £24</strong> · Deep cleansing, exfoliation, massage, mask and moisturising. Hydrate, brighten and improve overall skin health.</li>
-                <li><strong class="highlight">Beard Dyeing — £24</strong> · Cover grey, deepen your natural shade or create a more defined look. Safe formulas for facial hair and skin.</li>
-                <li><strong class="highlight">Face Mask — £12</strong> · Targeted treatment to cleanse and condition. Draws out impurities and refines texture.</li>
-                <li><strong class="highlight">Face Steam — £12</strong> · Warm steam to open pores, improve circulation and soften the skin. Ideal before a shave or mask.</li>
-                <li><strong class="highlight">Threading — £10</strong> · Precision hair removal for eyebrows and fine facial hair. Sharp definition without chemicals.</li>
-                <li><strong class="highlight">Waxing (Nose & Ears) — £10</strong> · Clean, longer-lasting removal of unwanted nose and ear hair. A small detail that makes a big difference.</li>
-                <li><strong class="highlight">Shape Up & Clean Up — £20</strong> · Define hairlines, tidy edges and clean up stray hairs. Perfect between full cuts to stay sharp.</li>
-                <li><strong class="highlight">Wash, Style & Hot Towel — £10</strong> · Hair wash, professional styling and hot towel finish. Ideal before an event or night out.</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- WHY US -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">📍</span>
-            <span class="announcement-title">Why I CUT Whitecross Barbers?</span>
-            <span class="announcement-tag">EC1Y 8QJ</span>
-        </div>
-        <div class="announcement-body">
-            <p>We're a <span class="highlight">top-rated barbershop near Old Street, Barbican and Moorgate</span> — rated <span class="highlight">4.8 on Google</span> and <span class="highlight">5.0 on Booksy</span> by our clients.</p>
-            <p>Located at <span class="highlight">136 Whitecross Street, London EC1Y 8QJ</span>, we serve Clerkenwell, Shoreditch, Islington, the City and beyond. Walk-ins are always welcome, or book online in under 60 seconds.</p>
-            <ul>
-                <li>Experienced barbers — Alex & Arda</li>
-                <li>Complimentary Turkish coffee, tea and soft drinks with every visit</li>
-                <li>Complimentary wash, hot towel and arm massage</li>
-                <li>10% student discount with valid ID</li>
-                <li>Open Monday to Saturday 9am–7pm · Sunday 10am–4pm</li>
-                <li>Walk-ins welcome · Online booking available 24/7</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- SITE LINKS -->
-    <div class="announcement">
-        <div class="announcement-header">
-            <span class="announcement-icon">🔗</span>
-            <span class="announcement-title">Quick Links</span>
-            <span class="announcement-tag">Navigate</span>
-        </div>
-        <div class="announcement-body">
-            <ul>
-                <li><a href="index.html#booking" style="color:#d4af37; text-decoration:none; font-weight:600;">Book Online →</a> — Reserve your slot in under 60 seconds</li>
-                <li><a href="gallery.html" style="color:#d4af37; text-decoration:none; font-weight:600;">Our Work →</a> — See our latest cuts and styles</li>
-                <li><a href="about.html" style="color:#d4af37; text-decoration:none; font-weight:600;">About Us →</a> — Learn more about I CUT Whitecross Barbers</li>
-                <li><a href="terms.html" style="color:#d4af37; text-decoration:none; font-weight:600;">Cancellation Policy →</a> — Our booking and cancellation terms</li>
-                <li><a href="https://www.instagram.com/whitecross_barbers" target="_blank" rel="noopener" style="color:#d4af37; text-decoration:none; font-weight:600;">Instagram →</a> — @whitecross_barbers</li>
-                <li><a href="https://booksy.com/en-gb/179328_icut-whitecross-barbers_barber_311817_london" target="_blank" rel="noopener" style="color:#d4af37; text-decoration:none; font-weight:600;">Booksy →</a> — Book via Booksy</li>
-                <li><a href="https://share.google/69VOllkR9e7iHR6Gf" target="_blank" rel="noopener" style="color:#d4af37; text-decoration:none; font-weight:600;">Google Reviews →</a> — Leave us a review</li>
-            </ul>
-        </div>
-    </div>
 
 <footer class="footer">
     <div class="footer-top">
@@ -701,4 +558,96 @@
     });
 </script>
 </body>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    var app = initializeApp({
+        apiKey: 'AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A',
+        authDomain: 'havuz-44f70.firebaseapp.com',
+        projectId: 'havuz-44f70',
+        storageBucket: 'havuz-44f70.firebasestorage.app',
+        messagingSenderId: '1050766582653',
+        appId: '1:1050766582653:web:7ddaa5acb3bec5ef122214'
+    });
+    var db = getFirestore(app);
+    var listEl = document.getElementById('announcementsList');
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderContent(content) {
+        var lines = String(content || '').replace(/\r/g, '').split('\n');
+        var html = '';
+        var listItems = [];
+
+        function flushList() {
+            if (!listItems.length) return;
+            html += '<ul>' + listItems.map(function(item) {
+                return '<li>' + escapeHtml(item) + '</li>';
+            }).join('') + '</ul>';
+            listItems = [];
+        }
+
+        lines.forEach(function(line) {
+            var trimmed = line.trim();
+            if (!trimmed) {
+                flushList();
+                return;
+            }
+            if (trimmed.indexOf('- ') === 0) {
+                listItems.push(trimmed.slice(2));
+                return;
+            }
+            flushList();
+            html += '<p>' + escapeHtml(trimmed) + '</p>';
+        });
+        flushList();
+        return html || '<p></p>';
+    }
+
+    function renderAnnouncements(items) {
+        if (!items.length) {
+            listEl.className = 'announcement-empty';
+            listEl.textContent = 'No announcements available right now.';
+            return;
+        }
+
+        listEl.className = '';
+        listEl.innerHTML = items.map(function(item) {
+            return '<div class="announcement">' +
+                '<div class="announcement-header">' +
+                    '<span class="announcement-icon">' + escapeHtml(item.icon || '📢') + '</span>' +
+                    '<span class="announcement-title">' + escapeHtml(item.title || 'Announcement') + '</span>' +
+                    (item.tag ? '<span class="announcement-tag">' + escapeHtml(item.tag) + '</span>' : '') +
+                '</div>' +
+                '<div class="announcement-body">' + renderContent(item.content) + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    onSnapshot(collection(db, 'tenants/whitecross/announcements'), function(snapshot) {
+        var items = snapshot.docs
+            .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
+            .filter(function(item) { return item.active !== false; })
+            .sort(function(a, b) {
+                var ao = typeof a.order === 'number' ? a.order : 999;
+                var bo = typeof b.order === 'number' ? b.order : 999;
+                if (ao !== bo) return ao - bo;
+                return String(a.title || '').localeCompare(String(b.title || ''));
+            });
+        renderAnnouncements(items);
+    }, function(error) {
+        console.warn('Failed to load announcements:', error);
+        listEl.className = 'announcement-empty';
+        listEl.textContent = 'Announcements are temporarily unavailable.';
+    });
+</script>
 </html>

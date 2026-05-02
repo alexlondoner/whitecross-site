@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
-import Barbers from './Barbers';
 import Services from './Services';
 import Gallery from './Gallery';
 import Announcements from './Announcements';
 
 const TABS = [
-  { id: 'team', label: 'Team Members' },
   { id: 'services', label: 'Services' },
   { id: 'gallery', label: 'Gallery' },
   { id: 'announcements', label: 'Announcements' },
 ];
 
 export default function OnlineProfile() {
-  const [activeTab, setActiveTab] = useState('team');
+  const [activeTab, setActiveTab] = useState('services');
 
   const renderTab = function() {
-    if (activeTab === 'team') return <Barbers />;
     if (activeTab === 'services') return <Services />;
     if (activeTab === 'gallery') return <Gallery />;
     return <Announcements />;

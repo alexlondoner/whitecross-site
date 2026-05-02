@@ -185,71 +185,13 @@ export default function Announcements() {
         </button>
       </div>
 
-      {editingId !== null && (
+      {/* New announcement form — only shown when editingId === 'new' */}
+      {editingId === 'new' && (
         <div style={{ ...card, border: '1px solid rgba(212,175,55,0.35)', background: 'rgba(212,175,55,0.04)' }}>
           <div style={{ fontSize: '0.65rem', color: '#d4af37', letterSpacing: '2px', marginBottom: '14px', fontWeight: '700' }}>
-            {editingId === 'new' ? 'NEW ANNOUNCEMENT' : 'EDIT ANNOUNCEMENT'}
+            NEW ANNOUNCEMENT
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={lbl}>Icon</label>
-              <input value={form.icon} onChange={function(e) { setForm({ ...form, icon: e.target.value }); }} style={inp} placeholder="📢" />
-            </div>
-            <div>
-              <label style={lbl}>Tag</label>
-              <input value={form.tag} onChange={function(e) { setForm({ ...form, tag: e.target.value }); }} style={inp} placeholder="Ongoing" />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={lbl}>Title *</label>
-            <input value={form.title} onChange={function(e) { setForm({ ...form, title: e.target.value }); }} style={inp} placeholder="Student Discount" />
-          </div>
-
-          <div style={{ marginBottom: '14px' }}>
-            <label style={lbl}>Content *</label>
-            <textarea
-              value={form.content}
-              onChange={function(e) { setForm({ ...form, content: e.target.value }); }}
-              rows={9}
-              style={{ ...inp, resize: 'vertical', lineHeight: 1.55 }}
-              placeholder="Write the full announcement content..."
-            />
-          </div>
-
-          <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              id="announcementActive"
-              type="checkbox"
-              checked={form.active !== false}
-              onChange={function(e) { setForm({ ...form, active: e.target.checked }); }}
-            />
-            <label htmlFor="announcementActive" style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              Visible on website
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={cancelEdit} style={{ padding: '10px 14px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer' }}>
-              Cancel
-            </button>
-            <button
-              onClick={saveItem}
-              disabled={saving || !form.title.trim() || !form.content.trim()}
-              style={{
-                padding: '10px 18px',
-                background: saving ? 'rgba(212,175,55,0.3)' : 'linear-gradient(135deg,#d4af37,#b8860b)',
-                border: 'none',
-                borderRadius: '8px',
-                color: saving ? 'var(--muted)' : '#000',
-                fontWeight: '700',
-                cursor: saving ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+          <EditForm form={form} setForm={setForm} saving={saving} onSave={saveItem} onCancel={cancelEdit} inp={inp} lbl={lbl} />
         </div>
       )}
 
@@ -260,39 +202,117 @@ export default function Announcements() {
       ) : (
         <div style={{ display: 'grid', gap: '10px' }}>
           {items.map(function(item) {
+            var isEditing = editingId === item.docId;
             return (
-              <div key={item.docId} style={card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1rem' }}>{item.icon || '📢'}</span>
-                    <div style={{ fontSize: '0.95rem', color: 'var(--text)', fontWeight: '700' }}>{item.title}</div>
-                    {!!item.tag && <span style={{ fontSize: '0.63rem', color: '#d4af37', letterSpacing: '1px', textTransform: 'uppercase' }}>{item.tag}</span>}
-                  </div>
-                  <span style={{ fontSize: '0.68rem', color: item.active === false ? '#ff5252' : '#4caf50', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
-                    {item.active === false ? 'Hidden' : 'Visible'}
-                  </span>
-                </div>
+              <div key={item.docId} style={{ ...card, border: isEditing ? '1px solid rgba(212,175,55,0.35)' : '1px solid var(--border)', background: isEditing ? 'rgba(212,175,55,0.04)' : 'var(--card)' }}>
+                {isEditing ? (
+                  <>
+                    <div style={{ fontSize: '0.65rem', color: '#d4af37', letterSpacing: '2px', marginBottom: '14px', fontWeight: '700' }}>
+                      EDIT ANNOUNCEMENT
+                    </div>
+                    <EditForm form={form} setForm={setForm} saving={saving} onSave={saveItem} onCancel={cancelEdit} inp={inp} lbl={lbl} />
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1rem' }}>{item.icon || '📢'}</span>
+                        <div style={{ fontSize: '0.95rem', color: 'var(--text)', fontWeight: '700' }}>{item.title}</div>
+                        {!!item.tag && <span style={{ fontSize: '0.63rem', color: '#d4af37', letterSpacing: '1px', textTransform: 'uppercase' }}>{item.tag}</span>}
+                      </div>
+                      <span style={{ fontSize: '0.68rem', color: item.active === false ? '#ff5252' : '#4caf50', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        {item.active === false ? 'Hidden' : 'Visible'}
+                      </span>
+                    </div>
 
-                <div style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
-                  {item.content}
-                </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
+                      {item.content}
+                    </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={function() { toggleActive(item); }} style={{ padding: '8px 10px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem' }}>
-                    {item.active === false ? 'Set Visible' : 'Set Hidden'}
-                  </button>
-                  <button onClick={function() { openEdit(item); }} style={{ padding: '8px 12px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700' }}>
-                    Edit
-                  </button>
-                  <button onClick={function() { removeItem(item); }} style={{ padding: '8px 11px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.78rem' }}>
-                    Delete
-                  </button>
-                </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={function() { toggleActive(item); }} style={{ padding: '8px 10px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem' }}>
+                        {item.active === false ? 'Set Visible' : 'Set Hidden'}
+                      </button>
+                      <button onClick={function() { openEdit(item); }} style={{ padding: '8px 12px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700' }}>
+                        Edit
+                      </button>
+                      <button onClick={function() { removeItem(item); }} style={{ padding: '8px 11px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.78rem' }}>
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       )}
     </div>
+  );
+}
+
+function EditForm({ form, setForm, saving, onSave, onCancel, inp, lbl }) {
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px', marginBottom: '12px' }}>
+        <div>
+          <label style={lbl}>Icon</label>
+          <input value={form.icon} onChange={function(e) { setForm(function(f) { return { ...f, icon: e.target.value }; }); }} style={inp} placeholder="📢" />
+        </div>
+        <div>
+          <label style={lbl}>Tag</label>
+          <input value={form.tag} onChange={function(e) { setForm(function(f) { return { ...f, tag: e.target.value }; }); }} style={inp} placeholder="Ongoing" />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <label style={lbl}>Title *</label>
+        <input value={form.title} onChange={function(e) { setForm(function(f) { return { ...f, title: e.target.value }; }); }} style={inp} placeholder="Student Discount" />
+      </div>
+
+      <div style={{ marginBottom: '14px' }}>
+        <label style={lbl}>Content *</label>
+        <textarea
+          value={form.content}
+          onChange={function(e) { setForm(function(f) { return { ...f, content: e.target.value }; }); }}
+          rows={9}
+          style={{ ...inp, resize: 'vertical', lineHeight: 1.55 }}
+          placeholder="Write the full announcement content..."
+        />
+      </div>
+
+      <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <input
+          id="announcementActive"
+          type="checkbox"
+          checked={form.active !== false}
+          onChange={function(e) { setForm(function(f) { return { ...f, active: e.target.checked }; }); }}
+        />
+        <label htmlFor="announcementActive" style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+          Visible on website
+        </label>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onCancel} style={{ padding: '10px 14px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer' }}>
+          Cancel
+        </button>
+        <button
+          onClick={onSave}
+          disabled={saving || !form.title.trim() || !form.content.trim()}
+          style={{
+            padding: '10px 18px',
+            background: saving ? 'rgba(212,175,55,0.3)' : 'linear-gradient(135deg,#d4af37,#b8860b)',
+            border: 'none',
+            borderRadius: '8px',
+            color: saving ? 'var(--muted)' : '#000',
+            fontWeight: '700',
+            cursor: saving ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </>
   );
 }
