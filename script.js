@@ -57,7 +57,14 @@ document.addEventListener('click', function (event) {
 
 const TENANT = 'whitecross';
 let ACTIVE_BARBERS = [];
+const BOOKING_DISABLED_BARBERS = ['manoj', 'kadim'];
 window.SERVICES = window.SERVICES || [];
+
+function isBookingDisabledBarber(barber) {
+    if (!barber) return false;
+    const name = String(barber.name || '').trim().toLowerCase();
+    return barber.active === false || BOOKING_DISABLED_BARBERS.includes(name);
+}
 
 function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -107,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const snap = await getDocs(collection(db, 'tenants/' + TENANT + '/barbers'));
             ACTIVE_BARBERS = snap.docs
                 .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
-                .filter(function(b) { return b && b.active !== false; })
+                .filter(function(b) { return b && b.name; })
                 .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
         } catch (err) {
             console.warn('Failed to load barbers:', err);
@@ -118,9 +125,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     function renderBarberButtons() {
         if (!barberGrid) return;
         var dynamicBtns = ACTIVE_BARBERS.map(function(b) {
-            return '<button type="button" class="barber-btn" id="barber-' + b.id + '" data-value="' + b.id + '">' +
+            var isDisabled = isBookingDisabledBarber(b);
+            return '<button type="button" class="barber-btn' + (isDisabled ? ' disabled' : '') + '" id="barber-' + b.id + '" data-value="' + b.id + '" data-disabled="' + (isDisabled ? '1' : '0') + '" ' + (isDisabled ? 'disabled aria-disabled="true"' : '') + '>' +
 '<span class="barber-icon" style="font-family:Oswald,sans-serif;font-size:1.1rem;font-weight:700;color:#d4af37;">' + b.name[0].toUpperCase() + '</span>' +
                 '<span class="barber-name">' + b.name + '</span>' +
+                (isDisabled ? '<span class="barber-state">Passive</span>' : '') +
                 '</button>';
         }).join('');
         barberGrid.innerHTML = dynamicBtns +
@@ -133,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     function bindBarberSelector() {
         document.querySelectorAll('.barber-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
+                if (btn.dataset.disabled === '1') return;
                 document.querySelectorAll('.barber-btn').forEach(function(b) { b.classList.remove('selected'); });
                 btn.classList.add('selected');
                 if (barberHidden) barberHidden.value = btn.dataset.value;
@@ -140,6 +150,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (d) checkAvailability(d);
             });
         });
+
+        var selectedBtn = document.querySelector('.barber-btn.selected');
+        if (selectedBtn && selectedBtn.dataset.disabled === '1') {
+            selectedBtn.classList.remove('selected');
+        }
+        if (!document.querySelector('.barber-btn.selected')) {
+            var fallback = document.getElementById('barber-no-preference');
+            if (fallback) {
+                fallback.classList.add('selected');
+                if (barberHidden) barberHidden.value = 'no-preference';
+            }
+        }
     }
 
     function startBarberRealtimeSync() {
@@ -151,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             firebase.onSnapshot(barbersRef, function(snap) {
                 ACTIVE_BARBERS = snap.docs
                     .map(function(doc) { return Object.assign({ id: doc.id }, doc.data()); })
-                    .filter(function(b) { return b && b.active !== false; })
+                    .filter(function(b) { return b && b.name; })
                     .sort(function(a, b) { return (a.order ?? 999) - (b.order ?? 999); });
                 renderBarberButtons();
                 bindBarberSelector();

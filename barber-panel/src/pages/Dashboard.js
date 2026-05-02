@@ -7,6 +7,13 @@ import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBookin
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252' };
+const BOOKING_DISABLED_BARBERS = ['manoj', 'kadim'];
+
+function isBarberBookingDisabled(barber) {
+  if (!barber) return false;
+  const name = String(barber.name || '').trim().toLowerCase();
+  return barber.active === false || BOOKING_DISABLED_BARBERS.includes(name);
+}
 
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDay(y, m) { let d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
@@ -1376,21 +1383,24 @@ const IS_CLOSED = dayHours ? dayHours.closed : false;
 <div style={{ flex:1, overflowY:'auto', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', position:'relative' }}>
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)', position:'sticky', top:0, background:'var(--card)', zIndex:10 }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }} />
-        {barbers.map((barber, bi) => (
-          <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: OPEN, mins: OPEN * 60, x: rect.left + 10, y: rect.bottom }); }}
-  style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer' }}
-  onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.04)'}
+        {barbers.map((barber, bi) => {
+          const bookingDisabled = isBarberBookingDisabled(barber);
+          return (
+          <div key={barber.id} onClick={(e) => { if (bookingDisabled) return; const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: OPEN, mins: OPEN * 60, x: rect.left + 10, y: rect.bottom }); }}
+  style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:bookingDisabled?'not-allowed':'pointer', opacity:bookingDisabled?0.6:1 }}
+  onMouseEnter={e=>{ if (!bookingDisabled) e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:barber.color+'22', border:'1px solid '+barber.color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:'700', color:barber.color, flexShrink:0 }}>{barber.name[0]}</div>
             <div>
               <div style={{ fontSize:'0.85rem', fontWeight:'700', color:'var(--text)' }}>{barber.name}</div>
-              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>9:00 -- 19:00</div>
+              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{bookingDisabled ? 'Booking Passive' : '9:00 -- 19:00'}</div>
             </div>
             <span style={{ fontSize:'0.65rem', color:'var(--muted)', marginLeft:'auto', background:'rgba(212,175,55,0.08)', padding:'2px 7px', borderRadius:'8px' }}>
-              {(byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length} appts
+              {bookingDisabled ? 'Locked' : (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length + ' appts'}
             </span>
           </div>
-        ))}
+        );
+        })}
       </div>
       <div style={{ display:'flex', position:'relative' }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }}>
@@ -1405,13 +1415,14 @@ const IS_CLOSED = dayHours ? dayHours.closed : false;
           ))}
         </div>
         {barbers.map((barber, bi) => {
+          const bookingDisabled = isBarberBookingDisabled(barber);
           const barberBs = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED');
           return (
             <div key={barber.id} style={{ flex:1, position:'relative', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none' }}>
               {slots.map(slot => {
                 const isOutsideHours = IS_CLOSED || slot.mins < OPEN * 60 || slot.mins >= CLOSE * 60;
                 const past = isToday && slot.mins < nowMins;
-                const inactive = past || isOutsideHours;
+                const inactive = past || isOutsideHours || bookingDisabled;
                 return (
                   <div key={slot.mins}
                     onClick={(e) => { if (!inactive) { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
@@ -1694,7 +1705,7 @@ const activeBarbers = barberFilter === 'all'
           <button onClick={()=>setBarberFilter('all')} style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter==='all'?'rgba(212,175,55,0.2)':'transparent', color:barberFilter==='all'?'#d4af37':'var(--muted)', fontSize:'0.78rem', fontWeight:'600' }}>All</button>
           {barbers.map(b=>(
             <button key={b.id} onClick={()=>setBarberFilter(b.id)}
-              style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter===b.id?b.color+'20':'transparent', color:barberFilter===b.id?b.color:'var(--muted)', fontSize:'0.78rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'5px' }}>
+              style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter===b.id?b.color+'20':'transparent', color:barberFilter===b.id?b.color:'var(--muted)', fontSize:'0.78rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'5px', opacity:isBarberBookingDisabled(b)?0.6:1 }}>
               <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
             </button>
           ))}

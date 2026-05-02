@@ -428,6 +428,22 @@ select.input-field optgroup {
   box-shadow: 0 0 25px rgba(212, 175, 55, 0.45);
 }
 
+.barber-btn.disabled,
+.barber-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dashed;
+  filter: grayscale(0.25);
+  box-shadow: none;
+}
+
+.barber-btn.disabled:hover,
+.barber-btn:disabled:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #aaa;
+  box-shadow: none;
+}
+
 .barber-icon {
   font-size: 1.4rem;
   font-weight: 700;
@@ -451,6 +467,13 @@ select.input-field optgroup {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
+}
+
+.barber-state {
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* =========================

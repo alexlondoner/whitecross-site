@@ -3,3 +3,8 @@
 Site/
 Site/
 .DS_Store
+exports/
+serviceAccountKey.json
+serviceAccount*.json
+.env
+.env.*
