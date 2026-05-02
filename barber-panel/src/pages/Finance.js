@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../firebase';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc,
-  doc, query, where, Timestamp, orderBy,
+  doc, query, Timestamp, orderBy,
 } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
@@ -121,6 +121,12 @@ const inp = {
 const lbl = { fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '5px', display: 'block' };
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DEFAULT_FINANCE_BARBERS = [
+  { name: 'Alex', color: '#4caf50', order: 1 },
+  { name: 'Arda', color: '#2196f3', order: 2 },
+  { name: 'Kadim', color: '#ff9800', order: 3 },
+  { name: 'Manoj', color: '#e91e63', order: 4 },
+];
 
 export default function Finance() {
   const now = new Date();
@@ -161,7 +167,7 @@ export default function Finance() {
 
   // Inline expense editing
   const [editingExpense, setEditingExpense] = useState(null); // dateKey
-  const [expenseDraft, setExpenseDraft] = useState({ kasaMasraf: '', bankaMasraf: '' });
+  const [expenseDraft, setExpenseDraft] = useState({ kasaMasraf: '', bankaMasraf: '', aciklama: '' });
   const [expenseSaving, setExpenseSaving] = useState(false);
 
   const [year, month] = useMemo(() => {
@@ -190,9 +196,16 @@ export default function Finance() {
         getDocs(collection(db, `tenants/${TENANT}/advances`)),
       ]);
 
-      const fetchedBarbers = barberSnap.docs
+      const fetchedBarbersRaw = barberSnap.docs
         .map(d => ({ docId: d.id, ...d.data() }))
-        .filter(b => b.active !== false)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+      const existingByName = new Set(fetchedBarbersRaw.map(b => normalizeName(b.name)));
+      const missingDefaults = DEFAULT_FINANCE_BARBERS
+        .filter(b => !existingByName.has(normalizeName(b.name)))
+        .map(b => ({ ...b, active: false, id: b.name.toLowerCase(), docId: `default-${b.name.toLowerCase()}` }));
+
+      const fetchedBarbers = [...fetchedBarbersRaw, ...missingDefaults]
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       setBarbers(fetchedBarbers);
 
@@ -279,6 +292,7 @@ export default function Finance() {
       const exp = expenses[dateKey] || {};
       const kasaMasraf = parseFloat(exp.kasaMasraf || 0);
       const bankaMasraf = parseFloat(exp.bankaMasraf || 0);
+      const expenseDescription = String(exp.notes || exp.note || exp.comment || exp.aciklama || '').trim();
 
       const barberRevenue = {};
       barbers.forEach(b => {
@@ -306,7 +320,12 @@ export default function Finance() {
 
       const dayOfWeek = rowDate.toLocaleDateString('en-GB', { weekday: 'short' });
 
-      return { day, dateKey, dayOfWeek, barberRevenue, kasaMasraf, bankaMasraf, toplamCiro, netCiro, totalWages, fixedCost, netKarZarar, hasData: toplamCiro > 0, exp };
+      return {
+        day, dateKey, dayOfWeek, barberRevenue, kasaMasraf, bankaMasraf, expenseDescription,
+        toplamCiro, netCiro, totalWages, fixedCost, netKarZarar,
+        hasData: toplamCiro > 0 || kasaMasraf > 0 || bankaMasraf > 0 || !!expenseDescription,
+        exp,
+      };
     });
   }, [bookings, barbers, expenses, wageRates, fixedDailyRate, year, month, selectedMonth, monthMode]);
 
@@ -401,9 +420,10 @@ export default function Finance() {
     try {
       const data = {
         date: dateKey,
-        month: selectedMonth,
+        month: String(dateKey).slice(0, 7),
         kasaMasraf: parseFloat(expenseDraft.kasaMasraf) || 0,
         bankaMasraf: parseFloat(expenseDraft.bankaMasraf) || 0,
+        notes: String(expenseDraft.aciklama || '').trim(),
       };
       const existing = expenses[dateKey];
       if (existing?.id) {
@@ -619,7 +639,7 @@ export default function Finance() {
       {!loading && activeTab === 'daily' && (
         <div style={{ background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px' }}>
               <thead>
                 <tr style={{ background: 'rgba(212,175,55,0.07)' }}>
                   <th style={{ ...thStyle, textAlign: 'left', minWidth: '80px' }}>Tarih</th>
@@ -631,6 +651,7 @@ export default function Finance() {
                   ))}
                   <th style={{ ...thStyle, color: '#ff7043' }}>Kasa<br/>Masraf</th>
                   <th style={{ ...thStyle, color: '#ff7043' }}>Banka<br/>Masraf</th>
+                  <th style={{ ...thStyle, textAlign: 'left', minWidth: '180px' }}>Açıklama</th>
                   <th style={{ ...thStyle, color: '#9c27b0' }}>Toplam<br/>Ciro</th>
                   <th style={{ ...thStyle, color: '#7e57c2' }}>Net<br/>Ciro</th>
                   <th style={{ ...thStyle, color: 'var(--muted)' }}>Ücretler</th>
@@ -660,7 +681,16 @@ export default function Finance() {
 
                       {/* Kasa Masraf — inline edit */}
                       <td style={{ ...tdStyle(), color: '#ff7043', cursor: 'pointer', position: 'relative' }}
-                        onClick={() => { if (!isEditing) { setEditingExpense(row.dateKey); setExpenseDraft({ kasaMasraf: row.kasaMasraf || '', bankaMasraf: row.bankaMasraf || '' }); } }}>
+                        onClick={() => {
+                          if (!isEditing) {
+                            setEditingExpense(row.dateKey);
+                            setExpenseDraft({
+                              kasaMasraf: row.kasaMasraf || '',
+                              bankaMasraf: row.bankaMasraf || '',
+                              aciklama: row.expenseDescription || '',
+                            });
+                          }
+                        }}>
                         {isEditing
                           ? <input type="number" value={expenseDraft.kasaMasraf} onChange={e => setExpenseDraft(d => ({ ...d, kasaMasraf: e.target.value }))}
                               style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }} autoFocus onClick={e => e.stopPropagation()} />
@@ -670,11 +700,23 @@ export default function Finance() {
 
                       {/* Banka Masraf — inline edit */}
                       <td style={{ ...tdStyle(), color: '#ff7043', cursor: 'pointer' }}
-                        onClick={() => { if (!isEditing) { setEditingExpense(row.dateKey); setExpenseDraft({ kasaMasraf: row.kasaMasraf || '', bankaMasraf: row.bankaMasraf || '' }); } }}>
+                        onClick={() => {
+                          if (!isEditing) {
+                            setEditingExpense(row.dateKey);
+                            setExpenseDraft({
+                              kasaMasraf: row.kasaMasraf || '',
+                              bankaMasraf: row.bankaMasraf || '',
+                              aciklama: row.expenseDescription || '',
+                            });
+                          }
+                        }}>
                         {isEditing
                           ? <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                               <input type="number" value={expenseDraft.bankaMasraf} onChange={e => setExpenseDraft(d => ({ ...d, bankaMasraf: e.target.value }))}
                                 style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }} onClick={e => e.stopPropagation()} />
+                              <input type="text" value={expenseDraft.aciklama} placeholder="Açıklama"
+                                onChange={e => setExpenseDraft(d => ({ ...d, aciklama: e.target.value }))}
+                                style={{ ...inp, width: '160px', padding: '4px 7px', fontSize: '0.7rem' }} onClick={e => e.stopPropagation()} />
                               <button onClick={e => { e.stopPropagation(); saveExpense(row.dateKey); }} disabled={expenseSaving}
                                 style={{ padding: '4px 8px', background: '#d4af37', border: 'none', borderRadius: '5px', color: '#000', fontWeight: '700', fontSize: '0.65rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 {expenseSaving ? '...' : 'Kaydet'}
@@ -684,6 +726,10 @@ export default function Finance() {
                             </div>
                           : row.bankaMasraf > 0 ? '£' + row.bankaMasraf.toFixed(0) : <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.65rem' }}>+</span>
                         }
+                      </td>
+
+                      <td style={{ ...tdStyle(), textAlign: 'left', color: row.expenseDescription ? 'var(--muted)' : 'rgba(255,255,255,0.15)', fontSize: '0.7rem' }}>
+                        {row.expenseDescription || '–'}
                       </td>
 
                       <td style={tdStyle()}>{row.toplamCiro > 0 ? '£' + row.toplamCiro.toFixed(0) : '–'}</td>
@@ -711,6 +757,7 @@ export default function Finance() {
                   })}
                   <td style={{ ...tdStyle(), fontWeight: '700', color: '#ff7043' }}>{visibleDailyRows.reduce((s, d) => s + d.kasaMasraf, 0) > 0 ? '£' + visibleDailyRows.reduce((s, d) => s + d.kasaMasraf, 0).toFixed(0) : '–'}</td>
                   <td style={{ ...tdStyle(), fontWeight: '700', color: '#ff7043' }}>{visibleDailyRows.reduce((s, d) => s + d.bankaMasraf, 0) > 0 ? '£' + visibleDailyRows.reduce((s, d) => s + d.bankaMasraf, 0).toFixed(0) : '–'}</td>
+                  <td style={{ ...tdStyle(), textAlign: 'left', color: 'rgba(255,255,255,0.35)' }}>–</td>
                   <td style={{ ...tdStyle(), fontWeight: '800', color: '#d4af37' }}>£{visibleDailyRows.reduce((s, d) => s + d.toplamCiro, 0).toFixed(0)}</td>
                   <td style={{ ...tdStyle(), fontWeight: '800', color: '#9c27b0' }}>£{visibleDailyRows.reduce((s, d) => s + d.netCiro, 0).toFixed(0)}</td>
                   <td style={{ ...tdStyle(), color: 'rgba(255,255,255,0.4)' }}>–</td>

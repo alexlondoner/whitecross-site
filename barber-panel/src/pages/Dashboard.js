@@ -8,6 +8,22 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252' };
 
+function normalizeBookingSource(raw) {
+  const n = String(raw || '').trim().toLowerCase();
+  if (!n) return 'Website';
+  if (n === 'booksy') return 'Booksy';
+  if (n === 'fresha') return 'Fresha';
+  if (n === 'website') return 'Website';
+  if (n === 'walk-in' || n === 'walk_in' || n === 'walkin' || n === 'historical' || n === 'manual') return 'Walk-in';
+  return String(raw || '').trim();
+}
+
+function normalizeBookingStatus(raw) {
+  const n = String(raw || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
+  if (n === 'CONFIRMED' || n === 'PENDING' || n === 'CHECKED_OUT' || n === 'CANCELLED' || n === 'BLOCKED') return n;
+  return n || 'CONFIRMED';
+}
+
 function isBarberBookingDisabled(barber) {
   if (!barber) return false;
   return barber.active === false;
@@ -1555,10 +1571,11 @@ useEffect(() => {
           phone: d.clientPhone || '',
           barber,
           service: d.serviceId || '',
+          status: normalizeBookingStatus(d.status),
           date,
           time,
           bookingId: d.bookingId || doc.id,
-          source: d.source || 'website',
+          source: normalizeBookingSource(d.source),
           paidAmount: d.paidAmount || '',
           price: d.price || '',
         };
