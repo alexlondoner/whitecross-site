@@ -411,7 +411,11 @@ var todayStr = now.getFullYear() + '-' +
         dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
         dateInput.value = '';
         dateInput.addEventListener('change', function() {
-            checkAvailability(this.value);
+            var _dateVal = this.value;
+            // Re-fetch latest hours (catches special-hours additions/removals since page load)
+            fetchShopHours().then(function() {
+                checkAvailability(_dateVal);
+            });
         });
     }
 

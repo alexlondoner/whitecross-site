@@ -212,14 +212,17 @@ export default function Settings({ theme, onToggleTheme }) {
     });
   };
 
-  const removeSpecialHours = function(index) {
+  const removeSpecialHours = async function(index) {
     setSettings(function(current) {
-      return {
+      const updated = {
         ...current,
         specialHours: (current.specialHours || []).filter(function(_, itemIndex) {
           return itemIndex !== index;
         })
       };
+      // Auto-save to Firestore immediately so public site reflects removal
+      setDoc(doc(db, `tenants/${TENANT}/settings/settings`), updated).catch(function() {});
+      return updated;
     });
   };
 
