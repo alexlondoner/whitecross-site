@@ -414,6 +414,7 @@ var todayStr = now.getFullYear() + '-' +
             var _dateVal = this.value;
             // Re-fetch latest hours (catches special-hours additions/removals since page load)
             fetchShopHours().then(function() {
+                renderHoursWidget(_dateVal);
                 checkAvailability(_dateVal);
             });
         });
@@ -471,52 +472,64 @@ var todayStr = now.getFullYear() + '-' +
     }
 
     /* HOURS WIDGET */
-    (function() {
-        var currentTime = now.getHours() * 60 + now.getMinutes();
-        var todayIdx = JS_TO_SCHEDULE[now.getDay()];
-        var todayKey = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0');
-
-        function timeToMinsLocal(t) { var p = t.split(':').map(Number); return p[0] * 60 + p[1]; }
+    function renderHoursWidget(selectedDateStr) {
+        function timeToMinsLocal(t) {
+            var p = t.split(':').map(Number);
+            return p[0] * 60 + p[1];
+        }
         function format12(t) {
             var p = t.split(':').map(Number);
             return (p[0] % 12 || 12) + ':' + (p[1] === 0 ? '00' : p[1]) + ' ' + (p[0] >= 12 ? 'PM' : 'AM');
         }
 
-        var today = getDaySchedule(todayKey, SCHEDULE[todayIdx].day);
-        var isOpen = !today.closed && currentTime >= timeToMinsLocal(today.open) && currentTime < timeToMinsLocal(today.close);
+        var baseDate = selectedDateStr ? getLocalDate(selectedDateStr) : new Date();
+        var dateKey = getLocalDateKey(baseDate);
+        var dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][baseDate.getDay()];
+        var rowIdx = SCHEDULE.findIndex(function(item) { return item.day === dayName; });
+        if (rowIdx < 0) rowIdx = JS_TO_SCHEDULE[baseDate.getDay()];
+
+        var daySchedule = getDaySchedule(dateKey, dayName);
+        var nowLocal = new Date();
+        var nowKey = getLocalDateKey(nowLocal);
+        var isSelectedToday = dateKey === nowKey;
+        var currentTime = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+        var isOpenNow = isSelectedToday && !daySchedule.closed && currentTime >= timeToMinsLocal(daySchedule.open) && currentTime < timeToMinsLocal(daySchedule.close);
         var statusEl = document.getElementById('hoursStatus');
-        var specialLabel = today.note ? ' - ' + today.note : '';
+        var noteLabel = daySchedule.note ? ' - ' + daySchedule.note : '';
 
         if (statusEl) {
-            if (today.closed) {
-                statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED TODAY' + specialLabel;
-            } else if (isOpen) {
-                var diff = timeToMinsLocal(today.close) - currentTime;
-                statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff/60) + 'h ' + (diff%60) + 'm)' + specialLabel;
-            } else {
-                var opensLaterToday = currentTime < timeToMinsLocal(today.open);
+            if (daySchedule.closed) {
+                statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED ON ' + dayName.toUpperCase() + noteLabel;
+            } else if (isOpenNow) {
+                var diff = timeToMinsLocal(daySchedule.close) - currentTime;
+                statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm)' + noteLabel;
+            } else if (isSelectedToday) {
+                var opensLaterToday = currentTime < timeToMinsLocal(daySchedule.open);
                 if (opensLaterToday) {
-                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(today.open) + ')' + specialLabel;
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(daySchedule.open) + ')' + noteLabel;
                 } else {
-                    var next = SCHEDULE[(todayIdx + 1) % 7];
-                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens ' + next.day + ' at ' + format12(next.open) + ')';
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Today ' + format12(daySchedule.open) + ' - ' + format12(daySchedule.close) + ')' + noteLabel;
                 }
+            } else {
+                statusEl.innerHTML = '<span class="status-dot open"></span> SELECTED DAY: ' + dayName.toUpperCase() + ' (' + format12(daySchedule.open) + ' - ' + format12(daySchedule.close) + ')' + noteLabel;
             }
         }
 
         var grid = document.getElementById('hoursGrid');
         if (grid) {
+            grid.innerHTML = '';
             SCHEDULE.forEach(function(item, idx) {
-                var isToday = idx === todayIdx;
+                var isSelected = idx === rowIdx;
+                var display = isSelected ? daySchedule : item;
                 var row = document.createElement('div');
-                row.className = 'hours-row-new' + (isToday ? ' today' : '');
-                row.innerHTML = '<span>' + (isToday ? '&#9658; ' : '') + item.day + '</span><span>' + format12(item.open) + ' - ' + format12(item.close) + '</span>';
+                row.className = 'hours-row-new' + (isSelected ? ' today' : '');
+                row.innerHTML = '<span>' + (isSelected ? '&#9658; ' : '') + item.day + '</span><span>' + (display.closed ? 'Closed' : (format12(display.open) + ' - ' + format12(display.close))) + '</span>';
                 grid.appendChild(row);
             });
         }
-    })();
+    }
+
+    renderHoursWidget('');
 
     /* FORM SUBMISSION & STRIPE */
     var form = document.getElementById('bookingForm');

@@ -58,6 +58,12 @@ function toMinutes(value) {
   return parts[0] * 60 + parts[1];
 }
 
+function getLocalDateKey(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 export default function Settings({ theme, onToggleTheme }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
@@ -65,6 +71,12 @@ export default function Settings({ theme, onToggleTheme }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [googleReminder, setGoogleReminder] = useState(false);
+  const [cleaningPast, setCleaningPast] = useState(false);
+
+  const todayKey = getLocalDateKey(new Date());
+  const pastSpecialCount = (settings.specialHours || []).filter(function(item) {
+    return item && item.date && item.date < todayKey;
+  }).length;
 
   useEffect(function() { fetchSettings(); }, []);
 
@@ -224,6 +236,30 @@ export default function Settings({ theme, onToggleTheme }) {
       setDoc(doc(db, `tenants/${TENANT}/settings/settings`), updated).catch(function() {});
       return updated;
     });
+  };
+
+  const removePastSpecialHours = async function() {
+    if (!pastSpecialCount) return;
+    if (!window.confirm('Remove all past one-off dates? This keeps today and future entries only.')) return;
+
+    setCleaningPast(true);
+    setError('');
+    try {
+      const kept = normalizeSpecialHours((settings.specialHours || []).filter(function(item) {
+        return item && item.date && item.date >= todayKey;
+      }));
+
+      setSettings(function(current) {
+        return { ...current, specialHours: kept };
+      });
+      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { specialHours: kept }, { merge: true });
+      setSaved(true);
+      setTimeout(function() { setSaved(false); }, 3000);
+    } catch (err) {
+      setError('Could not remove past one-off dates.');
+    } finally {
+      setCleaningPast(false);
+    }
   };
 
   const handleSave = async function() {
@@ -428,11 +464,24 @@ export default function Settings({ theme, onToggleTheme }) {
             <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>
               Use this for bank holidays or one-off dates. It applies only to that date, then the normal weekly hours return automatically.
             </p>
+            {pastSpecialCount > 0 && (
+              <p style={{ fontSize: '0.74rem', color: '#ffb74d', margin: '8px 0 0 0' }}>
+                {pastSpecialCount} past override{pastSpecialCount !== 1 ? 's' : ''} can be cleaned up.
+              </p>
+            )}
           </div>
-          <button onClick={addSpecialHours}
-            style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.78rem', letterSpacing: '0.8px' }}>
-            + Add One-Off Date
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {pastSpecialCount > 0 && (
+              <button onClick={removePastSpecialHours} disabled={cleaningPast}
+                style={{ padding: '10px 14px', background: 'transparent', border: '1px solid rgba(255,183,77,0.45)', borderRadius: '8px', color: '#ffb74d', cursor: cleaningPast ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.74rem' }}>
+                {cleaningPast ? 'Cleaning...' : 'Remove Past Overrides'}
+              </button>
+            )}
+            <button onClick={addSpecialHours}
+              style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.78rem', letterSpacing: '0.8px' }}>
+              + Add One-Off Date
+            </button>
+          </div>
         </div>
 
         {(settings.specialHours || []).length === 0 ? (
@@ -442,11 +491,17 @@ export default function Settings({ theme, onToggleTheme }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {(settings.specialHours || []).map(function(item, index) {
+              const isPast = item && item.date && item.date < todayKey;
               return (
                 <div key={item.date + '-' + index} style={{ padding: '14px 16px', borderRadius: '10px', background: 'rgba(180,180,180,0.04)', border: '1px solid rgba(180,180,180,0.1)', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr auto auto', gap: '10px', alignItems: 'center' }}>
                   <div>
                     <label style={labelStyle}>Date</label>
                     <input type="date" value={item.date} onChange={function(e) { updateSpecialHours(index, 'date', e.target.value); }} style={inputStyle} />
+                    {isPast && (
+                      <div style={{ marginTop: '6px', fontSize: '0.68rem', color: '#ffb74d', fontWeight: '600' }}>
+                        Past date
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={labelStyle}>Open</label>
