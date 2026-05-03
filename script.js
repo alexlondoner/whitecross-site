@@ -386,6 +386,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         return new Date(parts[0], parts[1] - 1, parts[2], h || 0, m || 0, 0, 0);
     }
 
+    function getLocalDateKey(d) {
+        return d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0');
+    }
+
     function timeToMins(t) {
         var parts = t.split(':').map(Number);
         return parts[0] * 60 + parts[1];
@@ -677,7 +683,7 @@ var todayStr = now.getFullYear() + '-' +
         var daySchedule = getDaySchedule(date, dayName);
 
         var now2 = new Date();
-        var todayStr2 = now2.toISOString().split('T')[0];
+        var todayStr2 = getLocalDateKey(now2);
         var isToday = date === todayStr2;
         var nowMins = isToday ? now2.getHours() * 60 + now2.getMinutes() : 0;
 
@@ -736,8 +742,27 @@ var todayStr = now.getFullYear() + '-' +
 
         var openMins = Math.min.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.open); }));
         var closeMins = Math.max.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.close); }));
-        openMins = Math.max(openMins, timeToMins(daySchedule.open));
-        closeMins = Math.min(closeMins, timeToMins(daySchedule.close));
+        var dayOpenMins = timeToMins(daySchedule.open);
+        var dayCloseMins = timeToMins(daySchedule.close);
+
+        // If special day range is invalid, fall back to weekly schedule for this day.
+        if (!isFinite(dayOpenMins) || !isFinite(dayCloseMins) || dayCloseMins <= dayOpenMins) {
+            var weekly = SCHEDULE.find(function(item) { return item.day === dayName; }) || { open: '09:00', close: '19:00' };
+            dayOpenMins = timeToMins(weekly.open);
+            dayCloseMins = timeToMins(weekly.close);
+        }
+
+        openMins = Math.max(openMins, dayOpenMins);
+        closeMins = Math.min(closeMins, dayCloseMins);
+
+        if (!isFinite(openMins) || !isFinite(closeMins) || closeMins <= openMins) {
+            if (timeSlotsGrid) {
+                timeSlotsGrid.innerHTML = '<div class="time-slots-empty">No available slots for this date. Please try another date.</div>';
+            }
+            if (hiddenTime) hiddenTime.value = '';
+            return;
+        }
+
         var open = String(Math.floor(openMins / 60)).padStart(2, '0') + ':' + String(openMins % 60).padStart(2, '0');
         var close = String(Math.floor(closeMins / 60)).padStart(2, '0') + ':' + String(closeMins % 60).padStart(2, '0');
 
