@@ -19,50 +19,12 @@
   window._db = db;
   window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
 </script>
-    <!-- STRIPE SUCCESS CHECK + GOOGLE ADS CONVERSION -->
+    <!-- STRIPE SUCCESS CHECK -->
     <script>
         (function() {
             var params = new URLSearchParams(window.location.search);
             if (params.get('booking') === 'success') {
                 window.isStripeSuccess = true;
-
-                // Fire Google Ads conversion only once per booking (not on refresh)
-                if (!sessionStorage.getItem('gads_converted')) {
-                    sessionStorage.setItem('gads_converted', '1');
-                    // Get price from pending booking data if available
-                    var pending = null;
-                    try { pending = JSON.parse(sessionStorage.getItem('pendingBooking')); } catch(e) {}
-                    var convValue = 25.0; // default fallback
-                    if (pending && pending.paymentType === 'DEPOSIT') {
-                        convValue = 10.0;
-                    } else if (pending && pending.service) {
-                        // Map common services to their prices for accurate value reporting
-                        var priceMap = {
-                            'i-cut-royal': 60, 'i-cut-deluxe': 50,
-                            'full-skinfade-beard-luxury': 40, 'full-experience': 30,
-                            'senior-full-experience': 30, 'skin-fade': 30,
-                            'scissor-cut': 30, 'classic-sbs': 20, 'hot-towel-shave': 15,
-                            'clipper-cut': 15, 'senior-haircut': 20, 'young-gents': 20,
-                            'young-gents-skin-fade': 25
-                        };
-                        convValue = priceMap[pending.service] || 25.0;
-                    }
-                    // Fires once gtag is loaded (it's async, so poll briefly)
-                    var attempts = 0;
-                    var fireConv = function() {
-                        if (typeof gtag === 'function') {
-                            gtag('event', 'conversion', {
-                                'send_to': 'AW-18017585907/REPLACE_WITH_CONVERSION_LABEL',
-                                'value': convValue,
-                                'currency': 'GBP',
-                                'transaction_id': pending ? pending.bookingId : ''
-                            });
-                        } else if (attempts++ < 20) {
-                            setTimeout(fireConv, 200);
-                        }
-                    };
-                    fireConv();
-                }
             }
         })();
     </script>
