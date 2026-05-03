@@ -19,16 +19,6 @@
   window._db = db;
   window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
 </script>
-    <!-- STRIPE SUCCESS CHECK -->
-    <script>
-        (function() {
-            var params = new URLSearchParams(window.location.search);
-            if (params.get('booking') === 'success') {
-                window.isStripeSuccess = true;
-            }
-        })();
-    </script>
-
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/favicon.png">
     
@@ -595,7 +585,7 @@
     );
 </script>
 
-<script src="script.js?v=2"></script>
+<script src="script.js?v=3"></script>
 <script>
     document.querySelectorAll('.accordion-toggle').forEach(function(toggle) {
         toggle.addEventListener('click', function() {

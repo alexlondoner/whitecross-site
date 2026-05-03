@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-    var SCHEDULE = [
+    var DEFAULT_SCHEDULE = [
         { day: 'Monday', open: '09:00', close: '19:00', closed: false },
         { day: 'Tuesday', open: '09:00', close: '19:00', closed: false },
         { day: 'Wednesday', open: '09:00', close: '19:00', closed: false },
@@ -308,6 +308,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         { day: 'Saturday', open: '09:00', close: '19:00', closed: false },
         { day: 'Sunday', open: '10:00', close: '16:00', closed: false },
     ];
+    var SCHEDULE = DEFAULT_SCHEDULE.map(function(item) { return Object.assign({}, item); });
     var DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     var SPECIAL_HOURS = [];
 
@@ -345,7 +346,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function fetchShopHours() {
         try {
             var attempts = 0;
-            while ((!window._db || !window._firebase) && attempts < 20) {
+            while ((!window._db || !window._firebase) && attempts < 60) {
                 await new Promise(function(r) { setTimeout(r, 100); });
                 attempts++;
             }
@@ -353,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             var db = window._db;
             var firebase = window._firebase;
             if (!db || !firebase || typeof firebase.getDoc !== 'function' || typeof firebase.doc !== 'function') {
-                return;
+                return false;
             }
 
             var settingsDoc = await firebase.getDoc(firebase.doc(db, 'tenants', TENANT, 'settings', 'settings'));
@@ -366,14 +367,22 @@ document.addEventListener('DOMContentLoaded', async function () {
                 var data = settingsDoc.data();
                 if (data && data.hours) {
                     SCHEDULE = DAY_NAMES.map(function(day) {
-                        var h = data.hours[day] || { open: '09:00', close: '19:00', closed: false };
-                        return { day: day, open: h.open || '09:00', close: h.close || '19:00', closed: !!h.closed };
+                        var fallback = DEFAULT_SCHEDULE.find(function(item) { return item.day === day; }) || { open: '09:00', close: '19:00', closed: false };
+                        var h = data.hours[day] || fallback;
+                        return {
+                            day: day,
+                            open: h.open || fallback.open,
+                            close: h.close || fallback.close,
+                            closed: h.closed == null ? !!fallback.closed : !!h.closed
+                        };
                     });
                 }
                 SPECIAL_HOURS = normalizeSpecialHours(data && data.specialHours);
             }
+            return true;
         } catch (err) {
             console.warn('Could not fetch shop hours:', err);
+            return false;
         }
     }
 
@@ -409,12 +418,12 @@ var todayStr = now.getFullYear() + '-' +
         var maxDate = new Date();
         maxDate.setDate(maxDate.getDate() + 90);
         dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
-        dateInput.value = '';
+        dateInput.value = todayStr;
         dateInput.addEventListener('change', function() {
             var _dateVal = this.value;
             // Re-fetch latest hours (catches special-hours additions/removals since page load)
             fetchShopHours().then(function() {
-                renderHoursWidget(_dateVal);
+                renderHoursWidget(todayStr);
                 checkAvailability(_dateVal);
             });
         });
@@ -481,6 +490,18 @@ var todayStr = now.getFullYear() + '-' +
             var p = t.split(':').map(Number);
             return (p[0] % 12 || 12) + ':' + (p[1] === 0 ? '00' : p[1]) + ' ' + (p[0] >= 12 ? 'PM' : 'AM');
         }
+        function getNextOpenInfo(fromDate) {
+            for (var i = 1; i <= 7; i++) {
+                var next = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + i);
+                var nextKey = getLocalDateKey(next);
+                var nextDayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][next.getDay()];
+                var nextSchedule = getDaySchedule(nextKey, nextDayName);
+                if (!nextSchedule.closed) {
+                    return { offset: i, dayName: nextDayName, schedule: nextSchedule };
+                }
+            }
+            return null;
+        }
 
         var baseDate = selectedDateStr ? getLocalDate(selectedDateStr) : new Date();
         var dateKey = getLocalDateKey(baseDate);
@@ -494,12 +515,38 @@ var todayStr = now.getFullYear() + '-' +
         var isSelectedToday = dateKey === nowKey;
         var currentTime = nowLocal.getHours() * 60 + nowLocal.getMinutes();
         var isOpenNow = isSelectedToday && !daySchedule.closed && currentTime >= timeToMinsLocal(daySchedule.open) && currentTime < timeToMinsLocal(daySchedule.close);
+        var focusRowIdx = rowIdx;
+        var focusSchedule = daySchedule;
+
+        // When today is already closed, focus the grid on the next opening day/schedule.
+        if (isSelectedToday) {
+            var todayClosedOrFinished = daySchedule.closed || currentTime >= timeToMinsLocal(daySchedule.close);
+            if (todayClosedOrFinished) {
+                var nextOpenPreview = getNextOpenInfo(nowLocal);
+                if (nextOpenPreview) {
+                    focusSchedule = nextOpenPreview.schedule;
+                    focusRowIdx = SCHEDULE.findIndex(function(item) { return item.day === nextOpenPreview.dayName; });
+                    if (focusRowIdx < 0) focusRowIdx = JS_TO_SCHEDULE[new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate() + nextOpenPreview.offset).getDay()];
+                }
+            }
+        }
         var statusEl = document.getElementById('hoursStatus');
         var noteLabel = daySchedule.note ? ' - ' + daySchedule.note : '';
 
         if (statusEl) {
             if (daySchedule.closed) {
-                statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED ON ' + dayName.toUpperCase() + noteLabel;
+                if (isSelectedToday) {
+                    var nextOpenFromClosed = getNextOpenInfo(nowLocal);
+                    if (nextOpenFromClosed) {
+                        var closedWhenLabel = nextOpenFromClosed.offset === 1 ? 'tomorrow' : ('on ' + nextOpenFromClosed.dayName);
+                        var closedNextNote = nextOpenFromClosed.schedule.note ? ' - ' + nextOpenFromClosed.schedule.note : '';
+                        statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens ' + closedWhenLabel + ' at ' + format12(nextOpenFromClosed.schedule.open) + ')' + closedNextNote;
+                    } else {
+                        statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED ON ' + dayName.toUpperCase() + noteLabel;
+                    }
+                } else {
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED ON ' + dayName.toUpperCase() + noteLabel;
+                }
             } else if (isOpenNow) {
                 var diff = timeToMinsLocal(daySchedule.close) - currentTime;
                 statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm)' + noteLabel;
@@ -508,7 +555,14 @@ var todayStr = now.getFullYear() + '-' +
                 if (opensLaterToday) {
                     statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(daySchedule.open) + ')' + noteLabel;
                 } else {
-                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Today ' + format12(daySchedule.open) + ' - ' + format12(daySchedule.close) + ')' + noteLabel;
+                    var nextOpen = getNextOpenInfo(nowLocal);
+                    if (nextOpen) {
+                        var whenLabel = nextOpen.offset === 1 ? 'tomorrow' : ('on ' + nextOpen.dayName);
+                        var nextNote = nextOpen.schedule.note ? ' - ' + nextOpen.schedule.note : '';
+                        statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens ' + whenLabel + ' at ' + format12(nextOpen.schedule.open) + ')' + nextNote;
+                    } else {
+                        statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Today ' + format12(daySchedule.open) + ' - ' + format12(daySchedule.close) + ')' + noteLabel;
+                    }
                 }
             } else {
                 statusEl.innerHTML = '<span class="status-dot open"></span> SELECTED DAY: ' + dayName.toUpperCase() + ' (' + format12(daySchedule.open) + ' - ' + format12(daySchedule.close) + ')' + noteLabel;
@@ -519,8 +573,8 @@ var todayStr = now.getFullYear() + '-' +
         if (grid) {
             grid.innerHTML = '';
             SCHEDULE.forEach(function(item, idx) {
-                var isSelected = idx === rowIdx;
-                var display = isSelected ? daySchedule : item;
+                var isSelected = idx === focusRowIdx;
+                var display = isSelected ? focusSchedule : item;
                 var row = document.createElement('div');
                 row.className = 'hours-row-new' + (isSelected ? ' today' : '');
                 row.innerHTML = '<span>' + (isSelected ? '&#9658; ' : '') + item.day + '</span><span>' + (display.closed ? 'Closed' : (format12(display.open) + ' - ' + format12(display.close))) + '</span>';
@@ -529,7 +583,35 @@ var todayStr = now.getFullYear() + '-' +
         }
     }
 
-    renderHoursWidget('');
+    var initialDateVal = dateInput && dateInput.value ? dateInput.value : todayStr;
+    renderHoursWidget(todayStr);
+    if (initialDateVal) {
+        checkAvailability(initialDateVal);
+    }
+
+    // Warm-up refreshes: Firestore can return cached hours first, then fresh server data.
+    // Re-pull a few times so special-hours appear without requiring user date interaction.
+    (function warmupHoursRefresh() {
+        var attempts = 0;
+        var maxAttempts = 8;
+
+        function tick() {
+            fetchShopHours().then(function() {
+                renderHoursWidget(todayStr);
+                var currentSelectedDate = dateInput && dateInput.value ? dateInput.value : todayStr;
+                if (currentSelectedDate) {
+                    checkAvailability(currentSelectedDate);
+                }
+            }).finally(function() {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    setTimeout(tick, 1200);
+                }
+            });
+        }
+
+        tick();
+    })();
 
     /* FORM SUBMISSION & STRIPE */
     var form = document.getElementById('bookingForm');
@@ -922,7 +1004,12 @@ var todayStr = now.getFullYear() + '-' +
     });
 
     /* STRIPE SUCCESS CHECK */
-    if (window.isStripeSuccess) {
+    var isStripeSuccess = new URLSearchParams(window.location.search).get('booking') === 'success';
+    if (isStripeSuccess) {
+        // Strip ?booking=success from URL so refresh doesn't re-trigger
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
         var popup = document.getElementById('successPopup');
         var pending = sessionStorage.getItem('pendingBooking');
         var bookingData = pending ? JSON.parse(pending) : null;
