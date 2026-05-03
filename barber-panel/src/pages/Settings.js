@@ -52,6 +52,12 @@ function normalizeSpecialHours(list) {
     });
 }
 
+function toMinutes(value) {
+  var parts = String(value || '').split(':').map(Number);
+  if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) return NaN;
+  return parts[0] * 60 + parts[1];
+}
+
 export default function Settings({ theme, onToggleTheme }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
@@ -221,9 +227,30 @@ export default function Settings({ theme, onToggleTheme }) {
     setSaving(true);
     setError('');
     try {
+      const specialHours = normalizeSpecialHours(settings.specialHours);
+      const seen = new Set();
+      for (let i = 0; i < specialHours.length; i++) {
+        const row = specialHours[i];
+        if (seen.has(row.date)) {
+          setError('Special Hours cannot contain duplicate dates.');
+          setSaving(false);
+          return;
+        }
+        seen.add(row.date);
+        if (!row.closed) {
+          const openMins = toMinutes(row.open);
+          const closeMins = toMinutes(row.close);
+          if (!Number.isFinite(openMins) || !Number.isFinite(closeMins) || closeMins <= openMins) {
+            setError('In Special Hours, closing time must be later than opening time.');
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
       const payload = {
         ...settings,
-        specialHours: normalizeSpecialHours(settings.specialHours),
+        specialHours,
       };
       await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), payload);
       // Propagate all hours to every barber
