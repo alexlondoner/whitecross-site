@@ -309,6 +309,38 @@ document.addEventListener('DOMContentLoaded', async function () {
         { day: 'Sunday', open: '10:00', close: '16:00', closed: false },
     ];
     var DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    var SPECIAL_HOURS = [];
+
+    function normalizeSpecialHours(list) {
+        return (Array.isArray(list) ? list : [])
+            .filter(function(item) { return item && item.date; })
+            .map(function(item) {
+                return {
+                    date: item.date,
+                    open: item.open || '09:00',
+                    close: item.close || '19:00',
+                    closed: !!item.closed,
+                    note: item.note || ''
+                };
+            });
+    }
+
+    function getSpecialHours(dateStr) {
+        return SPECIAL_HOURS.find(function(item) { return item.date === dateStr; }) || null;
+    }
+
+    function getDaySchedule(dateStr, dayName) {
+        var weekly = SCHEDULE.find(function(item) { return item.day === dayName; }) || { day: dayName, open: '09:00', close: '19:00', closed: false };
+        var special = getSpecialHours(dateStr);
+        if (!special) return weekly;
+        return {
+            day: dayName,
+            open: special.open || weekly.open,
+            close: special.close || weekly.close,
+            closed: !!special.closed,
+            note: special.note || ''
+        };
+    }
 
     async function fetchShopHours() {
         try {
@@ -338,6 +370,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         return { day: day, open: h.open || '09:00', close: h.close || '19:00', closed: !!h.closed };
                     });
                 }
+                SPECIAL_HOURS = normalizeSpecialHours(data && data.specialHours);
             }
         } catch (err) {
             console.warn('Could not fetch shop hours:', err);
@@ -431,6 +464,9 @@ var todayStr = now.getFullYear() + '-' +
     (function() {
         var currentTime = now.getHours() * 60 + now.getMinutes();
         var todayIdx = JS_TO_SCHEDULE[now.getDay()];
+        var todayKey = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
 
         function timeToMinsLocal(t) { var p = t.split(':').map(Number); return p[0] * 60 + p[1]; }
         function format12(t) {
@@ -438,18 +474,21 @@ var todayStr = now.getFullYear() + '-' +
             return (p[0] % 12 || 12) + ':' + (p[1] === 0 ? '00' : p[1]) + ' ' + (p[0] >= 12 ? 'PM' : 'AM');
         }
 
-        var today = SCHEDULE[todayIdx];
-        var isOpen = currentTime >= timeToMinsLocal(today.open) && currentTime < timeToMinsLocal(today.close);
+        var today = getDaySchedule(todayKey, SCHEDULE[todayIdx].day);
+        var isOpen = !today.closed && currentTime >= timeToMinsLocal(today.open) && currentTime < timeToMinsLocal(today.close);
         var statusEl = document.getElementById('hoursStatus');
+        var specialLabel = today.note ? ' - ' + today.note : '';
 
         if (statusEl) {
-            if (isOpen) {
+            if (today.closed) {
+                statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED TODAY' + specialLabel;
+            } else if (isOpen) {
                 var diff = timeToMinsLocal(today.close) - currentTime;
-                statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff/60) + 'h ' + (diff%60) + 'm)';
+                statusEl.innerHTML = '<span class="status-dot open"></span> OPEN NOW (Closes in ' + Math.floor(diff/60) + 'h ' + (diff%60) + 'm)' + specialLabel;
             } else {
                 var opensLaterToday = currentTime < timeToMinsLocal(today.open);
                 if (opensLaterToday) {
-                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(today.open) + ')';
+                    statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens today at ' + format12(today.open) + ')' + specialLabel;
                 } else {
                     var next = SCHEDULE[(todayIdx + 1) % 7];
                     statusEl.innerHTML = '<span class="status-dot closed"></span> CLOSED (Opens ' + next.day + ' at ' + format12(next.open) + ')';
@@ -635,6 +674,7 @@ var todayStr = now.getFullYear() + '-' +
         var selectedDate = getLocalDate(date);
         var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         var dayName = DAY_NAMES[selectedDate.getDay()];
+        var daySchedule = getDaySchedule(date, dayName);
 
         var now2 = new Date();
         var todayStr2 = now2.toISOString().split('T')[0];
@@ -664,6 +704,14 @@ var todayStr = now.getFullYear() + '-' +
             return slots;
         }
 
+        if (daySchedule.closed) {
+            if (timeSlotsGrid) {
+                timeSlotsGrid.innerHTML = '<div class="time-slots-empty">We are closed on this date' + (daySchedule.note ? ' - ' + daySchedule.note : '') + '.</div>';
+            }
+            if (hiddenTime) hiddenTime.value = '';
+            return;
+        }
+
         var barbersToCheck = [];
         if (barber === 'no-preference') {
             barbersToCheck = ACTIVE_BARBERS;
@@ -688,6 +736,8 @@ var todayStr = now.getFullYear() + '-' +
 
         var openMins = Math.min.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.open); }));
         var closeMins = Math.max.apply(null, scheduledBarbers.map(function(x) { return timeToMins(x.schedule.close); }));
+        openMins = Math.max(openMins, timeToMins(daySchedule.open));
+        closeMins = Math.min(closeMins, timeToMins(daySchedule.close));
         var open = String(Math.floor(openMins / 60)).padStart(2, '0') + ':' + String(openMins % 60).padStart(2, '0');
         var close = String(Math.floor(closeMins / 60)).padStart(2, '0') + ':' + String(closeMins % 60).padStart(2, '0');
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -30,7 +30,27 @@ const defaultSettings = {
       depositAmount: config.platforms?.fresha?.depositAmount ?? 0,
     },
   },
+  specialHours: [],
 };
+
+function normalizeSpecialHours(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(function(item) {
+      return item && item.date;
+    })
+    .map(function(item) {
+      return {
+        date: item.date,
+        open: item.open || '09:00',
+        close: item.close || '19:00',
+        closed: !!item.closed,
+        note: item.note || '',
+      };
+    })
+    .sort(function(a, b) {
+      return String(a.date).localeCompare(String(b.date));
+    });
+}
 
 export default function Settings({ theme, onToggleTheme }) {
   const [settings, setSettings] = useState(defaultSettings);
@@ -47,7 +67,12 @@ export default function Settings({ theme, onToggleTheme }) {
       const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
       if (snap.exists()) {
         const data = snap.data();
-        setSettings({ ...defaultSettings, ...data, platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) } });
+        setSettings({
+          ...defaultSettings,
+          ...data,
+          platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) },
+          specialHours: normalizeSpecialHours(data.specialHours),
+        });
       }
     } catch (err) {
       console.error('fetchSettings error:', err);
@@ -157,17 +182,59 @@ export default function Settings({ theme, onToggleTheme }) {
     }));
   };
 
+  const addSpecialHours = function() {
+    const today = new Date();
+    const date = new Date(today);
+    date.setDate(today.getDate() + 1);
+    const dateKey = date.toISOString().slice(0, 10);
+    setSettings(function(current) {
+      const specialHours = normalizeSpecialHours([
+        ...(current.specialHours || []),
+        { date: dateKey, open: '10:00', close: '19:00', closed: false, note: '' }
+      ]);
+      return { ...current, specialHours };
+    });
+  };
+
+  const updateSpecialHours = function(index, key, value) {
+    setSettings(function(current) {
+      const specialHours = (current.specialHours || []).map(function(item, itemIndex) {
+        if (itemIndex !== index) return item;
+        return { ...item, [key]: value };
+      });
+      return { ...current, specialHours: normalizeSpecialHours(specialHours) };
+    });
+  };
+
+  const removeSpecialHours = function(index) {
+    setSettings(function(current) {
+      return {
+        ...current,
+        specialHours: (current.specialHours || []).filter(function(_, itemIndex) {
+          return itemIndex !== index;
+        })
+      };
+    });
+  };
+
   const handleSave = async function() {
     setSaving(true);
     setError('');
     try {
-      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), settings);
+      const payload = {
+        ...settings,
+        specialHours: normalizeSpecialHours(settings.specialHours),
+      };
+      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), payload);
       // Propagate all hours to every barber
-      if (settings.hours) {
+      if (payload.hours) {
         await Promise.all(
-          Object.entries(settings.hours).map(([day, hours]) => updateAllBarbersDay(day, hours))
+          Object.entries(payload.hours).map(([day, hours]) => updateAllBarbersDay(day, hours))
         );
       }
+      setSettings(function(current) {
+        return { ...current, specialHours: normalizeSpecialHours(current.specialHours) };
+      });
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 3000);
     } catch (err) {
@@ -322,6 +389,59 @@ export default function Settings({ theme, onToggleTheme }) {
             );
           })}
         </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ ...sectionTitle, marginBottom: '6px', paddingBottom: 0, borderBottom: 'none' }}>Special Hours</h2>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>
+              Use this for bank holidays or one-off dates. It applies only to that date, then the normal weekly hours return automatically.
+            </p>
+          </div>
+          <button onClick={addSpecialHours}
+            style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.78rem', letterSpacing: '0.8px' }}>
+            + Add One-Off Date
+          </button>
+        </div>
+
+        {(settings.specialHours || []).length === 0 ? (
+          <div style={{ padding: '14px 16px', borderRadius: '10px', background: 'rgba(180,180,180,0.04)', border: '1px solid rgba(180,180,180,0.1)', color: 'var(--muted)', fontSize: '0.8rem' }}>
+            No one-off dates added. Example: tomorrow open at 10:00 without changing the normal weekday hours.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {(settings.specialHours || []).map(function(item, index) {
+              return (
+                <div key={item.date + '-' + index} style={{ padding: '14px 16px', borderRadius: '10px', background: 'rgba(180,180,180,0.04)', border: '1px solid rgba(180,180,180,0.1)', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr auto auto', gap: '10px', alignItems: 'center' }}>
+                  <div>
+                    <label style={labelStyle}>Date</label>
+                    <input type="date" value={item.date} onChange={function(e) { updateSpecialHours(index, 'date', e.target.value); }} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Open</label>
+                    <input type="time" value={item.open || '09:00'} disabled={item.closed} onChange={function(e) { updateSpecialHours(index, 'open', e.target.value); }} style={timeInputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Close</label>
+                    <input type="time" value={item.close || '19:00'} disabled={item.closed} onChange={function(e) { updateSpecialHours(index, 'close', e.target.value); }} style={timeInputStyle} />
+                  </div>
+                  <div style={{ paddingTop: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input id={'special-hours-closed-' + index} type="checkbox" checked={!!item.closed} onChange={function(e) { updateSpecialHours(index, 'closed', e.target.checked); }} />
+                    <label htmlFor={'special-hours-closed-' + index} style={{ fontSize: '0.78rem', color: 'var(--text)' }}>Closed</label>
+                  </div>
+                  <button onClick={function() { removeSpecialHours(index); }} style={{ marginTop: '20px', padding: '9px 12px', background: 'transparent', border: '1px solid rgba(255,82,82,0.35)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
+                    Remove
+                  </button>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Note</label>
+                    <input value={item.note || ''} onChange={function(e) { updateSpecialHours(index, 'note', e.target.value); }} placeholder="Bank Holiday, Eid, private event..." style={inputStyle} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Platform Settings */}

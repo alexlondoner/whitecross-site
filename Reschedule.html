@@ -412,6 +412,7 @@
         { open: '10:00', close: '16:00', closed: false }, // Sun
     ];
     const JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
+    let SPECIAL_HOURS = [];
 
     let currentDocRef = null;
     let currentBookingData = null;
@@ -435,6 +436,32 @@
     function timeMins(t) {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
+    }
+
+    function normalizeSpecialHours(list) {
+        return (Array.isArray(list) ? list : [])
+            .filter(item => item && item.date)
+            .map(item => ({
+                date: item.date,
+                open: item.open || '09:00',
+                close: item.close || '19:00',
+                closed: !!item.closed,
+                note: item.note || ''
+            }));
+    }
+
+    function getSpecialHours(dateStr) {
+        return SPECIAL_HOURS.find(item => item.date === dateStr) || null;
+    }
+
+    async function loadSpecialHours() {
+        const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
+        if (!snap.exists()) {
+            SPECIAL_HOURS = [];
+            return;
+        }
+        const data = snap.data();
+        SPECIAL_HOURS = normalizeSpecialHours(data.specialHours);
     }
 
     function formatTimestamp(ts) {
@@ -515,6 +542,13 @@
         let day       = Object.assign({}, SCHEDULE[dayIdx]);
         const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = DAY_NAMES[selDate.getDay()];
+        const specialDay = getSpecialHours(dateStr);
+
+        if (specialDay) {
+            day.open = specialDay.open || day.open;
+            day.close = specialDay.close || day.close;
+            day.closed = !!specialDay.closed;
+        }
 
         function isWorkingDay(list, targetDay) {
             if (!Array.isArray(list)) return false;
@@ -569,8 +603,14 @@
             }
         }
 
+        if (specialDay) {
+            day.open = specialDay.open || day.open;
+            day.close = specialDay.close || day.close;
+            day.closed = !!specialDay.closed;
+        }
+
         if (day.closed) {
-            container.innerHTML = '<div class="slots-status">We are closed on this day. Please pick another date.</div>';
+            container.innerHTML = '<div class="slots-status">We are closed on this day' + (specialDay && specialDay.note ? ' - ' + specialDay.note : '') + '. Please pick another date.</div>';
             return;
         }
 
@@ -665,6 +705,7 @@
     async function init(id, email) {
         try {
             await loadBarbers();
+            await loadSpecialHours();
             const result = await lookupByParams(id, email);
             if (!result) { showState('stateNotFound'); return; }
             currentDocRef      = result.ref;
