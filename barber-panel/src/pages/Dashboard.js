@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config from '../config';
 import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking } from '../firestoreActions';
@@ -40,6 +40,39 @@ function getWeekDates(date) {
 }
 function formatDateKey(date) {
   return date.getDate() + ' ' + date.toLocaleDateString('en-GB', { month: 'long' }) + ' ' + date.getFullYear();
+}
+function toDateKey(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function normalizeSpecialHours(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(item => item && item.date)
+    .map(item => ({
+      date: item.date,
+      open: item.open || '09:00',
+      close: item.close || '19:00',
+      closed: !!item.closed,
+      note: item.note || '',
+    }));
+}
+function getSpecialHoursForDate(date, specialHours) {
+  const key = toDateKey(date);
+  return (specialHours || []).find(item => item.date === key) || null;
+}
+function getEffectiveDayHours(date, dayName, weeklyHours, specialHours) {
+  const base = (weeklyHours && weeklyHours[dayName]) || { open: '09:00', close: '19:00', closed: false };
+  const special = getSpecialHoursForDate(date, specialHours);
+  if (!special) return base;
+  return {
+    open: special.open || base.open,
+    close: special.close || base.close,
+    closed: !!special.closed,
+    note: special.note || '',
+  };
 }
 function convertTo24(t) {
   if (!t) return 0;
@@ -627,7 +660,7 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
   );
 }
 
-function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers, existingBookings, onClose, onSaved }) {
+function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers, existingBookings, specialHours, onClose, onSaved }) {
   const isEdit = !!preBooking;
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -711,13 +744,18 @@ function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers
   const now = new Date();
   const [yr, mo, dy] = (form.date || '').split('-');
   const isFormToday = parseInt(yr)===now.getFullYear() && parseInt(mo)-1===now.getMonth() && parseInt(dy)===now.getDate();
+  const formDateObj = form.date ? new Date(form.date + 'T00:00:00') : new Date();
+  const dayNameForForm = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][formDateObj.getDay()];
+  const dayHoursForForm = getEffectiveDayHours(formDateObj, dayNameForForm, config.hours, specialHours);
+  const openMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.open) : 9 * 60;
+  const closeMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.close) : 19 * 60;
   const hours = [];
-for (let h = 9; h <= 19; h++) {
-  [0, 15, 30, 45].forEach(m => {
-    if (h === 19 && m > 0) return;
-    hours.push({ label: minsToLabel(h * 60 + m) });
-  });
-}
+  if (!dayHoursForForm.closed) {
+    for (let mins = openMins; mins <= closeMins; mins += 15) {
+      if (mins === closeMins) continue;
+      hours.push({ label: minsToLabel(mins) });
+    }
+  }
 const handleSave = async (goCheckout = false) => {
   const eErr = validateEmail(form.email);
   const pErr = validatePhone(form.phone);
@@ -858,9 +896,10 @@ const handleSave = async (goCheckout = false) => {
           </div>
           <div>
             <label style={lbl}>Time</label>
-            <select value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{ ...inp, cursor:'pointer' }}>
+            <select value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{ ...inp, cursor:'pointer' }} disabled={dayHoursForForm.closed || !hours.length}>
               {hours.map(h=><option key={h.label} value={h.label} disabled={h.isBusy}>{h.label}{h.isBusy?' - Busy':''}</option>)}
             </select>
+            {dayHoursForForm.closed && <div style={{ fontSize:'0.62rem', color:'#ff5252', marginTop:'4px' }}>This date is closed{dayHoursForForm.note ? ': ' + dayHoursForForm.note : ''}.</div>}
           </div>
         </div>
         <div>
@@ -906,7 +945,7 @@ function SlotPopup({ popup, onNewBooking, onWalkIn, onBlockTime, onClose }) {
     </div>
   );
 }
-function BlockTimeForm({ preBarber, preHour, preDate, barbers, onClose, onSaved }) {
+function BlockTimeForm({ preBarber, preHour, preDate, barbers, specialHours, onClose, onSaved }) {
   const [barber, setBarber] = useState(preBarber ? preBarber.name.toLowerCase() : (barbers[0] ? barbers[0].name.toLowerCase() : ''));
   const [saving, setSaving] = useState(false);
   const date = preDate ? (preDate.getDate() + ' ' + preDate.toLocaleDateString('en-GB', {month:'long'}) + ' ' + preDate.getFullYear()) : formatDateKey(new Date());
@@ -914,12 +953,16 @@ function BlockTimeForm({ preBarber, preHour, preDate, barbers, onClose, onSaved 
   const [startTime, setStartTime] = useState(defaultTime);
   const [endTime, setEndTime] = useState(preHour !== undefined ? minsToLabel((preHour + 1) * 60) : '10:00 AM');
 
+  const dayNameForForm = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(preDate || new Date()).getDay()];
+  const dayHoursForForm = getEffectiveDayHours((preDate || new Date()), dayNameForForm, config.hours, specialHours);
+  const openMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.open) : 9 * 60;
+  const closeMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.close) : 19 * 60;
   const hours = [];
-  for (let h = 9; h <= 19; h++) {
-  [0, 15, 30, 45].forEach(m => {
-  if (h === 19 && m > 0) return;
-  hours.push({ label: minsToLabel(h * 60 + m) });
-    });
+  if (!dayHoursForForm.closed) {
+    for (let mins = openMins; mins <= closeMins; mins += 15) {
+      if (mins === closeMins) continue;
+      hours.push({ label: minsToLabel(mins) });
+    }
   }
 
 const handleSave = async () => {
@@ -1003,7 +1046,7 @@ const handleSave = async () => {
   );
 }
 
-function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, onClose, onSaved }) {
+function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, specialHours, onClose, onSaved }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
@@ -1058,12 +1101,16 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
   const svc = config.services ? config.services.find(s => s.id === service) : null;
   const price = svc ? svc.price : 0;
 
+  const dayNameForForm = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(preDate || new Date()).getDay()];
+  const dayHoursForForm = getEffectiveDayHours((preDate || new Date()), dayNameForForm, config.hours, specialHours);
+  const openMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.open) : 9 * 60;
+  const closeMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.close) : 19 * 60;
   const hours = [];
-  for (let h = 9; h <= 19; h++) {
-    [0, 30].forEach(m => {
-      if (h === 19 && m > 0) return;
-      hours.push({ label: minsToLabel(h * 60 + m) });
-    });
+  if (!dayHoursForForm.closed) {
+    for (let mins = openMins; mins <= closeMins; mins += 30) {
+      if (mins === closeMins) continue;
+      hours.push({ label: minsToLabel(mins) });
+    }
   }
 
   const handleSave = async (goCheckout = false) => {
@@ -1361,17 +1408,17 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
     </div>
   );
 }
-function TimeGrid({ date, bookings, barbers, slotHeight, onSlotClick, onWalkIn, onBlockTime, onBookingClick, selectedBooking }) {
+function TimeGrid({ date, bookings, barbers, slotHeight, specialHours, onSlotClick, onWalkIn, onBlockTime, onBookingClick, selectedBooking }) {
     const nowRef = useRef(null);
   const [slotPopup, setSlotPopup] = useState(null);
   const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const dayName = DAYS[date.getDay()];
 const savedHours = (() => { try { const h = localStorage.getItem('shopHours'); return h ? JSON.parse(h) : null; } catch { return null; } })();
 const hoursConfig = savedHours || config.hours;
-const dayHours = hoursConfig && hoursConfig[dayName];
-const OPEN = dayHours && !dayHours.closed ? parseInt(dayHours.open.split(':')[0], 10) : 9;
-const CLOSE = dayHours && !dayHours.closed ? parseInt(dayHours.close.split(':')[0], 10) : 19;
-const IS_CLOSED = dayHours ? dayHours.closed : false;
+const dayHours = getEffectiveDayHours(date, dayName, hoursConfig, specialHours);
+const OPEN_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.open) : 9 * 60;
+const CLOSE_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.close) : 19 * 60;
+const IS_CLOSED = !!(dayHours && dayHours.closed);
   const GRID_START = 7, GRID_END = 21;
   const slots = [];
   for (let h = GRID_START; h < GRID_END; h++) {
@@ -1400,14 +1447,14 @@ const IS_CLOSED = dayHours ? dayHours.closed : false;
         {barbers.map((barber, bi) => {
           const bookingDisabled = isBarberBookingDisabled(barber);
           return (
-          <div key={barber.id} onClick={(e) => { if (bookingDisabled) return; const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: OPEN, mins: OPEN * 60, x: rect.left + 10, y: rect.bottom }); }}
+            <div key={barber.id} onClick={(e) => { if (bookingDisabled) return; const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
   style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:bookingDisabled?'not-allowed':'pointer', opacity:bookingDisabled?0.6:1 }}
   onMouseEnter={e=>{ if (!bookingDisabled) e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:barber.color+'22', border:'1px solid '+barber.color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:'700', color:barber.color, flexShrink:0 }}>{barber.name[0]}</div>
             <div>
               <div style={{ fontSize:'0.85rem', fontWeight:'700', color:'var(--text)' }}>{barber.name}</div>
-              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{bookingDisabled ? 'Booking Passive' : '9:00 -- 19:00'}</div>
+              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{bookingDisabled ? 'Booking Passive' : minsToLabel(OPEN_MINS) + ' -- ' + minsToLabel(CLOSE_MINS) + (dayHours && dayHours.note ? ' · ' + dayHours.note : '')}</div>
             </div>
             <span style={{ fontSize:'0.65rem', color:'var(--muted)', marginLeft:'auto', background:'rgba(212,175,55,0.08)', padding:'2px 7px', borderRadius:'8px' }}>
               {bookingDisabled ? 'Locked' : (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length + ' appts'}
@@ -1434,7 +1481,7 @@ const IS_CLOSED = dayHours ? dayHours.closed : false;
           return (
             <div key={barber.id} style={{ flex:1, position:'relative', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none' }}>
               {slots.map(slot => {
-                const isOutsideHours = IS_CLOSED || slot.mins < OPEN * 60 || slot.mins >= CLOSE * 60;
+                const isOutsideHours = IS_CLOSED || slot.mins < OPEN_MINS || slot.mins >= CLOSE_MINS;
                 const past = isToday && slot.mins < nowMins;
                 const inactive = past || isOutsideHours || bookingDisabled;
                 return (
@@ -1508,6 +1555,7 @@ const IS_CLOSED = dayHours ? dayHours.closed : false;
 
 export default function Dashboard() {
   const [bookings, setBookings] = useState([]); 
+  const [specialHours, setSpecialHours] = useState([]);
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showBlockTime, setShowBlockTime] = useState(false);
@@ -1538,10 +1586,14 @@ useEffect(() => {
 
   const fetchAll = async () => {
     try {
-      const [snapshot, barbersSnap] = await Promise.all([
+      const [snapshot, barbersSnap, settingsSnap] = await Promise.all([
         getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
         getDocs(collection(db, 'tenants/whitecross/barbers')),
+        getDoc(doc(db, 'tenants/whitecross/settings/settings')).catch(() => null),
       ]);
+
+      const settingsData = settingsSnap && settingsSnap.exists && settingsSnap.exists() ? settingsSnap.data() : {};
+      setSpecialHours(normalizeSpecialHours(settingsData && settingsData.specialHours));
 
       const fetchedBarbers = barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
       setBarbers(fetchedBarbers);
@@ -1866,7 +1918,7 @@ const activeBarbers = barberFilter === 'all'
               {loading ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)' }}>Loading...</div>
               ) : (
-                <TimeGrid date={selectedDate} bookings={getForDate(selectedDate)} barbers={activeBarbers} slotHeight={slotHeight} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} />
+                <TimeGrid date={selectedDate} bookings={getForDate(selectedDate)} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} />
               )}
               {(selectedBooking || showForm || showWalkIn || showBlockTime) && <ResizeHandle onResize={() => {}} />}
               {selectedBooking && !showForm && !showWalkIn && !showBlockTime && (
@@ -1883,6 +1935,7 @@ const activeBarbers = barberFilter === 'all'
                 <BookingForm
                   existingBookings={bookings} preBarber={formPreset.barber} preHour={formPreset.hour} preMins={formPreset.mins}
                   preDate={formPreset.date} preBooking={formPreset.booking} barbers={barbers}
+                  specialHours={specialHours}
                   onClose={()=>setShowForm(false)}
                   onSaved={(savedBooking, goCheckout)=>{
                     setTimeout(()=>fetchAll(),2000); setTimeout(()=>fetchAll(),5000);
@@ -1893,6 +1946,7 @@ const activeBarbers = barberFilter === 'all'
               {showWalkIn && (
                 <WalkInForm
                   preBarber={formPreset.barber} preHour={formPreset.hour} preMins={formPreset.mins} preDate={formPreset.date} barbers={barbers} existingBookings={bookings}
+                  specialHours={specialHours}
                   onClose={() => setShowWalkIn(false)}
                   onSaved={(savedBooking, goCheckout) => {
                     setTimeout(() => fetchAll(), 2000); setTimeout(() => fetchAll(), 5000);
@@ -1903,6 +1957,7 @@ const activeBarbers = barberFilter === 'all'
               {showBlockTime && (
                 <BlockTimeForm
                   preBarber={formPreset.barber} preHour={formPreset.hour} preDate={formPreset.date} barbers={barbers}
+                  specialHours={specialHours}
                   onClose={() => setShowBlockTime(false)}
                   onSaved={() => { setTimeout(() => fetchAll(), 2000); setTimeout(() => fetchAll(), 5000); setShowBlockTime(false); }}
                 />
