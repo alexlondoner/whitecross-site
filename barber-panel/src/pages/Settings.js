@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -260,6 +260,62 @@ export default function Settings({ theme, onToggleTheme }) {
       setError('Could not remove past one-off dates.');
     } finally {
       setCleaningPast(false);
+    }
+  };
+
+  const SERVICE_PRICES = [
+    { id: 'i-cut-royal', price: 65 }, { id: 'i-cut-deluxe', price: 55 },
+    { id: 'full-skinfade-beard-luxury', price: 48 }, { id: 'full-experience', price: 40 },
+    { id: 'senior-full-experience', price: 35 }, { id: 'skin-fade', price: 32 },
+    { id: 'scissor-cut', price: 30 }, { id: 'classic-sbs', price: 28 },
+    { id: 'hot-towel-shave', price: 22 }, { id: 'clipper-cut', price: 22 },
+    { id: 'senior-haircut', price: 23 }, { id: 'young-gents', price: 20 },
+    { id: 'young-gents-skin-fade', price: 24 }, { id: 'full-facial', price: 24 },
+    { id: 'beard-dyeing', price: 24 }, { id: 'face-mask', price: 12 },
+    { id: 'face-steam', price: 12 }, { id: 'threading', price: 10 },
+    { id: 'waxing', price: 10 }, { id: 'shape-up-clean-up', price: 20 },
+    { id: 'wash-hot-towel', price: 10 },
+  ];
+  const KNOWN_SERVICE_IDS = new Set(SERVICE_PRICES.map(s => s.id));
+  function closestServiceId(price) {
+    if (price >= 24 && price <= 30) return 'classic-sbs';
+    let best = SERVICE_PRICES[0], bestDiff = Math.abs(price - best.price);
+    for (const s of SERVICE_PRICES) {
+      const d = Math.abs(price - s.price);
+      if (d < bestDiff) { best = s; bestDiff = d; }
+    }
+    return best.id;
+  }
+
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState('');
+
+  const runServiceMigration = async () => {
+    if (!window.confirm('Fix service names on imported bookings? This is a one-time operation.')) return;
+    setMigrating(true);
+    setMigrateResult('');
+    try {
+      const snap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
+      let updated = 0;
+      const batch = writeBatch(db);
+      let batchCount = 0;
+      for (const d of snap.docs) {
+        const data = d.data();
+        const sid = data.serviceId || '';
+        if (KNOWN_SERVICE_IDS.has(sid)) continue;
+        const price = parseFloat(String(data.price || '0').replace('£', '')) || 0;
+        if (!price) continue;
+        batch.update(d.ref, { serviceId: closestServiceId(price) });
+        updated++;
+        batchCount++;
+        if (batchCount === 499) { await batch.commit(); batchCount = 0; }
+      }
+      if (batchCount > 0) await batch.commit();
+      setMigrateResult(`Done — updated ${updated} booking${updated !== 1 ? 's' : ''}.`);
+    } catch (err) {
+      setMigrateResult('Error: ' + err.message);
+    } finally {
+      setMigrating(false);
     }
   };
 
@@ -606,6 +662,19 @@ export default function Settings({ theme, onToggleTheme }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* One-time migrations */}
+      <div style={{ ...cardStyle, borderColor: 'rgba(212,175,55,0.2)' }}>
+        <h2 style={sectionTitle}>Maintenance</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button onClick={runServiceMigration} disabled={migrating}
+            style={{ padding: '10px 20px', background: migrating ? 'rgba(212,175,55,0.05)' : 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '8px', color: '#d4af37', cursor: migrating ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            {migrating ? 'Running…' : 'Fix Service Names on Imported Bookings'}
+          </button>
+          {migrateResult && <span style={{ fontSize: '0.82rem', color: migrateResult.startsWith('Error') ? '#ff5252' : '#4caf50' }}>{migrateResult}</span>}
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '10px' }}>Assigns correct service IDs to bookings imported from XLS where the service name was missing. Price 24–30 → Classic Short Back & Sides, others → closest price match. Safe to run multiple times.</p>
       </div>
 
       {/* Danger Zone */}
