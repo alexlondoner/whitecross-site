@@ -1,8 +1,0 @@
-[
-  {
-    "origin": ["https://www.whitecrossbarbers.com", "https://whitecrossbarbers.com", "https://whitecrossbarbers-admin.web.app", "http://localhost:3000"],
-    "method": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],
-    "maxAgeSeconds": 3600,
-    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "User-Agent", "x-goog-resumable"]
-  }
-]
