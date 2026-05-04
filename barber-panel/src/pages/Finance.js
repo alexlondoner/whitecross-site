@@ -334,8 +334,12 @@ export default function Finance() {
 
       const barberRev = {};
       barbers.forEach(b => { barberRev[b.name] = { cash: 0, monzo: 0, card: 0 }; });
+      // Revenue: only CHECKED_OUT bookings; wages: all non-cancelled (worked)
+      const workedNames = new Set();
       dayBk.forEach(b => {
         const name = b.barber;
+        workedNames.add(name);
+        if (b.status !== 'CHECKED_OUT') return;
         if (!barberRev[name]) barberRev[name] = { cash: 0, monzo: 0, card: 0 };
         const rev = effectiveRevenue(b);
         const pm2 = paymentMethod(b);
@@ -347,10 +351,10 @@ export default function Finance() {
       const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
       const netRevenue   = grossRevenue - cashExpense - bankExpense;
 
-      // Wages: only barbers IN Firestore get wages; charge if they have any revenue that day
+      // Wages: only real Firestore barbers who worked that day (had any booking, not just checked-out)
       let totalWages = 0;
-      Object.entries(barberRev).forEach(([name, v]) => {
-        if (v.cash + v.monzo + v.card > 0 && realBarberSet.has(normalizeName(name))) {
+      workedNames.forEach(name => {
+        if (realBarberSet.has(normalizeName(name))) {
           totalWages += (partnerConfig[name]?.wage ?? 100);
         }
       });
@@ -416,11 +420,16 @@ export default function Finance() {
 
       const monthBk = bookings.filter(b => monthKey(b.startTime) === mk);
       monthBk.forEach(b => {
+        // All non-cancelled bookings count for worked-days (wages)
         if (!barberDays[b.barber]) barberDays[b.barber] = new Set();
         barberDays[b.barber].add(b.dateKey);
-        if (!barberRev[b.barber]) barberRev[b.barber] = 0;
-        barberRev[b.barber] += effectiveRevenue(b);
-        grossRev += effectiveRevenue(b);
+        // Only CHECKED_OUT bookings count for revenue
+        if (b.status === 'CHECKED_OUT') {
+          if (!barberRev[b.barber]) barberRev[b.barber] = 0;
+          const rev = effectiveRevenue(b);
+          barberRev[b.barber] += rev;
+          grossRev += rev;
+        }
       });
 
       mkDates.forEach(dk => {
@@ -485,7 +494,7 @@ export default function Finance() {
         shopDays, partners,
       };
     });
-  }, [bookings, expenses, payments, partnerConfig, fixedDailyRate]);
+  }, [bookings, barbers, expenses, payments, partnerConfig, fixedDailyRate]);
 
   const selectedMonthPartnership = useMemo(() =>
     partnershipByMonth.find(r => r.mk === selectedMonth),
@@ -978,9 +987,12 @@ export default function Finance() {
               {selectedMonthPartnership && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   {[
-                    { label: 'Shop Days Open',  value: selectedMonthPartnership.shopDays, unit: 'days', color: '#78909c' },
-                    { label: 'Total Wages',      value: '£' + Math.round(selectedMonthPartnership.totalWages), color: '#4caf50' },
+                    { label: 'Gross Revenue',    value: '£' + Math.round(selectedMonthPartnership.grossRev),       color: '#d4af37' },
+                    { label: 'Cash Expenses',    value: selectedMonthPartnership.cashExp > 0 ? '−£' + Math.round(selectedMonthPartnership.cashExp) : '–', color: '#ff7043' },
+                    { label: 'Bank Expenses',    value: selectedMonthPartnership.bankExp > 0 ? '−£' + Math.round(selectedMonthPartnership.bankExp) : '–', color: '#ff7043' },
+                    { label: 'Total Wages',      value: '£' + Math.round(selectedMonthPartnership.totalWages),     color: '#4caf50' },
                     { label: 'Fixed Cost',       value: '£' + Math.round(selectedMonthPartnership.fixedCostTotal), color: '#78909c' },
+                    { label: 'Shop Days Open',   value: selectedMonthPartnership.shopDays + ' days',               color: '#78909c' },
                     { label: 'Company Net P&L',  value: (selectedMonthPartnership.companyNetPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.companyNetPL), color: selectedMonthPartnership.companyNetPL >= 0 ? '#4caf50' : '#ff5252' },
                   ].map(c => (
                     <div key={c.label} style={{ ...card, padding: '12px 14px', border: '1px solid var(--border)' }}>
