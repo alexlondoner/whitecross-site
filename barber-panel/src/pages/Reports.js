@@ -157,8 +157,11 @@ export default function Reports() {
           const time = st ? st.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : (d.time || '');
           const rawBarber = String(d.barberId || '').trim();
           const barber = d.barberName || barberById[rawBarber.toLowerCase()] || rawBarber;
+          const rawStatus = String(d.status || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
+          const status = ['CONFIRMED','PENDING','CHECKED_OUT','CANCELLED','BLOCKED','NO_SHOW'].includes(rawStatus) ? rawStatus : (rawStatus || 'CONFIRMED');
           return {
             ...d,
+            status,
             _date: st,          // JS Date for range filtering
             date,               // display string
             time,

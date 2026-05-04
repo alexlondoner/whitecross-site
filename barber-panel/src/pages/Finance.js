@@ -228,12 +228,15 @@ export default function Finance() {
         .map(d => ({ docId: d.id, ...d.data() }))
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
-      // Ensure Alex/Arda/Kadim/Manoj are present
+      // Track real (Firestore) barber names — only these get wages charged
+      const realBarberNames = new Set(fetchedBarbers.map(b => normalizeName(b.name)));
+
+      // Add display-only defaults for any common name not in Firestore (no wages)
       const byName = new Set(fetchedBarbers.map(b => normalizeName(b.name)));
       const defaults = ['Alex','Arda','Kadim','Manoj'].filter(n => !byName.has(n.toLowerCase()))
-        .map((n, i) => ({ name: n, color: BARBER_COLORS[n], order: 10 + i, id: n.toLowerCase(), docId: `default-${n.toLowerCase()}` }));
+        .map((n, i) => ({ name: n, color: BARBER_COLORS[n], order: 10 + i, id: n.toLowerCase(), docId: `default-${n.toLowerCase()}`, displayOnly: true }));
       const allBarbers = [...fetchedBarbers, ...defaults].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      setBarbers(allBarbers);
+      setBarbers(allBarbers.map(b => ({ ...b, _isReal: realBarberNames.has(normalizeName(b.name)) })));
 
       const canonMap = allBarbers.reduce((acc, b) => {
         if (b?.name) acc[normalizeName(b.name)] = b.name;
@@ -251,7 +254,9 @@ export default function Finance() {
         const rawBarber = data.barberName || barberById[String(data.barberId || '').toLowerCase()] || data.barberId || '';
         const barber = resolveBarberName(rawBarber, canonMap);
         const startTime = data.startTime?.toDate?.();
-        return { ...data, barber, startTime, dateKey: startTime ? toDateKey(startTime) : null };
+        const rawStatus = String(data.status || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
+        const status = ['CONFIRMED','PENDING','CHECKED_OUT','CANCELLED','BLOCKED','NO_SHOW'].includes(rawStatus) ? rawStatus : (rawStatus || 'CONFIRMED');
+        return { ...data, status, barber, startTime, dateKey: startTime ? toDateKey(startTime) : null };
       }).filter(b => b.status !== 'CANCELLED' && b.dateKey);
       setBookings(fetchedBookings);
 
@@ -310,7 +315,8 @@ export default function Finance() {
   // ── Daily rows ────────────────────────────────────────────────────────────
   const dailyData = useMemo(() => {
     const inScope = dk => monthMode === 'all' || String(dk || '').startsWith(selectedMonth);
-    const scopedBk = bookings.filter(b => isWalkInBooking(b) && b.dateKey && inScope(b.dateKey));
+    const realBarberSet = new Set(barbers.filter(b => b._isReal).map(b => normalizeName(b.name)));
+    const scopedBk = bookings.filter(b => b.dateKey && inScope(b.dateKey));
     const scopedExpKeys = Object.keys(expenses).filter(inScope);
 
     const dateKeys = monthMode === 'selected'
@@ -341,10 +347,10 @@ export default function Finance() {
       const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
       const netRevenue   = grossRevenue - cashExpense - bankExpense;
 
-      // Wages: each worker whose revenue > 0 earns their wage
+      // Wages: only barbers IN Firestore get wages; charge if they have any revenue that day
       let totalWages = 0;
       Object.entries(barberRev).forEach(([name, v]) => {
-        if (v.cash + v.monzo + v.card > 0) {
+        if (v.cash + v.monzo + v.card > 0 && realBarberSet.has(normalizeName(name))) {
           totalWages += (partnerConfig[name]?.wage ?? 100);
         }
       });
@@ -392,8 +398,9 @@ export default function Finance() {
   // ── Partnership accounting ─────────────────────────────────────────────────
   // Per-month stats for each month that has any data
   const partnershipByMonth = useMemo(() => {
+    const realBarberSet = new Set(barbers.filter(b => b._isReal).map(b => normalizeName(b.name)));
     const allMonths = Array.from(new Set(
-      bookings.filter(isWalkInBooking).map(b => monthKey(b.startTime)).filter(Boolean)
+      bookings.map(b => monthKey(b.startTime)).filter(Boolean)
     )).sort();
 
     return allMonths.map(mk => {
@@ -407,7 +414,7 @@ export default function Finance() {
       const barberDays = {}; // name → set of dateKeys
       const barberRev  = {}; // name → total revenue
 
-      const monthBk = bookings.filter(b => isWalkInBooking(b) && monthKey(b.startTime) === mk);
+      const monthBk = bookings.filter(b => monthKey(b.startTime) === mk);
       monthBk.forEach(b => {
         if (!barberDays[b.barber]) barberDays[b.barber] = new Set();
         barberDays[b.barber].add(b.dateKey);
@@ -423,8 +430,9 @@ export default function Finance() {
 
       const netRevenue = grossRev - cashExp - bankExp;
 
-      // Compute wages per worker (days worked × wage)
+      // Compute wages per worker (days worked × wage) — only real Firestore barbers
       Object.entries(barberDays).forEach(([name, days]) => {
+        if (!realBarberSet.has(normalizeName(name))) return;
         const wage = partnerConfig[name]?.wage ?? 100;
         totalWages += days.size * wage;
       });
