@@ -190,7 +190,7 @@ export default function Bookings() {
         if (sortBy === 'date_asc') return (a.startTime?.getTime() || 0) - (b2.startTime?.getTime() || 0);
         return (b2.startTime?.getTime() || 0) - (a.startTime?.getTime() || 0); // date desc default
       });
-  }, [bookings, search, statusFilter, barberFilter, sourceFilter, sortBy]);
+  }, [bookings, search, statusFilter, barberFilter, sourceFilter, sortBy, periodFilter]);
 
   const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
