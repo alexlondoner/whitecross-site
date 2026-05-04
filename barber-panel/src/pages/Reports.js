@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
+function normalizeSource(src) {
+  const s = String(src || '').trim().toLowerCase();
+  if (!s || s === 'historical' || s === 'walk_in' || s === 'walkin' || s === 'walk-in' || s === 'manual') return 'Walk-in';
+  if (s === 'booksy')  return 'Booksy';
+  if (s === 'fresha')  return 'Fresha';
+  if (s === 'website') return 'Website';
+  return String(src).trim();
+}
+
 function getBColor(barber, barbers) {
   if (barbers) { const f = barbers.find(b => b.name.toLowerCase() === (barber || '').toLowerCase()); if (f) return f.color; }
   return { alex: '#d4af37', arda: '#4caf50', manoj: '#9c27b0' }[(barber || '').toLowerCase()] || '#7a7260';
@@ -109,7 +118,7 @@ export default function Reports() {
     const fetchData = async () => {
   try {
     const [bookingsSnap, barbersSnap] = await Promise.all([
-      getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
+      getDocs(collection(db, 'tenants/whitecross/bookings')),
       getDocs(collection(db, 'tenants/whitecross/barbers')),
     ]);
     const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -129,7 +138,7 @@ export default function Reports() {
       const time = startTime ? startTime.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
       const rawBarber = String(d.barberId || '').trim();
       const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
-      return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: d.source || 'website', paidAmount: d.paidAmount || '', price: d.price || '' };
+      return { ...d, name: d.clientName || 'Walk-in', email: d.clientEmail || '', phone: d.clientPhone || '', barber, service: d.serviceId || '', date, time, bookingId: d.bookingId || doc.id, source: normalizeSource(d.source), paidAmount: d.paidAmount || '', price: d.price || '' };
     });
     setBookings(fetchedBookings);
   } catch (e) { console.log(e); }
@@ -186,9 +195,8 @@ export default function Reports() {
   // Source breakdown
   const sourceMap = {};
   active.forEach(b => {
-    const src = b.source ? (b.source.charAt(0).toUpperCase() + b.source.slice(1).toLowerCase()).replace('Walk-in','Walk-in') : 'Unknown';
-    const normalized = src === 'Walk-in' ? 'Walk-in' : src.charAt(0).toUpperCase() + src.slice(1);
-    sourceMap[normalized] = (sourceMap[normalized] || 0) + 1;
+    const src = b.source || 'Unknown';
+    sourceMap[src] = (sourceMap[src] || 0) + 1;
   });
   const sourceColors = { Booksy: '#9c27b0', Fresha: '#2196f3', Website: '#4caf50', 'Walk-in': '#ff9800', Manual: '#ff5252', Unknown: '#607d8b' };
   const sourceSegments = Object.entries(sourceMap).map(([k, v]) => ({ label: k, value: v, color: sourceColors[k] || '#999' }));
