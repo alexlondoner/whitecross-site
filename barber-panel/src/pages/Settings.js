@@ -31,6 +31,7 @@ const defaultSettings = {
     },
   },
   specialHours: [],
+  emailConfirmationEnabled: true,
 };
 
 function normalizeSpecialHours(list) {
@@ -385,6 +386,28 @@ export default function Settings({ theme, onToggleTheme }) {
           <div onClick={() => onToggleTheme()}
             style={{ width:'52px', height:'28px', borderRadius:'14px', cursor:'pointer', background: theme === 'light' ? '#c0c0c0' : 'var(--muted)', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
             <div style={{ position:'absolute', top:'4px', left: theme === 'light' ? '27px' : '4px', width:'20px', height:'20px', borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div style={cardStyle}>
+        <h2 style={sectionTitle}>Notifications</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text)', fontWeight: '600', marginBottom: '4px' }}>
+              Send Confirmation Email to Clients
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+              {settings.emailConfirmationEnabled !== false
+                ? 'Clients receive an email when a booking is created'
+                : 'Email confirmations are currently disabled'}
+            </div>
+          </div>
+          <div
+            onClick={() => setSettings(s => ({ ...s, emailConfirmationEnabled: s.emailConfirmationEnabled === false ? true : false }))}
+            style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.emailConfirmationEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', top: '4px', left: settings.emailConfirmationEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </div>
         </div>
       </div>
