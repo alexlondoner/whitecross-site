@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
 const PAGE_SIZE = 100;
 
@@ -99,16 +99,10 @@ export default function Bookings() {
         return acc;
       }, {});
 
-      // Fetch all bookings without Firestore date filter so imported/historical
-      // bookings with non-Timestamp startTime fields are not silently excluded.
-      // Period filtering is applied client-side in the filtered memo below.
-      const bookingsQuery = query(
-        collection(db, 'tenants/whitecross/bookings'),
-        orderBy('createdAt', 'desc'),
-        limit(2000)
-      );
-
-      const bookingsSnap = await getDocs(bookingsQuery);
+      // Fetch all bookings with no Firestore ordering/filtering — any orderBy/where
+      // silently excludes docs where that field is missing or wrong type (XLS imports).
+      // All sorting and period filtering happens client-side.
+      const bookingsSnap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
       setTotalFetched(bookingsSnap.size);
 
       const fetchedBookings = bookingsSnap.docs.map(doc => {
