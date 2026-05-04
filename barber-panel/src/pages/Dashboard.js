@@ -2,11 +2,11 @@ import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config from '../config';
-import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking } from '../firestoreActions';
+import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow } from '../firestoreActions';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252' };
+const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252', NO_SHOW: '#9c27b0' };
 
 function normalizeBookingSource(raw) {
   const n = String(raw || '').trim().toLowerCase();
@@ -20,7 +20,7 @@ function normalizeBookingSource(raw) {
 
 function normalizeBookingStatus(raw) {
   const n = String(raw || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
-  if (n === 'CONFIRMED' || n === 'PENDING' || n === 'CHECKED_OUT' || n === 'CANCELLED' || n === 'BLOCKED') return n;
+  if (n === 'CONFIRMED' || n === 'PENDING' || n === 'CHECKED_OUT' || n === 'CANCELLED' || n === 'BLOCKED' || n === 'NO_SHOW') return n;
   return n || 'CONFIRMED';
 }
 
@@ -509,9 +509,11 @@ const handleCheckout = async (method) => {
   );
 }
 
-function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onViewReceipt, allBookings }) {
+function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onViewReceipt, onStatusChange, allBookings }) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [noShowing, setNoShowing] = useState(false);
   if (!booking) return null;
   const color = getBColor(booking.barber, barbers);
 
@@ -545,6 +547,18 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
         <div style={{ position:'absolute', inset:0, background:'rgba(10,10,8,0.88)', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'12px', borderRadius:'16px' }}>
           <div style={{ width:'36px', height:'36px', border:'3px solid rgba(212,175,55,0.2)', borderTop:'3px solid #d4af37', borderRadius:'50%', animation:'spin2 0.8s linear infinite' }} />
           <span style={{ fontSize:'0.78rem', color:'#d4af37', fontWeight:'600', letterSpacing:'1px' }}>Opening editor...</span>
+        </div>
+      )}
+      {cancelling && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(10,10,8,0.88)', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'12px', borderRadius:'16px' }}>
+          <div style={{ width:'36px', height:'36px', border:'3px solid rgba(255,82,82,0.2)', borderTop:'3px solid #ff5252', borderRadius:'50%', animation:'spin2 0.8s linear infinite' }} />
+          <span style={{ fontSize:'0.78rem', color:'#ff5252', fontWeight:'600', letterSpacing:'1px' }}>Cancelling...</span>
+        </div>
+      )}
+      {noShowing && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(10,10,8,0.88)', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'12px', borderRadius:'16px' }}>
+          <div style={{ width:'36px', height:'36px', border:'3px solid rgba(156,39,176,0.2)', borderTop:'3px solid #9c27b0', borderRadius:'50%', animation:'spin2 0.8s linear infinite' }} />
+          <span style={{ fontSize:'0.78rem', color:'#9c27b0', fontWeight:'600', letterSpacing:'1px' }}>Marking No Show...</span>
         </div>
       )}
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(212,175,55,0.04)', flexShrink:0 }}>
@@ -613,12 +627,12 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
           ))}
         </div>
         <div style={{ display:'flex', gap:'8px' }}>
-          <button onClick={()=>{ setEditing(true); setTimeout(()=>{ onEdit(booking); setEditing(false); }, 300); }} disabled={editing||deleting}
-            style={{ flex:1, padding:'10px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:editing||deleting?'not-allowed':'pointer', fontSize:'0.75rem', fontWeight:'600', transition:'all 0.2s' }}
-            onMouseEnter={e=>{ if(!editing&&!deleting) e.currentTarget.style.background='rgba(212,175,55,0.2)'; }}
-            onMouseLeave={e=>{ if(!editing&&!deleting) e.currentTarget.style.background='rgba(212,175,55,0.1)'; }}>Edit</button>
-         <button onClick={async()=>{
-              if(!window.confirm('Delete this booking?')) return;
+          <button onClick={()=>{ setEditing(true); setTimeout(()=>{ onEdit(booking); setEditing(false); }, 300); }} disabled={editing||deleting||cancelling||noShowing}
+            style={{ flex:1, padding:'10px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:editing||deleting||cancelling||noShowing?'not-allowed':'pointer', fontSize:'0.75rem', fontWeight:'600', transition:'all 0.2s' }}
+            onMouseEnter={e=>{ if(!editing&&!deleting&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(212,175,55,0.2)'; }}
+            onMouseLeave={e=>{ if(!editing&&!deleting&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(212,175,55,0.1)'; }}>Edit</button>
+          <button onClick={async()=>{
+              if(!window.confirm('Delete this booking permanently? This cannot be undone.')) return;
               setDeleting(true);
               try {
                 await deleteBooking(booking.bookingId);
@@ -628,11 +642,47 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
                 setDeleting(false);
                 onDelete(booking);
               }
-            }} disabled={deleting||editing}
-            style={{ flex:1, padding:'10px', background:'rgba(255,82,82,0.1)', border:'1px solid rgba(255,82,82,0.3)', borderRadius:'8px', color:'#ff5252', cursor:deleting||editing?'not-allowed':'pointer', fontSize:'0.75rem', fontWeight:'600', transition:'all 0.2s' }}
-            onMouseEnter={e=>{ if(!deleting&&!editing) e.currentTarget.style.background='rgba(255,82,82,0.2)'; }}
-            onMouseLeave={e=>{ if(!deleting&&!editing) e.currentTarget.style.background='rgba(255,82,82,0.1)'; }}>Delete</button>
+            }} disabled={deleting||editing||cancelling||noShowing}
+            style={{ flex:1, padding:'10px', background:'rgba(255,82,82,0.1)', border:'1px solid rgba(255,82,82,0.3)', borderRadius:'8px', color:'#ff5252', cursor:deleting||editing||cancelling||noShowing?'not-allowed':'pointer', fontSize:'0.75rem', fontWeight:'600', transition:'all 0.2s' }}
+            onMouseEnter={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(255,82,82,0.2)'; }}
+            onMouseLeave={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(255,82,82,0.1)'; }}>Delete</button>
         </div>
+        {booking.status !== 'CANCELLED' && booking.status !== 'CHECKED_OUT' && booking.status !== 'NO_SHOW' && (
+          <div style={{ display:'flex', gap:'8px' }}>
+            <button onClick={async()=>{
+                if(!window.confirm('Cancel this booking? It will be kept in records as CANCELLED.')) return;
+                setCancelling(true);
+                try {
+                  await cancelBooking(booking.bookingId);
+                  if (onStatusChange) onStatusChange(booking.bookingId, 'CANCELLED');
+                } catch(err) {
+                  console.error('Cancel error:', err);
+                  alert('Failed to cancel: ' + err.message);
+                } finally {
+                  setCancelling(false);
+                }
+              }} disabled={deleting||editing||cancelling||noShowing}
+              style={{ flex:1, padding:'10px', background:'rgba(255,82,82,0.06)', border:'1px solid rgba(255,82,82,0.2)', borderRadius:'8px', color:'#ff7070', cursor:deleting||editing||cancelling||noShowing?'not-allowed':'pointer', fontSize:'0.72rem', fontWeight:'600', transition:'all 0.2s' }}
+              onMouseEnter={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(255,82,82,0.15)'; }}
+              onMouseLeave={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(255,82,82,0.06)'; }}>Cancel Booking</button>
+            <button onClick={async()=>{
+                if(!window.confirm('Mark this booking as No Show?')) return;
+                setNoShowing(true);
+                try {
+                  await markNoShow(booking.bookingId);
+                  if (onStatusChange) onStatusChange(booking.bookingId, 'NO_SHOW');
+                } catch(err) {
+                  console.error('No show error:', err);
+                  alert('Failed to mark no show: ' + err.message);
+                } finally {
+                  setNoShowing(false);
+                }
+              }} disabled={deleting||editing||cancelling||noShowing}
+              style={{ flex:1, padding:'10px', background:'rgba(156,39,176,0.06)', border:'1px solid rgba(156,39,176,0.2)', borderRadius:'8px', color:'#ba68c8', cursor:deleting||editing||cancelling||noShowing?'not-allowed':'pointer', fontSize:'0.72rem', fontWeight:'600', transition:'all 0.2s' }}
+              onMouseEnter={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(156,39,176,0.15)'; }}
+              onMouseLeave={e=>{ if(!deleting&&!editing&&!cancelling&&!noShowing) e.currentTarget.style.background='rgba(156,39,176,0.06)'; }}>No Show</button>
+          </div>
+        )}
         <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
           {booking.status !== 'CHECKED_OUT' ? (
             <button onClick={onCheckout}
@@ -1929,6 +1979,10 @@ const activeBarbers = barberFilter === 'all'
                   onDelete={(b)=>{ fetchAll(); setSelectedBooking(null); }}
                   onCheckout={()=>{ setIsEditCheckout(false); setShowCheckout(true); }}
                   onViewReceipt={()=>setShowReceipt(true)}
+                  onStatusChange={(bookingId, newStatus)=>{
+                    setSelectedBooking(prev => prev && prev.bookingId === bookingId ? { ...prev, status: newStatus } : prev);
+                    fetchAll();
+                  }}
                 />
               )}
               {showForm && (

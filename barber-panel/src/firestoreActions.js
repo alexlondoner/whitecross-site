@@ -126,6 +126,22 @@ export async function deleteBooking(bookingId) {
   if (snap.empty) throw new Error('Booking not found');
   await deleteDoc(snap.docs[0].ref);
 }
+
+// ── CANCEL BOOKING ─────────────────────────────────────────────────────────
+export async function cancelBooking(bookingId) {
+  const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Booking not found');
+  await updateDoc(snap.docs[0].ref, { status: 'CANCELLED', cancelledAt: Timestamp.fromDate(new Date()) });
+}
+
+// ── NO SHOW ────────────────────────────────────────────────────────────────
+export async function markNoShow(bookingId) {
+  const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Booking not found');
+  await updateDoc(snap.docs[0].ref, { status: 'NO_SHOW', noShowAt: Timestamp.fromDate(new Date()) });
+}
 export async function seedBarbers() {
   const barbers = [
     { id: 'alex', name: 'Alex', color: '#d4af37', active: true, order: 1 },
