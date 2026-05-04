@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query, where, Timestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, limit } from 'firebase/firestore';
 
 const PAGE_SIZE = 100;
 
@@ -84,7 +84,7 @@ export default function Bookings() {
   // Reset visible count whenever filters/period change
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, search, statusFilter, barberFilter, sourceFilter, sortBy]);
 
-  const fetchAll = useCallback(async (period) => {
+  const fetchAll = useCallback(async (_period) => {
     setLoading(true);
     try {
       const [barbersSnap] = await Promise.all([
@@ -99,31 +99,34 @@ export default function Bookings() {
         return acc;
       }, {});
 
-      // Build Firestore query with date range
-      const range = periodDateRange(period);
-      let bookingsQuery;
-      if (range) {
-        bookingsQuery = query(
-          collection(db, 'tenants/whitecross/bookings'),
-          where('startTime', '>=', Timestamp.fromDate(range.start)),
-          where('startTime', '<=', Timestamp.fromDate(range.end)),
-          orderBy('startTime', 'desc')
-        );
-      } else {
-        // All time — still fetch with desc order, cap at 1000 for safety
-        bookingsQuery = query(
-          collection(db, 'tenants/whitecross/bookings'),
-          orderBy('startTime', 'desc'),
-          limit(1000)
-        );
-      }
+      // Fetch all bookings without Firestore date filter so imported/historical
+      // bookings with non-Timestamp startTime fields are not silently excluded.
+      // Period filtering is applied client-side in the filtered memo below.
+      const bookingsQuery = query(
+        collection(db, 'tenants/whitecross/bookings'),
+        orderBy('createdAt', 'desc'),
+        limit(2000)
+      );
 
       const bookingsSnap = await getDocs(bookingsQuery);
       setTotalFetched(bookingsSnap.size);
 
       const fetchedBookings = bookingsSnap.docs.map(doc => {
         const d = doc.data();
-        const startTime = d.startTime?.toDate?.();
+        // Handle Timestamp, plain Date, number (ms), or string
+        let startTime = null;
+        if (d.startTime) {
+          if (typeof d.startTime.toDate === 'function') {
+            startTime = d.startTime.toDate();
+          } else if (d.startTime instanceof Date) {
+            startTime = d.startTime;
+          } else if (typeof d.startTime === 'number') {
+            startTime = new Date(d.startTime);
+          } else if (typeof d.startTime === 'string') {
+            const parsed = new Date(d.startTime);
+            if (!isNaN(parsed)) startTime = parsed;
+          }
+        }
         const date = startTime ? startTime.toLocaleDateString('en-GB', {
           day: 'numeric', month: 'long', year: 'numeric',
         }) : '';
@@ -158,12 +161,18 @@ export default function Bookings() {
     }
   }, []);
 
-  useEffect(() => { fetchAll(periodFilter); }, [fetchAll, periodFilter]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const filtered = useMemo(() => {
+    const range = periodDateRange(periodFilter);
     const searchLc = search.toLowerCase();
     return bookings
       .filter(b => b.status !== 'BLOCKED')
+      .filter(b => {
+        if (!range) return true;
+        if (!b.startTime) return false;
+        return b.startTime >= range.start && b.startTime <= range.end;
+      })
       .filter(b => !search || (
         (b.name   || '').toLowerCase().includes(searchLc) ||
         (b.service|| '').toLowerCase().includes(searchLc) ||
