@@ -289,6 +289,8 @@ export default function Settings({ theme, onToggleTheme }) {
 
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState('');
+  const [importingExpenses, setImportingExpenses] = useState(false);
+  const [importExpensesResult, setImportExpensesResult] = useState('');
 
   const runServiceMigration = async () => {
     if (!window.confirm('Fix service names on imported bookings? This is a one-time operation.')) return;
@@ -316,6 +318,59 @@ export default function Settings({ theme, onToggleTheme }) {
       setMigrateResult('Error: ' + err.message);
     } finally {
       setMigrating(false);
+    }
+  };
+
+  const EXCEL_EXPENSES = [
+    { date: '2026-02-06', cash: 0,    bank: 90    },
+    { date: '2026-02-07', cash: 0,    bank: 28    },
+    { date: '2026-02-10', cash: 0,    bank: 5     },
+    { date: '2026-02-11', cash: 0,    bank: 15    },
+    { date: '2026-02-12', cash: 0,    bank: 20    },
+    { date: '2026-02-16', cash: 0,    bank: 2     },
+    { date: '2026-02-23', cash: 0,    bank: 65    },
+    { date: '2026-02-25', cash: 30,   bank: 0     },
+    { date: '2026-02-28', cash: 0,    bank: 20    },
+    { date: '2026-03-24', cash: 32,   bank: 28    },
+    { date: '2026-03-28', cash: 0.01, bank: 0     },
+    { date: '2026-03-31', cash: 28,   bank: 0     },
+    { date: '2026-04-02', cash: 0,    bank: 92    },
+    { date: '2026-04-05', cash: 0,    bank: 80    },
+    { date: '2026-04-09', cash: 0,    bank: 17.5  },
+    { date: '2026-04-12', cash: 0,    bank: 40    },
+    { date: '2026-04-14', cash: 0,    bank: 41    },
+    { date: '2026-04-16', cash: 0,    bank: 85.48 },
+    { date: '2026-04-18', cash: 0,    bank: 22.98 },
+    { date: '2026-04-19', cash: 30,   bank: 0     },
+    { date: '2026-04-22', cash: 0,    bank: 104.77},
+    { date: '2026-04-23', cash: 0,    bank: 5.48  },
+    { date: '2026-04-25', cash: 0,    bank: 6.65  },
+    { date: '2026-04-27', cash: 0,    bank: 30    },
+    { date: '2026-04-28', cash: 30,   bank: 0     },
+    { date: '2026-05-03', cash: 25,   bank: 15    },
+  ];
+
+  const runImportExpenses = async () => {
+    if (!window.confirm('Import kasa/banka masrafları from Excel into Firestore? Existing entries for the same dates will be merged (not overwritten).')) return;
+    setImportingExpenses(true);
+    setImportExpensesResult('');
+    try {
+      const batch = writeBatch(db);
+      for (const entry of EXCEL_EXPENSES) {
+        const ref = doc(db, `tenants/whitecross/finance_expenses`, entry.date);
+        batch.set(ref, {
+          date: entry.date,
+          month: entry.date.slice(0, 7),
+          cashExpense: entry.cash,
+          bankExpense: entry.bank,
+        }, { merge: true });
+      }
+      await batch.commit();
+      setImportExpensesResult(`Done — ${EXCEL_EXPENSES.length} expense entries imported.`);
+    } catch (err) {
+      setImportExpensesResult('Error: ' + err.message);
+    } finally {
+      setImportingExpenses(false);
     }
   };
 
@@ -675,6 +730,14 @@ export default function Settings({ theme, onToggleTheme }) {
           {migrateResult && <span style={{ fontSize: '0.82rem', color: migrateResult.startsWith('Error') ? '#ff5252' : '#4caf50' }}>{migrateResult}</span>}
         </div>
         <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '10px' }}>Assigns correct service IDs to bookings imported from XLS where the service name was missing. Price 24–30 → Classic Short Back & Sides, others → closest price match. Safe to run multiple times.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+          <button onClick={runImportExpenses} disabled={importingExpenses}
+            style={{ padding: '10px 20px', background: importingExpenses ? 'rgba(212,175,55,0.05)' : 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '8px', color: '#d4af37', cursor: importingExpenses ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            {importingExpenses ? 'Importing…' : 'Import Kasa/Banka Masrafları'}
+          </button>
+          {importExpensesResult && <span style={{ fontSize: '0.82rem', color: importExpensesResult.startsWith('Error') ? '#ff5252' : '#4caf50' }}>{importExpensesResult}</span>}
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '8px' }}>Imports kasa/banka masrafları from MUHASEBE Excel (Şubat–Mayıs 2026) into Firestore. Uses merge so existing entries are not overwritten. Run once to fix Finance P&L.</p>
       </div>
 
       {/* Danger Zone */}
