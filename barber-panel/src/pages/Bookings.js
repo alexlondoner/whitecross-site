@@ -75,14 +75,15 @@ export default function Bookings() {
 
   const [periodFilter, setPeriodFilter] = useState('month');
   const [search, setSearch]           = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(null); // status or source pill
   const [barberFilter, setBarberFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('date');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Reset visible count whenever filters/period change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, search, statusFilter, barberFilter, sourceFilter, sortBy]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, search, activeFilter, barberFilter, sortBy]);
+
+  const toggleFilter = (key) => setActiveFilter(prev => prev === key ? null : key);
 
   const fetchAll = useCallback(async (_period) => {
     setLoading(true);
@@ -157,7 +158,8 @@ export default function Bookings() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const filtered = useMemo(() => {
+  // Base: period + search + barber only — used for pill counts so they stay stable
+  const baseFiltered = useMemo(() => {
     const range = periodDateRange(periodFilter);
     const searchLc = search.toLowerCase();
     return bookings
@@ -173,28 +175,32 @@ export default function Bookings() {
         String(b.phone || '').includes(search) ||
         String(b.bookingId || '').toLowerCase().includes(searchLc)
       ))
-      .filter(b => statusFilter === 'all' || b.status === statusFilter)
-      .filter(b => barberFilter === 'all' || (b.barber || '').toLowerCase() === barberFilter.toLowerCase())
+      .filter(b => barberFilter === 'all' || (b.barber || '').toLowerCase() === barberFilter.toLowerCase());
+  }, [bookings, search, barberFilter, periodFilter]);
+
+  const filtered = useMemo(() => {
+    const STATUS_FILTER_MAP = { confirmed:'CONFIRMED', pending:'PENDING', checkedout:'CHECKED_OUT', cancelled:'CANCELLED', noshow:'NO_SHOW', unpaid:'UNPAID' };
+    const SOURCE_FILTER_MAP = { booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in' };
+    return baseFiltered
       .filter(b => {
-        if (sourceFilter === 'all') return true;
-        return b.source === sourceFilter;
+        if (!activeFilter) return true;
+        if (STATUS_FILTER_MAP[activeFilter]) return b.status === STATUS_FILTER_MAP[activeFilter];
+        if (SOURCE_FILTER_MAP[activeFilter]) return b.source === SOURCE_FILTER_MAP[activeFilter];
+        return true;
       })
       .sort((a, b2) => {
         if (sortBy === 'price') return parsePrice(b2.price) - parsePrice(a.price);
         if (sortBy === 'date_asc') return (a.startTime?.getTime() || 0) - (b2.startTime?.getTime() || 0);
-        return (b2.startTime?.getTime() || 0) - (a.startTime?.getTime() || 0); // date desc default
+        return (b2.startTime?.getTime() || 0) - (a.startTime?.getTime() || 0);
       });
-  }, [bookings, search, statusFilter, barberFilter, sourceFilter, sortBy, periodFilter]);
+  }, [baseFiltered, activeFilter, sortBy]);
 
   const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   const stats = useMemo(() => ({
-    total:      filtered.length,
-    confirmed:  filtered.filter(b => b.status === 'CONFIRMED').length,
-    checkedOut: filtered.filter(b => b.status === 'CHECKED_OUT').length,
-    cancelled:  filtered.filter(b => b.status === 'CANCELLED').length,
-    revenue:    filtered.filter(b => b.status === 'CHECKED_OUT').reduce((s, b) => s + parsePrice(b.paidAmount), 0),
-  }), [filtered]);
+    total:   baseFiltered.length,
+    revenue: baseFiltered.filter(b => b.status === 'CHECKED_OUT').reduce((s, b) => s + parsePrice(b.paidAmount), 0),
+  }), [baseFiltered]);
 
   const exportCSV = () => {
     const rows = [['Name','Service','Date','Time','Barber','Status','Price','Paid','Source','Payment','Phone','Email','ID']];
@@ -207,12 +213,24 @@ export default function Bookings() {
     const a = document.createElement('a'); a.href = url; a.download = 'bookings.csv'; a.click();
   };
 
-  const inpStyle = { padding: '9px 12px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', outline: 'none', fontSize: '0.82rem' };
-
   const PERIOD_LABELS = { today: 'Today', week: 'This Week', month: 'This Month', '3months': 'Last 3 Months', year: 'This Year', all: 'All Time' };
 
+  const statPills = [
+    { key: 'confirmed',  label: 'Confirmed',   value: baseFiltered.filter(b => b.status === 'CONFIRMED').length,   color: '#4caf50' },
+    { key: 'pending',    label: 'Pending',      value: baseFiltered.filter(b => b.status === 'PENDING').length,     color: '#ff9800' },
+    { key: 'checkedout', label: 'Checked Out',  value: baseFiltered.filter(b => b.status === 'CHECKED_OUT').length, color: '#2196f3' },
+    { key: 'cancelled',  label: 'Cancelled',    value: baseFiltered.filter(b => b.status === 'CANCELLED').length,   color: '#ff5252' },
+    { key: 'noshow',     label: 'No Show',      value: baseFiltered.filter(b => b.status === 'NO_SHOW').length,     color: '#9c27b0' },
+  ];
+  const sourcePills = [
+    { key: 'booksy',  label: 'Booksy',   value: baseFiltered.filter(b => b.source === 'Booksy').length,   color: '#9c27b0' },
+    { key: 'fresha',  label: 'Fresha',   value: baseFiltered.filter(b => b.source === 'Fresha').length,   color: '#2196f3' },
+    { key: 'website', label: 'Website',  value: baseFiltered.filter(b => b.source === 'Website').length,  color: '#4caf50' },
+    { key: 'walkin',  label: 'Walk-in',  value: baseFiltered.filter(b => b.source === 'Walk-in').length,  color: '#ff9800' },
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -240,53 +258,69 @@ export default function Bookings() {
         ))}
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        {[
-          { label: 'Total',       value: stats.total,        color: '#d4af37' },
-          { label: 'Confirmed',   value: stats.confirmed,    color: '#4caf50' },
-          { label: 'Checked Out', value: stats.checkedOut,   color: '#2196f3' },
-          { label: 'Cancelled',   value: stats.cancelled,    color: '#ff5252' },
-          { label: 'Revenue',     value: '£' + stats.revenue, color: '#d4af37' },
-        ].map(s => (
-          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 18px', background: s.color + '12', border: '1px solid ' + s.color + '30', borderRadius: '10px', minWidth: '80px' }}>
-            <span style={{ fontSize: '1.2rem', fontWeight: '800', color: s.color }}>{s.value}</span>
-            <span style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>{s.label}</span>
+      {/* Stat pills — clickable filters */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div onClick={() => setActiveFilter(null)}
+          style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: !activeFilter ? 'rgba(212,175,55,0.25)' : 'rgba(212,175,55,0.1)', border:'1px solid '+(!activeFilter ? '#d4af37' : 'rgba(212,175,55,0.3)'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.2)'}
+          onMouseLeave={e=>e.currentTarget.style.background=!activeFilter?'rgba(212,175,55,0.25)':'rgba(212,175,55,0.1)'}>
+          <span style={{ fontSize:'1.4rem', fontWeight:'800', color:'#d4af37' }}>{stats.total}</span>
+          <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Total</span>
+        </div>
+        {statPills.map(p => (
+          <div key={p.key} onClick={() => toggleFilter(p.key)}
+            style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: activeFilter===p.key ? p.color+'25' : p.color+'10', border:'1px solid '+(activeFilter===p.key ? p.color : p.color+'30'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
+            onMouseEnter={e=>e.currentTarget.style.background=p.color+'20'}
+            onMouseLeave={e=>e.currentTarget.style.background=activeFilter===p.key?p.color+'25':p.color+'10'}>
+            <span style={{ fontSize:'1.4rem', fontWeight:'800', color:p.color }}>{p.value}</span>
+            <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{p.label}</span>
           </div>
         ))}
+        <div style={{ width:'1px', background:'var(--border)', alignSelf:'stretch', margin:'0 4px' }} />
+        {sourcePills.map(p => (
+          <div key={p.key} onClick={() => toggleFilter(p.key)}
+            style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: activeFilter===p.key ? p.color+'25' : p.color+'10', border:'1px solid '+(activeFilter===p.key ? p.color : p.color+'30'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
+            onMouseEnter={e=>e.currentTarget.style.background=p.color+'20'}
+            onMouseLeave={e=>e.currentTarget.style.background=activeFilter===p.key?p.color+'25':p.color+'10'}>
+            <span style={{ fontSize:'1.4rem', fontWeight:'800', color:p.color }}>{p.value}</span>
+            <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{p.label}</span>
+          </div>
+        ))}
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'8px' }}>
+          <span style={{ fontSize:'0.72rem', fontWeight:'800', color:'#d4af37' }}>£{stats.revenue}</span>
+          <span style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase' }}>Revenue</span>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: 'var(--card)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+      {/* Search + Barber tabs + Sort */}
+      <div style={{ display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap' }}>
         <input
           placeholder="Search name, service, phone, ID..."
           value={search} onChange={e => setSearch(e.target.value)}
-          style={{ ...inpStyle, flex: 1, minWidth: '200px' }}
+          style={{ flex:1, minWidth:'200px', padding:'9px 14px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', outline:'none', fontSize:'0.82rem' }}
         />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={inpStyle}>
-          <option value="all">All Status</option>
-          <option value="CONFIRMED">Confirmed</option>
-          <option value="PENDING">Pending</option>
-          <option value="CHECKED_OUT">Checked Out</option>
-          <option value="UNPAID">Unpaid</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
-        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={inpStyle}>
-          <option value="all">All Sources</option>
-          <option value="Booksy">Booksy</option>
-          <option value="Fresha">Fresha</option>
-          <option value="Website">Website</option>
-          <option value="Walk-in">Walk-in</option>
-        </select>
-        <select value={barberFilter} onChange={e => setBarberFilter(e.target.value)} style={inpStyle}>
-          <option value="all">All Barbers</option>
-          {barbers.map(b => <option key={b.id || b.docId} value={(b.name || '').toLowerCase()}>{b.name}</option>)}
-        </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={inpStyle}>
-          <option value="date">Newest First</option>
-          <option value="date_asc">Oldest First</option>
-          <option value="price">Highest Price</option>
-        </select>
+        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
+          <button onClick={() => setBarberFilter('all')}
+            style={{ padding:'9px 14px', border:'none', cursor:'pointer', background:barberFilter==='all'?'rgba(212,175,55,0.2)':'transparent', color:barberFilter==='all'?'#d4af37':'var(--muted)', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.15s' }}>All</button>
+          {barbers.map(b => (
+            <button key={b.id||b.docId} onClick={() => setBarberFilter((b.name||'').toLowerCase())}
+              style={{ padding:'9px 14px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.15s',
+                background: barberFilter===(b.name||'').toLowerCase() ? (b.color||'#d4af37')+'20' : 'transparent',
+                color:      barberFilter===(b.name||'').toLowerCase() ? (b.color||'#d4af37') : 'var(--muted)',
+              }}>
+              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color||'#d4af37' }} />
+              {b.name}
+            </button>
+          ))}
+        </div>
+        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
+          {[['date','Newest'],['date_asc','Oldest'],['price','Price ↓']].map(([val, label]) => (
+            <button key={val} onClick={() => setSortBy(val)}
+              style={{ padding:'9px 14px', border:'none', cursor:'pointer', background:sortBy===val?'rgba(212,175,55,0.2)':'transparent', color:sortBy===val?'#d4af37':'var(--muted)', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.15s' }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
