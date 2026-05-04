@@ -270,13 +270,13 @@ export default function Clients() {
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading clients...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 64px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: 'calc(100vh - 64px)' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Clients</h1>
-          <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '4px 0 0', letterSpacing: '0.5px' }}>{allClients.length} total clients · {totalVisits} visits</p>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Clients</h1>
+          <p style={{ fontSize: '0.7rem', color: 'var(--muted)', margin: '2px 0 0', letterSpacing: '0.5px' }}>{allClients.length} total clients · {totalVisits} visits</p>
         </div>
         <button onClick={() => setShowAddForm(true)}
           style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
@@ -297,16 +297,16 @@ export default function Clients() {
       {/* ── CLIENT LIST TAB ── */}
       {tab === 'list' && (<>
         {/* Stats */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           {[
             { label: 'Total Clients', value: allClients.length, color: '#d4af37' },
-            { label: 'Total Revenue', value: '£' + totalRevenue.toFixed(0), color: '#4caf50' },
-            { label: 'Avg Spend', value: '£' + avgSpend.toFixed(0), color: '#2196f3' },
-            { label: 'VIP (5+ visits)', value: vipCount, color: '#9c27b0' },
+            { label: 'Revenue',       value: '£' + totalRevenue.toFixed(0), color: '#4caf50' },
+            { label: 'Avg Spend',     value: '£' + avgSpend.toFixed(0), color: '#2196f3' },
+            { label: 'VIP (5+)',      value: vipCount, color: '#9c27b0' },
           ].map(s => (
-            <div key={s.label} style={{ padding: '14px 20px', background: s.color + '10', border: '1px solid ' + s.color + '30', borderRadius: '10px', minWidth: '120px' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>{s.label}</div>
+            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '6px 12px', background: s.color + '10', border: '1px solid ' + s.color + '25', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.92rem', fontWeight: '800', color: s.color }}>{s.value}</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase' }}>{s.label}</span>
             </div>
           ))}
         </div>
@@ -327,15 +327,21 @@ export default function Clients() {
         )}
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email..."
-            style={{ padding: '9px 14px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', minWidth: '260px' }} />
-          <select value={filterBarber} onChange={e => setFilterBarber(e.target.value)}
-            style={{ padding: '9px 14px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.82rem', outline: 'none', cursor: 'pointer' }}>
-            <option value="all">All Barbers</option>
-            {barbers.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-          </select>
-          <div style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--muted)' }}>{filtered.length} results</div>
+            style={{ padding: '7px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.82rem', outline: 'none', minWidth: '240px' }} />
+          <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+            <button onClick={() => setFilterBarber('all')} style={{ padding: '7px 12px', border: 'none', cursor: 'pointer', background: filterBarber === 'all' ? 'rgba(212,175,55,0.2)' : 'transparent', color: filterBarber === 'all' ? '#d4af37' : 'var(--muted)', fontSize: '0.78rem', fontWeight: '600' }}>All</button>
+            {barbers.map(b => (
+              <button key={b.id} onClick={() => setFilterBarber(b.name)}
+                style={{ padding: '7px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: '600', transition: 'all 0.15s',
+                  background: filterBarber === b.name ? (b.color || '#d4af37') + '20' : 'transparent',
+                  color: filterBarber === b.name ? (b.color || '#d4af37') : 'var(--muted)' }}>
+                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: b.color || '#d4af37' }} />{b.name}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: 'auto' }}>{filtered.length} results</span>
         </div>
 
         <div style={{ display: 'flex', gap: '14px', flex: 1, overflow: 'hidden' }}>
