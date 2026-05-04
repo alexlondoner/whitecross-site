@@ -34,8 +34,8 @@ function parsePrice(p) {
   return parseInt(String(p || '0').replace('£', '').trim()) || 0;
 }
 
-function periodDateRange(period) {
-  const now = new Date();
+function periodDateRange(period, anchor) {
+  const now = anchor || new Date();
   switch (period) {
     case 'today': {
       const s = new Date(now); s.setHours(0, 0, 0, 0);
@@ -67,6 +67,29 @@ function periodDateRange(period) {
   }
 }
 
+function periodLabel(period, anchor) {
+  const now = anchor || new Date();
+  if (period === 'today') return now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (period === 'week') {
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return mon.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' – ' + sun.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  if (period === 'month') return now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  if (period === 'year') return String(now.getFullYear());
+  return null;
+}
+
+function stepAnchor(period, anchor, dir) {
+  const d = new Date(anchor || new Date());
+  if (period === 'today') d.setDate(d.getDate() + dir);
+  else if (period === 'week') d.setDate(d.getDate() + dir * 7);
+  else if (period === 'month') d.setMonth(d.getMonth() + dir);
+  else if (period === 'year') d.setFullYear(d.getFullYear() + dir);
+  return d;
+}
+
 export default function Bookings() {
   const [bookings, setBookings]       = useState([]);
   const [barbers, setBarbers]         = useState([]);
@@ -74,14 +97,21 @@ export default function Bookings() {
   const [totalFetched, setTotalFetched] = useState(0);
 
   const [periodFilter, setPeriodFilter] = useState('month');
-  const [search, setSearch]           = useState('');
-  const [activeFilter, setActiveFilter] = useState(null); // status or source pill
+  const [navAnchor, setNavAnchor]       = useState(new Date());
+  const [search, setSearch]             = useState('');
+  const [activeFilter, setActiveFilter] = useState(null);
   const [barberFilter, setBarberFilter] = useState('all');
-  const [sortBy, setSortBy]           = useState('date');
+  const [sortBy, setSortBy]             = useState('date');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Reset visible count whenever filters/period change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, search, activeFilter, barberFilter, sortBy]);
+  const navPeriods = ['today', 'week', 'month', 'year'];
+  const canNav = navPeriods.includes(periodFilter);
+
+  const changePeriod = (key) => { setPeriodFilter(key); setNavAnchor(new Date()); setActiveFilter(null); };
+  const nav = (dir) => setNavAnchor(a => stepAnchor(periodFilter, a, dir));
+  const goToday = () => setNavAnchor(new Date());
+
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, navAnchor, search, activeFilter, barberFilter, sortBy]);
 
   const toggleFilter = (key) => setActiveFilter(prev => prev === key ? null : key);
 
@@ -160,7 +190,7 @@ export default function Bookings() {
 
   // Base: period + search + barber only — used for pill counts so they stay stable
   const baseFiltered = useMemo(() => {
-    const range = periodDateRange(periodFilter);
+    const range = periodDateRange(periodFilter, navAnchor);
     const searchLc = search.toLowerCase();
     return bookings
       .filter(b => b.status !== 'BLOCKED')
@@ -176,7 +206,7 @@ export default function Bookings() {
         String(b.bookingId || '').toLowerCase().includes(searchLc)
       ))
       .filter(b => barberFilter === 'all' || (b.barber || '').toLowerCase() === barberFilter.toLowerCase());
-  }, [bookings, search, barberFilter, periodFilter]);
+  }, [bookings, search, barberFilter, periodFilter, navAnchor]);
 
   const filtered = useMemo(() => {
     const STATUS_FILTER_MAP = { confirmed:'CONFIRMED', pending:'PENDING', checkedout:'CHECKED_OUT', cancelled:'CANCELLED', noshow:'NO_SHOW', unpaid:'UNPAID' };
@@ -213,7 +243,7 @@ export default function Bookings() {
     const a = document.createElement('a'); a.href = url; a.download = 'bookings.csv'; a.click();
   };
 
-  const PERIOD_LABELS = { today: 'Today', week: 'This Week', month: 'This Month', '3months': 'Last 3 Months', year: 'This Year', all: 'All Time' };
+  const PERIOD_LABELS = { today: 'Day', week: 'Week', month: 'Month', '3months': '3 Months', year: 'Year', all: 'All Time' };
 
   const statPills = [
     { key: 'confirmed',  label: 'Confirmed',   value: baseFiltered.filter(b => b.status === 'CONFIRMED').length,   color: '#4caf50' },
@@ -245,17 +275,25 @@ export default function Bookings() {
         </button>
       </div>
 
-      {/* Period selector */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-        {Object.entries(PERIOD_LABELS).map(([key, label]) => (
-          <button key={key} onClick={() => setPeriodFilter(key)}
-            style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', transition: 'all 0.15s',
-              background: periodFilter === key ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'var(--card2)',
-              color:      periodFilter === key ? '#000' : 'var(--muted)',
-            }}>
-            {label}
-          </button>
-        ))}
+      {/* Period selector + nav */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+          {Object.entries(PERIOD_LABELS).map(([key, label]) => (
+            <button key={key} onClick={() => changePeriod(key)}
+              style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', transition: 'all 0.15s',
+                background: periodFilter === key ? '#d4af37' : 'transparent',
+                color:      periodFilter === key ? '#000' : 'var(--muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {canNav && <>
+          <button onClick={() => nav(-1)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: '#d4af37', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <span style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text)', minWidth: '180px', textAlign: 'center' }}>{periodLabel(periodFilter, navAnchor)}</span>
+          <button onClick={() => nav(1)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: '#d4af37', width: '30px', height: '30px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          <button onClick={goToday} style={{ padding: '7px 14px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '6px', color: '#d4af37', fontSize: '0.78rem', cursor: 'pointer', fontWeight: '600' }}>Today</button>
+        </>}
       </div>
 
       {/* Stat pills — clickable filters */}
