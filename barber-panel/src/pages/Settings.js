@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -291,6 +291,10 @@ export default function Settings({ theme, onToggleTheme }) {
   const [migrateResult, setMigrateResult] = useState('');
   const [importingExpenses, setImportingExpenses] = useState(false);
   const [importExpensesResult, setImportExpensesResult] = useState('');
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [diagResult, setDiagResult] = useState(null);
+  const [onlineBkList, setOnlineBkList] = useState(null);
+  const [deletingIds, setDeletingIds] = useState(new Set());
 
   const runServiceMigration = async () => {
     if (!window.confirm('Fix service names on imported bookings? This is a one-time operation.')) return;
@@ -371,6 +375,89 @@ export default function Settings({ theme, onToggleTheme }) {
       setImportExpensesResult('Error: ' + err.message);
     } finally {
       setImportingExpenses(false);
+    }
+  };
+
+  const runRevenueRecon = async () => {
+    setDiagRunning(true);
+    setDiagResult(null);
+    setOnlineBkList(null);
+    try {
+      const snap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
+      const parsePrice = v => parseFloat(String(v || '0').replace(/[£,]/g, '').replace('-', '').trim()) || 0;
+      const getDate = b => b.startTime?.toDate?.() ?? (b.startTime?.seconds ? new Date(b.startTime.seconds * 1000) : null);
+      const toDK = st => st ? `${st.getFullYear()}-${String(st.getMonth()+1).padStart(2,'0')}-${String(st.getDate()).padStart(2,'0')}` : null;
+
+      const aprilBk = snap.docs.map(d => {
+        const data = d.data();
+        const st = getDate(data);
+        const raw = String(data.status || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
+        const paid = parsePrice(data.paidAmount); const price = parsePrice(data.price);
+        return { docId: d.id, ...data, _st: st, _dk: toDK(st), _status: raw, _rev: paid > 0 ? paid : price, _src: String(data.source || 'manual').toLowerCase() };
+      }).filter(b => b._status === 'CHECKED_OUT' && b._st && b._st.getFullYear() === 2026 && b._st.getMonth() === 3);
+
+      // Historical key set for duplicate detection
+      const historicalKeys = new Set();
+      aprilBk.filter(b => b._src === 'historical').forEach(b => {
+        historicalKeys.add(`${String(b.barberName||b.barberId||'').toLowerCase()}|${b._dk}|${b._rev}`);
+      });
+
+      let total = 0;
+      const bySource = {};
+      aprilBk.forEach(b => {
+        total += b._rev;
+        bySource[b._src] = (bySource[b._src] || 0) + b._rev;
+      });
+
+      // Online bookings (non-historical), each flagged if it matches a historical entry
+      const onlineSources = ['fresha','booksy','website'];
+      const onlineBk = aprilBk
+        .filter(b => onlineSources.includes(b._src))
+        .map(b => {
+          const dupKey = `${String(b.barberName||b.barberId||'').toLowerCase()}|${b._dk}|${b._rev}`;
+          return { ...b, isDuplicate: historicalKeys.has(dupKey) };
+        })
+        .sort((a, b) => (a._dk > b._dk ? 1 : -1));
+
+      setDiagResult({ total: total.toFixed(2), bySource, count: aprilBk.length });
+      setOnlineBkList(onlineBk);
+    } catch (err) {
+      setDiagResult({ error: err.message });
+    } finally {
+      setDiagRunning(false);
+    }
+  };
+
+  const deleteOnlineBooking = async (docId) => {
+    if (!window.confirm('Delete this booking from Firestore?')) return;
+    setDeletingIds(prev => new Set([...prev, docId]));
+    try {
+      await deleteDoc(doc(db, 'tenants/whitecross/bookings', docId));
+      setOnlineBkList(prev => prev.filter(b => b.docId !== docId));
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setDeletingIds(prev => { const n = new Set(prev); n.delete(docId); return n; });
+    }
+  };
+
+  const runSetBarberOrder = async () => {
+    const ORDER = { alex: 1, arda: 2, manoj: 3, kadim: 4 };
+    try {
+      const snap = await getDocs(collection(db, 'tenants/whitecross/barbers'));
+      const batch = writeBatch(db);
+      let updated = 0;
+      snap.docs.forEach(d => {
+        const name = String(d.data().name || '').trim().toLowerCase();
+        if (ORDER[name] !== undefined) {
+          batch.update(d.ref, { order: ORDER[name] });
+          updated++;
+        }
+      });
+      if (updated > 0) await batch.commit();
+      alert(`Done — updated order for ${updated} barber(s). Alex=1, Arda=2, Manoj=3, Kadim=4.`);
+    } catch (err) {
+      alert('Error: ' + err.message);
     }
   };
 
@@ -738,6 +825,41 @@ export default function Settings({ theme, onToggleTheme }) {
           {importExpensesResult && <span style={{ fontSize: '0.82rem', color: importExpensesResult.startsWith('Error') ? '#ff5252' : '#4caf50' }}>{importExpensesResult}</span>}
         </div>
         <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '8px' }}>Imports kasa/banka masrafları from MUHASEBE Excel (Şubat–Mayıs 2026) into Firestore. Uses merge so existing entries are not overwritten. Run once to fix Finance P&L.</p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+          <button onClick={runRevenueRecon} disabled={diagRunning}
+            style={{ padding: '10px 20px', background: diagRunning ? 'rgba(33,150,243,0.05)' : 'rgba(33,150,243,0.1)', border: '1px solid rgba(33,150,243,0.4)', borderRadius: '8px', color: '#2196f3', cursor: diagRunning ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            {diagRunning ? 'Running…' : 'Show April Online Bookings (Fresha/Booksy/Website)'}
+          </button>
+          <button onClick={runSetBarberOrder}
+            style={{ padding: '10px 20px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            Set Barber Order (Alex=1, Arda=2, Manoj=3, Kadim=4)
+          </button>
+        </div>
+        {diagResult?.error && <div style={{ fontSize: '0.82rem', color: '#ff5252', marginTop: '8px' }}>Error: {diagResult.error}</div>}
+        {diagResult && !diagResult.error && (
+          <div style={{ marginTop: '10px', fontSize: '0.78rem', color: 'var(--muted)' }}>
+            April totals — historical: £{(diagResult.bySource.historical||0).toFixed(2)} · fresha: £{(diagResult.bySource.fresha||0).toFixed(2)} · booksy: £{(diagResult.bySource.booksy||0).toFixed(2)} · website: £{(diagResult.bySource.website||0).toFixed(2)}
+          </div>
+        )}
+        {onlineBkList && (
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '400px', overflowY: 'auto' }}>
+            {onlineBkList.length === 0 && <div style={{ fontSize: '0.82rem', color: '#4caf50' }}>No fresha/booksy/website bookings found for April.</div>}
+            {onlineBkList.map(b => (
+              <div key={b.docId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: b.isDuplicate ? 'rgba(255,152,0,0.08)' : 'rgba(255,255,255,0.03)', border: '1px solid ' + (b.isDuplicate ? 'rgba(255,152,0,0.3)' : 'rgba(255,255,255,0.08)'), borderRadius: '8px', fontSize: '0.78rem' }}>
+                <span style={{ color: 'var(--muted)', width: '80px', flexShrink: 0 }}>{b._dk}</span>
+                <span style={{ fontWeight: '700', color: 'var(--text)', width: '48px', flexShrink: 0, textTransform: 'capitalize' }}>{String(b.barberName||b.barberId||'?').split(' ')[0]}</span>
+                <span style={{ color: 'var(--text)', flex: 1 }}>{b.clientName || b.name || 'Walk-in'}</span>
+                <span style={{ color: '#4caf50', width: '44px', textAlign: 'right', flexShrink: 0 }}>£{b._rev}</span>
+                <span style={{ padding: '2px 7px', borderRadius: '5px', background: 'rgba(255,255,255,0.06)', color: 'var(--muted)', width: '60px', textAlign: 'center', flexShrink: 0 }}>{b._src}</span>
+                {b.isDuplicate && <span style={{ color: '#ff9800', fontSize: '0.7rem', flexShrink: 0 }}>DUPLICATE</span>}
+                <button onClick={() => deleteOnlineBooking(b.docId)} disabled={deletingIds.has(b.docId)}
+                  style={{ padding: '4px 10px', background: 'rgba(255,82,82,0.12)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: deletingIds.has(b.docId) ? 'not-allowed' : 'pointer', fontSize: '0.72rem', flexShrink: 0 }}>
+                  {deletingIds.has(b.docId) ? '…' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Danger Zone */}

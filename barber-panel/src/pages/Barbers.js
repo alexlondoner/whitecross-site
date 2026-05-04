@@ -27,6 +27,7 @@ const defaultBarber = {
   color: '#d4af37',
   photo: '',
   active: true,
+  order: '',
   workingDays: DEFAULT_WORKING_DAYS,
   hours: DEFAULT_HOURS,
   dayHours: createDayHours(DEFAULT_HOURS),
@@ -96,6 +97,7 @@ export default function Barbers() {
       var primaryHours = primaryDay && form.dayHours && form.dayHours[primaryDay]
         ? form.dayHours[primaryDay]
         : Object.assign({}, DEFAULT_HOURS, form.hours || {});
+      const orderVal = parseInt(form.order, 10);
       await setDoc(doc(db, `tenants/${TENANT}/barbers`, barberId), {
         id: barberId,
         name: form.name,
@@ -105,6 +107,7 @@ export default function Barbers() {
         hours: { open: primaryHours.open, close: primaryHours.close },
         dayHours: form.dayHours,
         active: active,
+        ...(Number.isFinite(orderVal) ? { order: orderVal } : {}),
       });
       await fetchBarbers();
       setShowAdd(false);
@@ -207,7 +210,7 @@ export default function Barbers() {
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>{barber.name}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>{barber.name}{typeof barber.order === 'number' ? <span style={{ fontSize: '0.65rem', color: 'var(--muted)', marginLeft: '6px', fontWeight: '400' }}>#{barber.order}</span> : null}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: barber.active === false ? '#ff5252' : '#4caf50' }} />
                       <span style={{ fontSize: '0.72rem', color: barber.active === false ? '#ff5252' : '#4caf50', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
@@ -289,6 +292,11 @@ export default function Barbers() {
                 if (!editId) next.active = defaultActiveByName(nextName);
                 setForm(next);
               }} placeholder="Team member name" style={inputStyle} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Display Order (1 = first)</label>
+              <input type="number" min="1" max="99" value={form.order} onChange={function(e) { setForm(Object.assign({}, form, { order: e.target.value })); }} placeholder="e.g. 1" style={{ ...inputStyle, width: '80px' }} />
             </div>
 
             <div style={{ marginBottom: '20px' }}>

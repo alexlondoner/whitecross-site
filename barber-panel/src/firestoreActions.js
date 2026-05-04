@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp } from 'firebase/firestore';
 
 const TENANT = 'tenants/whitecross';
 
@@ -93,10 +93,21 @@ export async function blockTime({ date, startTime, endTime, barber, note }) {
 }
 
 // ── EDIT BOOKING ──────────────────────────────────────────────────────────
-export async function editBooking({ bookingId, name, email, phone, date, time, service, barber, duration: durationParam }) {
+export async function editBooking({ bookingId, name, email, phone, date, time, service, barber, price, duration: durationParam }) {
+  // Try field query first; imported bookings may not have bookingId field — fall back to direct doc ref
+  let docRef;
+  let currentData = null;
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
-  if (snap.empty) throw new Error('Booking not found');
+  if (!snap.empty) {
+    docRef = snap.docs[0].ref;
+    currentData = snap.docs[0].data();
+  } else {
+    docRef = doc(db, `${TENANT}/bookings`, bookingId);
+    const directSnap = await getDoc(docRef);
+    if (!directSnap.exists()) throw new Error('Booking not found');
+    currentData = directSnap.data();
+  }
   const months = { January:0, February:1, March:2, April:3, May:4, June:5, July:6, August:7, September:8, October:9, November:10, December:11 };
   const parts = date.split(' ');
   const timeMatch = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -107,16 +118,28 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
   const startTime = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]), h, m, 0);
   const duration = durationParam || 30;
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
-  await updateDoc(snap.docs[0].ref, {
+  const currentStatus = String(currentData?.status || '').toUpperCase();
+  const updatePayload = {
     clientName: name,
     clientEmail: email || '',
     clientPhone: phone || '',
     barberId: barber,
+    barberName: barber,
     serviceId: service,
+    price: price ?? 0,
     startTime: Timestamp.fromDate(startTime),
     endTime: Timestamp.fromDate(endTime),
     updatedAt: Timestamp.fromDate(new Date()),
-  });
+  };
+
+  // Keep amount fields in sync with edited service price for all statuses.
+  if (currentStatus === 'CHECKED_OUT' || currentStatus === 'UNPAID') {
+    updatePayload.paidAmount = price ?? 0;
+  } else {
+    updatePayload.paidAmount = '';
+  }
+
+  await updateDoc(docRef, updatePayload);
 }
 
 // ── DELETE BOOKING ─────────────────────────────────────────────────────────

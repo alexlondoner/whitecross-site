@@ -351,11 +351,15 @@ export default function Finance() {
       const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
       const netRevenue   = grossRevenue - cashExpense - bankExpense;
 
-      // Wages: only real Firestore barbers who worked that day (had any booking, not just checked-out)
+      // Wages: barbers in partnerConfig (includes Kadim/Manoj even if not in Firestore)
+      // + any real Firestore barber not in partnerConfig (fallback £100)
       let totalWages = 0;
       workedNames.forEach(name => {
-        if (realBarberSet.has(normalizeName(name))) {
-          totalWages += (partnerConfig[name]?.wage ?? 100);
+        const cfg = partnerConfig[name];
+        if (cfg !== undefined) {
+          totalWages += cfg.wage ?? 0;
+        } else if (realBarberSet.has(normalizeName(name))) {
+          totalWages += 100;
         }
       });
       const shopOpen = grossRevenue > 0;
@@ -439,11 +443,15 @@ export default function Finance() {
 
       const netRevenue = grossRev - cashExp - bankExp;
 
-      // Compute wages per worker (days worked × wage) — only real Firestore barbers
+      // Compute wages per worker (days worked × wage)
+      // Includes partnerConfig workers (Kadim/Manoj) even if not in Firestore
       Object.entries(barberDays).forEach(([name, days]) => {
-        if (!realBarberSet.has(normalizeName(name))) return;
-        const wage = partnerConfig[name]?.wage ?? 100;
-        totalWages += days.size * wage;
+        const cfg = partnerConfig[name];
+        if (cfg !== undefined) {
+          totalWages += days.size * (cfg.wage ?? 0);
+        } else if (realBarberSet.has(normalizeName(name))) {
+          totalWages += days.size * 100;
+        }
       });
 
       // Shop-open days = any day with revenue (for fixed cost)

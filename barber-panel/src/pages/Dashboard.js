@@ -24,6 +24,12 @@ function normalizeBookingStatus(raw) {
   return n || 'CONFIRMED';
 }
 
+function getDisplayedAmount(booking) {
+  const status = normalizeBookingStatus(booking?.status);
+  const usePaid = status === 'CHECKED_OUT' || status === 'UNPAID';
+  return usePaid ? (booking?.paidAmount ?? booking?.price ?? '') : (booking?.price ?? booking?.paidAmount ?? '');
+}
+
 function isBarberBookingDisabled(barber) {
   if (!barber) return false;
   return barber.active === false;
@@ -616,7 +622,7 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
             { label:'Barber', value:(booking.barber||'').toUpperCase() },
             { label:'Phone', value:booking.phone },
             { label:'Email', value:booking.email },
-            { label:'Paid', value:booking.paidAmount||booking.price, color:'#4caf50' },
+            { label:'Amount', value:getDisplayedAmount(booking), color:'#4caf50' },
             { label:'Source', value:booking.source||'Website', color: booking.source==='Booksy'?'#9c27b0': booking.source==='Fresha'?'#2196f3': booking.source==='Manual'?'#ff9800':'#4caf50' },
             { label:'ID', value:booking.bookingId||('WCB-'+Math.random().toString(36).substr(2,6).toUpperCase()) },
           ].map((item,i)=>(
@@ -823,7 +829,8 @@ const handleSave = async (goCheckout = false) => {
   const [yr2, mo2, dy2] = form.date.split('-');
   const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dateStr = parseInt(dy2) + ' ' + months2[parseInt(mo2)-1] + ' ' + yr2;
-  const bookingData = { name:form.name, email:form.email||'', phone:form.phone||'Walk-in', date:dateStr, time:form.time, service:form.service, barber:form.barber, paymentType:form.paymentType||'CASH', status:'CONFIRMED', bookingId:isEdit?preBooking.bookingId:'WCB-'+Date.now(), price:price, paidAmount:isEdit?(preBooking.paidAmount||''):'', remaining:'Fully paid', source:isEdit?(preBooking.source||'Walk-in'):'Walk-in' };
+  const shouldSyncPaidAmount = isEdit && (preBooking?.status === 'CHECKED_OUT' || preBooking?.status === 'UNPAID');
+  const bookingData = { name:form.name, email:form.email||'', phone:form.phone||'Walk-in', date:dateStr, time:form.time, service:form.service, barber:form.barber, paymentType:form.paymentType||'CASH', status:'CONFIRMED', bookingId:isEdit?preBooking.bookingId:'WCB-'+Date.now(), price:price, paidAmount:shouldSyncPaidAmount?price:'', remaining:'Fully paid', source:isEdit?(preBooking.source||'Walk-in'):'Walk-in' };
   try {
     if (isEdit) {
       await editBooking({
@@ -835,6 +842,7 @@ const handleSave = async (goCheckout = false) => {
         time: bookingData.time,
         service: bookingData.service,
         barber: bookingData.barber,
+        price,
         duration,
       });
     } else {
@@ -1495,19 +1503,18 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)', position:'sticky', top:0, background:'var(--card)', zIndex:10 }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }} />
         {barbers.map((barber, bi) => {
-          const bookingDisabled = isBarberBookingDisabled(barber);
           return (
-            <div key={barber.id} onClick={(e) => { if (bookingDisabled) return; const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
-  style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:bookingDisabled?'not-allowed':'pointer', opacity:bookingDisabled?0.6:1 }}
-  onMouseEnter={e=>{ if (!bookingDisabled) e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
+            <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
+  style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer' }}
+  onMouseEnter={e=>{ e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:barber.color+'22', border:'1px solid '+barber.color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:'700', color:barber.color, flexShrink:0 }}>{barber.name[0]}</div>
             <div>
               <div style={{ fontSize:'0.85rem', fontWeight:'700', color:'var(--text)' }}>{barber.name}</div>
-              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{bookingDisabled ? 'Booking Passive' : minsToLabel(OPEN_MINS) + ' -- ' + minsToLabel(CLOSE_MINS) + (dayHours && dayHours.note ? ' · ' + dayHours.note : '')}</div>
+              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{minsToLabel(OPEN_MINS) + ' -- ' + minsToLabel(CLOSE_MINS) + (dayHours && dayHours.note ? ' · ' + dayHours.note : '')}</div>
             </div>
             <span style={{ fontSize:'0.65rem', color:'var(--muted)', marginLeft:'auto', background:'rgba(212,175,55,0.08)', padding:'2px 7px', borderRadius:'8px' }}>
-              {bookingDisabled ? 'Locked' : (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length + ' appts'}
+              {(byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length + ' appts'}
             </span>
           </div>
         );
@@ -1526,14 +1533,13 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
           ))}
         </div>
         {barbers.map((barber, bi) => {
-          const bookingDisabled = isBarberBookingDisabled(barber);
           const barberBs = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED');
           return (
             <div key={barber.id} style={{ flex:1, position:'relative', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none' }}>
               {slots.map(slot => {
                 const isOutsideHours = IS_CLOSED || slot.mins < OPEN_MINS || slot.mins >= CLOSE_MINS;
                 const past = isToday && slot.mins < nowMins;
-                const inactive = past || isOutsideHours || bookingDisabled;
+                const inactive = past || isOutsideHours;
                 return (
                   <div key={slot.mins}
                     onClick={(e) => { if (!inactive) { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
@@ -1678,8 +1684,8 @@ useEffect(() => {
           time,
           bookingId: d.bookingId || doc.id,
           source: normalizeBookingSource(d.source),
-          paidAmount: d.paidAmount || '',
-          price: d.price || '',
+          paidAmount: d.paidAmount ?? '',
+          price: d.price ?? '',
         };
       });
 
