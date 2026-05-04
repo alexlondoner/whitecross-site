@@ -123,11 +123,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     function renderBarberButtons() {
         if (!barberGrid) return;
         var dynamicBtns = ACTIVE_BARBERS.map(function(b) {
-            var isDisabled = isBookingDisabledBarber(b);
-            return '<button type="button" class="barber-btn' + (isDisabled ? ' disabled' : '') + '" id="barber-' + b.id + '" data-value="' + b.id + '" data-disabled="' + (isDisabled ? '1' : '0') + '" ' + (isDisabled ? 'disabled aria-disabled="true"' : '') + '>' +
+            return '<button type="button" class="barber-btn" id="barber-' + b.id + '" data-value="' + b.id + '">' +
 '<span class="barber-icon" style="font-family:Oswald,sans-serif;font-size:1.1rem;font-weight:700;color:#d4af37;">' + b.name[0].toUpperCase() + '</span>' +
                 '<span class="barber-name">' + b.name + '</span>' +
-                (isDisabled ? '<span class="barber-state">Passive</span>' : '') +
                 '</button>';
         }).join('');
         barberGrid.innerHTML = dynamicBtns +
