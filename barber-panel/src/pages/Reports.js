@@ -146,10 +146,15 @@ export default function Reports() {
         }, {});
         const rows = bookingsSnap.docs.map(doc => {
           const d = doc.data();
-          // Parse startTime from any format
-          const st = toDate(d.startTime);
-          const date = st ? st.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-          const time = st ? st.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : '';
+          // Parse startTime; fall back to d.date + d.time for walk-in bookings with no startTime
+          let st = toDate(d.startTime);
+          if (!st && d.date) {
+            const raw = d.time ? d.date + ' ' + d.time : d.date;
+            const parsed = new Date(raw);
+            if (!isNaN(parsed)) st = parsed;
+          }
+          const date = st ? st.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : (d.date || '');
+          const time = st ? st.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase() : (d.time || '');
           const rawBarber = String(d.barberId || '').trim();
           const barber = d.barberName || barberById[rawBarber.toLowerCase()] || rawBarber;
           return {
