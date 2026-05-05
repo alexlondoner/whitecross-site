@@ -890,6 +890,9 @@ var todayStr = now.getFullYear() + '-' +
                 snap.forEach(function(doc) {
                     var d = doc.data();
                     var st = String(d.status || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+                    if (st === 'CHECKEDOUT' || st === 'PAID' || st === 'DONE' || st === 'COMPLETE') st = 'CHECKED_OUT';
+                    if (st === 'CANCELED') st = 'CANCELLED';
+                    if (st === 'NOSHOW') st = 'NO_SHOW';
                     if (st === 'CANCELLED' || st === 'NO_SHOW' || st === 'DELETED' || st === 'CHECKED_OUT' || st === 'COMPLETED') return;
                     if (!d.startTime || !d.endTime) return;
                     var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };

@@ -36,6 +36,9 @@ function getProductsTotal(list) {
 
 function normalizeBookingStatus(raw) {
   const n = String(raw || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
+  if (n === 'CHECKEDOUT' || n === 'PAID' || n === 'DONE' || n === 'COMPLETE') return 'CHECKED_OUT';
+  if (n === 'CANCELED') return 'CANCELLED';
+  if (n === 'NOSHOW' || n === 'NO_SHOW') return 'NO_SHOW';
   if (n === 'CONFIRMED' || n === 'PENDING' || n === 'CHECKED_OUT' || n === 'CANCELLED' || n === 'BLOCKED' || n === 'NO_SHOW') return n;
   return n || 'CONFIRMED';
 }
@@ -84,7 +87,8 @@ function hasTimeConflict(existingBookings, options) {
   const endMinutes = startMinutes + durationMinutes;
 
   return (existingBookings || []).some((booking) => {
-    if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW' || booking.status === 'DELETED' || booking.status === 'CHECKED_OUT' || booking.status === 'COMPLETED') return false;
+    const st = normalizeBookingStatus(booking.status);
+    if (st === 'CANCELLED' || st === 'NO_SHOW' || st === 'DELETED' || st === 'CHECKED_OUT' || st === 'COMPLETED') return false;
     if (ignoreBookingId && booking.bookingId === ignoreBookingId) return false;
     if ((booking.barber || '').toLowerCase() !== barberValue) return false;
     if (booking.date !== dateValue) return false;
