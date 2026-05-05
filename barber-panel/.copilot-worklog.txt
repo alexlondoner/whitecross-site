@@ -1,0 +1,253 @@
+WORKLOG - WHITECROSS ADMIN PANEL
+Updated: 2026-05-05
+Maintained by: GitHub Copilot (GPT-5.3-Codex)
+
+RULE:
+- Every completed change is logged with scope, files, behavior impact, and validation notes.
+- When user asks "ne yaptin", summary is generated from this file.
+
+================================================================
+ENTRY 2026-05-05-A
+TITLE: Phase 1 - Products module foundation
+STATUS: Completed
+
+SCOPE:
+1) Products management page added (CRUD UI)
+2) Firestore product CRUD actions added
+3) App route and sidebar integration
+4) Settings toggle added for products.enabled
+
+FILES TOUCHED:
+- src/pages/Products.js
+- src/firestoreActions.js
+- src/App.js
+- src/components/Sidebar.js
+- src/pages/Settings.js
+
+BEHAVIOR IMPACT:
+- Admin can create/update/delete products.
+- Admin can toggle product active/inStock state.
+- Products page visible in sidebar and routing.
+- Settings has products.enabled toggle, stored in settings doc.
+
+VALIDATION:
+- Build successful.
+- No blocking errors on key files.
+
+================================================================
+ENTRY 2026-05-05-B
+TITLE: Dashboard consistency and scheduling fixes (pre-Phase 2)
+STATUS: Completed
+
+SCOPE:
+1) Service price consistency and stale paidAmount display fixes
+2) Booking edit write-path fixes for CHECKED_OUT/UNPAID
+3) Day-availability filtering for barbers in booking forms
+4) Block-time conflict checks and block reason/day-off updates
+5) Toolbar barber pills aligned with active barbers per selected day
+
+FILES TOUCHED:
+- src/pages/Dashboard.js
+- src/firestoreActions.js
+
+BEHAVIOR IMPACT:
+- Price and receipt totals are consistent with live service config.
+- Editing booking service updates amount fields correctly.
+- Non-working barbers hidden from forms and toolbar.
+- Blocked slots prevent conflicting new bookings.
+
+VALIDATION:
+- Build successful.
+- Deployment done previously (no redeploy in this logging step).
+
+================================================================
+ENTRY 2026-05-05-C
+TITLE: Phase 2 - Checkout + Product Sale core integration
+STATUS: Completed (core flow)
+
+SCOPE:
+1) Product-aware checkout flow
+- Checkout accepts soldProducts and serviceCharge.
+- Totals include service + products - discount + tip + serviceCharge.
+
+2) Add Products flow from booking card
+- BookingDetail includes "+ Products" action.
+- BookingProductsPanel allows selecting products and saving draft to selected booking.
+
+3) Standalone Product Sale flow
+- FAB menu includes Product Sale action.
+- ProductSalePanel creates CHECKED_OUT booking with source = Product Sale.
+
+4) Dashboard source analytics update
+- Product Sale added to source pills and pill filtering.
+
+5) Receipt alignment
+- Receipt panel calculation includes soldProducts and serviceCharge.
+- Product lines rendered in receipt detail.
+
+FILES TOUCHED:
+- src/pages/Dashboard.js
+- src/firestoreActions.js
+- src/pages/Reports.js
+
+API/SCHEMA NOTES:
+- checkoutBooking(...) now supports:
+  soldProducts: [{ productId, name, price, qty }]
+  serviceCharge: number
+- createWalkIn(...) now supports soldProducts.
+- createProductSale(...) added.
+- Booking docs can now contain soldProducts and serviceCharge.
+
+BEHAVIOR IMPACT:
+- Staff can attach retail products to a service checkout.
+- Staff can run a product-only sale without haircut service.
+- Product Sale appears as a distinct source in dashboard/report source normalization.
+
+VALIDATION:
+- Build successful.
+- No blocking editor errors on Dashboard and firestoreActions after integration.
+- Existing non-blocking lint warnings remain in unrelated files (pre-existing and/or outside phase-2 core).
+
+================================================================
+ENTRY 2026-05-05-D
+TITLE: Phase 2.1 - Finance/Reports product revenue split and product analytics
+STATUS: Completed
+
+SCOPE:
+1) Revenue logic split in Reports
+- Service gross and Products gross are now calculated separately.
+- Product Sale source no longer inflates service revenue.
+
+2) Finance tab upgrade
+- Group headers show Service / Products / Gross / Discount / Tips / Net.
+- Ledger table split into Service and Products columns.
+- CSV export includes service gross and products gross columns.
+
+3) Product analytics tab added
+- New Products tab with KPI cards (product revenue, units sold, sale transactions).
+- Top products by revenue chart.
+- Product breakdown table with avg unit price.
+
+4) Service stats correction
+- Service analytics now skip records without serviceId.
+
+FILES TOUCHED:
+- src/pages/Reports.js
+
+BEHAVIOR IMPACT:
+- Finance and reports now distinguish service income vs retail product income.
+- Product-only sales are represented correctly in analytics.
+- Managers can see top-selling products and quantity-based performance.
+
+VALIDATION:
+- Build successful after change.
+- No blocking errors.
+- Remaining warnings are pre-existing/unrelated (Dashboard, Products, Services, Settings, unused monthlyData in Reports).
+
+================================================================
+ENTRY 2026-05-05-E
+TITLE: Phase 2.2 - Full product UX closure: edit checkout, walk-in products, booking product attach
+STATUS: Completed
+
+SCOPE:
+1) CheckoutPanel — editable product selection
+- soldProducts const replaced with localProducts useState (lazy-initialised from booking.soldProducts).
+- ProductSelector rendered in cart step (visible when products catalogue is non-empty).
+- Staff can add/remove/adjust qty for retail products during checkout.
+- handleCheckout and handleSaveUnpaid both pass localProducts to firestoreActions.
+- Edit Checkout (Receipt → Edit Checkout) reuses same CheckoutPanel with isEdit=true; products are editable there too.
+- products prop added to CheckoutPanel signature.
+
+2) WalkInForm — retail product add-on at walk-in creation
+- products prop added to function signature.
+- walkInProducts useState added.
+- ProductSelector section injected in the form between price preview and action buttons.
+- bookingData includes soldProducts: walkInProducts.filter(p => p.qty > 0).
+- Products subtotal displayed as informational row when selection > 0.
+
+3) Dashboard JSX prop wiring
+- products={products} passed to <CheckoutPanel> in day-view render.
+- products={products} passed to <WalkInForm> in day-view render.
+
+FILES TOUCHED:
+- src/pages/Dashboard.js
+
+BEHAVIOR IMPACT:
+- When opening checkout from any booking (including Edit Checkout in receipt), staff can add/remove products.
+- When creating a walk-in, staff can add retail products to the booking at time of creation.
+- These were the last two UX gaps where products could not be attached to bookings.
+
+VALIDATION:
+- Build successful (250 kB gzip, 0 errors).
+- Deployed to https://whitecrossbarbers-admin.web.app
+
+================================================================
+ENTRY 2026-05-05-F
+TITLE: Slot release reliability after delete (booking/walk-in)
+STATUS: Completed
+
+SCOPE:
+1) Firestore delete robustness
+- deleteBooking now supports both structures:
+  a) document id equals booking id
+  b) bookingId stored as a document field
+- Logic: try direct document delete first, then fallback query by bookingId field.
+
+2) UI delete flow safety
+- BookingDetail delete action now triggers local removal only when backend delete succeeds.
+- If backend delete fails, UI shows error alert and does not fake-remove booking from local state.
+
+3) Conflict checker resilience
+- hasTimeConflict now ignores CANCELLED, NO_SHOW, and DELETED records.
+
+FILES TOUCHED:
+- src/firestoreActions.js
+- src/pages/Dashboard.js
+
+BEHAVIOR IMPACT:
+- Deleting a booking/walk-in reliably frees the slot for new appointments.
+- Edge case where delete silently failed (because record key style differed) is now handled.
+- Users no longer see slot stuck as busy after delete due to stale/undeleted backend record mismatch.
+
+VALIDATION:
+- Build successful (250.47 kB gzip, no blocking errors).
+- Deployed to https://whitecrossbarbers-admin.web.app
+
+================================================================
+ENTRY 2026-05-05-G
+TITLE: Checked-out bookings no longer block new availability (dashboard + website logic)
+STATUS: Completed
+
+SCOPE:
+1) Dashboard conflict logic
+- hasTimeConflict now excludes CHECKED_OUT and COMPLETED (in addition to CANCELLED/NO_SHOW/DELETED).
+- Result: after checkout, same time slot can be booked again from dashboard forms.
+
+2) Website availability logic
+- script.js busy-map fetch now normalizes status and excludes CHECKED_OUT/COMPLETED/CANCELLED/NO_SHOW/DELETED.
+- Result: checked-out appointments are shown in records but not treated as blocking busy slots.
+
+FILES TOUCHED:
+- src/pages/Dashboard.js
+- ../script.js
+
+BEHAVIOR IMPACT:
+- Walk-in or booking that is CHECKED_OUT no longer blocks slot allocation in availability checks.
+- Staff can re-book the same slot after customer is completed/checked out.
+
+VALIDATION:
+- barber-panel build successful (250.48 kB gzip, no blocking errors).
+- Deployed admin hosting: https://whitecrossbarbers-admin.web.app
+
+================================================================
+NEXT LOG POLICY:
+- New entries will be appended as:
+  ENTRY YYYY-MM-DD-X
+  TITLE
+  STATUS
+  SCOPE
+  FILES TOUCHED
+  BEHAVIOR IMPACT
+  VALIDATION
+
+END OF FILE

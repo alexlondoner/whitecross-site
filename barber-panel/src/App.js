@@ -10,6 +10,7 @@ import Clients from './pages/Clients';
 import Reports from './pages/Reports';
 import Finance from './pages/Finance';
 import OnlineProfile from './pages/OnlineProfile';
+import Products from './pages/Products';
 import config from './config';
 import { db } from './firebase';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
@@ -67,6 +68,7 @@ function App() {
       case 'clients': return <Clients tenantId={tenantId} />;
       case 'reports': return <Reports tenantId={tenantId} />;
       case 'finance': return <Finance tenantId={tenantId} />;
+      case 'products': return <Products tenantId={tenantId} />;
       case 'settings': return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} />;
       case 'gallery': return <OnlineProfile tenantId={tenantId} />;
       case 'services': return <OnlineProfile tenantId={tenantId} />;

@@ -889,7 +889,8 @@ var todayStr = now.getFullYear() + '-' +
                 });
                 snap.forEach(function(doc) {
                     var d = doc.data();
-                    if (d.status === 'CANCELLED') return;
+                    var st = String(d.status || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+                    if (st === 'CANCELLED' || st === 'NO_SHOW' || st === 'DELETED' || st === 'CHECKED_OUT' || st === 'COMPLETED') return;
                     if (!d.startTime || !d.endTime) return;
                     var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
                     if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);

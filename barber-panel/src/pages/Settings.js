@@ -32,6 +32,7 @@ const defaultSettings = {
   },
   specialHours: [],
   emailConfirmationEnabled: true,
+  products: { enabled: false },
 };
 
 function normalizeSpecialHours(list) {
@@ -90,6 +91,7 @@ export default function Settings({ theme, onToggleTheme }) {
           ...defaultSettings,
           ...data,
           platforms: { ...defaultSettings.platforms, ...(data.platforms || {}) },
+          products: { enabled: false, ...(data.products || {}) },
           specialHours: normalizeSpecialHours(data.specialHours),
         });
       }
@@ -607,6 +609,31 @@ export default function Settings({ theme, onToggleTheme }) {
             style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.emailConfirmationEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '4px', left: settings.emailConfirmationEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </div>
+        </div>
+      </div>
+
+      {/* Products */}
+      <div style={cardStyle}>
+        <h2 style={sectionTitle}>🛒 Products</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text)', fontWeight: '600', marginBottom: '4px' }}>
+              {(settings.products && settings.products.enabled) ? 'Products Enabled — Visible on Website' : 'Products Disabled — Hidden from Website'}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+              {(settings.products && settings.products.enabled)
+                ? 'Products page is live. Navigation link appears on the website.'
+                : 'Products page is hidden. Toggle on when ready to launch your shop.'}
+            </div>
+          </div>
+          <div
+            onClick={() => setSettings(s => ({ ...s, products: { ...(s.products || {}), enabled: !(s.products && s.products.enabled) } }))}
+            style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: (settings.products && settings.products.enabled) ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', top: '4px', left: (settings.products && settings.products.enabled) ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          </div>
+        </div>
+        <div style={{ marginTop: '14px', padding: '12px 14px', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '8px', fontSize: '0.72rem', color: 'var(--muted)', lineHeight: '1.6' }}>
+          <strong style={{ color: 'var(--text)' }}>How it works:</strong> When enabled, a "Shop" link appears in the website navigation and <code style={{ background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: '4px' }}>products.html</code> becomes publicly accessible. When disabled, the page shows "Coming Soon" and no nav link is shown.
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { collection, getDocs } from 'firebase/firestore';
 
 function normalizeSource(src) {
   const s = String(src || '').trim().toLowerCase();
+  if (s === 'product sale' || s === 'product_sale' || s === 'productsale') return 'Product Sale';
   if (!s || s === 'historical' || s === 'walk_in' || s === 'walkin' || s === 'walk-in' || s === 'manual') return 'Walk-in';
   if (s === 'booksy')  return 'Booksy';
   if (s === 'fresha')  return 'Fresha';
@@ -25,14 +26,31 @@ function toDate(val) {
 }
 
 function pp(val) {
-  return parseFloat(String(val || '0').replace(/[£\-]/g, '').trim()) || 0;
+  return parseFloat(String(val || '0').replace(/[£-]/g, '').trim()) || 0;
 }
 
-// Service price = price field; fallback for old records = paidAmount - tip
-function svcPrice(b) {
-  const p = pp(b.price);
-  if (p > 0) return p;
-  return Math.max(0, pp(b.paidAmount) - pp(b.tip));
+function soldProductsTotal(b) {
+  const list = Array.isArray(b?.soldProducts) ? b.soldProducts : [];
+  return list.reduce((sum, p) => sum + (pp(p?.price) * (parseInt(p?.qty, 10) || 0)), 0);
+}
+
+function isProductSaleSource(b) {
+  return normalizeSource(b?.source) === 'Product Sale';
+}
+
+// Service gross is kept separate from retail products.
+// For older data without explicit service price, we keep a safe fallback.
+function serviceGross(b) {
+  if (isProductSaleSource(b)) return 0;
+  const explicit = pp(b.price) + pp(b.serviceCharge);
+  if (explicit > 0) return explicit;
+  const hasProducts = soldProductsTotal(b) > 0;
+  if (hasProducts && !b.serviceId) return 0;
+  return Math.max(0, pp(b.paidAmount) - pp(b.tip) - soldProductsTotal(b));
+}
+
+function bookingNetWithoutTip(b) {
+  return Math.max(0, serviceGross(b) + soldProductsTotal(b) - pp(b.discount));
 }
 
 function svcName(serviceId) {
@@ -197,15 +215,17 @@ export default function Reports() {
   const cancelled  = useMemo(() => filtered.filter(b => b.status === 'CANCELLED'),  [filtered]);
 
   // Revenue formulas:
-  // grossRevenue  = sum of service prices (before discount, before tip)
-  // totalDiscount = sum of discounts applied
-  // totalTips     = sum of tips received
-  // netRevenue    = grossRevenue - totalDiscount   (what shop earned from services)
-  // totalCollected = netRevenue + totalTips        (total cash that came in)
-  const grossRevenue  = useMemo(() => checkedOut.reduce((s, b) => s + svcPrice(b), 0), [checkedOut]);
+  // serviceRevenueGross = sum of service totals (service + serviceCharge)
+  // productRevenueGross = sum of soldProducts totals
+  // grossRevenue        = service + product gross
+  // netRevenue          = grossRevenue - discount
+  // totalCollected      = netRevenue + tips
+  const serviceRevenueGross = useMemo(() => checkedOut.reduce((s, b) => s + serviceGross(b), 0), [checkedOut]);
+  const productRevenueGross = useMemo(() => checkedOut.reduce((s, b) => s + soldProductsTotal(b), 0), [checkedOut]);
+  const grossRevenue  = serviceRevenueGross + productRevenueGross;
   const totalDiscount = useMemo(() => checkedOut.reduce((s, b) => s + pp(b.discount), 0), [checkedOut]);
   const totalTips     = useMemo(() => checkedOut.reduce((s, b) => s + pp(b.tip), 0), [checkedOut]);
-  const netRevenue    = grossRevenue - totalDiscount;
+  const netRevenue    = Math.max(0, grossRevenue - totalDiscount);
   const totalCollected = netRevenue + totalTips;
 
   // Daily revenue for chart
@@ -215,7 +235,7 @@ export default function Reports() {
       if (!b._date) return;
       const key = b._date.toISOString().split('T')[0];
       if (!map[key]) map[key] = { date: key, revenue: 0, tips: 0, count: 0 };
-      map[key].revenue += Math.max(0, svcPrice(b) - pp(b.discount));
+      map[key].revenue += bookingNetWithoutTip(b);
       map[key].tips    += pp(b.tip);
       map[key].count++;
     });
@@ -229,7 +249,7 @@ export default function Reports() {
       if (!b._date) return;
       const key = b._date.getFullYear() + '-' + String(b._date.getMonth() + 1).padStart(2, '0');
       if (!map[key]) map[key] = { label: key, revenue: 0, tips: 0, count: 0 };
-      map[key].revenue += Math.max(0, svcPrice(b) - pp(b.discount));
+      map[key].revenue += bookingNetWithoutTip(b);
       map[key].tips    += pp(b.tip);
       map[key].count++;
     });
@@ -240,7 +260,7 @@ export default function Reports() {
   const sourceSegments = useMemo(() => {
     const map = {};
     active.forEach(b => { map[b.source] = (map[b.source] || 0) + 1; });
-    const colors = { Booksy: '#9c27b0', Fresha: '#2196f3', Website: '#4caf50', 'Walk-in': '#ff9800' };
+    const colors = { Booksy: '#9c27b0', Fresha: '#2196f3', Website: '#4caf50', 'Walk-in': '#ff9800', 'Product Sale': '#03a9f4' };
     return Object.entries(map).map(([k, v]) => ({ label: k, value: v, color: colors[k] || '#999' }));
   }, [active]);
 
@@ -256,7 +276,7 @@ export default function Reports() {
   const barberStats = useMemo(() => barbers.map(barber => {
     const bs = active.filter(b => (b.barber || '').toLowerCase() === barber.name.toLowerCase());
     const co = bs.filter(b => b.status === 'CHECKED_OUT');
-    const rev = co.reduce((s, b) => s + Math.max(0, svcPrice(b) - pp(b.discount)), 0);
+    const rev = co.reduce((s, b) => s + bookingNetWithoutTip(b), 0);
     const tips = co.reduce((s, b) => s + pp(b.tip), 0);
     return { name: barber.name, color: barber.color, bookings: bs.length, checkedOut: co.length, revenue: rev, tips };
   }), [barbers, active]);
@@ -265,16 +285,34 @@ export default function Reports() {
   const serviceStats = useMemo(() => {
     const map = {};
     active.forEach(b => {
+      if (!b.service) return;
       const name = svcName(b.service);
       if (!map[name]) map[name] = { name, count: 0, checkedOut: 0, revenue: 0 };
       map[name].count++;
       if (b.status === 'CHECKED_OUT') {
         map[name].checkedOut++;
-        map[name].revenue += Math.max(0, svcPrice(b) - pp(b.discount));
+        map[name].revenue += Math.max(0, serviceGross(b) - pp(b.discount));
       }
     });
     return Object.values(map).sort((a, b) => b.count - a.count);
   }, [active]);
+
+  const productStats = useMemo(() => {
+    const map = {};
+    checkedOut.forEach(b => {
+      const items = Array.isArray(b.soldProducts) ? b.soldProducts : [];
+      items.forEach((item) => {
+        const name = String(item?.name || '').trim() || 'Unnamed Product';
+        if (!map[name]) map[name] = { name, qty: 0, revenue: 0, txCount: 0 };
+        const qty = parseInt(item?.qty, 10) || 0;
+        const line = pp(item?.price) * qty;
+        map[name].qty += qty;
+        map[name].revenue += line;
+        map[name].txCount += qty > 0 ? 1 : 0;
+      });
+    });
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [checkedOut]);
 
   // Client stats
   const clientMap = useMemo(() => {
@@ -283,7 +321,7 @@ export default function Reports() {
       const key = b.phone || b.email || b.name;
       if (!key || b.name === 'Walk-in') return;
       if (!map[key]) map[key] = { name: b.name, spent: 0, dates: new Set() };
-      map[key].spent += Math.max(0, svcPrice(b) - pp(b.discount));
+      map[key].spent += bookingNetWithoutTip(b);
       if (b.date) map[key].dates.add(b.date);
     });
     return map;
@@ -317,14 +355,18 @@ export default function Reports() {
     const map = {};
     financeRows.forEach(b => {
       const k = groupKey(b);
-      if (!map[k]) map[k] = { label: k, rows: [], gross: 0, discount: 0, tips: 0, cash: 0, card: 0 };
+      if (!map[k]) map[k] = { label: k, rows: [], serviceGross: 0, productGross: 0, gross: 0, discount: 0, tips: 0, cash: 0, card: 0 };
       const g = map[k];
-      const price = svcPrice(b);
+      const service = serviceGross(b);
+      const product = soldProductsTotal(b);
+      const price = service + product;
       const disc  = pp(b.discount);
       const tip   = pp(b.tip);
-      const net   = price - disc + tip;
+      const net   = Math.max(0, price - disc) + tip;
       const pm    = (b.paymentMethod || b.paymentType || '').toUpperCase();
       g.rows.push(b);
+      g.serviceGross += service;
+      g.productGross += product;
       g.gross    += price;
       g.discount += disc;
       g.tips     += tip;
@@ -337,12 +379,12 @@ export default function Reports() {
 
   // CSV export for finance tab
   const exportFinanceCSV = () => {
-    const rows = [['Date', 'Time', 'Client', 'Phone', 'Service', 'Barber', 'Price', 'Discount', 'Tip', 'Payment', 'Total', 'Source', 'Booking ID']];
+    const rows = [['Date', 'Time', 'Client', 'Phone', 'Service', 'Barber', 'Service Gross', 'Products Gross', 'Discount', 'Tip', 'Payment', 'Total', 'Source', 'Booking ID']];
     financeRows.forEach(b => {
-      const price = svcPrice(b), disc = pp(b.discount), tip = pp(b.tip);
+      const service = serviceGross(b), products = soldProductsTotal(b), disc = pp(b.discount), tip = pp(b.tip);
       rows.push([b.date, b.time, b.name, b.phone, svcName(b.service), b.barber,
-        price.toFixed(2), disc > 0 ? disc.toFixed(2) : '', tip > 0 ? tip.toFixed(2) : '',
-        b.paymentMethod || b.paymentType || '', (price - disc + tip).toFixed(2),
+        service.toFixed(2), products.toFixed(2), disc > 0 ? disc.toFixed(2) : '', tip > 0 ? tip.toFixed(2) : '',
+        b.paymentMethod || b.paymentType || '', (Math.max(0, service + products - disc) + tip).toFixed(2),
         b.source, b.bookingId]);
     });
     const csv = rows.map(r => r.map(v => `"${v || ''}"`).join(',')).join('\n');
@@ -359,7 +401,7 @@ export default function Reports() {
   const th    = { padding: '8px 10px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', textAlign: 'left', fontWeight: '600', whiteSpace: 'nowrap' };
   const td    = (extra) => ({ padding: '7px 10px', fontSize: '0.75rem', ...extra });
 
-  const tabs  = ['overview', 'finance', 'barbers', 'services', 'clients'];
+  const tabs  = ['overview', 'finance', 'barbers', 'services', 'products', 'clients'];
 
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--muted)' }}>Loading reports...</div>;
 
@@ -399,7 +441,9 @@ export default function Reports() {
             {[
               { label: 'Total Bookings',  value: active.length,                    sub: cancelled.length + ' cancelled',                                    color: '#d4af37' },
               { label: 'Checked Out',     value: checkedOut.length,                 sub: active.length ? Math.round(checkedOut.length/active.length*100)+'% rate' : '—', color: '#4caf50' },
-              { label: 'Gross Revenue',   value: '£'+grossRevenue.toFixed(2),       sub: '−£'+totalDiscount.toFixed(2)+' discount',                          color: '#d4af37' },
+              { label: 'Service Gross',   value: '£'+serviceRevenueGross.toFixed(2), sub: 'service + service charge',                                        color: '#d4af37' },
+              { label: 'Products Gross',  value: '£'+productRevenueGross.toFixed(2), sub: productStats.length + ' product types sold',                       color: '#03a9f4' },
+              { label: 'Gross Revenue',   value: '£'+grossRevenue.toFixed(2),        sub: 'service + products',                                               color: '#d4af37' },
               { label: 'Net Revenue',     value: '£'+netRevenue.toFixed(2),         sub: 'after discounts',                                                  color: '#4caf50' },
               { label: 'Tips',            value: '£'+totalTips.toFixed(2),          sub: checkedOut.filter(b=>pp(b.tip)>0).length+' bookings tipped',        color: '#2196f3' },
               { label: 'Total Collected', value: '£'+totalCollected.toFixed(2),     sub: 'net + tips',                                                       color: '#d4af37' },
@@ -470,6 +514,8 @@ export default function Reports() {
           {/* Summary bar */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
             {[
+              { label: 'Service Gross',   value: '£'+serviceRevenueGross.toFixed(2), color: '#d4af37' },
+              { label: 'Products Gross',  value: '£'+productRevenueGross.toFixed(2), color: '#03a9f4' },
               { label: 'Gross Revenue',   value: '£'+grossRevenue.toFixed(2),   color: '#d4af37' },
               { label: 'Discounts',       value: '−£'+totalDiscount.toFixed(2), color: '#ff5252' },
               { label: 'Net Revenue',     value: '£'+netRevenue.toFixed(2),     color: '#4caf50' },
@@ -511,6 +557,8 @@ export default function Reports() {
                 <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#d4af37' }}>{group.label}</span>
                 <div style={{ display: 'flex', gap: '16px' }}>
                   {[
+                    ['Service', '£'+group.serviceGross.toFixed(2), '#d4af37'],
+                    ['Products', '£'+group.productGross.toFixed(2), '#03a9f4'],
                     ['Gross', '£'+group.gross.toFixed(2), '#d4af37'],
                     group.discount > 0 ? ['Disc', '−£'+group.discount.toFixed(2), '#ff5252'] : null,
                     group.tips > 0    ? ['Tips', '+£'+group.tips.toFixed(2), '#2196f3'] : null,
@@ -530,15 +578,15 @@ export default function Reports() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['Date','Time','Client','Service','Barber','Price','Disc','Tip','Method','Total','Source'].map(h => (
+                      {['Date','Time','Client','Service','Barber','Service','Products','Disc','Tip','Method','Total','Source'].map(h => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {group.rows.map((b, i) => {
-                      const price = svcPrice(b), disc = pp(b.discount), tip = pp(b.tip);
-                      const total = price - disc + tip;
+                      const service = serviceGross(b), products = soldProductsTotal(b), disc = pp(b.discount), tip = pp(b.tip);
+                      const total = Math.max(0, service + products - disc) + tip;
                       const pm = (b.paymentMethod || b.paymentType || '—').toUpperCase();
                       return (
                         <tr key={i} style={{ borderTop: '1px solid var(--border)' }}
@@ -552,7 +600,8 @@ export default function Reports() {
                           </td>
                           <td style={td({ color:'var(--text)' })}>{svcName(b.service)}</td>
                           <td style={td({ color: getBColor(b.barber, barbers), fontWeight:'600' })}>{(b.barber||'—').toUpperCase()}</td>
-                          <td style={td({ color:'var(--text)', fontWeight:'600' })}>£{price.toFixed(2)}</td>
+                          <td style={td({ color:'var(--text)', fontWeight:'600' })}>£{service.toFixed(2)}</td>
+                          <td style={td({ color:'#03a9f4', fontWeight:'600' })}>£{products.toFixed(2)}</td>
                           <td style={td({ color: disc > 0 ? '#ff5252' : 'var(--border)' })}>{disc > 0 ? '−£'+disc.toFixed(2) : '—'}</td>
                           <td style={td({ color: tip > 0 ? '#2196f3' : 'var(--border)' })}>{tip > 0 ? '+£'+tip.toFixed(2) : '—'}</td>
                           <td style={td({})}>
@@ -576,6 +625,64 @@ export default function Reports() {
           {financeGrouped.length === 0 && (
             <div style={{ textAlign:'center', padding:'50px', color:'var(--muted)' }}>No checked-out bookings in this period.</div>
           )}
+        </div>
+      )}
+
+      {/* ── PRODUCTS ── */}
+      {activeTab === 'products' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+            {[
+              { label: 'Product Revenue', value: '£' + productRevenueGross.toFixed(2), color: '#03a9f4' },
+              { label: 'Units Sold', value: productStats.reduce((s, p) => s + p.qty, 0), color: '#4caf50' },
+              { label: 'Products Sold', value: productStats.length, color: '#d4af37' },
+              { label: 'Sale Tx Count', value: checkedOut.filter(b => soldProductsTotal(b) > 0).length, color: '#ff9800' },
+            ].map(k => (
+              <div key={k.label} style={{ ...card, borderLeft: '3px solid ' + k.color }}>
+                <div style={lbl}>{k.label}</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '800', color: k.color }}>{k.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={card}>
+            <div style={lbl}>Top Products by Revenue</div>
+            {productStats.length === 0 && (
+              <div style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>No product sales in this period.</div>
+            )}
+            {productStats.slice(0, 10).map((p, i) => (
+              <div key={p.name} style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text)', fontWeight: i === 0 ? '700' : '500' }}>{p.name}</span>
+                  <span style={{ fontSize: '0.72rem', color: '#03a9f4', fontWeight: '700' }}>£{p.revenue.toFixed(2)} ({p.qty} pcs)</span>
+                </div>
+                <MiniBar value={p.revenue} max={productStats[0]?.revenue || 1} color={i === 0 ? '#03a9f4' : 'rgba(3,169,244,0.45)'} />
+              </div>
+            ))}
+          </div>
+
+          <div style={card}>
+            <div style={lbl}>Product Breakdown</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['#', 'Product', 'Units', 'Transactions', 'Revenue', 'Avg Unit Price'].map(h => <th key={h} style={th}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {productStats.map((p, i) => (
+                  <tr key={p.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={td({ color: 'var(--muted)' })}>#{i + 1}</td>
+                    <td style={td({ color: 'var(--text)', fontWeight: '600' })}>{p.name}</td>
+                    <td style={td({ color: 'var(--muted)' })}>{p.qty}</td>
+                    <td style={td({ color: 'var(--muted)' })}>{p.txCount}</td>
+                    <td style={td({ color: '#03a9f4', fontWeight: '700' })}>£{p.revenue.toFixed(2)}</td>
+                    <td style={td({ color: 'var(--muted)' })}>{p.qty > 0 ? '£' + (p.revenue / p.qty).toFixed(2) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -1,10 +1,10 @@
 import { db } from './firebase';
-import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp, orderBy } from 'firebase/firestore';
 
 const TENANT = 'tenants/whitecross';
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────
-export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, note, splitSecond, splitAmount }) {
+export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, note, splitSecond, splitAmount, soldProducts, serviceCharge }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
@@ -15,6 +15,17 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     paidAmount: total,
     discount: discount || 0,
     tip: tip || 0,
+    serviceCharge: serviceCharge || 0,
+    soldProducts: Array.isArray(soldProducts)
+      ? soldProducts
+          .filter((p) => p && p.qty > 0)
+          .map((p) => ({
+            productId: p.productId || p.id || '',
+            name: p.name || '',
+            price: parseFloat(p.price) || 0,
+            qty: parseInt(p.qty, 10) || 0,
+          }))
+      : [],
     note: note || '',
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
@@ -30,7 +41,7 @@ export async function saveUnpaidBooking({ bookingId }) {
 }
 
 // ── WALK-IN ───────────────────────────────────────────────────────────────
-export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source, duration: durationParam }) {
+export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source, duration: durationParam, soldProducts }) {
   const bookingId = 'WCB-' + Date.now();
   const months = { January:0, February:1, March:2, April:3, May:4, June:5, July:6, August:7, September:8, October:9, November:10, December:11 };
   const parts = date.split(' ');
@@ -56,9 +67,60 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
     paymentType: paymentType || 'CASH',
     price: price || 0,
     paidAmount: '',
+    soldProducts: Array.isArray(soldProducts)
+      ? soldProducts
+          .filter((p) => p && p.qty > 0)
+          .map((p) => ({
+            productId: p.productId || p.id || '',
+            name: p.name || '',
+            price: parseFloat(p.price) || 0,
+            qty: parseInt(p.qty, 10) || 0,
+          }))
+      : [],
     source: source || 'Walk-in',
     createdAt: Timestamp.fromDate(new Date()),
   });
+  return bookingId;
+}
+
+export async function createProductSale({ clientName, clientEmail, clientPhone, barber, soldProducts, paymentMethod, note }) {
+  const bookingId = 'SALE-' + Date.now();
+  const now = new Date();
+  const validProducts = (Array.isArray(soldProducts) ? soldProducts : [])
+    .filter((p) => p && p.qty > 0)
+    .map((p) => ({
+      productId: p.productId || p.id || '',
+      name: p.name || '',
+      price: parseFloat(p.price) || 0,
+      qty: parseInt(p.qty, 10) || 0,
+    }));
+
+  const total = validProducts.reduce((sum, p) => sum + (parseFloat(p.price) || 0) * (parseInt(p.qty, 10) || 0), 0);
+
+  await addDoc(collection(db, `${TENANT}/bookings`), {
+    bookingId,
+    tenantId: 'whitecross',
+    clientName: clientName || 'Walk-in',
+    clientEmail: clientEmail || '',
+    clientPhone: clientPhone || '',
+    barberId: barber || '',
+    serviceId: '',
+    startTime: Timestamp.fromDate(now),
+    endTime: Timestamp.fromDate(now),
+    status: 'CHECKED_OUT',
+    paymentMethod: paymentMethod || 'CASH',
+    paymentType: paymentMethod || 'CASH',
+    price: 0,
+    paidAmount: total,
+    discount: 0,
+    tip: 0,
+    soldProducts: validProducts,
+    note: note || '',
+    source: 'Product Sale',
+    checkedOutAt: Timestamp.fromDate(now),
+    createdAt: Timestamp.fromDate(now),
+  });
+
   return bookingId;
 }
 
@@ -135,8 +197,16 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
   // Keep amount fields in sync with edited service price for all statuses.
   if (currentStatus === 'CHECKED_OUT' || currentStatus === 'UNPAID') {
     updatePayload.paidAmount = price ?? 0;
+    updatePayload.discount = 0;
+    updatePayload.tip = 0;
+    updatePayload.splitSecond = '';
+    updatePayload.splitAmount = 0;
   } else {
     updatePayload.paidAmount = '';
+    updatePayload.discount = 0;
+    updatePayload.tip = 0;
+    updatePayload.splitSecond = '';
+    updatePayload.splitAmount = 0;
   }
 
   await updateDoc(docRef, updatePayload);
@@ -144,6 +214,17 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
 
 // ── DELETE BOOKING ─────────────────────────────────────────────────────────
 export async function deleteBooking(bookingId) {
+  if (!bookingId) throw new Error('Booking id is required');
+
+  // 1) Try direct document id delete first.
+  const directRef = doc(db, `${TENANT}/bookings`, String(bookingId));
+  const directSnap = await getDoc(directRef);
+  if (directSnap.exists()) {
+    await deleteDoc(directRef);
+    return;
+  }
+
+  // 2) Fallback to records that store bookingId as a field.
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
@@ -173,4 +254,42 @@ export async function seedBarbers() {
   for (const barber of barbers) {
     await setDoc(doc(db, 'tenants/whitecross/barbers', barber.id), barber);
   }
+}
+
+// ── PRODUCTS ───────────────────────────────────────────────────────────────
+export async function getProducts() {
+  const snap = await getDocs(query(collection(db, `${TENANT}/products`), orderBy('order', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function addProduct({ name, price, description, imageUrl, category, inStock, active, order }) {
+  const ref = await addDoc(collection(db, `${TENANT}/products`), {
+    name, price: parseFloat(price) || 0, description: description || '',
+    imageUrl: imageUrl || '', category: category || 'Other',
+    inStock: inStock !== false, active: active !== false,
+    order: parseInt(order) || 0,
+    createdAt: Timestamp.fromDate(new Date()),
+    updatedAt: Timestamp.fromDate(new Date()),
+  });
+  return ref.id;
+}
+
+export async function updateProduct(productId, data) {
+  await updateDoc(doc(db, `${TENANT}/products`, productId), {
+    ...data,
+    price: parseFloat(data.price) || 0,
+    order: parseInt(data.order) || 0,
+    updatedAt: Timestamp.fromDate(new Date()),
+  });
+}
+
+export async function deleteProduct(productId) {
+  await deleteDoc(doc(db, `${TENANT}/products`, productId));
+}
+
+export async function toggleProductField(productId, field, value) {
+  await updateDoc(doc(db, `${TENANT}/products`, productId), {
+    [field]: value,
+    updatedAt: Timestamp.fromDate(new Date()),
+  });
 }

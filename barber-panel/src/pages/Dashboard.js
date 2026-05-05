@@ -2,7 +2,7 @@ import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config from '../config';
-import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow } from '../firestoreActions';
+import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale } from '../firestoreActions';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -14,8 +14,24 @@ function normalizeBookingSource(raw) {
   if (n === 'booksy') return 'Booksy';
   if (n === 'fresha') return 'Fresha';
   if (n === 'website') return 'Website';
+  if (n === 'product sale' || n === 'product_sale' || n === 'productsale') return 'Product Sale';
   if (n === 'walk-in' || n === 'walk_in' || n === 'walkin' || n === 'historical' || n === 'manual') return 'Walk-in';
   return String(raw || '').trim();
+}
+
+function normalizeSoldProducts(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((p) => ({
+      productId: p?.productId || p?.id || '',
+      name: p?.name || 'Product',
+      price: parseFloat(String(p?.price || 0).replace('£', '')) || 0,
+      qty: parseInt(p?.qty, 10) || 0,
+    }))
+    .filter((p) => p.qty > 0);
+}
+
+function getProductsTotal(list) {
+  return normalizeSoldProducts(list).reduce((sum, p) => sum + p.price * p.qty, 0);
 }
 
 function normalizeBookingStatus(raw) {
@@ -25,14 +41,59 @@ function normalizeBookingStatus(raw) {
 }
 
 function getDisplayedAmount(booking) {
-  const status = normalizeBookingStatus(booking?.status);
-  const usePaid = status === 'CHECKED_OUT' || status === 'UNPAID';
-  return usePaid ? (booking?.paidAmount ?? booking?.price ?? '') : (booking?.price ?? booking?.paidAmount ?? '');
+  // Always prefer the live service config price so stale Firestore values don't surface
+  const svc = config.services ? config.services.find(s => s.id === booking?.service) : null;
+  if (svc) return svc.price;
+  const hasPrice = booking?.price !== undefined && booking?.price !== null && String(booking.price) !== '';
+  if (hasPrice) return booking.price;
+  return booking?.paidAmount ?? '';
 }
 
 function isBarberBookingDisabled(barber) {
   if (!barber) return false;
   return barber.active === false;
+}
+
+function getAvailableBarbersForDate(barbers, date) {
+  const targetDate = date || new Date();
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][targetDate.getDay()];
+  return (barbers || []).filter((barber) => {
+    if (isBarberBookingDisabled(barber)) return false;
+    if (barber.workingDays && barber.workingDays.length > 0 && !barber.workingDays.includes(dayName)) return false;
+    if (barber.dayHours && barber.dayHours[dayName] && barber.dayHours[dayName].closed) return false;
+    return true;
+  });
+}
+
+function getExistingRangeMinutes(booking) {
+  const start = convertTo24(booking.time || booking.startTime || '');
+  if (!Number.isFinite(start)) return null;
+
+  if (booking.status === 'BLOCKED') {
+    const end = convertTo24(booking.endTime || '');
+    return { start, end: Number.isFinite(end) && end > start ? end : start + 60 };
+  }
+
+  const service = config.services ? config.services.find(s => s.id === booking.service) : null;
+  const duration = service ? (parseInt(service.duration, 10) || 30) : 30;
+  return { start, end: start + duration };
+}
+
+function hasTimeConflict(existingBookings, options) {
+  const { dateValue, barberValue, startMinutes, durationMinutes, ignoreBookingId } = options;
+  const endMinutes = startMinutes + durationMinutes;
+
+  return (existingBookings || []).some((booking) => {
+    if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW' || booking.status === 'DELETED' || booking.status === 'CHECKED_OUT' || booking.status === 'COMPLETED') return false;
+    if (ignoreBookingId && booking.bookingId === ignoreBookingId) return false;
+    if ((booking.barber || '').toLowerCase() !== barberValue) return false;
+    if (booking.date !== dateValue) return false;
+
+    const existingRange = getExistingRangeMinutes(booking);
+    if (!existingRange) return false;
+
+    return startMinutes < existingRange.end && endMinutes > existingRange.start;
+  });
 }
 
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
@@ -168,8 +229,174 @@ const COUNTRY_CODES = [
   { code: '+971', flag: 'AE' },
 ];
 
+function ProductSelector({ products, value, onChange }) {
+  const [query, setQuery] = useState('');
+  const normalized = normalizeSoldProducts(value);
+  const qtyById = normalized.reduce((acc, p) => {
+    acc[p.productId] = p.qty;
+    return acc;
+  }, {});
+
+  const shown = (products || []).filter((p) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return String(p.name || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q);
+  });
+
+  const setQty = (product, qty) => {
+    const next = normalizeSoldProducts([
+      ...normalized.filter((p) => p.productId !== product.id),
+      ...(qty > 0 ? [{ productId: product.id, name: product.name, price: parseFloat(product.price) || 0, qty }] : []),
+    ]);
+    onChange(next);
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search products..."
+        style={{ width:'100%', padding:'8px 10px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.78rem', outline:'none', boxSizing:'border-box' }}
+      />
+      <div style={{ maxHeight:'220px', overflowY:'auto', border:'1px solid var(--border)', borderRadius:'10px', background:'var(--card)' }}>
+        {shown.length === 0 && (
+          <div style={{ padding:'12px', fontSize:'0.75rem', color:'var(--muted)', textAlign:'center' }}>No products found</div>
+        )}
+        {shown.map((p) => {
+          const qty = qtyById[p.id] || 0;
+          const disabled = p.active === false || p.inStock === false;
+          return (
+            <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 10px', borderBottom:'1px solid var(--border)', opacity:disabled?0.45:1 }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:'0.78rem', color:'var(--text)', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                <div style={{ fontSize:'0.65rem', color:'var(--muted)' }}>£{(parseFloat(p.price) || 0).toFixed(2)}{p.category ? ' · ' + p.category : ''}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                <button type="button" disabled={disabled || qty <= 0} onClick={() => setQty(p, Math.max(0, qty - 1))}
+                  style={{ width:'22px', height:'22px', borderRadius:'6px', border:'1px solid var(--border)', background:'transparent', color:'var(--text)', cursor:disabled||qty<=0?'not-allowed':'pointer' }}>-</button>
+                <span style={{ minWidth:'16px', textAlign:'center', fontSize:'0.78rem', color: qty > 0 ? '#d4af37' : 'var(--muted)', fontWeight:'700' }}>{qty}</span>
+                <button type="button" disabled={disabled} onClick={() => setQty(p, qty + 1)}
+                  style={{ width:'22px', height:'22px', borderRadius:'6px', border:'1px solid rgba(212,175,55,0.3)', background:'rgba(212,175,55,0.1)', color:'#d4af37', cursor:disabled?'not-allowed':'pointer' }}>+</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProductSalePanel({ barbers, products, onClose, onSaved }) {
+  const [clientName, setClientName] = useState('Walk-in');
+  const [clientPhone, setClientPhone] = useState('');
+  const [barber, setBarber] = useState(barbers[0] ? barbers[0].name.toLowerCase() : '');
+  const [soldProducts, setSoldProducts] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const total = getProductsTotal(soldProducts);
+
+  const handleSave = async () => {
+    if (!soldProducts.length || total <= 0) return;
+    setSaving(true);
+    try {
+      const bookingId = await createProductSale({
+        clientName: clientName.trim() || 'Walk-in',
+        clientPhone: clientPhone.trim(),
+        barber,
+        soldProducts,
+        paymentMethod,
+        note: note.trim(),
+      });
+
+      if (onSaved) {
+        onSaved({
+          bookingId,
+          name: clientName.trim() || 'Walk-in',
+          phone: clientPhone.trim(),
+          barber,
+          service: '',
+          price: 0,
+          paidAmount: total,
+          soldProducts,
+          status: 'CHECKED_OUT',
+          paymentMethod,
+          source: 'Product Sale',
+          date: formatDateKey(new Date()),
+          time: new Date().toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase(),
+        });
+      }
+      onClose();
+    } catch (err) {
+      console.error('Product sale save error:', err);
+      alert('Could not save product sale.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ width:'340px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 200px)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(212,175,55,0.04)' }}>
+        <span style={{ fontSize:'0.85rem', fontWeight:'700', color:'#d4af37' }}>🛒 Product Sale</span>
+        <button onClick={onClose} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1rem' }}>x</button>
+      </div>
+      <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Client</label>
+          <input value={clientName} onChange={(e)=>setClientName(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
+        </div>
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Phone (optional)</label>
+          <input value={clientPhone} onChange={(e)=>setClientPhone(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
+        </div>
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Sold by</label>
+          <select value={barber} onChange={(e)=>setBarber(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box', cursor:'pointer' }}>
+            {barbers.map((b)=><option key={b.id} value={b.name.toLowerCase()}>{b.name}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Products</label>
+          <ProductSelector products={products} value={soldProducts} onChange={setSoldProducts} />
+        </div>
+
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Payment</label>
+          <select value={paymentMethod} onChange={(e)=>setPaymentMethod(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box', cursor:'pointer' }}>
+            <option value="CASH">Cash</option>
+            <option value="CARD">Card</option>
+            <option value="VOUCHER">Voucher</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Note (optional)</label>
+          <input value={note} onChange={(e)=>setNote(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
+        </div>
+
+        <div style={{ padding:'10px 12px', borderRadius:'8px', border:'1px solid rgba(212,175,55,0.25)', background:'rgba(212,175,55,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span style={{ fontSize:'0.78rem', color:'var(--muted)' }}>Total</span>
+          <span style={{ fontSize:'0.95rem', color:'#d4af37', fontWeight:'800' }}>£{total.toFixed(2)}</span>
+        </div>
+
+        <div style={{ display:'flex', gap:'8px' }}>
+          <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving || total <= 0}
+            style={{ flex:2, padding:'11px', background:saving || total <= 0 ? 'rgba(212,175,55,0.25)' : 'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving || total <= 0 ? 'var(--muted)' : '#000', cursor:saving || total <= 0 ? 'not-allowed' : 'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+            {saving ? 'Saving...' : 'Complete Sale'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── CHECKOUT PANEL ────────────────────────────────────────────────────────
-function CheckoutPanel({ booking, barbers, onClose, onComplete, isEdit }) {
+function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit }) {
   const [step, setStep] = useState('cart');
   const [isEditCheckout, setIsEditCheckout] = useState(false);
   const [discountType, setDiscountType] = useState('%');
@@ -187,6 +414,8 @@ function CheckoutPanel({ booking, barbers, onClose, onComplete, isEdit }) {
 
   const svc = config.services ? config.services.find(s => s.id === booking.service) : null;
   const basePrice = svc ? svc.price : (parseInt(String(booking.price || '0').replace('£', '')) || 0);
+  const [localProducts, setLocalProducts] = useState(() => normalizeSoldProducts(booking.soldProducts));
+  const productsTotal = getProductsTotal(localProducts);
   const depositAmount = booking.source === 'Booksy'
     ? (config.platforms?.booksy?.depositEnabled ? config.platforms.booksy.depositAmount : 0)
     : booking.source === 'Fresha'
@@ -194,7 +423,7 @@ function CheckoutPanel({ booking, barbers, onClose, onComplete, isEdit }) {
     : 0;
   const alreadyPaid = depositAmount;
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
-  const startingTotal = alreadyPaid > 0 ? remainingDue : basePrice;
+  const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal;
   const discountAmt = discountApplied;
   const subtotal = Math.max(0, startingTotal - discountAmt + serviceCharge);
   const tipAmt = tip;
@@ -203,9 +432,9 @@ function CheckoutPanel({ booking, barbers, onClose, onComplete, isEdit }) {
   const applyDiscount = () => {
     const val = parseFloat(discountValue) || 0;
     if (discountType === '%') {
-      setDiscountApplied(Math.round(basePrice * val / 100 * 100) / 100);
+      setDiscountApplied(Math.round(startingTotal * val / 100 * 100) / 100);
     } else {
-      setDiscountApplied(Math.min(val, basePrice));
+      setDiscountApplied(Math.min(val, startingTotal));
     }
   };
 
@@ -222,12 +451,14 @@ const handleCheckout = async (method) => {
         note,
         splitSecond,
         splitAmount,
+        soldProducts: localProducts,
+        serviceCharge,
       });
     } catch (err) {
       console.error('Checkout error:', err);
     } finally {
       setSaving(false);
-      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt });
+      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt, splitSecond, splitAmount: parseFloat(splitAmount) || 0, soldProducts: localProducts, serviceCharge });
     }
   };
  const handleSaveUnpaid = async () => {
@@ -238,7 +469,7 @@ const handleCheckout = async (method) => {
       console.error('Save unpaid error:', err);
     } finally {
       setSaving(false);
-      if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0 });
+        if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0, splitSecond: '', splitAmount: 0, soldProducts: localProducts, serviceCharge });
     }
   };
   const inp = { padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none' };
@@ -286,6 +517,25 @@ const handleCheckout = async (method) => {
                   </div>
                   <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37' }}>£{basePrice}</span>
                 </div>
+                <div style={{ padding: '12px 14px', background: 'rgba(33,150,243,0.04)', borderRadius: '12px', border: '1px solid rgba(33,150,243,0.18)' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#8bc4ff', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>Retail Products (optional)</div>
+                  {products && products.length > 0 ? (
+                    <ProductSelector products={products} value={localProducts} onChange={setLocalProducts} />
+                  ) : (
+                    localProducts.map((p, i) => (
+                      <div key={p.productId + i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: i === localProducts.length - 1 ? 0 : '6px' }}>
+                        <span style={{ fontSize:'0.76rem', color:'var(--text)' }}>{p.name} × {p.qty}</span>
+                        <span style={{ fontSize:'0.76rem', color:'#8bc4ff', fontWeight:'700' }}>£{(p.price * p.qty).toFixed(2)}</span>
+                      </div>
+                    ))
+                  )}
+                  {productsTotal > 0 && (
+                    <div style={{ marginTop:'8px', paddingTop:'8px', borderTop:'1px solid rgba(33,150,243,0.2)', display:'flex', justifyContent:'space-between' }}>
+                      <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products total</span>
+                      <span style={{ fontSize:'0.78rem', color:'#8bc4ff', fontWeight:'700' }}>£{productsTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
                 <div style={{ padding: '14px 16px', background: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   <p style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 10px', fontWeight: '600' }}>Discount</p>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -331,7 +581,7 @@ const handleCheckout = async (method) => {
                         {[
                           { label: 'Add tip', action: () => { setStep('tip'); setShowQuickActions(false); } },
                           { label: 'Add cart discount', action: () => { setShowQuickActions(false); } },
-                          { label: 'Add service charge (12.5%)', action: () => { setServiceCharge(Math.round(basePrice * 0.125 * 100) / 100); setShowQuickActions(false); } },
+                          { label: 'Add service charge (12.5%)', action: () => { setServiceCharge(Math.round(startingTotal * 0.125 * 100) / 100); setShowQuickActions(false); } },
                           { label: 'Clear note', action: () => { setNote(''); setShowQuickActions(false); } },
                         ].map(item => (
                           <button key={item.label} onClick={item.action}
@@ -464,11 +714,27 @@ const handleCheckout = async (method) => {
               </div>
               <div style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{svc ? svc.duration + 'min' : ''} · {(booking.barber || '').toUpperCase()}</div>
             </div>
+            {localProducts.length > 0 && (
+              <div style={{ padding: '10px 12px', background: 'rgba(33,150,243,0.06)', borderRadius: '10px', borderLeft: '3px solid #2196f3' }}>
+                {localProducts.map((p, i) => (
+                  <div key={p.productId + i} style={{ display:'flex', justifyContent:'space-between', marginBottom:i===localProducts.length-1?0:'4px' }}>
+                    <span style={{ fontSize:'0.72rem', color:'var(--text)' }}>{p.name} × {p.qty}</span>
+                    <span style={{ fontSize:'0.72rem', color:'#8bc4ff', fontWeight:'700' }}>£{(p.price * p.qty).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>Subtotal</span>
-                <span style={{ fontSize: '0.73rem', color: 'var(--text)' }}>£{basePrice}</span>
+                <span style={{ fontSize: '0.73rem', color: 'var(--text)' }}>£{(basePrice + productsTotal).toFixed(2)}</span>
               </div>
+              {productsTotal > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>Products</span>
+                  <span style={{ fontSize: '0.73rem', color: '#8bc4ff', fontWeight: '600' }}>£{productsTotal.toFixed(2)}</span>
+                </div>
+              )}
               {alreadyPaid > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>Deposit paid</span>
@@ -515,7 +781,7 @@ const handleCheckout = async (method) => {
   );
 }
 
-function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onViewReceipt, onStatusChange, allBookings }) {
+function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout, onAddProducts, onViewReceipt, onStatusChange, allBookings }) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -539,9 +805,9 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
   const totalVisits = allVisitDates.size;
   const isReturning = clientVisits > 0;
   const visitOrdinal = n => { if(n===1)return '1st'; if(n===2)return '2nd'; if(n===3)return '3rd'; return n+'th'; };
-  const serviceLabel = config.services ? (config.services.find(s => s.id === booking.service) || {}).name || booking.service : booking.service;
+  const serviceLabel = config.services ? (config.services.find(s => s.id === booking.service) || {}).name || booking.service || (booking.source === 'Product Sale' ? 'Product Sale' : '') : (booking.service || (booking.source === 'Product Sale' ? 'Product Sale' : ''));
   return (
-    <div style={{ width:'300px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 200px)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)', position:'relative' }}>
+    <div style={{ width:'300px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 40px)', minHeight:'200px', boxShadow:'0 8px 32px rgba(0,0,0,0.4)', position:'relative' }}>
       {deleting && (
         <div style={{ position:'absolute', inset:0, background:'rgba(10,10,8,0.88)', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'12px', borderRadius:'16px' }}>
           <div style={{ width:'36px', height:'36px', border:'3px solid rgba(255,82,82,0.2)', borderTop:'3px solid #ff5252', borderRadius:'50%', animation:'spin2 0.8s linear infinite' }} />
@@ -640,13 +906,16 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
           <button onClick={async()=>{
               if(!window.confirm('Delete this booking permanently? This cannot be undone.')) return;
               setDeleting(true);
+              let deleteOk = false;
               try {
                 await deleteBooking(booking.bookingId);
+                deleteOk = true;
               } catch(err) {
                 console.error('Delete error:', err);
+                alert('Delete failed: ' + (err?.message || 'Unknown error'));
               } finally {
                 setDeleting(false);
-                onDelete(booking);
+                if (deleteOk) onDelete(booking);
               }
             }} disabled={deleting||editing||cancelling||noShowing}
             style={{ flex:1, padding:'10px', background:'rgba(255,82,82,0.1)', border:'1px solid rgba(255,82,82,0.3)', borderRadius:'8px', color:'#ff5252', cursor:deleting||editing||cancelling||noShowing?'not-allowed':'pointer', fontSize:'0.75rem', fontWeight:'600', transition:'all 0.2s' }}
@@ -691,12 +960,18 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
         )}
         <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
           {booking.status !== 'CHECKED_OUT' ? (
-            <button onClick={onCheckout}
-              style={{ width:'100%', padding:'11px', background:'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:'#000', cursor:'pointer', fontSize:'0.82rem', fontWeight:'700', marginBottom:'2px' }}
-              onMouseEnter={e=>e.currentTarget.style.opacity='0.9'}
-              onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-              Checkout
-            </button>
+            <div style={{ display:'flex', gap:'6px', marginBottom:'2px' }}>
+              <button onClick={onAddProducts}
+                style={{ flex:1, padding:'11px', background:'rgba(33,150,243,0.1)', border:'1px solid rgba(33,150,243,0.3)', borderRadius:'8px', color:'#8bc4ff', cursor:'pointer', fontSize:'0.75rem', fontWeight:'700' }}>
+                + Products
+              </button>
+              <button onClick={onCheckout}
+                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:'#000', cursor:'pointer', fontSize:'0.82rem', fontWeight:'700' }}
+                onMouseEnter={e=>e.currentTarget.style.opacity='0.9'}
+                onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                Checkout
+              </button>
+            </div>
           ) : (
             <div style={{ width:'100%', padding:'11px', background:'rgba(76,175,80,0.1)', border:'1px solid rgba(76,175,80,0.3)', borderRadius:'8px', color:'#4caf50', fontSize:'0.82rem', fontWeight:'700', textAlign:'center', marginBottom:'2px' }}>
               Checked Out
@@ -710,6 +985,35 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'10px', background:'rgba(212,175,55,0.06)', border:'1px solid var(--border)', borderRadius:'8px', color:'#d4af37', fontSize:'0.75rem', textDecoration:'none', fontWeight:'600' }}
             onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.12)'}
             onMouseLeave={e=>e.currentTarget.style.background='rgba(212,175,55,0.06)'}>Email</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingProductsPanel({ booking, products, initialProducts, onClose, onSave }) {
+  const [selectedProducts, setSelectedProducts] = useState(normalizeSoldProducts(initialProducts));
+  const total = getProductsTotal(selectedProducts);
+
+  return (
+    <div style={{ width:'330px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(33,150,243,0.35)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 200px)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(33,150,243,0.05)' }}>
+        <span style={{ fontSize:'0.85rem', fontWeight:'700', color:'#8bc4ff' }}>🛒 Add Products</span>
+        <button onClick={onClose} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1rem' }}>x</button>
+      </div>
+      <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+        <div style={{ fontSize:'0.75rem', color:'var(--muted)' }}>Booking: <span style={{ color:'var(--text)' }}>{booking.name}</span></div>
+        <ProductSelector products={products} value={selectedProducts} onChange={setSelectedProducts} />
+        <div style={{ padding:'10px 12px', borderRadius:'8px', border:'1px solid rgba(33,150,243,0.25)', background:'rgba(33,150,243,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span style={{ fontSize:'0.78rem', color:'var(--muted)' }}>Products total</span>
+          <span style={{ fontSize:'0.95rem', color:'#8bc4ff', fontWeight:'800' }}>£{total.toFixed(2)}</span>
+        </div>
+        <div style={{ display:'flex', gap:'8px' }}>
+          <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
+          <button onClick={() => onSave(selectedProducts)}
+            style={{ flex:2, padding:'11px', background:'linear-gradient(135deg,#2196f3,#1976d2)', border:'none', borderRadius:'8px', color:'#fff', cursor:'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+            Save Products
+          </button>
         </div>
       </div>
     </div>
@@ -733,7 +1037,7 @@ function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers
       }
       return { name:preBooking.name||'', email:preBooking.email||'', phone:preBooking.phone||'', service:preBooking.service||(config.services?config.services[0].id:''), barber:(preBooking.barber||'').toLowerCase(), date:yr+'-'+mo+'-'+dy, time:preBooking.time||'9:00 AM', paymentType:preBooking.paymentType||'CASH', _countryCode:existingCode, _phoneLocal:existingLocal };
     }
-    return { name:'', email:'', phone:'', service:config.services?config.services[0].id:'', barber:preBarber?preBarber.name.toLowerCase():(barbers[0]?barbers[0].name.toLowerCase():''), date:preDate?preDate.toISOString().split('T')[0]:new Date().toISOString().split('T')[0], time:preHour!==undefined?minsToLabel(preHour*60+(preMins||0)):'9:00 AM', paymentType:'CASH', _countryCode:'+44', _phoneLocal:'' };
+    return { name:'', email:'', phone:'', service:config.services?config.services[0].id:'', barber:preBarber?preBarber.name.toLowerCase():(barbers[0]?barbers[0].name.toLowerCase():''), date:preDate?preDate.toISOString().split('T')[0]:new Date().toISOString().split('T')[0], time:preMins!==undefined?minsToLabel(preMins):(preHour!==undefined?minsToLabel(preHour*60):'9:00 AM'), paymentType:'CASH', _countryCode:'+44', _phoneLocal:'' };
   });
   const [saving, setSaving] = useState(false);
   const [allClients, setAllClients] = useState([]);
@@ -777,60 +1081,82 @@ function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Invalid email format';
   };
   const validatePhone = (phone) => {
-    if (!phone) return '';
-    const digits = String(phone).replace(/[\s+\-()]/g, '');
+    const s = String(phone || '').trim();
+    if (!s) return '';
+    if (!/^[+\d]/.test(s)) return '';
+    const digits = s.replace(/[\s+\-()]/g, '');
     return digits.length >= 10 ? '' : 'Phone number too short';
   };
-
-  const busySlots = (existingBookings || []).filter(b => {
-    if (b.status === 'CANCELLED') return false;
-    if (isEdit && b.bookingId === preBooking?.bookingId) return false;
-    const [yr2, mo2, dy2] = (form.date || '').split('-');
-    const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const formDateStr = parseInt(dy2) + ' ' + months2[parseInt(mo2)-1] + ' ' + yr2;
-    if (b.date !== formDateStr) return false;
-    if ((b.barber||'').toLowerCase() !== form.barber) return false;
-    return true;
-  }).map(b => {
-    const svc = config.services ? config.services.find(s => s.id === b.service) : null;
-    const duration = (svc && svc.duration) || 30;
-    return { start: convertTo24(b.time), end: convertTo24(b.time) + duration };
-  });
 
   const now = new Date();
   const [yr, mo, dy] = (form.date || '').split('-');
   const isFormToday = parseInt(yr)===now.getFullYear() && parseInt(mo)-1===now.getMonth() && parseInt(dy)===now.getDate();
   const formDateObj = form.date ? new Date(form.date + 'T00:00:00') : new Date();
+  const availableBarbers = getAvailableBarbersForDate(barbers, formDateObj);
   const dayNameForForm = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][formDateObj.getDay()];
   const dayHoursForForm = getEffectiveDayHours(formDateObj, dayNameForForm, config.hours, specialHours);
   const openMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.open) : 9 * 60;
   const closeMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.close) : 19 * 60;
+  const serviceForForm = config.services ? config.services.find(s => s.id === form.service) : null;
+  const durationForForm = serviceForForm ? (parseInt(serviceForForm.duration, 10) || 30) : 30;
+  const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const formDateValue = form.date ? (parseInt(dy) + ' ' + months2[parseInt(mo)-1] + ' ' + yr) : '';
   const hours = [];
   if (!dayHoursForForm.closed) {
     for (let mins = openMins; mins <= closeMins; mins += 15) {
       if (mins === closeMins) continue;
-      hours.push({ label: minsToLabel(mins) });
+      const isBusy = !!form.barber && hasTimeConflict(existingBookings, {
+        dateValue: formDateValue,
+        barberValue: form.barber,
+        startMinutes: mins,
+        durationMinutes: durationForForm,
+        ignoreBookingId: isEdit ? preBooking?.bookingId : undefined,
+      });
+      hours.push({ label: minsToLabel(mins), isBusy });
     }
   }
+
+  useEffect(() => {
+    if (!availableBarbers.some(b => b.name.toLowerCase() === form.barber)) {
+      setForm(current => ({
+        ...current,
+        barber: availableBarbers[0] ? availableBarbers[0].name.toLowerCase() : '',
+      }));
+    }
+  }, [availableBarbers, form.barber]);
+
 const handleSave = async (goCheckout = false) => {
   const eErr = validateEmail(form.email);
   const pErr = validatePhone(form.phone);
   setEmailError(eErr); setPhoneError(pErr);
   if (eErr || pErr) return;
   if (!form.name.trim() || !form.service) return;
-  const today = new Date().toISOString().split('T')[0];
-  if (!isEdit && form.date < today) { alert('Cannot book a past date.'); return; }
-  const selectedMins = convertTo24(form.time);
-  if (!isEdit && busySlots.some(slot => selectedMins >= slot.start && selectedMins < slot.end)) { alert('This time slot is already booked.'); return; }
-  setSaving(true);
-  const service = config.services ? config.services.find(s => s.id === form.service) : null;
+  if (!availableBarbers.some(b => b.name.toLowerCase() === form.barber)) {
+    alert('Selected barber is not available on this day. Please choose an available barber.');
+    return;
+  }
+  if (dayHoursForForm && dayHoursForForm.closed) { alert('The shop is closed on this day. No bookings can be made.'); return; }
+  const _selMinsCheck = convertTo24(form.time);
+  if (_selMinsCheck < openMins || _selMinsCheck >= closeMins) { alert('Selected time is outside working hours (' + minsToLabel(openMins) + '\u2013' + minsToLabel(closeMins) + '). Please choose a valid time slot.'); return; }
+  const service = serviceForForm;
   const price = service ? service.price : 0;
   const duration = service ? (parseInt(service.duration) || 30) : 30;
   const [yr2, mo2, dy2] = form.date.split('-');
   const months2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dateStr = parseInt(dy2) + ' ' + months2[parseInt(mo2)-1] + ' ' + yr2;
+  const today = new Date().toISOString().split('T')[0];
+  if (!isEdit && form.date < today) { alert('Cannot book a past date.'); return; }
+  const selectedMins = convertTo24(form.time);
+  if (hasTimeConflict(existingBookings, {
+    dateValue: dateStr,
+    barberValue: form.barber,
+    startMinutes: selectedMins,
+    durationMinutes: duration,
+    ignoreBookingId: isEdit ? preBooking?.bookingId : undefined,
+  })) { alert('This time slot is already blocked or booked.'); return; }
+  setSaving(true);
   const shouldSyncPaidAmount = isEdit && (preBooking?.status === 'CHECKED_OUT' || preBooking?.status === 'UNPAID');
-  const bookingData = { name:form.name, email:form.email||'', phone:form.phone||'Walk-in', date:dateStr, time:form.time, service:form.service, barber:form.barber, paymentType:form.paymentType||'CASH', status:'CONFIRMED', bookingId:isEdit?preBooking.bookingId:'WCB-'+Date.now(), price:price, paidAmount:shouldSyncPaidAmount?price:'', remaining:'Fully paid', source:isEdit?(preBooking.source||'Walk-in'):'Walk-in' };
+  const bookingData = { name:form.name, email:form.email||'', phone:form.phone||'', date:dateStr, time:form.time, service:form.service, barber:form.barber, paymentType:form.paymentType||'CASH', status:isEdit?(preBooking.status||'CONFIRMED'):'CONFIRMED', bookingId:isEdit?preBooking.bookingId:'WCB-'+Date.now(), price:price, paidAmount:shouldSyncPaidAmount?price:'', discount:shouldSyncPaidAmount?0:(preBooking?.discount||0), tip:shouldSyncPaidAmount?0:(preBooking?.tip||0), splitSecond:shouldSyncPaidAmount?'':(preBooking?.splitSecond||''), splitAmount:shouldSyncPaidAmount?0:(preBooking?.splitAmount||0), remaining:'Fully paid', source:isEdit?(preBooking.source||'Walk-in'):'Walk-in' };
   try {
     if (isEdit) {
       await editBooking({
@@ -864,9 +1190,8 @@ const handleSave = async (goCheckout = false) => {
     if (onSaved) onSaved(bookingData, goCheckout);
     if (!goCheckout && onClose) onClose();
   } catch (err) {
-    console.log('Save note:', err);
-    if (onSaved) onSaved(bookingData, goCheckout);
-    if (!goCheckout && onClose) onClose();
+    console.error('Save booking failed:', err);
+    alert('Could not save booking changes. Please try again.');
   } finally { setSaving(false); }
 };
   const inp = { width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' };
@@ -938,8 +1263,13 @@ const handleSave = async (goCheckout = false) => {
         </div>
         <div>
           <label style={lbl}>Barber</label>
+          {availableBarbers.length === 0 && (
+            <div style={{ marginBottom:'8px', padding:'10px 12px', background:'rgba(255,82,82,0.08)', border:'1px solid rgba(255,82,82,0.25)', borderRadius:'8px', fontSize:'0.72rem', color:'#ff8a80' }}>
+              No barbers are available for this day.
+            </div>
+          )}
           <div style={{ display:'flex', gap:'6px' }}>
-            {barbers.map(b=>(
+            {availableBarbers.map(b=>(
               <button key={b.id} onClick={()=>setForm({...form,barber:b.name.toLowerCase()})}
                 style={{ flex:1, padding:'9px', borderRadius:'8px', border:'1px solid '+(form.barber===b.name.toLowerCase()?b.color:'var(--border)'), background:form.barber===b.name.toLowerCase()?b.color+'20':'transparent', color:form.barber===b.name.toLowerCase()?b.color:'var(--muted)', cursor:'pointer', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.2s', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
                 <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
@@ -965,13 +1295,13 @@ const handleSave = async (goCheckout = false) => {
         </div>
         <div style={{ display:'flex', gap:'8px', paddingTop:'4px' }}>
           <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
-            <button onClick={()=>handleSave(false)} disabled={saving||!form.name.trim()}            
-            style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:saving||!form.name.trim()?'not-allowed':'pointer', fontWeight:'600', fontSize:'0.82rem' }}>
+            <button onClick={()=>handleSave(false)} disabled={saving||!form.name.trim()||!form.barber}            
+            style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:saving||!form.name.trim()||!form.barber?'not-allowed':'pointer', fontWeight:'600', fontSize:'0.82rem' }}>
             {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Save'}
           </button>
           {!isEdit && (
-              <button onClick={()=>handleSave(true)} disabled={saving||!form.name.trim()}
-              style={{ flex:2, padding:'11px', background:saving||!form.name.trim()?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving||!form.name.trim()?'var(--muted)':'#000', cursor:saving||!form.name.trim()?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+              <button onClick={()=>handleSave(true)} disabled={saving||!form.name.trim()||!form.barber}
+              style={{ flex:2, padding:'11px', background:saving||!form.name.trim()||!form.barber?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving||!form.name.trim()||!form.barber?'var(--muted)':'#000', cursor:saving||!form.name.trim()||!form.barber?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
               Checkout
             </button>
           )}
@@ -1003,13 +1333,28 @@ function SlotPopup({ popup, onNewBooking, onWalkIn, onBlockTime, onClose }) {
     </div>
   );
 }
-function BlockTimeForm({ preBarber, preHour, preDate, barbers, specialHours, onClose, onSaved }) {
-  const [barber, setBarber] = useState(preBarber ? preBarber.name.toLowerCase() : (barbers[0] ? barbers[0].name.toLowerCase() : ''));
+function BlockTimeForm({ preBarber, preHour, preMins, preDate, barbers, specialHours, onClose, onSaved }) {
+  const formDate = preDate || new Date();
+  const availableBarbers = getAvailableBarbersForDate(barbers, formDate);
+  const [barber, setBarber] = useState(() => {
+    const preferredBarber = preBarber ? preBarber.name.toLowerCase() : '';
+    const hasPreferredBarber = availableBarbers.some(b => b.name.toLowerCase() === preferredBarber);
+    if (hasPreferredBarber) return preferredBarber;
+    return availableBarbers[0] ? availableBarbers[0].name.toLowerCase() : '';
+  });
   const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState('');
+  const [wholeDay, setWholeDay] = useState(false);
   const date = preDate ? (preDate.getDate() + ' ' + preDate.toLocaleDateString('en-GB', {month:'long'}) + ' ' + preDate.getFullYear()) : formatDateKey(new Date());
-  const defaultTime = preHour !== undefined ? minsToLabel(preHour * 60) : '9:00 AM';
+  const defaultTime = preMins !== undefined ? minsToLabel(preMins) : (preHour !== undefined ? minsToLabel(preHour * 60) : '9:00 AM');
   const [startTime, setStartTime] = useState(defaultTime);
-  const [endTime, setEndTime] = useState(preHour !== undefined ? minsToLabel((preHour + 1) * 60) : '10:00 AM');
+  const [endTime, setEndTime] = useState(preMins !== undefined ? minsToLabel(preMins + 60) : (preHour !== undefined ? minsToLabel(preHour * 60 + 60) : '10:00 AM'));
+
+  useEffect(() => {
+    if (!availableBarbers.some(b => b.name.toLowerCase() === barber)) {
+      setBarber(availableBarbers[0] ? availableBarbers[0].name.toLowerCase() : '');
+    }
+  }, [availableBarbers, barber]);
 
   const dayNameForForm = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(preDate || new Date()).getDay()];
   const dayHoursForForm = getEffectiveDayHours((preDate || new Date()), dayNameForForm, config.hours, specialHours);
@@ -1023,23 +1368,32 @@ function BlockTimeForm({ preBarber, preHour, preDate, barbers, specialHours, onC
     }
   }
 
+  useEffect(() => {
+    if (wholeDay && !dayHoursForForm.closed) {
+      setStartTime(minsToLabel(openMins));
+      setEndTime(minsToLabel(closeMins));
+    }
+  }, [wholeDay, openMins, closeMins, dayHoursForForm.closed]);
+
 const handleSave = async () => {
-    const startMins = convertTo24(startTime);
-    const endMins = convertTo24(endTime);
+    const startMins = wholeDay ? openMins : convertTo24(startTime);
+    const endMins = wholeDay ? closeMins : convertTo24(endTime);
     if (endMins <= startMins) {
       alert('End time must be after start time');
       return;
     }
     setSaving(true);
+    var resolvedStartTime = wholeDay ? minsToLabel(openMins) : startTime;
+    var resolvedEndTime = wholeDay ? minsToLabel(closeMins) : endTime;
     try {
       const blockId = await blockTime({
         date,
-        startTime,
-        endTime,
+        startTime: resolvedStartTime,
+        endTime: resolvedEndTime,
         barber,
-        note: '',
+        note: note.trim(),
       });
-      if (onSaved) onSaved({ bookingId: blockId, status: 'BLOCKED', barber, date, time: startTime, endTime });
+      if (onSaved) onSaved({ bookingId: blockId, status: 'BLOCKED', barber, date, time: resolvedStartTime, endTime: resolvedEndTime, note: note.trim() });
       if (onClose) onClose();
     } catch(err) {
       console.error('BlockTime error:', err);
@@ -1066,8 +1420,13 @@ const handleSave = async () => {
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'14px' }}>
         <div>
           <label style={lbl}>Barber</label>
+          {availableBarbers.length === 0 && (
+            <div style={{ marginBottom:'8px', padding:'10px 12px', background:'rgba(255,82,82,0.08)', border:'1px solid rgba(255,82,82,0.25)', borderRadius:'8px', fontSize:'0.72rem', color:'#ff8a80' }}>
+              No barbers are available for this day.
+            </div>
+          )}
           <div style={{ display:'flex', gap:'6px' }}>
-            {barbers.map(b => (
+            {availableBarbers.map(b => (
               <button key={b.id} onClick={() => setBarber(b.name.toLowerCase())}
                 style={{ flex:1, padding:'9px', borderRadius:'8px', border:'1px solid '+(barber===b.name.toLowerCase()?b.color:'var(--border)'), background:barber===b.name.toLowerCase()?b.color+'20':'transparent', color:barber===b.name.toLowerCase()?b.color:'var(--muted)', cursor:'pointer', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.2s', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
                 <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
@@ -1075,28 +1434,45 @@ const handleSave = async () => {
             ))}
           </div>
         </div>
+        <div>
+          <label style={lbl}>Block Type</label>
+          <div style={{ display:'flex', gap:'6px' }}>
+            <button type="button" onClick={() => setWholeDay(false)}
+              style={{ flex:1, padding:'9px', borderRadius:'8px', border:'1px solid '+(!wholeDay?'#d4af37':'var(--border)'), background:!wholeDay?'rgba(212,175,55,0.12)':'transparent', color:!wholeDay?'#d4af37':'var(--muted)', cursor:'pointer', fontSize:'0.78rem', fontWeight:'600' }}>
+              Hours
+            </button>
+            <button type="button" onClick={() => setWholeDay(true)}
+              style={{ flex:1, padding:'9px', borderRadius:'8px', border:'1px solid '+(wholeDay?'#ff5252':'var(--border)'), background:wholeDay?'rgba(255,82,82,0.12)':'transparent', color:wholeDay?'#ff8a80':'var(--muted)', cursor:'pointer', fontSize:'0.78rem', fontWeight:'600' }}>
+              Whole Day
+            </button>
+          </div>
+        </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
           <div>
             <label style={lbl}>From</label>
-            <select value={startTime} onChange={e => setStartTime(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
+            <select value={startTime} onChange={e => setStartTime(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={wholeDay || dayHoursForForm.closed || !hours.length}>
               {hours.map(h => <option key={h.label} value={h.label}>{h.label}</option>)}
             </select>
           </div>
           <div>
             <label style={lbl}>To</label>
-            <select value={endTime} onChange={e => setEndTime(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
+            <select value={endTime} onChange={e => setEndTime(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={wholeDay || dayHoursForForm.closed || !hours.length}>
               {hours.map(h => <option key={h.label} value={h.label}>{h.label}</option>)}
             </select>
           </div>
         </div>
+        <div>
+          <label style={lbl}>Reason <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder={wholeDay ? 'Day off, holiday, training...' : 'Break, meeting, late start...'} style={inp} />
+        </div>
         <div style={{ padding:'10px 12px', background:'rgba(255,82,82,0.06)', borderRadius:'8px', border:'1px solid rgba(255,82,82,0.2)' }}>
-          <span style={{ fontSize:'0.75rem', color:'var(--muted)' }}>Blocking: <span style={{ color:'#ff5252', fontWeight:'600' }}>{startTime} - {endTime}</span></span>
+          <span style={{ fontSize:'0.75rem', color:'var(--muted)' }}>Blocking: <span style={{ color:'#ff5252', fontWeight:'600' }}>{wholeDay ? 'Whole day (' + minsToLabel(openMins) + ' - ' + minsToLabel(closeMins) + ')' : startTime + ' - ' + endTime}</span>{note.trim() ? ' · ' + note.trim() : ''}</span>
         </div>
         <div style={{ display:'flex', gap:'8px', paddingTop:'4px' }}>
           <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving}
-            style={{ flex:2, padding:'11px', background:saving?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving?'var(--muted)':'#000', cursor:saving?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
-            {saving ? 'Blocking...' : 'Block'}
+          <button onClick={handleSave} disabled={saving || !barber || availableBarbers.length === 0}
+            style={{ flex:2, padding:'11px', background:saving||!barber||availableBarbers.length===0?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving||!barber||availableBarbers.length===0?'var(--muted)':'#000', cursor:saving||!barber||availableBarbers.length===0?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+            {saving ? 'Blocking...' : wholeDay ? 'Set Day Off' : 'Block'}
           </button>
         </div>
       </div>
@@ -1104,21 +1480,35 @@ const handleSave = async () => {
   );
 }
 
-function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, specialHours, onClose, onSaved }) {
+function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, specialHours, products, onClose, onSaved }) {
+  const formDate = preDate || new Date();
+  const availableBarbers = getAvailableBarbersForDate(barbers, formDate);
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
   const [showClientList, setShowClientList] = useState(false);
   const [service, setService] = useState(config.services ? config.services[0].id : '');
-  const [barber, setBarber] = useState(preBarber ? preBarber.name.toLowerCase() : (barbers[0] ? barbers[0].name.toLowerCase() : ''));
+  const [barber, setBarber] = useState(() => {
+    const preferredBarber = preBarber ? preBarber.name.toLowerCase() : '';
+    const hasPreferredBarber = availableBarbers.some(b => b.name.toLowerCase() === preferredBarber);
+    if (hasPreferredBarber) return preferredBarber;
+    return availableBarbers[0] ? availableBarbers[0].name.toLowerCase() : '';
+  });
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
+  const [walkInProducts, setWalkInProducts] = useState([]);
 
   const now = new Date();
-  const defaultTime = minsToLabel(preHour !== undefined ? preHour * 60 + (preMins || 0) : Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15);
+  const defaultTime = minsToLabel(preMins !== undefined ? preMins : (preHour !== undefined ? preHour * 60 : Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15));
   const [time, setTime] = useState(defaultTime);
   const date = preDate ? (preDate.getDate() + ' ' + preDate.toLocaleDateString('en-GB', {month:'long'}) + ' ' + preDate.getFullYear()) : formatDateKey(new Date());
+
+  useEffect(() => {
+    if (!availableBarbers.some(b => b.name.toLowerCase() === barber)) {
+      setBarber(availableBarbers[0] ? availableBarbers[0].name.toLowerCase() : '');
+    }
+  }, [availableBarbers, barber]);
 
   useEffect(() => {
     const map = {};
@@ -1165,18 +1555,40 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
   const closeMins = dayHoursForForm && !dayHoursForForm.closed ? convertTo24(dayHoursForForm.close) : 19 * 60;
   const hours = [];
   if (!dayHoursForForm.closed) {
-    for (let mins = openMins; mins <= closeMins; mins += 30) {
+    for (let mins = openMins; mins <= closeMins; mins += 15) {
       if (mins === closeMins) continue;
-      hours.push({ label: minsToLabel(mins) });
+      const serviceForSlot = config.services ? config.services.find(s => s.id === service) : null;
+      const durationForSlot = serviceForSlot ? (parseInt(serviceForSlot.duration, 10) || 30) : 30;
+      const isBusy = !!barber && hasTimeConflict(existingBookings, {
+        dateValue: date,
+        barberValue: barber,
+        startMinutes: mins,
+        durationMinutes: durationForSlot,
+      });
+      hours.push({ label: minsToLabel(mins), isBusy });
     }
   }
 
   const handleSave = async (goCheckout = false) => {
-    if (!service) return;
+    if (!service || !barber) return;
+    if (dayHoursForForm && dayHoursForForm.closed) { alert('The shop is closed on this day. No bookings can be made.'); return; }
+    const _wchk = convertTo24(time);
+    if (_wchk < openMins || _wchk >= closeMins) { alert('Selected time is outside working hours (' + minsToLabel(openMins) + '\u2013' + minsToLabel(closeMins) + '). Please choose a valid time.'); return; }
     setSaving(true);
     const svc = config.services ? config.services.find(s => s.id === service) : null;
     const price = svc ? svc.price : 0;
     const duration = svc ? (parseInt(svc.duration) || 30) : 30;
+    const selectedMins = convertTo24(time);
+    if (hasTimeConflict(existingBookings, {
+      dateValue: date,
+      barberValue: barber,
+      startMinutes: selectedMins,
+      durationMinutes: duration,
+    })) {
+      setSaving(false);
+      alert('This time slot is already blocked or booked.');
+      return;
+    }
     const bookingData = {
       name: selectedClient ? selectedClient.name : (search.trim() || 'Walk-in'),
       email: selectedClient ? selectedClient.email : email.trim(),
@@ -1190,6 +1602,7 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
       paymentType: 'CASH',
       status: 'CONFIRMED',
       source: 'Walk-in',
+      soldProducts: walkInProducts.filter(p => p.qty > 0),
     };
     try {
       const bookingId = await createWalkIn(bookingData);
@@ -1286,8 +1699,13 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
         {/* Barber */}
         <div>
           <label style={lbl}>Barber</label>
+          {availableBarbers.length === 0 && (
+            <div style={{ marginBottom:'8px', padding:'10px 12px', background:'rgba(255,82,82,0.08)', border:'1px solid rgba(255,82,82,0.25)', borderRadius:'8px', fontSize:'0.72rem', color:'#ff8a80' }}>
+              No barbers are available for this day.
+            </div>
+          )}
           <div style={{ display:'flex', gap:'6px' }}>
-            {barbers.map(b => (
+            {availableBarbers.map(b => (
               <button key={b.id} onClick={() => setBarber(b.name.toLowerCase())}
                 style={{ flex:1, padding:'9px', borderRadius:'8px', border:'1px solid '+(barber===b.name.toLowerCase()?b.color:'var(--border)'), background:barber===b.name.toLowerCase()?b.color+'20':'transparent', color:barber===b.name.toLowerCase()?b.color:'var(--muted)', cursor:'pointer', fontSize:'0.78rem', fontWeight:'600', transition:'all 0.2s', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
                 <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
@@ -1299,8 +1717,8 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
         {/* Time */}
         <div>
           <label style={lbl}>Time</label>
-          <select value={time} onChange={e => setTime(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-            {hours.map(h => <option key={h.label} value={h.label}>{h.label}</option>)}
+          <select value={time} onChange={e => setTime(e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={dayHoursForForm.closed || !hours.length}>
+            {hours.map(h => <option key={h.label} value={h.label} disabled={h.isBusy}>{h.label}{h.isBusy ? ' - Busy' : ''}</option>)}
           </select>
         </div>
 
@@ -1312,15 +1730,29 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
           </div>
         )}
 
+        {/* Retail Products (optional — customer buying products on the spot) */}
+        {products && products.length > 0 && (
+          <div>
+            <label style={lbl}>Add Products <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+            <ProductSelector products={products} value={walkInProducts} onChange={setWalkInProducts} />
+            {getProductsTotal(walkInProducts) > 0 && (
+              <div style={{ marginTop:'6px', padding:'8px 12px', background:'rgba(33,150,243,0.06)', borderRadius:'8px', border:'1px solid rgba(33,150,243,0.2)', display:'flex', justifyContent:'space-between' }}>
+                <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products subtotal</span>
+                <span style={{ fontSize:'0.78rem', color:'#8bc4ff', fontWeight:'700' }}>£{getProductsTotal(walkInProducts).toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Buttons */}
         <div style={{ display:'flex', gap:'8px', paddingTop:'4px' }}>
           <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
-          <button onClick={() => handleSave(false)} disabled={saving || !service}
-            style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:saving||!service?'not-allowed':'pointer', fontWeight:'600', fontSize:'0.82rem' }}>
+          <button onClick={() => handleSave(false)} disabled={saving || !service || !barber}
+            style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'8px', color:'#d4af37', cursor:saving||!service||!barber?'not-allowed':'pointer', fontWeight:'600', fontSize:'0.82rem' }}>
             Save
           </button>
-          <button onClick={() => handleSave(true)} disabled={saving || !service}
-            style={{ flex:2, padding:'11px', background:saving||!service?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving||!service?'var(--muted)':'#000', cursor:saving||!service?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+          <button onClick={() => handleSave(true)} disabled={saving || !service || !barber}
+            style={{ flex:2, padding:'11px', background:saving||!service||!barber?'rgba(212,175,55,0.25)':'linear-gradient(135deg,#d4af37,#b8860b)', border:'none', borderRadius:'8px', color:saving||!service||!barber?'var(--muted)':'#000', cursor:saving||!service||!barber?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
             Checkout
           </button>
         </div>
@@ -1336,9 +1768,12 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
 
   const svc = config.services ? config.services.find(s => s.id === booking.service) : null;
   const basePrice = svc ? svc.price : (parseInt(String(booking.price || '0').replace('£', '')) || 0);
-  const paidAmount = parseFloat(String(booking.paidAmount || booking.price || '0').replace('£', '')) || 0;
+  const soldProducts = normalizeSoldProducts(booking.soldProducts);
+  const productsTotal = getProductsTotal(soldProducts);
   const discount = parseFloat(String(booking.discount || '0').replace('£', '').replace('-', '')) || 0;
   const tip = parseFloat(String(booking.tip || '0').replace('£', '')) || 0;
+  // Always derive total from service config price + sold products so stale paidAmount never bleeds through
+  const calculatedTotal = Math.max(0, basePrice + productsTotal - discount + tip + (parseFloat(booking.serviceCharge || 0) || 0));
   const paymentMethod = booking.paymentMethod || booking.paymentType || 'CASH';
   const barberColor = getBColor(booking.barber, barbers);
 
@@ -1353,7 +1788,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   const handleSendEmail = async () => {
     if (!booking.email) { alert('No email address for this customer.'); return; }
     setSending(true);
-    const params = new URLSearchParams({ action:'sendReceipt', bookingId:booking.bookingId, email:booking.email, name:booking.name, service:svc?svc.name:booking.service, barber:booking.barber, date:booking.date, time:booking.time, total:paidAmount, discount:discount, tip:tip, paymentMethod:paymentMethod, visits:visits });
+    const params = new URLSearchParams({ action:'sendReceipt', bookingId:booking.bookingId, email:booking.email, name:booking.name, service:svc?svc.name:booking.service, barber:booking.barber, date:booking.date, time:booking.time, total:calculatedTotal, discount:discount, tip:tip, paymentMethod:paymentMethod, visits:visits });
     try {
       await fetch(config.scriptUrl + '?' + params.toString(), { mode:'no-cors' });
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -1366,7 +1801,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   };
 
   const handlePrint = () => {
-    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div><div class="row"><span>${svc?svc.name:booking.service}</span><span>£${basePrice.toFixed(2)}</span></div>${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${paidAmount.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
+    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div><div class="row"><span>${svc?svc.name:booking.service}</span><span>£${basePrice.toFixed(2)}</span></div>${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${calculatedTotal.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
     const win = window.open('', '_blank');
     win.document.write(receiptHTML);
     win.document.close();
@@ -1400,13 +1835,31 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
             <span style={{ fontSize:'0.78rem', color:'var(--text)' }}>{svc ? svc.name : booking.service}</span>
             <span style={{ fontSize:'0.78rem', color:'var(--text)' }}>£{basePrice.toFixed(2)}</span>
           </div>
+          {soldProducts.map((p, i) => (
+            <div key={p.productId + i} style={{ display:'flex', justifyContent:'space-between' }}>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{p.name} × {p.qty}</span>
+              <span style={{ fontSize:'0.72rem', color:'#8bc4ff' }}>£{(p.price * p.qty).toFixed(2)}</span>
+            </div>
+          ))}
+          {productsTotal > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products subtotal</span>
+              <span style={{ fontSize:'0.72rem', color:'#8bc4ff' }}>£{productsTotal.toFixed(2)}</span>
+            </div>
+          )}
           {discount > 0 && (
             <div style={{ display:'flex', justifyContent:'space-between' }}>
               <span style={{ fontSize:'0.72rem', color:'#4caf50' }}>Discount</span>
               <span style={{ fontSize:'0.72rem', color:'#4caf50' }}>-£{discount.toFixed(2)}</span>
             </div>
           )}
-          {booking.source === 'Booksy' && paidAmount > 0 && (
+          {(parseFloat(booking.serviceCharge || 0) || 0) > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Service charge</span>
+              <span style={{ fontSize:'0.72rem', color:'#ff9800' }}>£{(parseFloat(booking.serviceCharge || 0) || 0).toFixed(2)}</span>
+            </div>
+          )}
+          {booking.source === 'Booksy' && calculatedTotal > 0 && (
             <>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Deposit paid</span>
@@ -1414,7 +1867,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Remaining paid</span>
-                <span style={{ fontSize:'0.72rem', color:'var(--text)' }}>£{(paidAmount - 10 - tip).toFixed(2)}</span>
+                <span style={{ fontSize:'0.72rem', color:'var(--text)' }}>£{Math.max(0, calculatedTotal - 10 - tip).toFixed(2)}</span>
               </div>
             </>
           )}
@@ -1427,7 +1880,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
         </div>
         <div style={{ borderTop:'1px solid var(--border)', paddingTop:'10px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span style={{ fontSize:'0.88rem', fontWeight:'700', color:'var(--text)' }}>Total</span>
-          <span style={{ fontSize:'1rem', fontWeight:'800', color:'#d4af37' }}>£{(booking.source === 'Booksy' ? basePrice - discount + tip : paidAmount).toFixed(2)}</span>
+          <span style={{ fontSize:'1rem', fontWeight:'800', color:'#d4af37' }}>£{calculatedTotal.toFixed(2)}</span>
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 12px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
           <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Payment</span>
@@ -1466,7 +1919,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
     </div>
   );
 }
-function TimeGrid({ date, bookings, barbers, slotHeight, specialHours, onSlotClick, onWalkIn, onBlockTime, onBookingClick, selectedBooking }) {
+function TimeGrid({ date, bookings, barbers, slotHeight, specialHours, onSlotClick, onWalkIn, onBlockTime, onBookingClick, selectedBooking, onAnySlotClick }) {
     const nowRef = useRef(null);
   const [slotPopup, setSlotPopup] = useState(null);
   const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1542,7 +1995,7 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
                 const inactive = past || isOutsideHours;
                 return (
                   <div key={slot.mins}
-                    onClick={(e) => { if (!inactive) { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
+                    onClick={(e) => { if (!inactive) { onAnySlotClick && onAnySlotClick(); const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
                     style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.06)', cursor:inactive?'default':'pointer', background:inactive?'var(--slot-past)':'var(--slot-bg)', transition:'background 0.1s', position:'relative' }}
                     onMouseEnter={e=>{ if(!inactive) e.currentTarget.style.background='var(--slot-hover)'; }}
                     onMouseLeave={e=>e.currentTarget.style.background=inactive?'var(--slot-past)':'var(--slot-bg)'}>
@@ -1562,7 +2015,7 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
                     <div key={i} onClick={e => e.stopPropagation()}
                       style={{ position:'absolute', top:top+2, left:4, right:4, height, background:'rgba(255,82,82,0.1)', border:'1px solid rgba(255,82,82,0.3)', borderLeft:'3px solid #ff5252', borderRadius:'6px', padding:'4px 8px', overflow:'hidden', zIndex:2, cursor:'default' }}>
                       <div style={{ fontSize:'0.68rem', fontWeight:'700', color:'#ff5252', marginBottom:'1px' }}>🚫 {(b.time || b.startTime)}{b.endTime ? ' → ' + b.endTime : ''}</div>
-                      <div style={{ fontSize:'0.65rem', color:'rgba(255,82,82,0.7)' }}>{b.service || 'Blocked'}</div>
+                      <div style={{ fontSize:'0.65rem', color:'rgba(255,82,82,0.7)' }}>{b.note || b.service || 'Blocked'}</div>
                     </div>
                   );
                 }
@@ -1611,10 +2064,14 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
 
 export default function Dashboard() {
   const [bookings, setBookings] = useState([]); 
+  const [products, setProducts] = useState([]);
+  const [bookingProductsDraft, setBookingProductsDraft] = useState({});
   const [specialHours, setSpecialHours] = useState([]);
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showBlockTime, setShowBlockTime] = useState(false);
+  const [showBookingProducts, setShowBookingProducts] = useState(false);
+  const [showProductSale, setShowProductSale] = useState(false);
   const [isEditCheckout, setIsEditCheckout] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -1640,12 +2097,23 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, []);
 
+useEffect(() => {
+  if (barberFilter === 'all') return;
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dayName = DAYS[selectedDate.getDay()];
+  const stillActive = barbers.find(b => b.id === barberFilter &&
+    (!b.workingDays || b.workingDays.length === 0 || b.workingDays.includes(dayName)) &&
+    !(b.dayHours && b.dayHours[dayName] && b.dayHours[dayName].closed));
+  if (!stillActive) setBarberFilter('all');
+}, [selectedDate, barbers, barberFilter]);
+
   const fetchAll = async () => {
     try {
-      const [snapshot, barbersSnap, settingsSnap] = await Promise.all([
+      const [snapshot, barbersSnap, settingsSnap, productsList] = await Promise.all([
         getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
         getDocs(collection(db, 'tenants/whitecross/barbers')),
         getDoc(doc(db, 'tenants/whitecross/settings/settings')).catch(() => null),
+        getProductsAction().catch(() => []),
       ]);
 
       const settingsData = settingsSnap && settingsSnap.exists && settingsSnap.exists() ? settingsSnap.data() : {};
@@ -1653,6 +2121,7 @@ useEffect(() => {
 
       const fetchedBarbers = barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
       setBarbers(fetchedBarbers);
+      setProducts((Array.isArray(productsList) ? productsList : []).filter((p) => p && p.active !== false));
 
       const barberNameById = fetchedBarbers.reduce((acc, b) => {
         if (!b?.name) return acc;
@@ -1691,6 +2160,11 @@ useEffect(() => {
 
       const normalizedBookings = fetchedBookings.map(b => ({ ...b, name: getBookingName(b) }));
       setBookings(normalizedBookings);
+      setSelectedBooking(prev => {
+        if (!prev) return prev;
+        const fresh = normalizedBookings.find(b => b.bookingId === prev.bookingId);
+        return fresh || prev;
+      });
     } catch (err) {
       console.error('fetchAll error:', err);
     } finally {
@@ -1698,6 +2172,45 @@ useEffect(() => {
       setSelectedDate(d => new Date(d));
     }
   };
+
+  const mergeBookingLocally = useCallback((partial) => {
+    if (!partial || !partial.bookingId) return;
+    setBookings(prev => {
+      const exists = prev.some(b => b.bookingId === partial.bookingId);
+      if (exists) {
+        return prev.map(b => {
+          if (b.bookingId !== partial.bookingId) return b;
+          const merged = { ...b, ...partial };
+          return { ...merged, name: getBookingName(merged) };
+        });
+      }
+      const normalized = { paidAmount: '', ...partial, name: getBookingName(partial), status: partial.status || 'CONFIRMED' };
+      return [normalized, ...prev];
+    });
+    setSelectedBooking(prev => {
+      if (!prev || prev.bookingId !== partial.bookingId) return prev;
+      const merged = { ...prev, ...partial };
+      return { ...merged, name: getBookingName(merged) };
+    });
+  }, []);
+
+  const getDraftProductsForBooking = useCallback((booking) => {
+    if (!booking) return [];
+    const fromDraft = bookingProductsDraft[booking.bookingId];
+    if (fromDraft) return normalizeSoldProducts(fromDraft);
+    return normalizeSoldProducts(booking.soldProducts);
+  }, [bookingProductsDraft]);
+
+  const saveDraftProductsForBooking = useCallback((bookingId, soldProducts) => {
+    setBookingProductsDraft((prev) => ({
+      ...prev,
+      [bookingId]: normalizeSoldProducts(soldProducts),
+    }));
+    setSelectedBooking((prev) => {
+      if (!prev || prev.bookingId !== bookingId) return prev;
+      return { ...prev, soldProducts: normalizeSoldProducts(soldProducts) };
+    });
+  }, []);
 
   const bookingsByDate = React.useMemo(() => bookings.reduce((acc, b) => {
     if (!acc[b.date]) acc[b.date] = [];
@@ -1727,6 +2240,8 @@ const activeBarbersForDay = barbers.filter(b => {
   if (b.dayHours && b.dayHours[dayName] && b.dayHours[dayName].closed) return false;
   return true;
 });
+
+
 
 const activeBarbers = barberFilter === 'all'
   ? activeBarbersForDay
@@ -1789,15 +2304,15 @@ const activeBarbers = barberFilter === 'all'
       : MONTHS[month]+' '+year;
 
   const weekDates = getWeekDates(selectedDate);
-  const openNewBooking = (barber, hour, mins) => { setFormPreset({ barber, hour, mins, date: selectedDate }); setSelectedBooking(null); setShowForm(true); setShowWalkIn(false); setShowBlockTime(false); };
-  const handleBookingClick = (b) => { setShowForm(false); setSelectedBooking(selectedBooking?.bookingId === b.bookingId ? null : b); };
+  const openNewBooking = (barber, hour, mins) => { setFormPreset({ barber, hour, mins, date: selectedDate }); setSelectedBooking(null); setShowForm(true); setShowWalkIn(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); };
+  const handleBookingClick = (b) => { setShowForm(false); setShowWalkIn(false); setShowBlockTime(false); setShowProductSale(false); setSelectedBooking(selectedBooking?.bookingId === b.bookingId ? null : b); if (selectedBooking?.bookingId === b.bookingId) setShowBookingProducts(false); };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'14px', height:'calc(100vh - 64px)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
         <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
           {['day','week','month','custom'].map(v=>(
-            <button key={v} onClick={()=>{setView(v);setSelectedBooking(null);setShowForm(false);}}
+            <button key={v} onClick={()=>{setView(v);setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}
               style={{ padding:'8px 16px', border:'none', cursor:'pointer', background:view===v?'#d4af37':'transparent', color:view===v?'#000':'var(--muted)', fontWeight:view===v?'700':'400', fontSize:'0.82rem', textTransform:'capitalize', transition:'all 0.2s' }}>{v}</button>
           ))}
         </div>
@@ -1816,7 +2331,7 @@ const activeBarbers = barberFilter === 'all'
             {customRange.start && customRange.end && <span style={{ fontSize:'0.78rem', color:'var(--muted)' }}>{periodLabel}</span>}
           </div>
         )}
-        <button onClick={()=>{setSelectedDate(new Date());setCurrentMonth(new Date());setSelectedBooking(null);setShowForm(false);}}
+        <button onClick={()=>{setSelectedDate(new Date());setCurrentMonth(new Date());setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}
           style={{ padding:'7px 14px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'6px', color:'#d4af37', fontSize:'0.78rem', cursor:'pointer' }}>Today</button>
         <div style={{ flex:1 }} />
         <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', padding:'4px 8px' }}>
@@ -1826,7 +2341,7 @@ const activeBarbers = barberFilter === 'all'
         </div>
         <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
           <button onClick={()=>setBarberFilter('all')} style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter==='all'?'rgba(212,175,55,0.2)':'transparent', color:barberFilter==='all'?'#d4af37':'var(--muted)', fontSize:'0.78rem', fontWeight:'600' }}>All</button>
-          {barbers.map(b=>(
+          {activeBarbersForDay.map(b=>(
             <button key={b.id} onClick={()=>setBarberFilter(b.id)}
               style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter===b.id?b.color+'20':'transparent', color:barberFilter===b.id?b.color:'var(--muted)', fontSize:'0.78rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'5px', opacity:isBarberBookingDisabled(b)?0.6:1 }}>
               <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
@@ -1847,6 +2362,7 @@ const activeBarbers = barberFilter === 'all'
         <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />
         <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />
         <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />
+        <StatPill label="Product Sale" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='product sale').length} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />
       </div>
 
       {pillFilter && (()=>{
@@ -1868,8 +2384,9 @@ const activeBarbers = barberFilter === 'all'
           fresha: b=>(b.source||'').toLowerCase()==='fresha',
           website: b=>(b.source||'').toLowerCase()==='website',
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
+          productsale: b=>(b.source||'').toLowerCase()==='product sale',
         };
-        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800' };
+        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
         const filtered = pillFilter === 'needscheckout' ? needsCheckoutBookings : statsBookings.filter(filterMap[pillFilter]||filterMap.total);
         const pillColor = pillColors[pillFilter]||'#d4af37';
         return (
@@ -1924,7 +2441,7 @@ const activeBarbers = barberFilter === 'all'
               {calDays.map((d,i)=>{
                 const cnt=dayCount(d), sel=isSel(d), tod=isToday(d);
                 return (
-                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);setShowForm(false);}}}
+                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}}
                     style={{ height:'26px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'4px', cursor:d?'pointer':'default', background:sel?'#d4af37':tod?'rgba(212,175,55,0.15)':'transparent', position:'relative' }}
                     onMouseEnter={e=>{if(d&&!sel)e.currentTarget.style.background='rgba(212,175,55,0.08)';}}
                     onMouseLeave={e=>{if(d&&!sel)e.currentTarget.style.background=tod?'rgba(212,175,55,0.15)':'transparent';}}>
@@ -1968,26 +2485,44 @@ const activeBarbers = barberFilter === 'all'
         <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
 
         {/* RIGHT PANEL */}
-        <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', marginLeft:'8px' }}>
+        <div style={{ flex:1, display:'flex', gap:'0', overflowX:'hidden', overflowY:'auto', marginLeft:'8px' }}>
           {view === 'day' && (
             <>
               {loading ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)' }}>Loading...</div>
               ) : (
-                <TimeGrid date={selectedDate} bookings={getForDate(selectedDate)} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} />
+                <TimeGrid date={selectedDate} bookings={getForDate(selectedDate)} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
               )}
-              {(selectedBooking || showForm || showWalkIn || showBlockTime) && <ResizeHandle onResize={() => {}} />}
+              {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts) && <ResizeHandle onResize={() => {}} />}
               {selectedBooking && !showForm && !showWalkIn && !showBlockTime && (
                 <BookingDetail
                   booking={selectedBooking} barbers={barbers} allBookings={bookings}
                   onClose={()=>setSelectedBooking(null)}
-                  onEdit={(b)=>{ setFormPreset({booking:b,date:selectedDate}); setShowForm(true); setShowWalkIn(false); setShowBlockTime(false); }}
-                  onDelete={(b)=>{ fetchAll(); setSelectedBooking(null); }}
-                  onCheckout={()=>{ setIsEditCheckout(false); setShowCheckout(true); }}
+                  onEdit={(b)=>{ setFormPreset({booking:b,date:selectedDate}); setShowForm(true); setShowWalkIn(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); }}
+                  onDelete={(b)=>{ setBookings(prev => prev.filter(bk => bk.bookingId !== b.bookingId)); setSelectedBooking(null); fetchAll(); }}
+                  onCheckout={()=>{
+                    const draftedProducts = getDraftProductsForBooking(selectedBooking);
+                    setSelectedBooking((prev) => prev ? { ...prev, soldProducts: draftedProducts } : prev);
+                    setIsEditCheckout(false);
+                    setShowCheckout(true);
+                  }}
+                  onAddProducts={()=>{ setShowBookingProducts(true); }}
                   onViewReceipt={()=>setShowReceipt(true)}
                   onStatusChange={(bookingId, newStatus)=>{
                     setSelectedBooking(prev => prev && prev.bookingId === bookingId ? { ...prev, status: newStatus } : prev);
                     fetchAll();
+                  }}
+                />
+              )}
+              {showBookingProducts && selectedBooking && (
+                <BookingProductsPanel
+                  booking={selectedBooking}
+                  products={products}
+                  initialProducts={getDraftProductsForBooking(selectedBooking)}
+                  onClose={() => setShowBookingProducts(false)}
+                  onSave={(list) => {
+                    saveDraftProductsForBooking(selectedBooking.bookingId, list);
+                    setShowBookingProducts(false);
                   }}
                 />
               )}
@@ -1998,6 +2533,7 @@ const activeBarbers = barberFilter === 'all'
                   specialHours={specialHours}
                   onClose={()=>setShowForm(false)}
                   onSaved={(savedBooking, goCheckout)=>{
+                    mergeBookingLocally(savedBooking);
                     setTimeout(()=>fetchAll(),2000); setTimeout(()=>fetchAll(),5000);
                     if (goCheckout && savedBooking) { setSelectedBooking(savedBooking); setShowForm(false); setIsEditCheckout(false); setShowCheckout(true); }
                   }}
@@ -2007,8 +2543,10 @@ const activeBarbers = barberFilter === 'all'
                 <WalkInForm
                   preBarber={formPreset.barber} preHour={formPreset.hour} preMins={formPreset.mins} preDate={formPreset.date} barbers={barbers} existingBookings={bookings}
                   specialHours={specialHours}
+                  products={products}
                   onClose={() => setShowWalkIn(false)}
                   onSaved={(savedBooking, goCheckout) => {
+                    mergeBookingLocally(savedBooking);
                     setTimeout(() => fetchAll(), 2000); setTimeout(() => fetchAll(), 5000);
                     if (goCheckout && savedBooking) { setSelectedBooking(savedBooking); setShowWalkIn(false); setIsEditCheckout(false); setShowCheckout(true); }
                   }}
@@ -2023,7 +2561,38 @@ const activeBarbers = barberFilter === 'all'
                 />
               )}
               {showCheckout && selectedBooking && (
-                <CheckoutPanel booking={selectedBooking} barbers={barbers} isEdit={isEditCheckout} onClose={()=>setShowCheckout(false)} onComplete={()=>{ setShowCheckout(false); setSelectedBooking(null); setIsEditCheckout(false); setTimeout(()=>fetchAll(),2000); }} />
+                <CheckoutPanel
+                  booking={selectedBooking}
+                  barbers={barbers}
+                  products={products}
+                  isEdit={isEditCheckout}
+                  onClose={()=>setShowCheckout(false)}
+                  onComplete={(result)=>{
+                    if (selectedBooking && result) {
+                      mergeBookingLocally({
+                        bookingId: selectedBooking.bookingId,
+                        status: result.method === 'UNPAID' ? 'UNPAID' : 'CHECKED_OUT',
+                        paymentMethod: result.method === 'UNPAID' ? (selectedBooking.paymentMethod || '') : result.method,
+                        paidAmount: result.method === 'UNPAID' ? '' : result.total,
+                        discount: result.discount || 0,
+                        tip: result.tip || 0,
+                        splitSecond: result.splitSecond || '',
+                        splitAmount: result.splitAmount || 0,
+                        soldProducts: normalizeSoldProducts(result.soldProducts || selectedBooking.soldProducts),
+                        serviceCharge: result.serviceCharge || 0,
+                      });
+                      setBookingProductsDraft((prev) => {
+                        const next = { ...prev };
+                        delete next[selectedBooking.bookingId];
+                        return next;
+                      });
+                    }
+                    setShowCheckout(false);
+                    setSelectedBooking(null);
+                    setIsEditCheckout(false);
+                    setTimeout(()=>fetchAll(),2000);
+                  }}
+                />
               )}
               {showReceipt && selectedBooking && (
                 <ReceiptPanel booking={selectedBooking} barbers={barbers} clientData={clientData} onClose={()=>setShowReceipt(false)} onEdit={()=>{ setShowReceipt(false); setIsEditCheckout(true); setShowCheckout(true); }} />
@@ -2079,7 +2648,7 @@ const activeBarbers = barberFilter === 'all'
                 const tod=isToday(d);
                 const dayBs=d?(bookingsByDate[formatDateKey(new Date(year,month,d))]||[]).filter(b=>b.status!=='CANCELLED'&&b.status!=='BLOCKED').filter(b=>barberFilter==='all'||(b.barber||'').toLowerCase()===(barbers.find(bar=>bar.id===barberFilter)||{name:''}).name.toLowerCase()):[];
                 return (
-                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);}}}
+                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}}
                     style={{ padding:'5px', borderRight:(i+1)%7!==0?'1px solid var(--border)':'none', borderBottom:'1px solid var(--border)', cursor:d?'pointer':'default', background:tod?'rgba(212,175,55,0.04)':'transparent', minHeight:'68px' }}
                     onMouseEnter={e=>{if(d&&!tod)e.currentTarget.style.background='rgba(212,175,55,0.02)';}}
                     onMouseLeave={e=>{if(d&&!tod)e.currentTarget.style.background='transparent';}}>
@@ -2105,17 +2674,21 @@ const activeBarbers = barberFilter === 'all'
         <div style={{ position:'fixed', bottom:'32px', right:'32px', display:'flex', flexDirection:'column', gap:'8px', alignItems:'flex-end', zIndex:200 }}>
           {fabOpen && (
             <>
-              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowWalkIn(false); setShowBlockTime(false); setFormPreset({date:selectedDate}); setShowForm(true); }}
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowWalkIn(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setFormPreset({date:selectedDate}); setShowForm(true); }}
                 style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(212,175,55,0.4)', color:'#d4af37', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
                 📅 Booking
               </button>
-              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowBlockTime(false); setFormPreset({date:selectedDate}); setShowWalkIn(true); }}
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setFormPreset({date:selectedDate}); setShowWalkIn(true); }}
                 style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(255,152,0,0.4)', color:'#ff9800', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
                 🚶 Walk-in
               </button>
-              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowWalkIn(false); setFormPreset({date:selectedDate}); setShowBlockTime(true); }}
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowWalkIn(false); setShowBookingProducts(false); setShowProductSale(false); setFormPreset({date:selectedDate}); setShowBlockTime(true); }}
                 style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(255,82,82,0.4)', color:'#ff5252', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
                 🚫 Block Time
+              </button>
+              <button onClick={()=>{ setFabOpen(false); setView('day'); setSelectedBooking(null); setShowForm(false); setShowWalkIn(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(true); }}
+                style={{ padding:'10px 20px', borderRadius:'24px', background:'var(--card)', border:'1px solid rgba(33,150,243,0.45)', color:'#8bc4ff', fontSize:'0.8rem', cursor:'pointer', fontWeight:'700', boxShadow:'0 4px 12px rgba(0,0,0,0.3)', whiteSpace:'nowrap' }}>
+                🛒 Product Sale
               </button>
             </>
           )}
@@ -2125,6 +2698,19 @@ const activeBarbers = barberFilter === 'all'
             onMouseEnter={e=>e.currentTarget.style.boxShadow='0 6px 24px rgba(212,175,55,0.6)'}
             onMouseLeave={e=>e.currentTarget.style.boxShadow='0 4px 20px rgba(212,175,55,0.4)'}>+</button>
         </div>
+        {showProductSale && (
+          <div style={{ position:'fixed', right:'96px', bottom:'32px', zIndex:201 }}>
+            <ProductSalePanel
+              barbers={activeBarbersForDay.length ? activeBarbersForDay : barbers}
+              products={products}
+              onClose={() => setShowProductSale(false)}
+              onSaved={(saleBooking) => {
+                mergeBookingLocally(saleBooking);
+                setTimeout(() => fetchAll(), 1500);
+              }}
+            />
+          </div>
+        )}
         </div>
       </div>
     </div>

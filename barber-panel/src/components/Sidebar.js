@@ -9,6 +9,7 @@ const navItems = [
   { id: 'clients', icon: '👥', label: 'Clients' },
   { id: 'reports', icon: '📈', label: 'Reports' },
   { id: 'finance', icon: '💰', label: 'Finance' },
+  { id: 'products', icon: '🛒', label: 'Products' },
   { id: 'calendar', icon: '🗓️', label: 'Calendar' },
   { id: 'settings', icon: '⚙️', label: 'Settings' },
 ];

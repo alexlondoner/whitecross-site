@@ -496,9 +496,11 @@ export default function Finance() {
         };
       });
 
+      const rawPL = grossRev - totalWages - fixedCostTotal;
+
       return {
         mk, label: MONTH_NAMES[mm - 1] + ' ' + my,
-        grossRev, cashExp, bankExp, netRevenue, totalWages, fixedCostTotal, companyNetPL,
+        grossRev, cashExp, bankExp, netRevenue, totalWages, fixedCostTotal, companyNetPL, rawPL,
         shopDays, partners,
       };
     });
@@ -1001,7 +1003,8 @@ export default function Finance() {
                     { label: 'Total Wages',      value: '£' + Math.round(selectedMonthPartnership.totalWages),     color: '#4caf50' },
                     { label: 'Fixed Cost',       value: '£' + Math.round(selectedMonthPartnership.fixedCostTotal), color: '#78909c' },
                     { label: 'Shop Days Open',   value: selectedMonthPartnership.shopDays + ' days',               color: '#78909c' },
-                    { label: 'Company Net P&L',  value: (selectedMonthPartnership.companyNetPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.companyNetPL), color: selectedMonthPartnership.companyNetPL >= 0 ? '#4caf50' : '#ff5252' },
+                    { label: 'P&L (Before Exp.)', value: (selectedMonthPartnership.rawPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.rawPL), color: selectedMonthPartnership.rawPL >= 0 ? '#78909c' : '#ff5252' },
+                    { label: 'Net P&L (After Exp.)', value: (selectedMonthPartnership.companyNetPL >= 0 ? '+' : '') + '£' + Math.round(selectedMonthPartnership.companyNetPL), color: selectedMonthPartnership.companyNetPL >= 0 ? '#4caf50' : '#ff5252' },
                   ].map(c => (
                     <div key={c.label} style={{ ...card, padding: '12px 14px', border: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.57rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '5px' }}>{c.label}</div>
@@ -1168,7 +1171,8 @@ export default function Finance() {
                             <th style={{ ...thS, color: BARBER_COLORS[n] || '#d4af37' }}>{n}<br/>NET DURUM</th>
                           </React.Fragment>
                         ))}
-                        <th style={{ ...thS, color: '#78909c' }}>Net P&L</th>
+                        <th style={{ ...thS, color: '#78909c' }}>P&L<br/><span style={{ fontSize: '0.5rem', letterSpacing: 0 }}>before exp.</span></th>
+                        <th style={{ ...thS, color: '#ff7043' }}>Net P&L<br/><span style={{ fontSize: '0.5rem', letterSpacing: 0 }}>after exp.</span></th>
                         <th style={{ ...thS, color: '#9c27b0' }}>Net Rev.</th>
                       </tr>
                     </thead>
@@ -1187,7 +1191,10 @@ export default function Finance() {
                               </td>
                             );
                           })}
-                          <td style={{ ...tdS(row.companyNetPL >= 0 ? 'green' : 'red'), fontWeight: '700' }}>
+                          <td style={{ ...tdS(row.rawPL >= 0 ? 'green' : 'red'), fontWeight: '700' }}>
+                            {fmtSigned(row.rawPL)}
+                          </td>
+                          <td style={{ ...tdS(row.companyNetPL >= 0 ? 'green' : 'red'), fontWeight: '700', color: '#ff7043' }}>
                             {fmtSigned(row.companyNetPL)}
                           </td>
                           <td style={{ ...tdS(), color: '#9c27b0' }}>{fmt(row.netRevenue)}</td>
@@ -1202,7 +1209,10 @@ export default function Finance() {
                             {fmtSigned(cumulativeByPartner[n] || 0)}
                           </td>
                         ))}
-                        <td style={{ ...tdS(partnershipByMonth.reduce((s, r) => s + r.companyNetPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
+                        <td style={{ ...tdS(partnershipByMonth.reduce((s, r) => s + r.rawPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
+                          {fmtSigned(partnershipByMonth.reduce((s, r) => s + r.rawPL, 0))}
+                        </td>
+                        <td style={{ ...tdS(partnershipByMonth.reduce((s, r) => s + r.companyNetPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800', color: '#ff7043' }}>
                           {fmtSigned(partnershipByMonth.reduce((s, r) => s + r.companyNetPL, 0))}
                         </td>
                         <td style={{ ...tdS(), fontWeight: '800', color: '#9c27b0' }}>
@@ -1216,14 +1226,18 @@ export default function Finance() {
           </div>
 
           {/* Company Net P&L per month — mini chart style */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
             {partnershipByMonth.map(row => (
               <div key={row.mk} style={{ ...card, padding: '12px 14px', border: `1px solid ${row.companyNetPL >= 0 ? 'rgba(76,175,80,0.2)' : 'rgba(255,82,82,0.2)'}` }}>
-                <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginBottom: '4px' }}>{row.label}</div>
-                <div style={{ fontSize: '1rem', fontWeight: '800', color: row.companyNetPL >= 0 ? '#4caf50' : '#ff5252' }}>
-                  {fmtSigned(row.companyNetPL)}
+                <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginBottom: '6px' }}>{row.label} · {row.shopDays} days</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '0.55rem', color: 'var(--muted)' }}>Before exp.</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: '700', color: row.rawPL >= 0 ? '#78909c' : '#ff5252' }}>{fmtSigned(row.rawPL)}</span>
                 </div>
-                <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>{row.shopDays} shop days</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.55rem', color: 'var(--muted)' }}>After exp.</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: row.companyNetPL >= 0 ? '#4caf50' : '#ff5252' }}>{fmtSigned(row.companyNetPL)}</span>
+                </div>
               </div>
             ))}
           </div>
