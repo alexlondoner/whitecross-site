@@ -581,6 +581,36 @@ var todayStr = now.getFullYear() + '-' +
         }
     }
 
+    // ── LIVE CLOCK ────────────────────────────────────────────────
+    var CLOCK_DAYS   = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+    var CLOCK_MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    function padZ(n){ return String(n).padStart(2,'0'); }
+    function tickClock() {
+        var now = new Date();
+        var clockEl = document.getElementById('hwClock');
+        var dateEl  = document.getElementById('hwDate');
+        if (clockEl) clockEl.textContent = padZ(now.getHours()) + ':' + padZ(now.getMinutes()) + ':' + padZ(now.getSeconds());
+        if (dateEl)  dateEl.textContent  = CLOCK_DAYS[now.getDay()] + ' · ' + now.getDate() + ' ' + CLOCK_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ── GRID TOGGLE ───────────────────────────────────────────────
+    var hwGridOpen = false;
+    var hwToggleEl  = document.getElementById('hwGridToggle');
+    var hwGridEl    = document.getElementById('hoursGrid');
+    var hwChevronEl = document.getElementById('hwChevron');
+    var hwToggleLbl = document.getElementById('hwToggleLabel');
+    if (hwToggleEl) {
+        hwToggleEl.addEventListener('click', function() {
+            hwGridOpen = !hwGridOpen;
+            if (hwGridEl)    hwGridEl.style.display    = hwGridOpen ? 'flex' : 'none';
+            if (hwChevronEl) hwChevronEl.className     = 'hw-chevron' + (hwGridOpen ? ' open' : '');
+            if (hwToggleLbl) hwToggleLbl.textContent   = hwGridOpen ? 'HIDE HOURS' : 'SHOW HOURS';
+        });
+    }
+    // ─────────────────────────────────────────────────────────────
+
     var initialDateVal = dateInput && dateInput.value ? dateInput.value : todayStr;
     renderHoursWidget(todayStr);
     if (initialDateVal) {

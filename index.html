@@ -278,8 +278,18 @@
 
     <!-- HOURS WIDGET -->
     <div class="hours-widget">
-        <div class="hours-status" id="hoursStatus"></div>
-        <div class="hours-grid-new" id="hoursGrid"></div>
+        <div class="hw-clock-row">
+            <div class="hw-clock" id="hwClock">00:00:00</div>
+            <div class="hw-date" id="hwDate"></div>
+        </div>
+        <div class="hw-status-wrap">
+            <div class="hours-status" id="hoursStatus"></div>
+        </div>
+        <div class="hw-grid-toggle" id="hwGridToggle">
+            <span id="hwToggleLabel">SHOW HOURS</span>
+            <span class="hw-chevron" id="hwChevron">▾</span>
+        </div>
+        <div class="hours-grid-new hw-grid-collapsible" id="hoursGrid" style="display:none;"></div>
     </div>
 
     <!-- REVIEWS -->
