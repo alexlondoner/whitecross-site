@@ -9,6 +9,14 @@ const inp = { width:'100%', padding:'10px 12px', background:'var(--card)', borde
 const lbl = { display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' };
 const card = { background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'20px 24px' };
 
+function toServiceSlug(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function toNameKey(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '').trim();
+}
+
 export default function Services() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,8 +93,14 @@ export default function Services() {
     if (!form.name.trim() || !form.price) return;
     setSaving(true);
     try {
+      const existing = editingId === 'new'
+        ? null
+        : servicesRef.current.find(s => s.docId === editingId) || null;
+      const seedByName = seedServices.find((s) => toNameKey(s.name) === toNameKey(form.name));
+      const derivedId = toServiceSlug(form.name);
+      const stableId = existing?.id || seedByName?.id || derivedId;
       const data = {
-        id: form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        id: stableId,
         name: form.name.trim(),
         price: parseFloat(form.price) || 0,
         duration: parseInt(form.duration) || 30,
@@ -107,6 +121,7 @@ export default function Services() {
       }
       syncServices(updated);
       config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
+      window.dispatchEvent(new Event('services-updated'));
       setEditingId(null);
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
@@ -119,6 +134,7 @@ export default function Services() {
       const updated = servicesRef.current.filter(s => s.docId !== svc.docId);
       syncServices(updated);
       config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
+      window.dispatchEvent(new Event('services-updated'));
     } catch (e) { console.error(e); }
   };
 
@@ -152,6 +168,7 @@ export default function Services() {
     await Promise.all(
       ordered.map((s, i) => updateDoc(doc(db, `tenants/${TENANT}/services`, s.docId), { order: i }))
     );
+    window.dispatchEvent(new Event('services-updated'));
   };
 
   if (loading) return (

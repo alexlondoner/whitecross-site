@@ -45,12 +45,22 @@ function serviceGross(b) {
   const explicit = pp(b.price) + pp(b.serviceCharge);
   if (explicit > 0) return explicit;
   const hasProducts = soldProductsTotal(b) > 0;
-  if (hasProducts && !b.serviceId) return 0;
+  if (hasProducts && !b.serviceId && !b.service) return 0;
   return Math.max(0, pp(b.paidAmount) - pp(b.tip) - soldProductsTotal(b));
 }
 
 function bookingNetWithoutTip(b) {
+  const paid = pp(b.paidAmount);
+  if (String(b?.status || '').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
+    return Math.max(0, paid - pp(b.tip));
+  }
   return Math.max(0, serviceGross(b) + soldProductsTotal(b) - pp(b.discount));
+}
+
+function bookingCollectedTotal(b) {
+  const paid = pp(b.paidAmount);
+  if (String(b?.status || '').toUpperCase() === 'CHECKED_OUT' && paid > 0) return paid;
+  return Math.max(0, bookingNetWithoutTip(b) + pp(b.tip));
 }
 
 function svcName(serviceId) {
@@ -147,6 +157,8 @@ export default function Reports() {
   const [period,   setPeriod]   = useState('month');
   const [activeTab, setActiveTab] = useState('overview');
   const [financeGroup, setFinanceGroup] = useState('day'); // day | week | month
+  const [financeSource, setFinanceSource] = useState('all'); // all | services | products
+  const [financePayment, setFinancePayment] = useState('all'); // all | cash | card
 
   useEffect(() => {
     (async () => {
@@ -225,8 +237,8 @@ export default function Reports() {
   const grossRevenue  = serviceRevenueGross + productRevenueGross;
   const totalDiscount = useMemo(() => checkedOut.reduce((s, b) => s + pp(b.discount), 0), [checkedOut]);
   const totalTips     = useMemo(() => checkedOut.reduce((s, b) => s + pp(b.tip), 0), [checkedOut]);
-  const netRevenue    = Math.max(0, grossRevenue - totalDiscount);
-  const totalCollected = netRevenue + totalTips;
+  const netRevenue    = useMemo(() => checkedOut.reduce((s, b) => s + bookingNetWithoutTip(b), 0), [checkedOut]);
+  const totalCollected = useMemo(() => checkedOut.reduce((s, b) => s + bookingCollectedTotal(b), 0), [checkedOut]);
 
   // Daily revenue for chart
   const dailyRevenue = useMemo(() => {
@@ -335,8 +347,19 @@ export default function Reports() {
   const financeRows = useMemo(() =>
     checkedOut
       .filter(b => b._date)
+      .filter(b => {
+        if (financeSource === 'services') return !isProductSaleSource(b);
+        if (financeSource === 'products') return isProductSaleSource(b) || soldProductsTotal(b) > 0;
+        return true;
+      })
+      .filter(b => {
+        const pm = (b.paymentMethod || b.paymentType || '').toUpperCase();
+        if (financePayment === 'cash') return pm === 'CASH';
+        if (financePayment === 'card') return pm !== 'CASH';
+        return true;
+      })
       .sort((a, b) => (b._date?.getTime() || 0) - (a._date?.getTime() || 0)),
-  [checkedOut]);
+  [checkedOut, financeSource, financePayment]);
 
   // Group key for finance grouping
   function groupKey(b) {
@@ -530,14 +553,34 @@ export default function Reports() {
             ))}
           </div>
 
-          {/* Group toggle + Export */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Group toggle + Source filter + Export */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
               {[['day','Daily'],['week','Weekly'],['month','Monthly']].map(([k, l]) => (
                 <button key={k} onClick={() => setFinanceGroup(k)}
                   style={{ padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600',
                     background: financeGroup === k ? '#d4af37' : 'transparent',
                     color:      financeGroup === k ? '#000' : 'var(--muted)' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+              {[['all','All'],['services','Services'],['products','Products']].map(([k, l]) => (
+                <button key={k} onClick={() => setFinanceSource(k)}
+                  style={{ padding: '6px 13px', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600',
+                    background: financeSource === k ? (k === 'products' ? '#03a9f4' : '#d4af37') : 'transparent',
+                    color:      financeSource === k ? '#000' : 'var(--muted)' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+              {[['all','All','#d4af37'],['cash','Cash','#4caf50'],['card','Card','#2196f3']].map(([k, l, c]) => (
+                <button key={k} onClick={() => setFinancePayment(k)}
+                  style={{ padding: '6px 13px', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600',
+                    background: financePayment === k ? c : 'transparent',
+                    color:      financePayment === k ? '#000' : 'var(--muted)' }}>
                   {l}
                 </button>
               ))}

@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import config from '../config';
 
 const navItems = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-  { id: 'bookings', icon: '📅', label: 'Bookings' },
-  { id: 'barbers', icon: '✂️', label: 'Team Members' },
-  { id: 'online-profile', icon: '🌐', label: 'Online Profile' },
-  { id: 'clients', icon: '👥', label: 'Clients' },
-  { id: 'reports', icon: '📈', label: 'Reports' },
-  { id: 'finance', icon: '💰', label: 'Finance' },
-  { id: 'products', icon: '🛒', label: 'Products' },
-  { id: 'calendar', icon: '🗓️', label: 'Calendar' },
-  { id: 'settings', icon: '⚙️', label: 'Settings' },
+  { id: 'dashboard',     icon: '📊', label: 'Dashboard' },
+  { id: 'bookings',      icon: '📅', label: 'Bookings' },
+  { id: 'calendar',      icon: '🗓️', label: 'Calendar' },
+  { id: 'clients',       icon: '👥', label: 'Clients' },
+  { id: 'barbers',       icon: '✂️', label: 'Team Members' },
+  { id: 'products',      icon: '🛒', label: 'Products' },
+  { id: 'reports',       icon: '📈', label: 'Reports' },
+  { id: 'finance',       icon: '💰', label: 'Finance' },
+  { id: 'online-profile',icon: '🌐', label: 'Online Profile' },
+  { id: 'settings',      icon: '⚙️', label: 'Settings' },
 ];
 
 function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed }) {
@@ -19,7 +19,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
   const [hoveredItem, setHoveredItem] = useState(null);
 
   // Dynamic values based on state
-  const sidebarWidth = isCollapsed ? '72px' : '240px';
+  const sidebarWidth = isCollapsed ? '72px' : '200px';
 
   return (
     <aside style={{

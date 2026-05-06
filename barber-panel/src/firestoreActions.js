@@ -33,11 +33,25 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
   });
 }
 
-export async function saveUnpaidBooking({ bookingId }) {
+export async function saveUnpaidBooking({ bookingId, soldProducts, serviceCharge, discount }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
-  await updateDoc(snap.docs[0].ref, { status: 'UNPAID' });
+  await updateDoc(snap.docs[0].ref, {
+    status: 'UNPAID',
+    discount: discount || 0,
+    serviceCharge: serviceCharge || 0,
+    soldProducts: Array.isArray(soldProducts)
+      ? soldProducts
+          .filter((p) => p && p.qty > 0)
+          .map((p) => ({
+            productId: p.productId || p.id || '',
+            name: p.name || '',
+            price: parseFloat(p.price) || 0,
+            qty: parseInt(p.qty, 10) || 0,
+          }))
+      : [],
+  });
 }
 
 // ── WALK-IN ───────────────────────────────────────────────────────────────
@@ -194,10 +208,13 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
     updatedAt: Timestamp.fromDate(new Date()),
   };
 
-  // Keep amount fields in sync with edited service price for all statuses.
-  if (currentStatus === 'CHECKED_OUT' || currentStatus === 'UNPAID') {
-    updatePayload.paidAmount = price ?? 0;
-    updatePayload.discount = 0;
+  if (currentStatus === 'CHECKED_OUT') {
+    // Preserve all financial fields — editing a checked-out booking (e.g. fixing name/time)
+    // must never overwrite what was actually collected at checkout.
+    // Only update the service price reference, not the recorded payment.
+  } else if (currentStatus === 'UNPAID') {
+    updatePayload.paidAmount = '';
+    updatePayload.discount = currentData?.discount ?? 0;
     updatePayload.tip = 0;
     updatePayload.splitSecond = '';
     updatePayload.splitAmount = 0;

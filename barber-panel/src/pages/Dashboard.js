@@ -1,7 +1,7 @@
 import { db } from '../firebase';
-import { collection, query, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import config from '../config';
+import config, { seedServices } from '../config';
 import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale } from '../firestoreActions';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -34,6 +34,61 @@ function getProductsTotal(list) {
   return normalizeSoldProducts(list).reduce((sum, p) => sum + p.price * p.qty, 0);
 }
 
+function pp(val) {
+  return parseFloat(String(val || '0').replace(/[£,]/g, '').replace('-', '').trim()) || 0;
+}
+
+function bookingNetWithoutTip(booking) {
+  const paid = pp(booking?.paidAmount);
+  if (normalizeBookingStatus(booking?.status) === 'CHECKED_OUT' && paid > 0) {
+    return Math.max(0, paid - pp(booking?.tip));
+  }
+  const gross = pp(booking?.price) + pp(booking?.serviceCharge) + getProductsTotal(booking?.soldProducts);
+  return Math.max(0, gross - pp(booking?.discount));
+}
+
+function normalizeServiceKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
+function findServiceByBookingValue(value) {
+  const liveList = Array.isArray(config.services) ? config.services : [];
+  const seedList = Array.isArray(seedServices) ? seedServices : [];
+  const list = [...liveList, ...seedList];
+  const key = normalizeServiceKey(value);
+  if (!key) return null;
+  return list.find((s) => {
+    const idKey = normalizeServiceKey(s?.id);
+    const nameKey = normalizeServiceKey(s?.name);
+    return key === idKey || key === nameKey;
+  }) || null;
+}
+
+function prettifyServiceId(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const looksLikeId = raw.includes('-') || raw.includes('_');
+  if (!looksLikeId) return raw;
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function getBookingServiceLabel(booking) {
+  const svc = findServiceByBookingValue(booking?.service);
+  if (svc?.name) return svc.name;
+
+  const explicitName = String(booking?.serviceName || booking?.serviceLabel || '').trim();
+  if (explicitName) return explicitName;
+
+  const rawService = String(booking?.service || '').trim();
+  if (rawService) return prettifyServiceId(rawService);
+
+  return booking?.source === 'Product Sale' ? 'Product Sale' : '';
+}
+
 function normalizeBookingStatus(raw) {
   const n = String(raw || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
   if (n === 'CHECKEDOUT' || n === 'PAID' || n === 'DONE' || n === 'COMPLETE') return 'CHECKED_OUT';
@@ -44,11 +99,12 @@ function normalizeBookingStatus(raw) {
 }
 
 function getDisplayedAmount(booking) {
-  // Always prefer the live service config price so stale Firestore values don't surface
-  const svc = config.services ? config.services.find(s => s.id === booking?.service) : null;
-  if (svc) return svc.price;
+  // Stored price is locked-in at booking time — do not override with live service price
   const hasPrice = booking?.price !== undefined && booking?.price !== null && String(booking.price) !== '';
   if (hasPrice) return booking.price;
+  // No stored price (e.g. old Booksy import) — fall back to live service config
+  const svc = findServiceByBookingValue(booking?.service);
+  if (svc) return svc.price;
   return booking?.paidAmount ?? '';
 }
 
@@ -77,7 +133,7 @@ function getExistingRangeMinutes(booking) {
     return { start, end: Number.isFinite(end) && end > start ? end : start + 60 };
   }
 
-  const service = config.services ? config.services.find(s => s.id === booking.service) : null;
+  const service = findServiceByBookingValue(booking.service);
   const duration = service ? (parseInt(service.duration, 10) || 30) : 30;
   return { start, end: start + duration };
 }
@@ -181,11 +237,11 @@ function getBookingName(booking) {
 }
 function StatPill({ label, value, color, onClick, active }) {
   return (
-    <div onClick={onClick} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background:active?color+'25':color+'10', border:'1px solid '+(active?color:color+'30'), borderRadius:'10px', minWidth:'90px', cursor:onClick?'pointer':'default', transition:'all 0.15s' }}
+    <div onClick={onClick} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'7px 12px', background:active?color+'25':color+'10', border:'1px solid '+(active?color:color+'30'), borderRadius:'8px', minWidth:'70px', cursor:onClick?'pointer':'default', transition:'all 0.15s' }}
       onMouseEnter={e=>{if(onClick)e.currentTarget.style.background=color+'20';}}
       onMouseLeave={e=>{e.currentTarget.style.background=active?color+'25':color+'10';}}>
-      <span style={{ fontSize:'1.4rem', fontWeight:'800', color }}>{value}</span>
-      <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{label}</span>
+      <span style={{ fontSize:'1.05rem', fontWeight:'800', color }}>{value}</span>
+      <span style={{ fontSize:'0.55rem', color:'var(--muted)', letterSpacing:'0.5px', textTransform:'uppercase', marginTop:'1px', whiteSpace:'nowrap' }}>{label}</span>
     </div>
   );
 }
@@ -416,8 +472,10 @@ function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit
   const [serviceCharge, setServiceCharge] = useState(0);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
-  const svc = config.services ? config.services.find(s => s.id === booking.service) : null;
-  const basePrice = svc ? svc.price : (parseInt(String(booking.price || '0').replace('£', '')) || 0);
+  const svc = findServiceByBookingValue(booking.service);
+  const serviceLabel = getBookingServiceLabel(booking);
+  const priceFromBooking = parseFloat(String(booking.price ?? booking.paidAmount ?? '0').replace('£', '')) || 0;
+  const basePrice = priceFromBooking > 0 ? priceFromBooking : (svc ? svc.price : 0);
   const [localProducts, setLocalProducts] = useState(() => normalizeSoldProducts(booking.soldProducts));
   const productsTotal = getProductsTotal(localProducts);
   const depositAmount = booking.source === 'Booksy'
@@ -468,7 +526,7 @@ const handleCheckout = async (method) => {
  const handleSaveUnpaid = async () => {
     setSaving(true);
     try {
-      await saveUnpaidBooking({ bookingId: booking.bookingId });
+      await saveUnpaidBooking({ bookingId: booking.bookingId, soldProducts: localProducts, serviceCharge, discount: discountAmt });
     } catch (err) {
       console.error('Save unpaid error:', err);
     } finally {
@@ -515,7 +573,7 @@ const handleCheckout = async (method) => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '4px', height: '36px', background: getBColor(booking.barber, barbers), borderRadius: '2px' }} />
                     <div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text)' }}>{svc ? svc.name : booking.service}</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text)' }}>{serviceLabel}</div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: '2px' }}>{svc ? svc.duration + 'min' : ''} · {(booking.barber || '').toUpperCase()}</div>
                     </div>
                   </div>
@@ -713,7 +771,7 @@ const handleCheckout = async (method) => {
             </div>
             <div style={{ padding: '10px 12px', background: 'var(--card)', borderRadius: '10px', borderLeft: '3px solid ' + getBColor(booking.barber, barbers) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text)', fontWeight: '600' }}>{svc ? svc.name : booking.service}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text)', fontWeight: '600' }}>{serviceLabel}</span>
                 <span style={{ fontSize: '0.78rem', color: '#d4af37', fontWeight: '700' }}>£{basePrice}</span>
               </div>
               <div style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{svc ? svc.duration + 'min' : ''} · {(booking.barber || '').toUpperCase()}</div>
@@ -809,7 +867,7 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
   const totalVisits = allVisitDates.size;
   const isReturning = clientVisits > 0;
   const visitOrdinal = n => { if(n===1)return '1st'; if(n===2)return '2nd'; if(n===3)return '3rd'; return n+'th'; };
-  const serviceLabel = config.services ? (config.services.find(s => s.id === booking.service) || {}).name || booking.service || (booking.source === 'Product Sale' ? 'Product Sale' : '') : (booking.service || (booking.source === 'Product Sale' ? 'Product Sale' : ''));
+  const serviceLabel = getBookingServiceLabel(booking);
   return (
     <div style={{ width:'300px', flexShrink:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 40px)', minHeight:'200px', boxShadow:'0 8px 32px rgba(0,0,0,0.4)', position:'relative' }}>
       {deleting && (
@@ -1770,7 +1828,8 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   const [sent, setSent] = useState(false);
   if (!booking) return null;
 
-  const svc = config.services ? config.services.find(s => s.id === booking.service) : null;
+  const svc = findServiceByBookingValue(booking.service);
+  const serviceLabel = getBookingServiceLabel(booking);
   const basePrice = svc ? svc.price : (parseInt(String(booking.price || '0').replace('£', '')) || 0);
   const soldProducts = normalizeSoldProducts(booking.soldProducts);
   const productsTotal = getProductsTotal(soldProducts);
@@ -1792,7 +1851,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   const handleSendEmail = async () => {
     if (!booking.email) { alert('No email address for this customer.'); return; }
     setSending(true);
-    const params = new URLSearchParams({ action:'sendReceipt', bookingId:booking.bookingId, email:booking.email, name:booking.name, service:svc?svc.name:booking.service, barber:booking.barber, date:booking.date, time:booking.time, total:calculatedTotal, discount:discount, tip:tip, paymentMethod:paymentMethod, visits:visits });
+    const params = new URLSearchParams({ action:'sendReceipt', bookingId:booking.bookingId, email:booking.email, name:booking.name, service:serviceLabel, barber:booking.barber, date:booking.date, time:booking.time, total:calculatedTotal, discount:discount, tip:tip, paymentMethod:paymentMethod, visits:visits });
     try {
       await fetch(config.scriptUrl + '?' + params.toString(), { mode:'no-cors' });
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -1805,7 +1864,11 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   };
 
   const handlePrint = () => {
-    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div><div class="row"><span>${svc?svc.name:booking.service}</span><span>£${basePrice.toFixed(2)}</span></div>${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${calculatedTotal.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
+    const scCharge = parseFloat(booking.serviceCharge || 0) || 0;
+    const productRows = soldProducts.length
+      ? soldProducts.map(p => `<div class="row"><span>${p.name}${p.qty > 1 ? ` x${p.qty}` : ''}</span><span>£${(parseFloat(p.price) * (parseInt(p.qty,10)||1)).toFixed(2)}</span></div>`).join('')
+      : '';
+    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}.surcharge{color:#b36200;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div>${basePrice>0?`<div class="row"><span>${serviceLabel}</span><span>£${basePrice.toFixed(2)}</span></div>`:''}${productRows}${scCharge>0?`<div class="row surcharge"><span>Service Charge (12.5%)</span><span>£${scCharge.toFixed(2)}</span></div>`:''}${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${calculatedTotal.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
     const win = window.open('', '_blank');
     win.document.write(receiptHTML);
     win.document.close();
@@ -1836,7 +1899,7 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
           <div style={{ display:'flex', justifyContent:'space-between' }}>
-            <span style={{ fontSize:'0.78rem', color:'var(--text)' }}>{svc ? svc.name : booking.service}</span>
+            <span style={{ fontSize:'0.78rem', color:'var(--text)' }}>{serviceLabel}</span>
             <span style={{ fontSize:'0.78rem', color:'var(--text)' }}>£{basePrice.toFixed(2)}</span>
           </div>
           {soldProducts.map((p, i) => (
@@ -2026,7 +2089,7 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
                 const startMins = convertTo24(b.time || b.startTime);
                 if (!startMins) return null;
                 const top = (startMins - GRID_START*60) * slotHeight / 15;
-                const svc = config.services ? config.services.find(s=>s.id===b.service) : null;
+                const svc = findServiceByBookingValue(b.service);
                 const duration = (svc&&svc.duration) || 30;
               const height = Math.max(duration * slotHeight / 15 - 4, slotHeight * 2);
                 const isSel = selectedBooking && selectedBooking.bookingId===b.bookingId;
@@ -2082,6 +2145,53 @@ export default function Dashboard() {
   const [clientData, setClientData] = useState(null);
   const [view, setView] = useState('day');
   const [pillFilter, setPillFilter] = useState(null);
+  const [showPillSettings, setShowPillSettings] = useState(false);
+  const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','needscheckout','revenue','discount','tips','booksy','fresha','website','walkin','productsale'];
+  const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
+  const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
+  const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
+  const [visibleLeftCards, setVisibleLeftCards] = useState(new Set(ALL_LEFT_CARDS));
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarStatsOpen, setSidebarStatsOpen] = useState(true);
+
+  useEffect(() => {
+    getDoc(PREFS_DOC).then(snap => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (Array.isArray(d.visiblePills)) setVisiblePills(new Set(d.visiblePills));
+      if (Array.isArray(d.visibleLeftCards)) setVisibleLeftCards(new Set(d.visibleLeftCards));
+      if (typeof d.sidebarOpen === 'boolean') setSidebarOpen(d.sidebarOpen);
+    }).catch(() => {});
+  }, []);
+
+  const saveDashboardPrefs = (pills, leftCards, sidebar) => {
+    setDoc(PREFS_DOC, { visiblePills: [...pills], visibleLeftCards: [...leftCards], sidebarOpen: sidebar }, { merge: true }).catch(() => {});
+  };
+
+  const togglePillVisibility = (key) => {
+    setVisiblePills(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      saveDashboardPrefs(next, visibleLeftCards, sidebarOpen);
+      return next;
+    });
+  };
+  const toggleLeftCard = (key) => {
+    setVisibleLeftCards(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      saveDashboardPrefs(visiblePills, next, sidebarOpen);
+      return next;
+    });
+  };
+  const toggleSidebar = () => {
+    setSidebarOpen(prev => {
+      const next = !prev;
+      saveDashboardPrefs(visiblePills, visibleLeftCards, next);
+      return next;
+    });
+  };
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -2151,7 +2261,7 @@ useEffect(() => {
           email: d.clientEmail || '',
           phone: d.clientPhone || '',
           barber,
-          service: d.serviceId || '',
+          service: String(d.serviceId || d.service || d.serviceName || '').trim(),
           status: normalizeBookingStatus(d.status),
           date,
           time,
@@ -2263,11 +2373,13 @@ const activeBarbers = barberFilter === 'all'
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
   const revenue = statsBookings
     .filter(b => b.status === 'CHECKED_OUT')
-    .reduce((s, b) => {
-      const pp = v => parseFloat(String(v||'0').replace('£',''))||0;
-      const price = pp(b.price) > 0 ? pp(b.price) : Math.max(0, pp(b.paidAmount) - pp(b.tip));
-      return s + Math.max(0, price - pp(b.discount));
-    }, 0);
+    .reduce((s, b) => s + bookingNetWithoutTip(b), 0);
+  const discountGiven = statsBookings
+    .filter(b => b.status === 'CHECKED_OUT')
+    .reduce((s, b) => s + pp(b.discount), 0);
+  const tipsGiven = statsBookings
+    .filter(b => b.status === 'CHECKED_OUT')
+    .reduce((s, b) => s + pp(b.tip), 0);
   const now = new Date();
   const needsCheckoutBookings = statsBookings.filter(b => {
     if (b.status !== 'CONFIRMED' && b.status !== 'PENDING') return false;
@@ -2354,19 +2466,56 @@ const activeBarbers = barberFilter === 'all'
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-        <StatPill label="Total" value={statsBookings.length} color="#d4af37" active={pillFilter==='total'} onClick={()=>setPillFilter(pillFilter==='total'?null:'total')} />
-        <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />
-        <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />
-        <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />
-        <StatPill label="Needs Checkout" value={needsCheckoutCount} color="#ff5252" active={pillFilter==='needscheckout'} onClick={()=>setPillFilter(pillFilter==='needscheckout'?null:'needscheckout')} />
-        <StatPill label="Revenue" value={'£'+revenue} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />
-        <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />
-        <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />
-        <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />
-        <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />
-        <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />
-        <StatPill label="Product Sale" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='product sale').length} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />
+      <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', alignItems:'center' }}>
+        {visiblePills.has('total') && <StatPill label="Total" value={statsBookings.length} color="#d4af37" active={pillFilter==='total'} onClick={()=>setPillFilter(pillFilter==='total'?null:'total')} />}
+        {visiblePills.has('confirmed') && <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />}
+        {visiblePills.has('pending') && <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
+        {visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
+        {visiblePills.has('needscheckout') && <StatPill label="Needs Checkout" value={needsCheckoutCount} color="#ff5252" active={pillFilter==='needscheckout'} onClick={()=>setPillFilter(pillFilter==='needscheckout'?null:'needscheckout')} />}
+        {visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
+        {visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
+        {visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
+        {(visiblePills.has('booksy')||visiblePills.has('fresha')||visiblePills.has('website')||visiblePills.has('walkin')||visiblePills.has('productsale')) && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('needscheckout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
+        {visiblePills.has('booksy') && <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />}
+        {visiblePills.has('fresha') && <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />}
+        {visiblePills.has('website') && <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
+        {visiblePills.has('walkin') && <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
+        {visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
+
+        {/* Gear button */}
+        <div style={{ position:'relative', marginLeft:'auto' }}>
+          <button onClick={()=>setShowPillSettings(v=>!v)}
+            style={{ padding:'5px 9px', background: showPillSettings ? 'rgba(212,175,55,0.18)' : 'transparent', border:'1px solid ' + (showPillSettings ? '#d4af37' : 'var(--border)'), borderRadius:'8px', color: showPillSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.85rem', lineHeight:1, transition:'all 0.15s' }}
+            title="Customise pills">⚙️</button>
+          {showPillSettings && (
+            <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'14px', zIndex:200, minWidth:'210px', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
+              <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'10px' }}>Show / Hide Pills</div>
+              {[
+                {key:'total',       label:'Total',          color:'#d4af37'},
+                {key:'confirmed',   label:'Confirmed',      color:'#4caf50'},
+                {key:'pending',     label:'Pending',        color:'#ff9800'},
+                {key:'checkedout',  label:'Checked Out',    color:'#2196f3'},
+                {key:'needscheckout',label:'Needs Checkout',color:'#ff5252'},
+                {key:'revenue',     label:'Revenue',        color:'#d4af37'},
+                {key:'discount',    label:'Discount Given', color:'#4caf50'},
+                {key:'tips',        label:'Tips',           color:'#ff9800'},
+                {key:'booksy',      label:'Booksy',         color:'#9c27b0'},
+                {key:'fresha',      label:'Fresha',         color:'#2196f3'},
+                {key:'website',     label:'Website',        color:'#4caf50'},
+                {key:'walkin',      label:'Walk-in',        color:'#ff9800'},
+                {key:'productsale', label:'Products Sold',  color:'#03a9f4'},
+              ].map(p => (
+                <label key={p.key} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
+                  <div onClick={()=>togglePillVisibility(p.key)}
+                    style={{ width:'32px', height:'18px', borderRadius:'9px', background: visiblePills.has(p.key) ? p.color : 'rgba(180,180,180,0.2)', position:'relative', transition:'background 0.2s', flexShrink:0, cursor:'pointer' }}>
+                    <div style={{ position:'absolute', top:'2px', left: visiblePills.has(p.key) ? '16px' : '2px', width:'14px', height:'14px', borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />
+                  </div>
+                  <span style={{ fontSize:'0.78rem', color: visiblePills.has(p.key) ? 'var(--text)' : 'var(--muted)', fontWeight: visiblePills.has(p.key) ? '600' : '400' }}>{p.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {pillFilter && (()=>{
@@ -2384,19 +2533,22 @@ const activeBarbers = barberFilter === 'all'
             return bDate<now;
           },
           revenue: b=>b.status==='CHECKED_OUT',
+          discount: b=>b.status==='CHECKED_OUT' && pp(b.discount) > 0,
+          tips: b=>b.status==='CHECKED_OUT' && pp(b.tip) > 0,
           booksy: b=>(b.source||'').toLowerCase()==='booksy',
           fresha: b=>(b.source||'').toLowerCase()==='fresha',
           website: b=>(b.source||'').toLowerCase()==='website',
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
-          productsale: b=>(b.source||'').toLowerCase()==='product sale',
+          productsale: b=>(b.source||'').toLowerCase()==='product sale'||getProductsTotal(b.soldProducts)>0,
         };
-        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
+        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', discount:'#4caf50', tips:'#ff9800', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
+        const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Products Sold' };
         const filtered = pillFilter === 'needscheckout' ? needsCheckoutBookings : statsBookings.filter(filterMap[pillFilter]||filterMap.total);
         const pillColor = pillColors[pillFilter]||'#d4af37';
         return (
           <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', borderBottom:'1px solid var(--border)', background:pillColor+'08' }}>
-              <span style={{ fontSize:'0.72rem', fontWeight:'700', color:pillColor, letterSpacing:'1px', textTransform:'uppercase' }}>{pillFilter.toUpperCase()} — {filtered.length} booking{filtered.length!==1?'s':''}</span>
+              <span style={{ fontSize:'0.72rem', fontWeight:'700', color:pillColor, letterSpacing:'1px', textTransform:'uppercase' }}>{pillLabels[pillFilter]||pillFilter.toUpperCase()} — {filtered.length} booking{filtered.length!==1?'s':''}</span>
               <button onClick={()=>setPillFilter(null)} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1.1rem', lineHeight:1 }}>✕</button>
             </div>
             <div style={{ maxHeight:'260px', overflowY:'auto' }}>
@@ -2406,7 +2558,11 @@ const activeBarbers = barberFilter === 'all'
                 const svcObj = config.services ? config.services.find(s=>s.id===b.service) : null;
                 const svcName = svcObj ? svcObj.name : (b.service||'—');
                 const statusColors = { CONFIRMED:'#4caf50', PENDING:'#ff9800', CHECKED_OUT:'#2196f3', CANCELLED:'#ff5252' };
-                const amt = parseFloat(String(b.paidAmount||b.price||'0').replace('£',''))||0;
+                const amt = pillFilter === 'revenue'
+                  ? bookingNetWithoutTip(b)
+                  : pillFilter === 'discount'
+                    ? pp(b.discount)
+                  : (pp(b.paidAmount) || pp(b.price));
                 return (
                   <div key={i} onClick={()=>{ if(b.startTime){ const d=b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime); setSelectedDate(d); setView('day'); } setSelectedBooking(b); setPillFilter(null); }}
                     style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 16px', borderBottom:'1px solid var(--border)', cursor:'pointer', transition:'background 0.15s' }}
@@ -2418,7 +2574,7 @@ const activeBarbers = barberFilter === 'all'
                       <div style={{ fontSize:'0.68rem', color:'var(--muted)' }}>{b.date} {b.time} · {svcName}</div>
                     </div>
                     <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontSize:'0.75rem', fontWeight:'700', color:'#d4af37' }}>{amt>0?'£'+amt.toFixed(0):''}</div>
+                      <div style={{ fontSize:'0.75rem', fontWeight:'700', color:'#d4af37' }}>{amt>0?'£'+amt.toFixed(2):''}</div>
                       <div style={{ fontSize:'0.6rem', color:statusColors[b.status]||'var(--muted)', fontWeight:'600' }}>{b.status}</div>
                     </div>
                   </div>
@@ -2430,8 +2586,15 @@ const activeBarbers = barberFilter === 'all'
       })()}
 
       <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', position:'relative' }}>
+        {/* SIDEBAR TOGGLE TAB */}
+        <button onClick={toggleSidebar}
+          style={{ position:'absolute', left: sidebarOpen ? leftPanelWidth + 6 : 0, top:'50%', transform:'translateY(-50%)', zIndex:50, width:'18px', height:'48px', background:'var(--card2)', border:'1px solid var(--border)', borderRadius: sidebarOpen ? '0 8px 8px 0' : '8px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)', fontSize:'0.7rem', padding:0, transition:'left 0.25s', boxShadow:'2px 0 8px rgba(0,0,0,0.2)' }}
+          title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
+          {sidebarOpen ? '‹' : '›'}
+        </button>
+
         {/* SHARED LEFT PANEL */}
-        <div style={{ width:leftPanelWidth, flexShrink:0, display:'flex', flexDirection:'column', gap:'12px', overflow:'hidden' }}>
+        <div style={{ width: sidebarOpen ? leftPanelWidth : 0, flexShrink:0, display:'flex', flexDirection:'column', gap:'12px', overflow:'hidden', transition:'width 0.25s' }}>
           <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
               <button onClick={()=>setCurrentMonth(new Date(year,month-1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
@@ -2458,21 +2621,64 @@ const activeBarbers = barberFilter === 'all'
               })}
             </div>
           </div>
-          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px', flex:1 }}>
-            <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'10px' }}>
-              {periodLabel}
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
-              <div style={{ textAlign:'center', padding:'10px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
-                <div style={{ fontSize:'1.5rem', fontWeight:'700', color:'#d4af37' }}>{statsBookings.length}</div>
-                <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>BOOKINGS</div>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px', flex:1, overflow:'hidden' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+              <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase' }}>{periodLabel}</div>
+              <div style={{ position:'relative' }}>
+                <button onClick={()=>setShowLeftCardSettings(v=>!v)}
+                  style={{ padding:'3px 6px', background: showLeftCardSettings ? 'rgba(212,175,55,0.18)' : 'transparent', border:'1px solid ' + (showLeftCardSettings ? '#d4af37' : 'var(--border)'), borderRadius:'6px', color: showLeftCardSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.72rem', lineHeight:1 }}
+                  title="Customise">⚙️</button>
+                {showLeftCardSettings && (
+                  <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'10px', padding:'12px', zIndex:300, minWidth:'170px', boxShadow:'0 8px 28px rgba(0,0,0,0.45)' }}>
+                    <div style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'8px' }}>Show / Hide</div>
+                    {[
+                      {key:'clients',  label:'Clients',       color:'#d4af37'},
+                      {key:'revenue',  label:'Revenue',       color:'#4caf50'},
+                      {key:'discount', label:'Discount Given',color:'#4caf50'},
+                      {key:'tips',     label:'Tips',          color:'#2196f3'},
+                      {key:'barbers',  label:'Barbers',       color:'#9c27b0'},
+                    ].map(c => (
+                      <label key={c.key} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'4px 0', cursor:'pointer', userSelect:'none' }}>
+                        <div onClick={()=>toggleLeftCard(c.key)}
+                          style={{ width:'28px', height:'16px', borderRadius:'8px', background: visibleLeftCards.has(c.key) ? c.color : 'rgba(180,180,180,0.2)', position:'relative', transition:'background 0.2s', flexShrink:0, cursor:'pointer' }}>
+                          <div style={{ position:'absolute', top:'2px', left: visibleLeftCards.has(c.key) ? '14px' : '2px', width:'12px', height:'12px', borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />
+                        </div>
+                        <span style={{ fontSize:'0.74rem', color: visibleLeftCards.has(c.key) ? 'var(--text)' : 'var(--muted)', fontWeight: visibleLeftCards.has(c.key) ? '600' : '400' }}>{c.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
-                <div style={{ fontSize:'1.2rem', fontWeight:'700', color:'#4caf50' }}>£{revenue.toFixed(0)}</div>
-                <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>REVENUE</div>
-              </div>
             </div>
-            {activeBarbers.map(barber=>{
+            {(visibleLeftCards.has('clients')||visibleLeftCards.has('revenue')||visibleLeftCards.has('discount')||visibleLeftCards.has('tips')) && (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
+                {visibleLeftCards.has('clients') && (
+                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.5rem', fontWeight:'700', color:'#d4af37' }}>{statsBookings.length}</div>
+                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>CLIENTS</div>
+                  </div>
+                )}
+                {visibleLeftCards.has('revenue') && (
+                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.2rem', fontWeight:'700', color:'#4caf50' }}>£{revenue.toFixed(0)}</div>
+                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>REVENUE</div>
+                  </div>
+                )}
+                {visibleLeftCards.has('discount') && (
+                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.05rem', fontWeight:'700', color:'#4caf50' }}>£{discountGiven.toFixed(2)}</div>
+                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>DISCOUNT</div>
+                  </div>
+                )}
+                {visibleLeftCards.has('tips') && (
+                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(33,150,243,0.06)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.05rem', fontWeight:'700', color:'#2196f3' }}>£{tipsGiven.toFixed(2)}</div>
+                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>TIPS</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {visibleLeftCards.has('barbers') && activeBarbers.map(barber=>{
               const cnt=statsBookings.filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
               return (
                 <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid var(--border)' }}>
@@ -2485,11 +2691,52 @@ const activeBarbers = barberFilter === 'all'
               );
             })}
           </div>
+
+          {/* PILLS IN SIDEBAR */}
+          {(() => {
+            const sidePillDefs = [
+              {key:'total',        label:'Total',         color:'#d4af37', val: statsBookings.length},
+              {key:'confirmed',    label:'Confirmed',     color:'#4caf50', val: statsBookings.filter(b=>b.status==='CONFIRMED').length},
+              {key:'pending',      label:'Pending',       color:'#ff9800', val: statsBookings.filter(b=>b.status==='PENDING').length},
+              {key:'checkedout',   label:'Checked Out',   color:'#2196f3', val: checkedOutCount},
+              {key:'needscheckout',label:'Needs Checkout',color:'#ff5252', val: needsCheckoutCount},
+              {key:'revenue',      label:'Revenue',       color:'#d4af37', val: '£'+revenue},
+              {key:'discount',     label:'Discount',      color:'#4caf50', val: '£'+discountGiven.toFixed(2)},
+              {key:'tips',         label:'Tips',          color:'#ff9800', val: '£'+tipsGiven.toFixed(2)},
+              {key:'booksy',       label:'Booksy',        color:'#9c27b0', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length},
+              {key:'fresha',       label:'Fresha',        color:'#2196f3', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length},
+              {key:'website',      label:'Website',       color:'#4caf50', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length},
+              {key:'walkin',       label:'Walk-in',       color:'#ff9800', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length},
+              {key:'productsale',  label:'Products Sold', color:'#03a9f4', val: statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)},
+            ];
+            const shown = sidePillDefs.filter(p => visiblePills.has(p.key));
+            if (!shown.length) return null;
+            return (
+              <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'10px 12px' }}>
+                <div onClick={()=>setSidebarStatsOpen(v=>!v)} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', marginBottom: sidebarStatsOpen ? '8px' : 0 }}>
+                  <div style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase' }}>Stats</div>
+                  <span style={{ fontSize:'0.6rem', color:'var(--muted)', transition:'transform 0.2s', display:'inline-block', transform: sidebarStatsOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
+                </div>
+                {sidebarStatsOpen && shown.map(p => (
+                  <div key={p.key} onClick={()=>setPillFilter(pillFilter===p.key?null:p.key)}
+                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 6px', marginBottom:'2px', borderRadius:'6px', cursor:'pointer', background: pillFilter===p.key ? p.color+'18' : 'transparent', transition:'background 0.15s' }}
+                    onMouseEnter={e=>{ if(pillFilter!==p.key) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={e=>{ if(pillFilter!==p.key) e.currentTarget.style.background='transparent'; }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                      <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:p.color, flexShrink:0 }} />
+                      <span style={{ fontSize:'0.72rem', color: pillFilter===p.key ? p.color : 'var(--text)', fontWeight: pillFilter===p.key ? '700' : '400' }}>{p.label}</span>
+                    </div>
+                    <span style={{ fontSize:'0.72rem', fontWeight:'700', color: pillFilter===p.key ? p.color : 'var(--muted)' }}>{p.val}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
         <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
 
         {/* RIGHT PANEL */}
-        <div style={{ flex:1, display:'flex', gap:'0', overflowX:'hidden', overflowY:'auto', marginLeft:'8px' }}>
+        <div style={{ flex:1, display:'flex', gap:'0', overflowX:'hidden', overflowY:'auto', marginLeft:'26px' }}>
           {view === 'day' && (
             <>
               {loading ? (

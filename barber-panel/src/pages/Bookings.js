@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import config from '../config';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import { deleteBooking } from '../firestoreActions';
 
 const PAGE_SIZE = 100;
 
@@ -14,20 +15,29 @@ const STATUS_COLORS = {
 };
 
 const SOURCE_COLORS = {
-  Booksy:    { color: '#9c27b0', bg: 'rgba(156,39,176,0.15)' },
-  Fresha:    { color: '#2196f3', bg: 'rgba(33,150,243,0.15)' },
-  Website:   { color: '#4caf50', bg: 'rgba(76,175,80,0.15)' },
-  'Walk-in': { color: '#ff9800', bg: 'rgba(255,152,0,0.15)'  },
+  Booksy:          { color: '#9c27b0', bg: 'rgba(156,39,176,0.15)' },
+  Fresha:          { color: '#2196f3', bg: 'rgba(33,150,243,0.15)' },
+  Website:         { color: '#4caf50', bg: 'rgba(76,175,80,0.15)'  },
+  'Walk-in':       { color: '#ff9800', bg: 'rgba(255,152,0,0.15)'  },
+  'Product Sale':  { color: '#03a9f4', bg: 'rgba(3,169,244,0.15)'  },
 };
 
-// Historical, walk_in, walkin, empty → Walk-in
 function normalizeSource(src) {
   const s = String(src || '').trim().toLowerCase();
   if (!s || s === 'historical' || s === 'walk_in' || s === 'walkin' || s === 'walk-in') return 'Walk-in';
+  if (s === 'product sale' || s === 'product_sale' || s === 'productsale') return 'Product Sale';
   if (s === 'booksy')  return 'Booksy';
   if (s === 'fresha')  return 'Fresha';
   if (s === 'website') return 'Website';
   return src;
+}
+
+function soldProductsTotal(b) {
+  const list = Array.isArray(b?.soldProducts) ? b.soldProducts : [];
+  return list.reduce((s, p) => {
+    const price = parseFloat(String(p?.price || '0').replace(/[£,]/g, '')) || 0;
+    return s + price * (parseInt(p?.qty, 10) || 0);
+  }, 0);
 }
 
 function parsePrice(p) {
@@ -103,6 +113,8 @@ export default function Bookings() {
   const [barberFilter, setBarberFilter] = useState('all');
   const [sortBy, setSortBy]             = useState('date');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const navPeriods = ['today', 'week', 'month', 'year'];
   const canNav = navPeriods.includes(periodFilter);
@@ -114,6 +126,20 @@ export default function Bookings() {
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, navAnchor, search, activeFilter, barberFilter, sortBy]);
 
   const toggleFilter = (key) => setActiveFilter(prev => prev === key ? null : key);
+
+  const handleDeleteCancelled = async (bookingId) => {
+    setDeletingId(bookingId);
+    try {
+      await deleteBooking(bookingId);
+      setBookings(prev => prev.filter(b => b.bookingId !== bookingId));
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Could not delete booking. Please try again.');
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  };
 
   const fetchAll = useCallback(async (_period) => {
     setLoading(true);
@@ -171,9 +197,10 @@ export default function Bookings() {
           time,
           startTime,
           bookingId:  d.bookingId || doc.id,
-          source:     normalizeSource(d.source),
-          paidAmount: d.paidAmount || '',
-          price:      d.price || '',
+          source:       normalizeSource(d.source),
+          paidAmount:   d.paidAmount || '',
+          price:        d.price || '',
+          soldProducts: d.soldProducts || [],
         };
       });
 
@@ -210,7 +237,7 @@ export default function Bookings() {
 
   const filtered = useMemo(() => {
     const STATUS_FILTER_MAP = { confirmed:'CONFIRMED', pending:'PENDING', checkedout:'CHECKED_OUT', cancelled:'CANCELLED', noshow:'NO_SHOW', unpaid:'UNPAID' };
-    const SOURCE_FILTER_MAP = { booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in' };
+    const SOURCE_FILTER_MAP = { booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Product Sale' };
     return baseFiltered
       .filter(b => {
         if (!activeFilter) return true;
@@ -253,11 +280,12 @@ export default function Bookings() {
     { key: 'noshow',     label: 'No Show',      value: baseFiltered.filter(b => b.status === 'NO_SHOW').length,     color: '#9c27b0' },
   ];
   const sourcePills = [
-    { key: 'booksy',  label: 'Booksy',   value: baseFiltered.filter(b => b.source === 'Booksy').length,   color: '#9c27b0' },
-    { key: 'fresha',  label: 'Fresha',   value: baseFiltered.filter(b => b.source === 'Fresha').length,   color: '#2196f3' },
-    { key: 'website', label: 'Website',  value: baseFiltered.filter(b => b.source === 'Website').length,  color: '#4caf50' },
-    { key: 'walkin',  label: 'Walk-in',  value: baseFiltered.filter(b => b.source === 'Walk-in').length,  color: '#ff9800' },
-  ];
+    { key: 'booksy',      label: 'Booksy',        value: baseFiltered.filter(b => b.source === 'Booksy').length,         color: '#9c27b0' },
+    { key: 'fresha',      label: 'Fresha',         value: baseFiltered.filter(b => b.source === 'Fresha').length,         color: '#2196f3' },
+    { key: 'website',     label: 'Website',        value: baseFiltered.filter(b => b.source === 'Website').length,        color: '#4caf50' },
+    { key: 'walkin',      label: 'Walk-in',        value: baseFiltered.filter(b => b.source === 'Walk-in').length,        color: '#ff9800' },
+    { key: 'productsale', label: 'Product Sale',   value: baseFiltered.filter(b => b.source === 'Product Sale').length,   color: '#03a9f4' },
+  ].filter(p => p.value > 0 || p.key === 'walkin' || p.key === 'booksy');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -384,14 +412,25 @@ export default function Bookings() {
               const srcStyle = SOURCE_COLORS[b.source] || SOURCE_COLORS['Walk-in'];
               const barberObj = barbers.find(bar => (bar.name || '').toLowerCase() === (b.barber || '').toLowerCase());
               const barberColor = barberObj?.color || '#7a7260';
-              const svcName = config.services
-                ? (config.services.find(s => s.id === b.service) || {}).name || b.service
-                : b.service;
+              const isProductSale = b.source === 'Product Sale';
+              const svcName = isProductSale
+                ? (Array.isArray(b.soldProducts) && b.soldProducts.length
+                    ? b.soldProducts.map(p => p.name).filter(Boolean).join(', ')
+                    : 'Product Sale')
+                : (config.services
+                    ? (config.services.find(s => s.id === b.service) || {}).name || b.service
+                    : b.service);
+              const displayAmount = isProductSale
+                ? (soldProductsTotal(b) > 0 ? '£' + soldProductsTotal(b).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'))
+                : (b.price || (b.paidAmount ? '£' + b.paidAmount : '—'));
+              const isCancelled = b.status === 'CANCELLED';
+              const isConfirming = confirmDeleteId === b.bookingId;
+              const isDeleting   = deletingId === b.bookingId;
               return (
                 <div key={b.bookingId + i}
-                  style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1fr', padding: '11px 16px', borderBottom: '1px solid var(--border)', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,175,55,0.03)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  style={{ position: 'relative', display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1fr', padding: '11px 16px', borderBottom: '1px solid var(--border)', transition: 'background 0.1s', background: isConfirming ? 'rgba(255,82,82,0.04)' : 'transparent' }}
+                  onMouseEnter={e => { if (!isConfirming) e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }}
+                  onMouseLeave={e => { if (!isConfirming) e.currentTarget.style.background = 'transparent'; }}>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text)' }}>{b.name}</span>
@@ -399,7 +438,7 @@ export default function Bookings() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.76rem', color: 'var(--text)' }}>{svcName}</span>
+                    <span style={{ fontSize: '0.76rem', color: isProductSale ? '#03a9f4' : 'var(--text)', fontStyle: isProductSale ? 'italic' : 'normal' }}>{svcName}</span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
@@ -425,14 +464,41 @@ export default function Bookings() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#d4af37' }}>{b.price}</span>
-                    {b.paidAmount && b.paidAmount !== b.price && (
-                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Paid: {b.paidAmount}</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: '700', color: isProductSale ? '#03a9f4' : '#d4af37' }}>{displayAmount}</span>
+                    {!isProductSale && b.paidAmount && b.paidAmount !== b.price && (
+                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Paid: £{parseFloat(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
                     )}
                     {b.status === 'CHECKED_OUT' && b.paymentMethod && (
                       <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>{b.paymentMethod}</span>
                     )}
                   </div>
+
+                  {isCancelled && (
+                    <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {isConfirming ? (
+                        <>
+                          <button
+                            onClick={() => handleDeleteCancelled(b.bookingId)}
+                            disabled={isDeleting}
+                            style={{ padding: '4px 8px', background: 'rgba(255,82,82,0.15)', border: '1px solid rgba(255,82,82,0.4)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '700' }}>
+                            {isDeleting ? '…' : '✓ Delete'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            style={{ padding: '4px 6px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.65rem' }}>
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(b.bookingId)}
+                          style={{ padding: '3px 7px', background: 'transparent', border: '1px solid rgba(255,82,82,0.2)', borderRadius: '5px', color: 'rgba(255,82,82,0.5)', cursor: 'pointer', fontSize: '0.68rem', transition: 'all 0.15s', lineHeight: 1 }}
+                          title="Delete booking">
+                          🗑
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

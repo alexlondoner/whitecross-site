@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../firebase';
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc,
-  doc, query, Timestamp, orderBy,
+  doc, getDoc, setDoc, query, Timestamp, orderBy,
 } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
@@ -32,13 +32,15 @@ function parsePrice(val) {
 }
 
 function effectiveRevenue(b) {
+  // Tips are personal to the barber — never counted as company revenue
+  const tip = parsePrice(b.tip);
   if (b.status === 'CHECKED_OUT') {
     const paid = parsePrice(b.paidAmount);
-    if (paid > 0) return paid;
+    if (paid > 0) return Math.max(0, paid - tip);
   }
   const p = parsePrice(b.price);
   if (p > 0) return p;
-  return parsePrice(b.paidAmount);
+  return Math.max(0, parsePrice(b.paidAmount) - tip);
 }
 
 function paymentMethod(b) {
@@ -53,6 +55,11 @@ function isWalkInBooking(b) {
   if (src === 'walk_in' || src === 'walk-in' || src === 'walkin' || src === 'historical') return true;
   if (src === '' && String(b.clientName || '').trim().toLowerCase() === 'walk-in') return true;
   return false;
+}
+
+function soldProductsTotal(b) {
+  const list = Array.isArray(b?.soldProducts) ? b.soldProducts : [];
+  return list.reduce((s, p) => s + parsePrice(p?.price) * (parseInt(p?.qty, 10) || 0), 0);
 }
 
 function normalizeName(v) {
@@ -179,6 +186,7 @@ export default function Finance() {
   const [dailyRangeMode, setDailyRangeMode] = useState('month');
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [summaryView, setSummaryView] = useState('partnership');
+  const [paymentFilter, setPaymentFilter] = useState('all'); // all | cash | card
 
   const [partnerConfig, setPartnerConfig] = useState(() => {
     try { return JSON.parse(localStorage.getItem('partnerConfig') || 'null') || PARTNER_CONFIG_DEFAULT; }
@@ -189,9 +197,15 @@ export default function Finance() {
   );
   const [showSettings, setShowSettings] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState(null);
+  const [tipSettings, setTipSettings] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('financeTipSettings') || 'null') || { tipsToIndividual: true, cardTipMethod: 'till_cash' }; }
+    catch { return { tipsToIndividual: true, cardTipMethod: 'till_cash' }; }
+  });
 
   const [payForm, setPayForm] = useState({ date: '', barberName: '', amount: '', method: 'Cash', notes: '' });
   const [payLoading, setPayLoading] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ date: '', cashExpense: '', bankExpense: '', notes: '' });
+  const [expenseFormSaving, setExpenseFormSaving] = useState(false);
   const [paymentMonthMode, setPaymentMonthMode] = useState('all');
   const [paymentBarberFilter, setPaymentBarberFilter] = useState('all');
   const [editingExpense, setEditingExpense] = useState(null);
@@ -312,11 +326,41 @@ export default function Finance() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Load finance config from Firestore (overrides localStorage if found)
+  useEffect(() => {
+    const loadFinanceConfig = async () => {
+      try {
+        const snap = await getDoc(doc(db, `tenants/${TENANT}/settings`, 'finance_config'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.partnerConfig) {
+            setPartnerConfig(data.partnerConfig);
+            localStorage.setItem('partnerConfig', JSON.stringify(data.partnerConfig));
+          }
+          if (data.fixedDailyRate !== undefined) {
+            setFixedDailyRate(parseFloat(data.fixedDailyRate) || FIXED_DAILY_COST_DEFAULT);
+            localStorage.setItem('financeFixedRate', String(data.fixedDailyRate));
+          }
+          if (data.tipSettings) {
+            setTipSettings(data.tipSettings);
+            localStorage.setItem('financeTipSettings', JSON.stringify(data.tipSettings));
+          }
+        }
+      } catch {}
+    };
+    loadFinanceConfig();
+  }, []);
+
   // ── Daily rows ────────────────────────────────────────────────────────────
   const dailyData = useMemo(() => {
     const inScope = dk => monthMode === 'all' || String(dk || '').startsWith(selectedMonth);
     const realBarberSet = new Set(barbers.filter(b => b._isReal).map(b => normalizeName(b.name)));
-    const scopedBk = bookings.filter(b => b.dateKey && inScope(b.dateKey));
+    const scopedBk = bookings.filter(b => {
+      if (!b.dateKey || !inScope(b.dateKey)) return false;
+      if (paymentFilter === 'cash') return paymentMethod(b) === 'CASH';
+      if (paymentFilter === 'card') return paymentMethod(b) !== 'CASH';
+      return true;
+    });
     const scopedExpKeys = Object.keys(expenses).filter(inScope);
 
     const dateKeys = monthMode === 'selected'
@@ -332,23 +376,37 @@ export default function Finance() {
       const cashExpense = parseFloat(exp.cashExpense ?? 0);
       const bankExpense = parseFloat(exp.bankExpense ?? 0);
 
-      const barberRev = {};
-      barbers.forEach(b => { barberRev[b.name] = { cash: 0, monzo: 0, card: 0 }; });
+      const barberRev  = {};
+      const barberTips = {};
+      barbers.forEach(b => {
+        barberRev[b.name]  = { cash: 0, monzo: 0, card: 0 };
+        barberTips[b.name] = { cash: 0, monzo: 0, card: 0 };
+      });
       // Revenue: only CHECKED_OUT bookings; wages: all non-cancelled (worked)
       const workedNames = new Set();
       dayBk.forEach(b => {
         const name = b.barber;
         workedNames.add(name);
         if (b.status !== 'CHECKED_OUT') return;
-        if (!barberRev[name]) barberRev[name] = { cash: 0, monzo: 0, card: 0 };
+        if (!barberRev[name])  barberRev[name]  = { cash: 0, monzo: 0, card: 0 };
+        if (!barberTips[name]) barberTips[name] = { cash: 0, monzo: 0, card: 0 };
         const rev = effectiveRevenue(b);
+        const tip = parsePrice(b.tip);
         const pm2 = paymentMethod(b);
-        if (pm2 === 'CASH') barberRev[name].cash += rev;
-        else if (pm2 === 'MONZO') barberRev[name].monzo += rev;
-        else barberRev[name].card += rev;
+        if (pm2 === 'CASH') { barberRev[name].cash += rev; if (tip) barberTips[name].cash += tip; }
+        else if (pm2 === 'MONZO') { barberRev[name].monzo += rev; if (tip) barberTips[name].monzo += tip; }
+        else { barberRev[name].card += rev; if (tip) barberTips[name].card += tip; }
       });
+      // Card/monzo tips need to be reimbursed to the barber from the till
+      const tillTipPayout = tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash'
+        ? Object.values(barberTips).reduce((s, t) => s + t.card + t.monzo, 0)
+        : 0;
+      const totalTipsDay = Object.values(barberTips).reduce((s, t) => s + t.cash + t.card + t.monzo, 0);
 
       const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
+      let productRev = 0;
+      dayBk.forEach(b => { if (b.status === 'CHECKED_OUT') productRev += soldProductsTotal(b); });
+      const serviceRev = Math.max(0, grossRevenue - productRev);
       const netRevenue   = grossRevenue - cashExpense - bankExpense;
 
       // Wages: barbers in partnerConfig (includes Kadim/Manoj even if not in Firestore)
@@ -368,13 +426,14 @@ export default function Finance() {
 
       return {
         day: pd, dateKey: dk, dayOfWeek: rowDate.toLocaleDateString('en-GB', { weekday: 'short' }),
-        barberRev, cashExpense, bankExpense, expenseNotes: String(exp.notes || '').trim(),
-        grossRevenue, netRevenue, totalWages, fixedCost, netPL,
+        barberRev, barberTips, cashExpense, bankExpense, expenseNotes: String(exp.notes || '').trim(),
+        grossRevenue, serviceRev, productRev, netRevenue, totalWages, fixedCost, netPL,
+        tillTipPayout, totalTipsDay,
         hasData: grossRevenue > 0 || cashExpense > 0 || bankExpense > 0 || !!String(exp.notes || '').trim(),
         exp,
       };
     });
-  }, [bookings, barbers, expenses, partnerConfig, fixedDailyRate, year, month, selectedMonth, monthMode]);
+  }, [bookings, barbers, expenses, partnerConfig, fixedDailyRate, year, month, selectedMonth, monthMode, paymentFilter]);
 
   const visibleDailyRows = useMemo(() => {
     const today = new Date(); today.setHours(23, 59, 59, 999);
@@ -394,13 +453,17 @@ export default function Finance() {
   }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, monthMode, selectedMonth]);
 
   const monthlyTotals = useMemo(() => ({
-    grossRevenue: dailyData.reduce((s, d) => s + d.grossRevenue, 0),
-    netRevenue:   dailyData.reduce((s, d) => s + d.netRevenue,   0),
-    cashExpense:  dailyData.reduce((s, d) => s + d.cashExpense,  0),
-    bankExpense:  dailyData.reduce((s, d) => s + d.bankExpense,  0),
-    totalWages:   dailyData.reduce((s, d) => s + d.totalWages,   0),
-    fixedCost:    dailyData.reduce((s, d) => s + d.fixedCost,    0),
-    netPL:        dailyData.reduce((s, d) => s + d.netPL,        0),
+    grossRevenue:   dailyData.reduce((s, d) => s + d.grossRevenue,   0),
+    serviceRevenue: dailyData.reduce((s, d) => s + d.serviceRev,     0),
+    productRevenue: dailyData.reduce((s, d) => s + d.productRev,     0),
+    netRevenue:     dailyData.reduce((s, d) => s + d.netRevenue,     0),
+    cashExpense:    dailyData.reduce((s, d) => s + d.cashExpense,    0),
+    bankExpense:    dailyData.reduce((s, d) => s + d.bankExpense,    0),
+    totalWages:     dailyData.reduce((s, d) => s + d.totalWages,     0),
+    fixedCost:      dailyData.reduce((s, d) => s + d.fixedCost,      0),
+    netPL:          dailyData.reduce((s, d) => s + d.netPL,          0),
+    totalTips:      dailyData.reduce((s, d) => s + d.totalTipsDay,   0),
+    tillTipPayout:  dailyData.reduce((s, d) => s + d.tillTipPayout,  0),
   }), [dailyData]);
 
   // ── Partnership accounting ─────────────────────────────────────────────────
@@ -571,6 +634,47 @@ export default function Finance() {
     setPayLoading(false);
   };
 
+  const addExpense = async () => {
+    if (!expenseForm.date) return;
+    const cashToAdd = parseFloat(expenseForm.cashExpense) || 0;
+    const bankToAdd = parseFloat(expenseForm.bankExpense) || 0;
+    const notesToAdd = String(expenseForm.notes || '').trim();
+    if (cashToAdd <= 0 && bankToAdd <= 0 && !notesToAdd) return;
+
+    setExpenseFormSaving(true);
+    try {
+      const dk = expenseForm.date;
+      const existing = expenses[dk] || null;
+      const nextCash = (parseFloat(existing?.cashExpense) || 0) + cashToAdd;
+      const nextBank = (parseFloat(existing?.bankExpense) || 0) + bankToAdd;
+      const nextNotes = [String(existing?.notes || '').trim(), notesToAdd]
+        .filter(Boolean)
+        .join(existing?.notes && notesToAdd ? ' | ' : '');
+
+      const data = {
+        date: dk,
+        month: dk.slice(0, 7),
+        cashExpense: nextCash,
+        bankExpense: nextBank,
+        notes: nextNotes,
+      };
+
+      if (existing?.id) {
+        await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, existing.id), data);
+        data.id = existing.id;
+      } else {
+        const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
+        data.id = ref.id;
+      }
+
+      setExpenses(prev => ({ ...prev, [dk]: data }));
+      setExpenseForm({ date: '', cashExpense: '', bankExpense: '', notes: '' });
+    } catch (e) {
+      console.error(e);
+    }
+    setExpenseFormSaving(false);
+  };
+
   const deletePayment = async payment => {
     if (!window.confirm('Delete this payment record?')) return;
     const col = payment.sourceType === 'advances' ? 'advances' : 'finance_payments';
@@ -578,17 +682,27 @@ export default function Finance() {
     setPayments(prev => prev.filter(p => !(p.id === payment.id && p.sourceType === payment.sourceType)));
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     if (!settingsDraft) return;
     setPartnerConfig(settingsDraft.partnerConfig);
     setFixedDailyRate(settingsDraft.fixedDailyRate);
+    setTipSettings(settingsDraft.tipSettings);
     localStorage.setItem('partnerConfig', JSON.stringify(settingsDraft.partnerConfig));
     localStorage.setItem('financeFixedRate', String(settingsDraft.fixedDailyRate));
+    localStorage.setItem('financeTipSettings', JSON.stringify(settingsDraft.tipSettings));
+    try {
+      await setDoc(doc(db, `tenants/${TENANT}/settings`, 'finance_config'), {
+        partnerConfig: settingsDraft.partnerConfig,
+        fixedDailyRate: settingsDraft.fixedDailyRate,
+        tipSettings: settingsDraft.tipSettings,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) { console.error('Finance config save error:', e); }
     setShowSettings(false);
   };
 
   const openSettings = () => {
-    setSettingsDraft({ partnerConfig: JSON.parse(JSON.stringify(partnerConfig)), fixedDailyRate });
+    setSettingsDraft({ partnerConfig: JSON.parse(JSON.stringify(partnerConfig)), fixedDailyRate, tipSettings: { ...tipSettings } });
     setShowSettings(true);
   };
 
@@ -676,39 +790,76 @@ export default function Finance() {
               </tbody>
             </table>
           </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', marginTop: '14px', flexWrap: 'wrap' }}>
             <div>
               <label style={lbl}>Fixed Daily Cost (£/day when shop is open)</label>
               <input type="number" value={settingsDraft.fixedDailyRate} min="0"
                 onChange={e => setSettingsDraft(d => ({ ...d, fixedDailyRate: parseFloat(e.target.value) || 0 }))}
                 style={{ ...inp, width: '100px' }} />
             </div>
-            <button onClick={saveSettings}
-              style={{ padding: '9px 22px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', marginTop: '18px' }}>
-              Save
-            </button>
-            <button onClick={() => setShowSettings(false)}
-              style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', fontSize: '0.78rem', cursor: 'pointer', marginTop: '18px' }}>
-              Cancel
-            </button>
+            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '24px' }}>
+              <div style={{ fontSize: '0.62rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px', marginBottom: '10px' }}>TIP SETTINGS</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text)' }}>
+                  <input type="checkbox" checked={settingsDraft.tipSettings.tipsToIndividual}
+                    onChange={e => setSettingsDraft(d => ({ ...d, tipSettings: { ...d.tipSettings, tipsToIndividual: e.target.checked } }))} />
+                  Tips go to individual barber (not shared pool)
+                </label>
+                {settingsDraft.tipSettings.tipsToIndividual && (
+                  <div>
+                    <label style={lbl}>Card tip reimbursement method</label>
+                    <select value={settingsDraft.tipSettings.cardTipMethod}
+                      onChange={e => setSettingsDraft(d => ({ ...d, tipSettings: { ...d.tipSettings, cardTipMethod: e.target.value } }))}
+                      style={{ ...inp, width: 'auto', minWidth: '200px', padding: '6px 10px', fontSize: '0.78rem' }}>
+                      <option value="till_cash">From till cash (tracked as payout)</option>
+                      <option value="bank_transfer">Bank transfer (info only)</option>
+                      <option value="none">Manual / no tracking</option>
+                    </select>
+                    <div style={{ fontSize: '0.67rem', color: 'var(--muted)', marginTop: '4px', maxWidth: '280px' }}>
+                      {settingsDraft.tipSettings.cardTipMethod === 'till_cash'
+                        ? 'Card tips appear as a till cash payout in the daily ledger.'
+                        : settingsDraft.tipSettings.cardTipMethod === 'bank_transfer'
+                        ? 'Card tips are shown for info only — no till impact recorded.'
+                        : 'Tips are not tracked in ledger calculations.'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', marginTop: '8px' }}>
+              <button onClick={saveSettings}
+                style={{ padding: '9px 22px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}>
+                Save
+              </button>
+              <button onClick={() => setShowSettings(false)}
+                style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', fontSize: '0.78rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── KPI cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         {[
-          { label: 'Gross Revenue',  value: '£' + monthlyTotals.grossRevenue.toFixed(0), color: '#d4af37' },
-          { label: 'Net Revenue',    value: '£' + monthlyTotals.netRevenue.toFixed(0),   color: '#9c27b0' },
-          { label: 'Cash Expenses',  value: '£' + monthlyTotals.cashExpense.toFixed(0),  color: '#ff7043' },
-          { label: 'Bank Expenses',  value: '£' + monthlyTotals.bankExpense.toFixed(0),  color: '#ff7043' },
-          { label: 'Total Wages',    value: '£' + monthlyTotals.totalWages.toFixed(0),   color: '#4caf50' },
-          { label: 'Fixed Cost',     value: '£' + monthlyTotals.fixedCost.toFixed(0),    color: '#78909c' },
-          { label: 'Net P&L',        value: (monthlyTotals.netPL >= 0 ? '+' : '') + '£' + monthlyTotals.netPL.toFixed(0), color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' },
+          { label: 'Gross Revenue',    value: '£' + monthlyTotals.grossRevenue.toFixed(0),   color: '#d4af37' },
+          { label: 'Service Revenue',  value: '£' + monthlyTotals.serviceRevenue.toFixed(0), color: '#d4af37', sub: true },
+          { label: 'Product Revenue',  value: '£' + monthlyTotals.productRevenue.toFixed(0), color: '#03a9f4', sub: true },
+          { label: 'Net Revenue',      value: '£' + monthlyTotals.netRevenue.toFixed(0),     color: '#9c27b0' },
+          { label: 'Cash Expenses',    value: '£' + monthlyTotals.cashExpense.toFixed(0),    color: '#ff7043' },
+          { label: 'Bank Expenses',    value: '£' + monthlyTotals.bankExpense.toFixed(0),    color: '#ff7043' },
+          { label: 'Total Wages',      value: '£' + monthlyTotals.totalWages.toFixed(0),     color: '#4caf50' },
+          { label: 'Fixed Cost',       value: '£' + monthlyTotals.fixedCost.toFixed(0),      color: '#78909c' },
+          { label: 'Net P&L',          value: (monthlyTotals.netPL >= 0 ? '+' : '') + '£' + monthlyTotals.netPL.toFixed(0), color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' },
+          { label: 'Tips (Total)',     value: '£' + monthlyTotals.totalTips.toFixed(0),      color: '#2196f3' },
+          ...(tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && monthlyTotals.tillTipPayout > 0
+            ? [{ label: 'Till → Barbers', value: '−£' + monthlyTotals.tillTipPayout.toFixed(0), color: '#ff9800', sub: true }]
+            : []),
         ].map(c => (
-          <div key={c.label} style={{ ...card, padding: '14px 16px' }}>
-            <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '800', color: c.color }}>{c.value}</div>
+          <div key={c.label} style={{ ...card, padding: '14px 16px', borderLeft: c.sub ? `3px solid ${c.color}55` : undefined, opacity: c.sub ? 0.85 : 1 }}>
+            <div style={{ fontSize: '0.58rem', color: c.sub ? c.color + '99' : 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</div>
+            <div style={{ fontSize: c.sub ? '1.05rem' : '1.2rem', fontWeight: '800', color: c.color }}>{c.value}</div>
           </div>
         ))}
       </div>
@@ -717,6 +868,7 @@ export default function Finance() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button style={tabBtn('daily')}    onClick={() => setActiveTab('daily')}>Daily Ledger</button>
         <button style={tabBtn('payments')} onClick={() => setActiveTab('payments')}>Payments</button>
+        <button style={tabBtn('expenses')} onClick={() => setActiveTab('expenses')}>Expenses</button>
         <button style={tabBtn('summary')}  onClick={() => setActiveTab('summary')}>Monthly Summary</button>
         <button style={tabBtn('overview')} onClick={() => setActiveTab('overview')}>Overview</button>
         {activeTab === 'daily' && (
@@ -726,6 +878,19 @@ export default function Finance() {
           </button>
         )}
       </div>
+
+      {/* Payment filter */}
+      {!loading && (activeTab === 'daily' || activeTab === 'summary') && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginRight: '2px' }}>Payment:</span>
+          {[['all','All','#d4af37'],['cash','Cash','#4caf50'],['card','Card / Monzo','#2196f3']].map(([k,l,c]) => (
+            <button key={k} onClick={() => setPaymentFilter(k)}
+              style={{ padding: '5px 14px', borderRadius: '20px', border: `1px solid ${paymentFilter === k ? c : 'var(--border)'}`, background: paymentFilter === k ? c + '22' : 'transparent', color: paymentFilter === k ? c : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: paymentFilter === k ? '700' : '400', transition: 'all 0.15s' }}>
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Daily range selector */}
       {!loading && activeTab === 'daily' && (
@@ -779,6 +944,8 @@ export default function Finance() {
                   <th style={{ ...thS, color: '#9c27b0' }}>Net Rev.</th>
                   <th style={{ ...thS, color: 'var(--muted)' }}>Wages</th>
                   <th style={{ ...thS, color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252' }}>Net P&L</th>
+                  {tipSettings.tipsToIndividual && <th style={{ ...thS, color: '#2196f3' }}>Tips</th>}
+                  {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && <th style={{ ...thS, color: '#ff9800', fontSize: '0.58rem' }}>Till→<br/>Barbers</th>}
                 </tr>
               </thead>
               <tbody>
@@ -852,6 +1019,20 @@ export default function Finance() {
                       <td style={tdS(row.hasData ? (row.netPL >= 0 ? 'green' : 'red') : null)}>
                         {row.hasData ? (row.netPL >= 0 ? '+' : '') + '£' + Math.round(row.netPL) : '–'}
                       </td>
+                      {tipSettings.tipsToIndividual && (
+                        <td style={{ ...tdS(), color: row.totalTipsDay > 0 ? '#2196f3' : 'var(--muted)', fontSize: '0.72rem' }}>
+                          {row.totalTipsDay > 0
+                            ? <span title={Object.entries(row.barberTips || {}).filter(([,t]) => t.cash+t.card+t.monzo>0).map(([n,t]) => `${n}: £${(t.cash+t.card+t.monzo).toFixed(2)}`).join(' | ')}>
+                                £{row.totalTipsDay.toFixed(2)}
+                              </span>
+                            : '–'}
+                        </td>
+                      )}
+                      {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && (
+                        <td style={{ ...tdS(), color: row.tillTipPayout > 0 ? '#ff9800' : 'var(--muted)', fontSize: '0.72rem' }}>
+                          {row.tillTipPayout > 0 ? '−£' + row.tillTipPayout.toFixed(2) : '–'}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -880,12 +1061,23 @@ export default function Finance() {
                   <td style={{ ...tdS(visibleDailyRows.reduce((s, d) => s + d.netPL, 0) >= 0 ? 'green' : 'red'), fontWeight: '800' }}>
                     {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.netPL, 0); return (t >= 0 ? '+' : '') + '£' + Math.round(t); })()}
                   </td>
+                  {tipSettings.tipsToIndividual && (
+                    <td style={{ ...tdS(), fontWeight: '700', color: '#2196f3' }}>
+                      {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.totalTipsDay, 0); return t > 0 ? '£' + t.toFixed(2) : '–'; })()}
+                    </td>
+                  )}
+                  {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && (
+                    <td style={{ ...tdS(), fontWeight: '700', color: '#ff9800' }}>
+                      {(() => { const t = visibleDailyRows.reduce((s, d) => s + d.tillTipPayout, 0); return t > 0 ? '−£' + t.toFixed(2) : '–'; })()}
+                    </td>
+                  )}
                 </tr>
               </tbody>
             </table>
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(212,175,55,0.1)', fontSize: '0.6rem', color: 'var(--muted)' }}>
             Click any expense cell to edit. Card total includes Monzo (shown as "m"). Net P&L = Net Revenue – Wages – Fixed Cost (£{fixedDailyRate}/day).
+            {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && ' Hover over Tips cell to see per-barber breakdown. Till→Barbers = card/monzo tips reimbursed from till.'}
           </div>
         </div>
       )}
@@ -976,6 +1168,78 @@ export default function Finance() {
               style={{ padding: '11px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', opacity: (!payForm.date || !payForm.barberName || !payForm.amount) ? 0.5 : 1 }}>
               {payLoading ? 'Saving...' : 'Add Payment'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          EXPENSES
+          ══════════════════════════════════════════════════════════════════ */}
+      {!loading && activeTab === 'expenses' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '20px', alignItems: 'start' }}>
+          <div style={{ ...card, padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ fontSize: '0.65rem', color: '#ff7043', fontWeight: '700', letterSpacing: '2px' }}>NEW CASH / BANK EXPENSE</div>
+            <div>
+              <label style={lbl}>Date</label>
+              <input type="date" value={expenseForm.date} onChange={e => setExpenseForm(f => ({ ...f, date: e.target.value }))} style={{ ...inp, colorScheme: 'dark' }} />
+            </div>
+            <div>
+              <label style={lbl}>Cash Expense (£)</label>
+              <input type="number" value={expenseForm.cashExpense} onChange={e => setExpenseForm(f => ({ ...f, cashExpense: e.target.value }))} placeholder="0" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Bank Expense (£)</label>
+              <input type="number" value={expenseForm.bankExpense} onChange={e => setExpenseForm(f => ({ ...f, bankExpense: e.target.value }))} placeholder="0" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Notes (optional)</label>
+              <input value={expenseForm.notes} onChange={e => setExpenseForm(f => ({ ...f, notes: e.target.value }))} placeholder="Description..." style={inp} />
+            </div>
+            <button onClick={addExpense} disabled={expenseFormSaving || !expenseForm.date || (!expenseForm.cashExpense && !expenseForm.bankExpense && !expenseForm.notes)}
+              style={{ padding: '11px', background: 'linear-gradient(135deg,#ff7043,#ff8a65)', border: 'none', borderRadius: '8px', color: '#111', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', opacity: (!expenseForm.date || (!expenseForm.cashExpense && !expenseForm.bankExpense && !expenseForm.notes)) ? 0.5 : 1 }}>
+              {expenseFormSaving ? 'Saving...' : 'Add Expense'}
+            </button>
+            <div style={{ fontSize: '0.68rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+              Saves directly from the panel. If that date already has expenses, the new amounts are added to the existing totals.
+            </div>
+          </div>
+
+          <div style={{ ...card, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#ff7043', fontWeight: '700', letterSpacing: '2px' }}>
+              EXPENSE HISTORY ({monthMode === 'selected' ? 'THIS MONTH' : 'ALL MONTHS'})
+            </div>
+            {Object.entries(expenses)
+              .filter(([dk]) => monthMode === 'all' || String(dk || '').startsWith(selectedMonth))
+              .sort((a, b) => b[0].localeCompare(a[0])).length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8rem' }}>No expense records in current filter.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,112,67,0.08)' }}>
+                    {['Date','Cash','Bank','Notes'].map(h => (
+                      <th key={h} style={{ ...thS, textAlign: 'left', padding: '8px 14px' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(expenses)
+                    .filter(([dk]) => monthMode === 'all' || String(dk || '').startsWith(selectedMonth))
+                    .sort((a, b) => b[0].localeCompare(a[0]))
+                    .map(([dk, exp]) => (
+                      <tr key={dk} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{dk}</td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
+                          {(parseFloat(exp?.cashExpense) || 0) > 0 ? `£${Math.round(parseFloat(exp?.cashExpense) || 0)}` : '–'}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
+                          {(parseFloat(exp?.bankExpense) || 0) > 0 ? `£${Math.round(parseFloat(exp?.bankExpense) || 0)}` : '–'}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{exp?.notes || '–'}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -1093,8 +1357,9 @@ export default function Finance() {
                     </thead>
                     <tbody>
                       {barbers.map(b => {
-                        const bBk = bookings.filter(bk => isWalkInBooking(bk) && bk.barber === b.name && String(bk.dateKey || '').startsWith(selectedMonth));
-                        const workedDays = new Set(bBk.map(bk => bk.dateKey)).size;
+                        const allBk = bookings.filter(bk => bk.barber === b.name && String(bk.dateKey || '').startsWith(selectedMonth));
+                        const workedDays = new Set(allBk.filter(bk => bk.status !== 'CANCELLED' && bk.status !== 'BLOCKED').map(bk => bk.dateKey)).size;
+                        const bBk = allBk.filter(bk => bk.status === 'CHECKED_OUT');
                         const cash  = bBk.filter(bk => paymentMethod(bk) === 'CASH').reduce((s, bk) => s + effectiveRevenue(bk), 0);
                         const card  = bBk.filter(bk => paymentMethod(bk) !== 'CASH').reduce((s, bk) => s + effectiveRevenue(bk), 0);
                         const wages = workedDays * (partnerConfig[b.name]?.wage ?? 100);
@@ -1124,13 +1389,15 @@ export default function Finance() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                     <tbody>
                       {[
-                        { label: 'Gross Revenue',    value: monthlyTotals.grossRevenue, color: '#d4af37', bold: true },
-                        { label: '  Cash Expenses',  value: -monthlyTotals.cashExpense, color: '#ff7043' },
-                        { label: '  Bank Expenses',  value: -monthlyTotals.bankExpense, color: '#ff7043' },
-                        { label: 'Net Revenue',       value: monthlyTotals.netRevenue,   color: '#9c27b0', bold: true, border: true },
-                        { label: '  Wages',           value: -monthlyTotals.totalWages,  color: '#4caf50' },
-                        { label: '  Fixed Cost',      value: -monthlyTotals.fixedCost,   color: '#78909c' },
-                        { label: 'Net P&L',           value: monthlyTotals.netPL,        color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252', bold: true, border: true },
+                        { label: 'Gross Revenue',      value: monthlyTotals.grossRevenue,   color: '#d4af37', bold: true },
+                        { label: '  Service Revenue',  value: monthlyTotals.serviceRevenue, color: '#d4af37' },
+                        { label: '  Product Revenue',  value: monthlyTotals.productRevenue, color: '#03a9f4' },
+                        { label: '  Cash Expenses',    value: -monthlyTotals.cashExpense,   color: '#ff7043' },
+                        { label: '  Bank Expenses',    value: -monthlyTotals.bankExpense,   color: '#ff7043' },
+                        { label: 'Net Revenue',        value: monthlyTotals.netRevenue,     color: '#9c27b0', bold: true, border: true },
+                        { label: '  Wages',            value: -monthlyTotals.totalWages,    color: '#4caf50' },
+                        { label: '  Fixed Cost',       value: -monthlyTotals.fixedCost,     color: '#78909c' },
+                        { label: 'Net P&L',            value: monthlyTotals.netPL,          color: monthlyTotals.netPL >= 0 ? '#4caf50' : '#ff5252', bold: true, border: true },
                       ].map(r => (
                         <tr key={r.label} style={{ borderBottom: r.border ? '2px solid rgba(212,175,55,0.25)' : '1px solid var(--border)', background: r.bold ? 'rgba(212,175,55,0.04)' : 'transparent' }}>
                           <td style={{ padding: '10px 16px', fontSize: r.bold ? '0.8rem' : '0.75rem', fontWeight: r.bold ? '700' : '400', color: 'var(--text)', minWidth: '200px' }}>{r.label}</td>

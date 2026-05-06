@@ -712,16 +712,16 @@ var todayStr = now.getFullYear() + '-' +
 
             function handlePayment() {
                 if (_isExtra || !_hasDeposit) {
-                    proceedToPayment(_stripeUrl, 'FULL');
+                    proceedToPayment('FULL');
                 } else {
                     document.getElementById('paymentChoicePopup').style.display = 'flex';
                     document.getElementById('btnFullPayment').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
-                        proceedToPayment(_stripeUrl, 'FULL');
+                        proceedToPayment('FULL');
                     };
                     document.getElementById('btnDeposit').onclick = function() {
                         document.getElementById('paymentChoicePopup').style.display = 'none';
-                        proceedToPayment(_depositUrl, 'DEPOSIT');
+                        proceedToPayment('DEPOSIT');
                     };
                 }
             }
@@ -757,22 +757,140 @@ var todayStr = now.getFullYear() + '-' +
         });
     }
 
-    function proceedToPayment(url, type) {
+    function getServiceDuration(serviceId) {
+        var durMap = {
+            "i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,
+            "senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,
+            "hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,
+            "young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,
+            "face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10
+        };
+        return durMap[serviceId] || 30;
+    }
+
+    function toStartAndEnd(dateStr, timeStr, serviceId) {
+        var timeMatch = (timeStr || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!timeMatch) return null;
+        var h = parseInt(timeMatch[1], 10);
+        var m = parseInt(timeMatch[2], 10);
+        var ap = timeMatch[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        var startTime = new Date(dateStr + 'T00:00:00');
+        startTime.setHours(h, m, 0, 0);
+        var endTime = new Date(startTime.getTime() + getServiceDuration(serviceId) * 60 * 1000);
+        return { startTime: startTime, endTime: endTime };
+    }
+
+    function writeBookingStatus(bookingData, status, paymentState) {
+        try {
+            var db = window._db;
+            var firebase = window._firebase;
+            var range = toStartAndEnd(bookingData.date, bookingData.time, bookingData.service);
+            if (!range) return Promise.resolve(false);
+
+            var payload = {
+                bookingId: bookingData.bookingId,
+                tenantId: 'whitecross',
+                clientName: bookingData.name,
+                clientEmail: bookingData.email,
+                clientPhone: bookingData.phone,
+                barberId: bookingData.barber,
+                barberName: bookingData.barberName || '',
+                serviceId: bookingData.service,
+                startTime: firebase.Timestamp.fromDate(range.startTime),
+                endTime: firebase.Timestamp.fromDate(range.endTime),
+                status: status,
+                paymentType: bookingData.paymentType,
+                paymentState: paymentState,
+                source: 'website',
+                updatedAt: firebase.Timestamp.fromDate(new Date()),
+            };
+
+            if (status === 'PENDING') {
+                payload.pendingCreatedAt = firebase.Timestamp.fromDate(new Date());
+                payload.expiresAt = firebase.Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000));
+            }
+            if (status === 'CONFIRMED') {
+                payload.paidAt = firebase.Timestamp.fromDate(new Date());
+            }
+
+            return firebase.setDoc(
+                firebase.doc(db, 'tenants/whitecross/bookings', bookingData.bookingId),
+                payload,
+                { merge: true }
+            ).then(function() { return true; }).catch(function() { return false; });
+        } catch (e) {
+            return Promise.resolve(false);
+        }
+    }
+
+    var CREATE_SESSION_URL = 'https://createcheckoutsession-nq2q3jgd6a-uc.a.run.app';
+    var IS_TEST_MODE = new URLSearchParams(window.location.search).get('testMode') === '1';
+
+    function showPopupError(msg) {
+        var popup = document.getElementById('successPopup');
+        if (!popup) return;
+        document.getElementById('popup-icon').innerText = '⚠️';
+        document.getElementById('popup-title').innerText = 'Something went wrong';
+        document.getElementById('popup-text').innerText = msg || 'Please try again or call us on 020 3621 5929.';
+        popup.style.display = 'flex';
+    }
+
+    function proceedToPayment(paymentType) {
         var data = window._pendingFormData;
-        data.paymentType = type;
-        data.status = 'CONFIRMED';
+        data.paymentType = paymentType;
+        data.status = 'PENDING';
         data.bookingId = 'WCB-' + Date.now();
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         var popup = document.getElementById('successPopup');
         if (popup) {
-            document.getElementById('popup-icon').innerText = "\u23F3";
-            document.getElementById('popup-title').innerText = "Redirecting to payment...";
-            document.getElementById('popup-text').innerText = "You're being securely redirected to complete your booking.";
+            document.getElementById('popup-icon').innerText = '⏳';
+            document.getElementById('popup-title').innerText = 'Securing your slot...';
+            document.getElementById('popup-text').innerText = 'Please wait while we prepare your payment.';
             popup.style.display = 'flex';
         }
 
-        setTimeout(function() { window.location.href = url; }, 800);
+        var svcObj = (window.SERVICES || []).find(function(s) { return s.id === data.service; });
+
+        writeBookingStatus(data, 'PENDING', 'PENDING').then(function(ok) {
+            if (!ok) {
+                showPopupError('Could not save your booking. Please check your connection and try again.');
+                return;
+            }
+            return fetch(CREATE_SESSION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookingId:   data.bookingId,
+                    serviceId:   data.service,
+                    serviceName: svcObj ? svcObj.name : data.service,
+                    price:       svcObj ? svcObj.price : 0,
+                    barberId:    data.barber,
+                    barberName:  data.barberName,
+                    date:        data.date,
+                    time:        data.time,
+                    clientName:  data.name,
+                    clientEmail: data.email,
+                    clientPhone: data.phone,
+                    paymentType: paymentType,
+                    testMode:    IS_TEST_MODE || undefined,
+                }),
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(result) {
+                if (result.url) {
+                    setTimeout(function() { window.location.href = result.url; }, 400);
+                } else {
+                    showPopupError('Payment setup failed. Please try again.');
+                }
+            });
+        }).catch(function(err) {
+            console.error('proceedToPayment error:', err);
+            showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
+        });
     }
 
     function checkAvailability(date) {
@@ -924,6 +1042,11 @@ var todayStr = now.getFullYear() + '-' +
                     if (st === 'CANCELED') st = 'CANCELLED';
                     if (st === 'NOSHOW') st = 'NO_SHOW';
                     if (st === 'CANCELLED' || st === 'NO_SHOW' || st === 'DELETED' || st === 'CHECKED_OUT' || st === 'COMPLETED') return;
+                    // Skip expired PENDING website bookings — they no longer hold the slot
+                    if (st === 'PENDING' && String(d.source || '').toLowerCase() === 'website') {
+                        var exp = d.expiresAt;
+                        if (exp && exp.toMillis && exp.toMillis() < Date.now()) return;
+                    }
                     if (!d.startTime || !d.endTime) return;
                     var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
                     if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);
@@ -1076,39 +1199,9 @@ var todayStr = now.getFullYear() + '-' +
         }
 
         if (bookingData && bookingData.date && bookingData.time) {
-            var db = window._db;
-            var firebase = window._firebase;
-            var dateStr = bookingData.date;
-            var timeMatch = bookingData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (!timeMatch) {
-                return;
-            }
-            var h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
-            var ap = timeMatch[3].toUpperCase();
-            if (ap === 'PM' && h !== 12) h += 12;
-            if (ap === 'AM' && h === 12) h = 0;
-            var startTime = new Date(dateStr + 'T00:00:00');
-            startTime.setHours(h, m, 0, 0);
-            var durMap = {"i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,"senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,"hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,"young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,"face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10};
-            var dur = durMap[bookingData.service] || 30;
-            var endTime = new Date(startTime.getTime() + dur * 60 * 1000);
-
-            firebase.addDoc(firebase.collection(db, 'tenants/whitecross/bookings'), {
-                bookingId: bookingData.bookingId,
-                tenantId: 'whitecross',
-                clientName: bookingData.name,
-                clientEmail: bookingData.email,
-                clientPhone: bookingData.phone,
-                barberId: bookingData.barber,
-                barberName: bookingData.barberName || '',
-                serviceId: bookingData.service,
-                startTime: firebase.Timestamp.fromDate(startTime),
-                endTime: firebase.Timestamp.fromDate(endTime),
-                status: 'CONFIRMED',
-                paymentType: bookingData.paymentType,
-                source: 'website',
-                createdAt: firebase.Timestamp.fromDate(new Date()),
-            }).then(function() { sessionStorage.removeItem('pendingBooking'); });
+            writeBookingStatus(bookingData, 'CONFIRMED', 'PAID').then(function(ok) {
+                if (ok) sessionStorage.removeItem('pendingBooking');
+            });
         }
 
         window.history.replaceState({}, '', window.location.pathname);
