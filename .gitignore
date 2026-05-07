@@ -1,7 +1,7 @@
 *.html
 .firebase/
+barber-panel/.firebase/
 .firebaserc
-Site/
 Site/
 .DS_Store
 exports/
@@ -9,3 +9,7 @@ serviceAccountKey.json
 serviceAccount*.json
 .env
 .env.*
+node_modules/
+barber-panel/.copilot-worklog.txt
+.vscode/
+*.code-workspace
