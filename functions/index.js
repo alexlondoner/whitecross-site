@@ -132,7 +132,7 @@ exports.createCheckoutSession = onRequest(
                 success_url: testMode
                     ? `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}&testMode=1`
                     : `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}`,
-                cancel_url: `https://whitecrossbarbers.com/#booking`,
+                cancel_url: `https://whitecrossbarbers.com/?cancelled=${bookingId}#booking`,
             });
 
             res.json({ url: session.url, sessionId: session.id });
@@ -656,7 +656,7 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
 // ── Cleanup expired PENDING website bookings every 30 minutes ─────────────────
 // Prevents ghost-blocked slots on the public booking page when customers
 // start checkout but never pay and never return to complete it.
-exports.cleanupExpiredPending = onSchedule('every 30 minutes', async () => {
+exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
     const db  = getAdminDb();
     const now = admin.firestore.Timestamp.now();
 

@@ -809,7 +809,7 @@ var todayStr = now.getFullYear() + '-' +
 
             if (status === 'PENDING') {
                 payload.pendingCreatedAt = firebase.Timestamp.fromDate(new Date());
-                payload.expiresAt = firebase.Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000));
+                payload.expiresAt = firebase.Timestamp.fromDate(new Date(Date.now() + 15 * 60 * 1000));
             }
             if (status === 'CONFIRMED') {
                 payload.paidAt = firebase.Timestamp.fromDate(new Date());
@@ -1207,10 +1207,24 @@ var todayStr = now.getFullYear() + '-' +
         window.history.replaceState({}, '', window.location.pathname);
     }
 
-   setTimeout(function() {
+    setTimeout(function() {
         initBarberSelector();
         startBarberRealtimeSync();
         initServiceSelector();
         startServiceRealtimeSync();
+
+        // Cancel PENDING booking if customer hit Back on Stripe checkout
+        var cancelledId = new URLSearchParams(window.location.search).get('cancelled');
+        if (cancelledId && window._db && window._firebase) {
+            history.replaceState(null, '', window.location.pathname + '#booking');
+            var fb = window._firebase;
+            fb.getDocs(fb.query(
+                fb.collection(window._db, 'tenants/' + TENANT + '/bookings'),
+                fb.where('bookingId', '==', cancelledId),
+                fb.where('status', '==', 'PENDING')
+            )).then(function(snap) {
+                if (!snap.empty) fb.updateDoc(snap.docs[0].ref, { status: 'CANCELLED', cancelledAt: fb.Timestamp.fromDate(new Date()) });
+            }).catch(function() {});
+        }
     }, 500);
 });
