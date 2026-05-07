@@ -216,11 +216,28 @@ export default function Clients() {
     setEditSaving(true);
     try {
       const data = { name: editForm.name.trim(), phone: editForm.phone.trim(), email: editForm.email.trim(), birthday: editForm.birthday, notes: editForm.notes.trim() };
-      if (editingClient.manualId) {
-        await updateDoc(doc(db, `tenants/${TENANT}/clients`, editingClient.manualId), data);
-        setManualClients(prev => prev.map(m => m.id === editingClient.manualId ? { ...m, ...data } : m));
+      // Search for existing client by phone, email, or name
+      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      let foundId = null;
+      let foundDoc = null;
+      const q = query(clientsRef);
+      const snap = await getDocs(q);
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        if (
+          (data.phone && d.phone === data.phone && data.phone !== '') ||
+          (data.email && d.email === data.email && data.email !== '') ||
+          (data.name && d.name && d.name.toLowerCase() === data.name.toLowerCase())
+        ) {
+          foundId = docSnap.id;
+          foundDoc = d;
+        }
+      });
+      if (foundId) {
+        await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
+        setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
       } else {
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { ...data, createdAt: serverTimestamp() });
+        const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
         setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
       }
       setSelectedClient(prev => prev ? { ...prev, ...data } : null);
