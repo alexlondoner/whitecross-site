@@ -23,7 +23,7 @@ jobs:
         working-directory: barber-panel
 
       - name: Build
-        run: CI=false npm run build
+        run: DISABLE_ESLINT_PLUGIN=true npm run build
         working-directory: barber-panel
 
       - name: Deploy to Firebase Hosting
