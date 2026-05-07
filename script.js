@@ -827,6 +827,12 @@ var todayStr = now.getFullYear() + '-' +
 
     var CREATE_SESSION_URL = 'https://createcheckoutsession-nq2q3jgd6a-uc.a.run.app';
     var IS_TEST_MODE = new URLSearchParams(window.location.search).get('testMode') === '1';
+    if (IS_TEST_MODE) {
+        var _noindex = document.createElement('meta');
+        _noindex.name = 'robots';
+        _noindex.content = 'noindex,nofollow';
+        document.head.appendChild(_noindex);
+    }
 
     function showPopupError(msg) {
         var popup = document.getElementById('successPopup');
