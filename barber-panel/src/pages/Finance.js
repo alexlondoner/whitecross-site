@@ -4,6 +4,7 @@ import {
   collection, getDocs, addDoc, updateDoc, deleteDoc,
   doc, getDoc, setDoc, query, Timestamp, orderBy,
 } from 'firebase/firestore';
+import { updateTipStatus } from '../firestoreActions';
 
 const TENANT = 'whitecross';
 
@@ -867,6 +868,7 @@ export default function Finance() {
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button style={tabBtn('daily')}    onClick={() => setActiveTab('daily')}>Daily Ledger</button>
+        <button style={tabBtn('tips')}     onClick={() => setActiveTab('tips')}>Tips</button>
         <button style={tabBtn('payments')} onClick={() => setActiveTab('payments')}>Payments</button>
         <button style={tabBtn('expenses')} onClick={() => setActiveTab('expenses')}>Expenses</button>
         <button style={tabBtn('summary')}  onClick={() => setActiveTab('summary')}>Monthly Summary</button>
@@ -1245,6 +1247,13 @@ export default function Finance() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════
+          TIPS
+          ══════════════════════════════════════════════════════════════════ */}
+      {!loading && activeTab === 'tips' && (
+        <TipsTab bookings={bookings} selectedDay={selectedDay} setSelectedDay={setSelectedDay} />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
           MONTHLY SUMMARY
           ══════════════════════════════════════════════════════════════════ */}
       {!loading && activeTab === 'summary' && (
@@ -1552,6 +1561,157 @@ export default function Finance() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── TIPS TAB ─────────────────────────────────────────────────────────────────
+function TipsTab({ bookings, selectedDay, setSelectedDay }) {
+  const [tipping, setTipping] = useState({});
+
+  const dayKey = selectedDay instanceof Date
+    ? selectedDay.getFullYear() + '-' + String(selectedDay.getMonth() + 1).padStart(2, '0') + '-' + String(selectedDay.getDate()).padStart(2, '0')
+    : String(selectedDay).slice(0, 10);
+
+  const tippedBookings = useMemo(() => {
+    return bookings.filter(function(b) {
+      const tip = parseFloat(b.tip) || 0;
+      if (tip <= 0) return false;
+      const d = b.startTime?.toDate ? b.startTime.toDate() : (b.date ? new Date(b.date) : null);
+      if (!d) return false;
+      const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return k === dayKey;
+    });
+  }, [bookings, dayKey]);
+
+  const cardTips = tippedBookings.filter(b => {
+    const m = (b.paymentMethod || b.method || '').toUpperCase();
+    return m !== 'CASH';
+  });
+  const cashTips = tippedBookings.filter(b => {
+    const m = (b.paymentMethod || b.method || '').toUpperCase();
+    return m === 'CASH';
+  });
+
+  const totalCard = cardTips.reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
+  const totalCash = cashTips.reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
+  const cardTakenAsCash = cardTips.filter(b => b.tipTakenAsCash).reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
+
+  const toggle = async function(booking, field) {
+    const id = booking.bookingId;
+    setTipping(t => ({ ...t, [id + field]: true }));
+    try {
+      const isCard = (booking.paymentMethod || booking.method || '').toUpperCase() !== 'CASH';
+      const update = {};
+      if (field === 'tipTaken') {
+        update.tipTaken = !booking.tipTaken;
+        if (!update.tipTaken) update.tipTakenAsCash = false;
+      }
+      if (field === 'tipTakenAsCash') {
+        update.tipTakenAsCash = !booking.tipTakenAsCash;
+        if (update.tipTakenAsCash) update.tipTaken = true;
+      }
+      await updateTipStatus(id, update);
+      Object.assign(booking, update);
+    } catch(e) {
+      alert('Error updating tip status');
+    } finally {
+      setTipping(t => ({ ...t, [id + field]: false }));
+    }
+  };
+
+  const pill = (label, active, color) => ({
+    padding: '3px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: '700',
+    background: active ? color + '22' : 'transparent',
+    color: active ? color : 'var(--muted)',
+    border: '1px solid ' + (active ? color + '55' : 'var(--border)'),
+    cursor: 'pointer', whiteSpace: 'nowrap',
+  });
+
+  const renderRow = function(b, isCard) {
+    const tip = parseFloat(b.tip) || 0;
+    const taken = isCard ? !!b.tipTakenAsCash : (b.tipTaken !== false);
+    const id = b.bookingId;
+    return (
+      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderRadius: '10px', background: 'var(--card)', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '120px' }}>
+          <div style={{ fontSize: '0.88rem', fontWeight: '700', color: 'var(--text)' }}>{b.clientName || b.name || '—'}</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '2px' }}>{b.barber || b.barberName || '—'} · {b.service || '—'}</div>
+        </div>
+        <div style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37', minWidth: '48px', textAlign: 'right' }}>£{tip.toFixed(2)}</div>
+
+        {isCard ? (
+          <button
+            onClick={() => toggle(b, 'tipTakenAsCash')}
+            disabled={!!tipping[id + 'tipTakenAsCash']}
+            style={pill(b.tipTakenAsCash ? 'Cash Taken ✓' : 'Cash Taken?', b.tipTakenAsCash, '#4caf50')}
+          >
+            {b.tipTakenAsCash ? 'Cash Taken ✓' : 'Cash Taken?'}
+          </button>
+        ) : (
+          <button
+            onClick={() => toggle(b, 'tipTaken')}
+            disabled={!!tipping[id + 'tipTaken']}
+            style={pill(taken ? 'Taken ✓' : 'Not Taken', taken, '#4caf50')}
+          >
+            {taken ? 'Taken ✓' : 'Not Taken'}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Date picker */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <input
+          type="date"
+          value={dayKey}
+          onChange={e => setSelectedDay(new Date(e.target.value + 'T12:00:00'))}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: '0.85rem' }}
+        />
+        <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{tippedBookings.length} tip{tippedBookings.length !== 1 ? 's' : ''} · Total £{(totalCard + totalCash).toFixed(2)}</span>
+      </div>
+
+      {/* Cash impact banner */}
+      {cardTakenAsCash > 0 && (
+        <div style={{ padding: '12px 16px', background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.3)', borderRadius: '10px', fontSize: '0.82rem', color: '#ff9800' }}>
+          ⚠️ £{cardTakenAsCash.toFixed(2)} card tip taken as cash — this reduces expected cash in till by £{cardTakenAsCash.toFixed(2)}
+        </div>
+      )}
+
+      {tippedBookings.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)', border: '1px dashed var(--border)', borderRadius: '12px' }}>No tips for this day</div>
+      ) : (
+        <>
+          {/* Card tips */}
+          {cardTips.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>Card Tips</span>
+                <span style={{ fontSize: '0.82rem', color: '#d4af37', fontWeight: '700' }}>£{totalCard.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {cardTips.map(b => renderRow(b, true))}
+              </div>
+            </div>
+          )}
+
+          {/* Cash tips */}
+          {cashTips.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>Cash Tips</span>
+                <span style={{ fontSize: '0.82rem', color: '#4caf50', fontWeight: '700' }}>£{totalCash.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {cashTips.map(b => renderRow(b, false))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

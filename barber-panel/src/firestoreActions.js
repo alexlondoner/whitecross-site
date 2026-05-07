@@ -263,6 +263,16 @@ export async function markNoShow(bookingId) {
   if (snap.empty) throw new Error('Booking not found');
   await updateDoc(snap.docs[0].ref, { status: 'NO_SHOW', noShowAt: Timestamp.fromDate(new Date()) });
 }
+
+export async function updateTipStatus(bookingId, { tipTaken, tipTakenAsCash }) {
+  const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error('Booking not found');
+  const update = {};
+  if (tipTaken !== undefined) update.tipTaken = tipTaken;
+  if (tipTakenAsCash !== undefined) update.tipTakenAsCash = tipTakenAsCash;
+  await updateDoc(snap.docs[0].ref, update);
+}
 export async function seedBarbers() {
   const barbers = [
     { id: 'alex', name: 'Alex', color: '#d4af37', active: true, order: 1 },
