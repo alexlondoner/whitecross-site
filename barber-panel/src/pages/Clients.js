@@ -216,23 +216,44 @@ export default function Clients() {
     setEditSaving(true);
     try {
       const data = { name: editForm.name.trim(), phone: editForm.phone.trim(), email: editForm.email.trim(), birthday: editForm.birthday, notes: editForm.notes.trim() };
-      // Search for existing client by phone, email, or name
+      // Stricter matching: prefer phone/email, fallback to name only if unique
       const clientsRef = collection(db, `tenants/${TENANT}/clients`);
       let foundId = null;
       let foundDoc = null;
-      const q = query(clientsRef);
-      const snap = await getDocs(q);
-      snap.forEach(docSnap => {
-        const d = docSnap.data();
-        if (
-          (data.phone && d.phone === data.phone && data.phone !== '') ||
-          (data.email && d.email === data.email && data.email !== '') ||
-          (data.name && d.name && d.name.toLowerCase() === data.name.toLowerCase())
-        ) {
-          foundId = docSnap.id;
-          foundDoc = d;
+      const snap = await getDocs(clientsRef);
+      // 1. Try to match by phone (if provided)
+      if (data.phone) {
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (d.phone && d.phone === data.phone) {
+            foundId = docSnap.id;
+            foundDoc = d;
+          }
+        });
+      }
+      // 2. If not found, try to match by email (if provided)
+      if (!foundId && data.email) {
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (d.email && d.email === data.email) {
+            foundId = docSnap.id;
+            foundDoc = d;
+          }
+        });
+      }
+      // 3. If not found, try to match by name ONLY IF name is unique in the collection
+      if (!foundId && data.name) {
+        const nameMatches = [];
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (d.name && d.name.toLowerCase() === data.name.toLowerCase()) {
+            nameMatches.push(docSnap.id);
+          }
+        });
+        if (nameMatches.length === 1) {
+          foundId = nameMatches[0];
         }
-      });
+      }
       if (foundId) {
         await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
         setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
