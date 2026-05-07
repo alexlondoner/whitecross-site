@@ -146,19 +146,11 @@ exports.createCheckoutSession = onRequest(
 // ── Stripe webhook: confirm pending booking even if client never returns ────
 exports.stripeWebhook = onRequest(
     {
-        secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
+        secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET'],
     },
     async (req, res) => {
         if (req.method !== 'POST') {
             res.status(405).send('Method Not Allowed');
-            return;
-        }
-
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (!stripeKey || !webhookSecret) {
-            console.error('stripeWebhook: missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET');
-            res.status(500).send('Stripe secrets not configured');
             return;
         }
 
@@ -169,12 +161,23 @@ exports.stripeWebhook = onRequest(
         }
 
         let event;
-        try {
-            const stripe = new Stripe(stripeKey);
-            event = stripe.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
-        } catch (err) {
-            console.error('stripeWebhook signature verification failed:', err.message);
-            res.status(400).send(`Webhook Error: ${err.message}`);
+        let stripeKey;
+        // Try live secret first, then test secret
+        const secrets = [
+            { key: process.env.STRIPE_SECRET_KEY,      webhook: process.env.STRIPE_WEBHOOK_SECRET },
+            { key: process.env.STRIPE_TEST_SECRET_KEY, webhook: process.env.STRIPE_TEST_WEBHOOK_SECRET },
+        ];
+        for (const { key, webhook } of secrets) {
+            if (!key || !webhook) continue;
+            try {
+                event = new Stripe(key).webhooks.constructEvent(req.rawBody, signature, webhook);
+                stripeKey = key;
+                break;
+            } catch (_) {}
+        }
+        if (!event) {
+            console.error('stripeWebhook: signature verification failed for all secrets');
+            res.status(400).send('Webhook signature verification failed');
             return;
         }
 

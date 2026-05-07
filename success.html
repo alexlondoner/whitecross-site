@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Booking Confirmed | I CUT Whitecross Barbers</title>
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: linear-gradient(135deg, #080808 0%, #111 50%, #080808 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+        }
+
+        .wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 36px 20px 80px;
+        }
+
+        .page-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 36px;
+        }
+        .back-link {
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .back-link:hover { color: #fff; }
+        .nav-logo { width: 46px; height: auto; }
+
+        .card {
+            background: linear-gradient(135deg, #111 0%, #0d0d0d 100%);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 16px;
+            padding: 36px 28px;
+            box-shadow: 0 0 30px rgba(212,175,55,0.06), inset 0 0 12px rgba(212,175,55,0.02);
+            text-align: center;
+        }
+
+        .check-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(184,134,11,0.1));
+            border: 2px solid rgba(212,175,55,0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+        }
+
+        .confirm-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #b8860b, #d4af37, #b8860b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .confirm-sub {
+            color: #666;
+            font-size: 0.82rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #1e1e1a;
+            margin: 24px 0;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #1e1e1a;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #666; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; }
+        .detail-value { color: #ddd; font-weight: 600; text-align: right; }
+        .detail-value.gold { color: #d4af37; }
+
+        .info-box {
+            background: rgba(212,175,55,0.06);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 20px 0;
+            font-size: 0.82rem;
+            color: #aaa;
+            line-height: 1.7;
+            text-align: left;
+        }
+
+        .btn-gold {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Cinzel', serif;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            text-decoration: none;
+            text-align: center;
+            transition: filter 0.2s;
+            margin-top: 20px;
+        }
+        .btn-gold:hover { filter: brightness(1.1); }
+
+        .spinner {
+            display: inline-block;
+            width: 22px; height: 22px;
+            border: 2px solid rgba(212,175,55,0.2);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .booking-id {
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 16px;
+            letter-spacing: 1px;
+        }
+
+        #stateLoading { display: block; padding: 32px 0; }
+        #stateLoading.hidden, #stateDetails.hidden { display: none; }
+        #stateDetails { display: none; }
+        #stateDetails.visible { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+
+    <nav class="page-nav">
+        <a href="index.html" class="back-link">← Home</a>
+        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="nav-logo">
+        <a href="index.html#booking" class="back-link">Book Again →</a>
+    </nav>
+
+    <div class="card">
+
+        <div id="stateLoading">
+            <span class="spinner"></span>
+            <span style="color:#666; font-size:0.84rem;">Confirming your booking…</span>
+        </div>
+
+        <div id="stateDetails">
+            <div class="check-icon">✓</div>
+            <h1 class="confirm-title">Booking Confirmed</h1>
+            <p class="confirm-sub">I CUT Whitecross Barbers · EC1Y 8QJ</p>
+
+            <div id="detailRows"></div>
+
+            <div class="info-box">
+                📧 A confirmation has been sent to your email. Please arrive 5 minutes before your appointment.<br><br>
+                Need to cancel or reschedule? Visit the link in your confirmation email or call us on <strong style="color:#d4af37;">020 3621 5929</strong>.
+            </div>
+
+            <a href="index.html" class="btn-gold">← Back to Home</a>
+
+            <p class="booking-id" id="bookingIdLabel"></p>
+        </div>
+
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs }
+        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+        apiKey:            "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+        authDomain:        "havuz-44f70.firebaseapp.com",
+        projectId:         "havuz-44f70",
+        storageBucket:     "havuz-44f70.firebasestorage.app",
+        messagingSenderId: "1050766582653",
+        appId:             "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const SERVICE_NAMES = {
+        'full-experience': 'The Full Experience',
+        'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+        'i-cut-deluxe': 'I CUT Deluxe',
+        'i-cut-royal': 'I CUT Royal',
+        'senior-full-experience': 'Senior Full Experience',
+        'skin-fade': 'Skin Fade Cut',
+        'scissor-cut': 'Scissor Cut',
+        'classic-sbs': 'Classic Short Back & Sides',
+        'hot-towel-shave': 'Hot Towel Shave',
+        'clipper-cut': 'Clipper Cut',
+        'senior-haircut': 'Senior Haircut (65+)',
+        'young-gents': 'Young Gents (0-12)',
+        'young-gents-skin-fade': 'Young Gents Skin Fade',
+        'full-facial': 'Full Facial Treatment',
+        'beard-dyeing': 'Beard Dyeing',
+        'face-mask': 'Face Mask',
+        'face-steam': 'Face Steam',
+        'threading': 'Threading',
+        'waxing': 'Waxing',
+        'shape-up-clean-up': 'Shape Up & Clean Up',
+        'wash-hot-towel': 'Wash, Style & Hot Towel'
+    };
+
+    function row(label, value, gold = false) {
+        return `<div class="detail-row">
+            <span class="detail-label">${label}</span>
+            <span class="detail-value${gold ? ' gold' : ''}">${value}</span>
+        </div>`;
+    }
+
+    function show(id) {
+        document.getElementById('stateLoading').classList.add('hidden');
+        document.getElementById(id).classList.add('visible');
+    }
+
+    (async function init() {
+        const params    = new URLSearchParams(window.location.search);
+        const bookingId = params.get('id');
+
+        if (!bookingId) { show('stateDetails'); return; }
+
+        document.getElementById('bookingIdLabel').textContent = 'Booking ID: ' + bookingId;
+
+        // Wait up to 5 seconds for webhook to confirm the booking
+        let data = null;
+        for (let i = 0; i < 5; i++) {
+            try {
+                const snap = await getDocs(query(
+                    collection(db, 'tenants/whitecross/bookings'),
+                    where('bookingId', '==', bookingId)
+                ));
+                if (!snap.empty) { data = snap.docs[0].data(); break; }
+            } catch (_) {}
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (data) {
+            const rows = [
+                row('Name',    data.clientName  || '—'),
+                row('Date',    data.date         || '—', true),
+                row('Time',    data.time         || '—'),
+                row('Service', SERVICE_NAMES[data.service || data.serviceId] || data.service || '—'),
+                row('Barber',  (data.barberName || data.barber || 'TBC')),
+                row('Amount',  data.paidAmount ? '£' + data.paidAmount : (data.price ? '£' + data.price : '—')),
+            ];
+            document.getElementById('detailRows').innerHTML = rows.join('');
+        }
+
+        show('stateDetails');
+    })();
+</script>
+
+</body>
+</html>
