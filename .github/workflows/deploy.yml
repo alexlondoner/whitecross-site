@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'barber-panel/src/**'
+      - 'barber-panel/public/**'
+      - 'barber-panel/package.json'
+      - 'functions/**'
+      - 'firebase.json'
+      - '.firebaserc'
 
 jobs:
   deploy:
