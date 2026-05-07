@@ -216,52 +216,32 @@ export default function Clients() {
     setEditSaving(true);
     try {
       const data = { name: editForm.name.trim(), phone: editForm.phone.trim(), email: editForm.email.trim(), birthday: editForm.birthday, notes: editForm.notes.trim() };
-      // Stricter matching: prefer phone/email, fallback to name only if unique
       const clientsRef = collection(db, `tenants/${TENANT}/clients`);
-      let foundId = null;
-      let foundDoc = null;
-      const snap = await getDocs(clientsRef);
-      // 1. Try to match by phone (if provided)
-      if (data.phone) {
-        snap.forEach(docSnap => {
-          const d = docSnap.data();
-          if (d.phone && d.phone === data.phone) {
-            foundId = docSnap.id;
-            foundDoc = d;
-          }
-        });
-      }
-      // 2. If not found, try to match by email (if provided)
-      if (!foundId && data.email) {
-        snap.forEach(docSnap => {
-          const d = docSnap.data();
-          if (d.email && d.email === data.email) {
-            foundId = docSnap.id;
-            foundDoc = d;
-          }
-        });
-      }
-      // 3. If not found, try to match by name ONLY IF name is unique in the collection
-      if (!foundId && data.name) {
-        // Normalize name for comparison (trim, lowercase)
-        const normName = data.name.trim().toLowerCase();
-        const nameMatches = [];
-        snap.forEach(docSnap => {
-          const d = docSnap.data();
-          if (d.name && d.name.trim().toLowerCase() === normName) {
-            nameMatches.push(docSnap.id);
-          }
-        });
-        if (nameMatches.length === 1) {
-          foundId = nameMatches[0];
-        }
-      }
-      if (foundId) {
-        await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
-        setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
+
+      if (editingClient.manualId) {
+        // Already have the doc ID — update directly
+        await updateDoc(doc(db, `tenants/${TENANT}/clients`, editingClient.manualId), data);
+        setManualClients(prev => prev.map(m => m.id === editingClient.manualId ? { ...m, ...data } : m));
       } else {
-        const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
-        setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
+        // Booking-only client — search by ORIGINAL values to find any existing doc
+        const origPhone = editingClient.phone || '';
+        const origEmail = editingClient.email || '';
+        const origName  = (editingClient.name || '').trim().toLowerCase();
+        const snap = await getDocs(clientsRef);
+        let foundId = null;
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (origPhone && d.phone === origPhone) { foundId = docSnap.id; }
+          else if (!foundId && origEmail && d.email === origEmail) { foundId = docSnap.id; }
+          else if (!foundId && origName && d.name?.trim().toLowerCase() === origName) { foundId = docSnap.id; }
+        });
+        if (foundId) {
+          await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
+          setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
+        } else {
+          const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
+          setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
+        }
       }
       setSelectedClient(prev => prev ? { ...prev, ...data } : null);
       setShowEditForm(false);
