@@ -224,16 +224,21 @@ export default function Clients() {
         setManualClients(prev => prev.map(m => m.id === editingClient.manualId ? { ...m, ...data } : m));
       } else {
         // Booking-only client — search by ORIGINAL values to find any existing doc
-        const origPhone = editingClient.phone || '';
-        const origEmail = editingClient.email || '';
+        const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
+        const origPhone = normalizePhone(editingClient.phone);
+        const origEmail = (editingClient.email || '').trim().toLowerCase();
         const origName  = (editingClient.name || '').trim().toLowerCase();
         const snap = await getDocs(clientsRef);
         let foundId = null;
         snap.forEach(docSnap => {
+          if (foundId) return; // stop once matched
           const d = docSnap.data();
-          if (origPhone && d.phone === origPhone) { foundId = docSnap.id; }
-          else if (!foundId && origEmail && d.email === origEmail) { foundId = docSnap.id; }
-          else if (!foundId && origName && d.name?.trim().toLowerCase() === origName) { foundId = docSnap.id; }
+          const docPhone = normalizePhone(d.phone);
+          const docEmail = (d.email || '').trim().toLowerCase();
+          const docName  = (d.name  || '').trim().toLowerCase();
+          if (origPhone && docPhone && origPhone === docPhone) { foundId = docSnap.id; }
+          else if (origEmail && docEmail && origEmail === docEmail) { foundId = docSnap.id; }
+          else if (origName  && docName  && origName  === docName)  { foundId = docSnap.id; }
         });
         if (foundId) {
           await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
