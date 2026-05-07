@@ -7,7 +7,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "target": "whitecross-admin",
+    "site": "whitecrossbarbers-admin",
     "public": "barber-panel/build",
     "ignore": [
       "firebase.json",
