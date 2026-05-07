@@ -840,6 +840,9 @@ var todayStr = now.getFullYear() + '-' +
     function proceedToPayment(paymentType) {
         var data = window._pendingFormData;
         data.paymentType = paymentType;
+        data.status = 'PENDING';
+        data.bookingId = 'WCB-' + Date.now();
+        sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         var popup = document.getElementById('successPopup');
         if (popup) {
@@ -851,43 +854,42 @@ var todayStr = now.getFullYear() + '-' +
 
         var svcObj = (window.SERVICES || []).find(function(s) { return s.id === data.service; });
 
-        fetch(CREATE_SESSION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                serviceId:   data.service,
-                serviceName: svcObj ? svcObj.name : data.service,
-                price:       svcObj ? svcObj.price : 0,
-                barberId:    data.barber,
-                barberName:  data.barberName,
-                date:        data.date,
-                time:        data.time,
-                clientName:  data.name,
-                clientEmail: data.email,
-                clientPhone: data.phone,
-                paymentType: paymentType,
-                testMode:    IS_TEST_MODE || undefined,
-            }),
-        }).then(function(r) {
-            return r.json().then(function(body) {
-                if (!r.ok) throw Object.assign(new Error(body.error || 'HTTP ' + r.status), { code: body.error });
-                return body;
-            });
-        }).then(function(result) {
-            if (result.url) {
-                data.bookingId = result.bookingId;
-                sessionStorage.setItem('pendingBooking', JSON.stringify(data));
-                setTimeout(function() { window.location.href = result.url; }, 400);
-            } else {
-                showPopupError('Payment setup failed. Please try again.');
+        writeBookingStatus(data, 'PENDING', 'PENDING').then(function(ok) {
+            if (!ok) {
+                showPopupError('Could not save your booking. Please check your connection and try again.');
+                return;
             }
+            return fetch(CREATE_SESSION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookingId:   data.bookingId,
+                    serviceId:   data.service,
+                    serviceName: svcObj ? svcObj.name : data.service,
+                    price:       svcObj ? svcObj.price : 0,
+                    barberId:    data.barber,
+                    barberName:  data.barberName,
+                    date:        data.date,
+                    time:        data.time,
+                    clientName:  data.name,
+                    clientEmail: data.email,
+                    clientPhone: data.phone,
+                    paymentType: paymentType,
+                    testMode:    IS_TEST_MODE || undefined,
+                }),
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(result) {
+                if (result.url) {
+                    setTimeout(function() { window.location.href = result.url; }, 400);
+                } else {
+                    showPopupError('Payment setup failed. Please try again.');
+                }
+            });
         }).catch(function(err) {
             console.error('proceedToPayment error:', err);
-            if (err.code === 'slot_taken') {
-                showPopupError('This time slot was just taken by someone else. Please go back and choose another time.');
-            } else {
-                showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
-            }
+            showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
         });
     }
 
