@@ -13,5 +13,6 @@ firebase-debug.*.log
 .env.*
 node_modules/
 barber-panel/.copilot-worklog.txt
+barber-panel/memory/
 .vscode/
 *.code-workspace
