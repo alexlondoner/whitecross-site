@@ -23,10 +23,8 @@ jobs:
         working-directory: barber-panel
 
       - name: Build
-        run: npm run build
+        run: CI=false npm run build
         working-directory: barber-panel
-        env:
-          CI: false
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
