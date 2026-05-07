@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './firebase';
 import Sidebar from './components/Sidebar';
+import NotificationBell from './components/NotificationBell';
 import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import Barbers from './pages/Barbers';
@@ -115,11 +116,15 @@ function App() {
         onToggleTheme={toggleTheme}
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
+        tenantId={tenantId}
       />
+      <div style={{ position: 'fixed', top: '16px', right: '24px', zIndex: 200 }}>
+        <NotificationBell tenantId={tenantId} />
+      </div>
       <main style={{
         flex: 1,
         marginLeft: isCollapsed ? '80px' : '200px',
-        padding: '32px',
+        padding: '60px 32px 32px',
         overflowY: 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>

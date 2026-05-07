@@ -23,6 +23,22 @@ async function sendTelegramMessage(token, chatIdsRaw, text) {
     ));
 }
 
+// ── Firestore notification writer ────────────────────────────────────────────
+async function writeNotification(db, tenantId, type, title, body, bookingId) {
+    try {
+        await db.collection(`tenants/${tenantId}/notifications`).add({
+            type,
+            title,
+            body,
+            bookingId: bookingId || null,
+            read: false,
+            createdAt: admin.firestore.Timestamp.now(),
+        });
+    } catch (err) {
+        console.error('writeNotification error:', err);
+    }
+}
+
 const GMAIL_USER = 'whitecrossbarbers@gmail.com';
 const GMAIL_PASS = 'YOUR_APP_PASSWORD_HERE'; // Gmail App Password
 
@@ -497,6 +513,7 @@ exports.notifyNewBooking = onDocumentCreated(
         } catch (err) {
             console.error('Telegram error:', err);
         }
+        await writeNotification(getAdminDb(), 'whitecross', 'new_booking', 'New Booking', `${name} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
     }
 );
 
@@ -545,6 +562,7 @@ exports.notifyBookingCancelled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram cancellation error:', err);
         }
+        await writeNotification(getAdminDb(), 'whitecross', 'cancelled', 'Booking Cancelled', `${name} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
     }
 );
 
@@ -598,6 +616,7 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram confirmation error:', err);
         }
+        await writeNotification(getAdminDb(), 'whitecross', 'confirmed', 'Booking Confirmed', `${name} – ${service} · ${dateStr} at ${timeStr}${paid}`, bookingId);
     }
 );
 
@@ -649,6 +668,7 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram reschedule error:', err);
         }
+        await writeNotification(getAdminDb(), 'whitecross', 'rescheduled', 'Booking Rescheduled', `${name} – ${service} → ${newDateTime}`, bookingId);
     }
 );
 

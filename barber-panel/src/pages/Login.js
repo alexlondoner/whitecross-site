@@ -39,43 +39,112 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080808', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #080808 0%, #0b0b0a 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(115deg, transparent 0%, transparent 22%, rgba(212,175,55,0.08) 32%, rgba(212,175,55,0.16) 37%, rgba(212,175,55,0.08) 42%, transparent 52%, transparent 100%), linear-gradient(115deg, transparent 0%, transparent 58%, rgba(212,175,55,0.05) 66%, rgba(212,175,55,0.12) 71%, rgba(212,175,55,0.05) 76%, transparent 84%, transparent 100%)',
+        pointerEvents: 'none'
+      }} />
 
-      <div style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ fontSize: '3rem' }}>✂️</div>
-        </div>
-
-        <div style={{ background: '#111', border: '1px solid rgba(212,175,55,0.18)', borderRadius: '16px', padding: '36px 36px 40px', boxShadow: '0 0 60px rgba(0,0,0,0.7)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '1.25rem', color: '#d4af37', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '420px',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <div style={{
+          borderRadius: '18px',
+          padding: '36px 34px 38px',
+          border: '1px solid rgba(212,175,55,0.14)',
+          background: 'linear-gradient(180deg, rgba(17,17,17,0.96) 0%, rgba(10,10,10,0.98) 100%)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(12px)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <img src="/logo.png" alt="Whitecross Barbers" style={{ width: '132px', height: '132px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+            <div style={{ marginTop: '16px', fontFamily: 'Georgia, serif', fontSize: '1.2rem', color: '#d4af37', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: '700', lineHeight: 1.4 }}>
               I CUT WHITECROSS
-            </h1>
-            <p style={{ fontSize: '0.72rem', color: '#555', letterSpacing: '2px', textTransform: 'uppercase' }}>Admin Panel</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>Email</label>
-              <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} placeholder="Enter your email" disabled={loading}
-                style={{ width: '100%', padding: '14px 16px', background: 'var(--card2)', border: `1px solid ${error ? '#ff5252' : 'var(--border)'}`, borderRadius: '8px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#d4af37'}
-                onBlur={e => e.target.style.borderColor = error ? '#ff5252' : 'var(--border)'}
-                autoFocus />
-            </div>
+            <div style={{ marginBottom: '16px' }}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }}
+                  placeholder=""
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${error ? '#ff5252' : 'rgba(212,175,55,0.18)'}`,
+                    borderRadius: '14px',
+                    color: '#f8f4e7',
+                    fontSize: '0.98rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#d4af37'}
+                  onBlur={e => e.target.style.borderColor = error ? '#ff5252' : 'rgba(212,175,55,0.18)'}
+                  autoFocus
+                />
+              </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>Password</label>
-              <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} placeholder="Enter password" disabled={loading}
-                style={{ width: '100%', padding: '14px 16px', background: 'var(--card2)', border: `1px solid ${error ? '#ff5252' : 'var(--border)'}`, borderRadius: '8px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#d4af37'}
-                onBlur={e => e.target.style.borderColor = error ? '#ff5252' : 'var(--border)'} />
-              {error && <p style={{ color: '#ff5252', fontSize: '0.78rem', marginTop: '8px' }}>{error}</p>}
-            </div>
+            <div style={{ marginBottom: '22px' }}>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder=""
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${error ? '#ff5252' : 'rgba(212,175,55,0.18)'}`,
+                    borderRadius: '14px',
+                    color: '#f8f4e7',
+                    fontSize: '0.98rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#d4af37'}
+                  onBlur={e => e.target.style.borderColor = error ? '#ff5252' : 'rgba(212,175,55,0.18)'}
+                />
+                {error && <p style={{ color: '#ff6a6a', fontSize: '0.8rem', marginTop: '10px', lineHeight: 1.5 }}>{error}</p>}
+              </div>
 
-            <button type="submit" disabled={loading || !email || !password}
-              style={{ width: '100%', padding: '14px', background: loading || !email || !password ? 'rgba(212,175,55,0.3)' : 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', cursor: loading || !email || !password ? 'not-allowed' : 'pointer' }}>
+            <button
+              type="submit"
+              disabled={loading || !email || !password}
+              style={{
+                width: '100%',
+                padding: '15px',
+                background: loading || !email || !password ? 'rgba(212,175,55,0.28)' : 'linear-gradient(135deg, #f1d36d 0%, #d4af37 55%, #b8860b 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#0d0b06',
+                fontWeight: '800',
+                fontSize: '0.84rem',
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                cursor: loading || !email || !password ? 'not-allowed' : 'pointer',
+                boxShadow: loading || !email || !password ? 'none' : '0 14px 24px rgba(212,175,55,0.2)'
+              }}>
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>

@@ -14,7 +14,7 @@ const navItems = [
   { id: 'settings',      icon: '⚙️', label: 'Settings' },
 ];
 
-function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed }) {
+function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
 
@@ -73,20 +73,34 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
 
       {/* Logo Section */}
       <div style={{
-        padding: isCollapsed ? '28px 20px' : '28px 24px',
+        padding: isCollapsed ? '16px 10px' : '18px 16px',
         borderBottom: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(212,175,55,0.1)',
-        minHeight: '90px'
+        minHeight: isCollapsed ? '76px' : '146px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '1.5rem', minWidth: '32px' }}>✂️</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isCollapsed ? '0' : '8px' }}>
+          <img
+            src="/logo.png"
+            alt="Whitecross Barbers"
+            style={{
+              width: isCollapsed ? '40px' : '88px',
+              height: isCollapsed ? '40px' : '88px',
+              objectFit: 'contain'
+            }}
+          />
           {!isCollapsed && (
-            <div style={{ opacity: 1, transition: 'opacity 0.2s' }}>
-              <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.85rem', color: '#d4af37', letterSpacing: '1px', fontWeight: '700' }}>
-                I CUT
-              </div>
-              <div style={{ fontSize: '0.68rem', color: isLight ? '#9a8a70' : '#7a7260', letterSpacing: '1px' }}>
-                ADMIN
-              </div>
+            <div style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: '0.9rem',
+              color: '#d4af37',
+              letterSpacing: '2px',
+              fontWeight: '700',
+              lineHeight: 1,
+              textAlign: 'center'
+            }}>
+              I CUT
             </div>
           )}
         </div>
