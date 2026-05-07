@@ -243,10 +243,12 @@ export default function Clients() {
       }
       // 3. If not found, try to match by name ONLY IF name is unique in the collection
       if (!foundId && data.name) {
+        // Normalize name for comparison (trim, lowercase)
+        const normName = data.name.trim().toLowerCase();
         const nameMatches = [];
         snap.forEach(docSnap => {
           const d = docSnap.data();
-          if (d.name && d.name.toLowerCase() === data.name.toLowerCase()) {
+          if (d.name && d.name.trim().toLowerCase() === normName) {
             nameMatches.push(docSnap.id);
           }
         });
