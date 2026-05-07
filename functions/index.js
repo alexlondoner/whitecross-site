@@ -68,6 +68,14 @@ exports.health = onRequest((req, res) => {
 // Called from the public booking form instead of redirecting to a static Payment Link.
 // Embeds all booking details in the session metadata so the webhook can always
 // match by bookingId — no email guessing, no lost bookings.
+const SERVICE_DURATIONS = {
+    'i-cut-royal': 60, 'i-cut-deluxe': 50, 'full-skinfade-beard-luxury': 40, 'full-experience': 30,
+    'senior-full-experience': 30, 'skin-fade': 30, 'scissor-cut': 30, 'classic-sbs': 20,
+    'hot-towel-shave': 15, 'clipper-cut': 15, 'senior-haircut': 20, 'young-gents': 20,
+    'young-gents-skin-fade': 25, 'full-facial': 10, 'beard-dyeing': 20, 'face-mask': 10,
+    'face-steam': 10, 'threading': 5, 'waxing': 10, 'shape-up-clean-up': 15, 'wash-hot-towel': 10,
+};
+
 exports.createCheckoutSession = onRequest(
     {
         secrets: ['STRIPE_SECRET_KEY', 'STRIPE_TEST_SECRET_KEY'],
@@ -83,12 +91,12 @@ exports.createCheckoutSession = onRequest(
         if (!stripeKey) { res.status(500).json({ error: 'Stripe not configured' }); return; }
 
         const {
-            bookingId, serviceId, serviceName, price,
+            serviceId, serviceName, price,
             barberId, barberName, date, time,
             clientName, clientEmail, clientPhone, paymentType,
         } = req.body || {};
 
-        if (!bookingId || !serviceId || !price) {
+        if (!serviceId || !price || !barberId || !date || !time) {
             res.status(400).json({ error: 'Missing required fields' });
             return;
         }
@@ -96,10 +104,63 @@ exports.createCheckoutSession = onRequest(
         const isDeposit  = paymentType === 'DEPOSIT';
         const depositAmt = DEPOSIT_AMOUNTS[serviceId] || 10;
         const chargeGBP  = isDeposit ? depositAmt : Math.max(0, parseFloat(price) || 0);
-
         if (chargeGBP <= 0) { res.status(400).json({ error: 'Invalid amount' }); return; }
 
+        // Calculate slot times
+        const [h, m] = time.split(':').map(Number);
+        const startDate = new Date(date + 'T00:00:00');
+        startDate.setHours(h, m, 0, 0);
+        const duration = SERVICE_DURATIONS[serviceId] || 30;
+        const endDate  = new Date(startDate.getTime() + duration * 60 * 1000);
+        const startTs  = admin.firestore.Timestamp.fromDate(startDate);
+        const endTs    = admin.firestore.Timestamp.fromDate(endDate);
+
+        const db        = getAdminDb();
+        const bookingId = 'WCB-' + Date.now();
+        const bookingRef = db.doc(`tenants/whitecross/bookings/${bookingId}`);
+
         try {
+            // Atomically check for conflicts and write PENDING
+            await db.runTransaction(async (tx) => {
+                const conflictsSnap = await tx.get(
+                    db.collection('tenants/whitecross/bookings')
+                      .where('barberId', '==', barberId)
+                      .where('date',     '==', date)
+                );
+                const conflict = conflictsSnap.docs.some(doc => {
+                    const d = doc.data();
+                    if (!['CONFIRMED', 'PENDING'].includes(d.status)) return false;
+                    if (!d.startTime || !d.endTime) return false;
+                    return startDate.getTime() < d.endTime.toMillis() &&
+                           endDate.getTime()   > d.startTime.toMillis();
+                });
+                if (conflict) throw new Error('SLOT_TAKEN');
+
+                tx.set(bookingRef, {
+                    bookingId,
+                    tenantId:         'whitecross',
+                    clientName:       clientName   || '',
+                    clientEmail:      clientEmail  || '',
+                    clientPhone:      clientPhone  || '',
+                    barberId:         barberId     || '',
+                    barberName:       barberName   || '',
+                    service:          serviceId    || '',
+                    serviceId:        serviceId    || '',
+                    date:             date         || '',
+                    time:             time         || '',
+                    startTime:        startTs,
+                    endTime:          endTs,
+                    status:           'PENDING',
+                    paymentType:      isDeposit ? 'DEPOSIT' : 'FULL',
+                    paymentState:     'PENDING',
+                    source:           'website',
+                    price:            String(price),
+                    pendingCreatedAt: admin.firestore.Timestamp.fromDate(new Date()),
+                    expiresAt:        admin.firestore.Timestamp.fromDate(new Date(Date.now() + 15 * 60 * 1000)),
+                    updatedAt:        admin.firestore.Timestamp.fromDate(new Date()),
+                });
+            });
+
             const stripe  = new Stripe(stripeKey);
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card'],
@@ -117,7 +178,7 @@ exports.createCheckoutSession = onRequest(
                 mode: 'payment',
                 customer_email: clientEmail || undefined,
                 metadata: {
-                    bookingId:   bookingId,
+                    bookingId,
                     serviceId:   serviceId   || '',
                     barberId:    barberId     || '',
                     barberName:  barberName   || '',
@@ -135,10 +196,14 @@ exports.createCheckoutSession = onRequest(
                 cancel_url: `https://whitecrossbarbers.com/?cancelled=${bookingId}#booking`,
             });
 
-            res.json({ url: session.url, sessionId: session.id });
+            res.json({ url: session.url, sessionId: session.id, bookingId });
         } catch (err) {
-            console.error('createCheckoutSession error:', err.message);
-            res.status(500).json({ error: err.message });
+            if (err.message === 'SLOT_TAKEN') {
+                res.status(409).json({ error: 'slot_taken', message: 'This slot has just been taken. Please choose another time.' });
+            } else {
+                console.error('createCheckoutSession error:', err.message);
+                res.status(500).json({ error: err.message });
+            }
         }
     }
 );
