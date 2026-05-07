@@ -34,10 +34,8 @@ jobs:
         working-directory: barber-panel
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAVUZ_44F70 }}
-          channelId: live
-          projectId: havuz-44f70
-          target: whitecross-admin
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAVUZ_44F70 }}' > /tmp/sa.json
+          npx firebase-tools@latest deploy --only hosting:whitecross-admin --project havuz-44f70
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
