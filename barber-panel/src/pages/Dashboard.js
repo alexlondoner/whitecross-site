@@ -2148,7 +2148,7 @@ export default function Dashboard() {
   const [showPillSettings, setShowPillSettings] = useState(false);
   const [pillsCollapsed, setPillsCollapsed] = useState(false);
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
-  const ALL_PILLS = ['total','confirmed','pending','checkedout','needscheckout','revenue','discount','tips','booksy','fresha','website','walkin','productsale'];
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','needscheckout','revenue','discount','tips','booksy','fresha','website','walkin','productsale'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
   const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
@@ -2477,6 +2477,7 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('confirmed') && <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />}
         {!pillsCollapsed && visiblePills.has('pending') && <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
         {!pillsCollapsed && visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
+        {!pillsCollapsed && visiblePills.has('unpaid') && <StatPill label="Unpaid" value={statsBookings.filter(b=>b.status==='UNPAID').length} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
         {!pillsCollapsed && visiblePills.has('needscheckout') && <StatPill label="Needs Checkout" value={needsCheckoutCount} color="#ff5252" active={pillFilter==='needscheckout'} onClick={()=>setPillFilter(pillFilter==='needscheckout'?null:'needscheckout')} />}
         {!pillsCollapsed && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
         {!pillsCollapsed && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
