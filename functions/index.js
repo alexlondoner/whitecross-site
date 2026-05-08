@@ -197,36 +197,48 @@ exports.stripeWebhook = onRequest(
         }
 
         try {
-            if (event.type === 'checkout.session.completed') {
-                const session = event.data.object || {};
-                const metadataBookingId = String(session?.metadata?.bookingId || '').trim();
-                const email = String(session?.customer_details?.email || session?.customer_email || '').trim();
-                const amountPaid = Number.isFinite(session?.amount_total) ? session.amount_total / 100 : null;
+            const db = getAdminDb();
+            const stripeApi = stripeKey ? new Stripe(stripeKey) : null;
+            const handledSessionEvents = new Set([
+                'checkout.session.completed',
+                'checkout.session.async_payment_succeeded',
+            ]);
+            const handledPaymentEvents = new Set([
+                'payment_intent.succeeded',
+                'charge.succeeded',
+            ]);
 
-                const db = getAdminDb();
+            const confirmBookingFromPayment = async ({
+                metadata,
+                email,
+                amountPaid,
+                sessionId,
+                paymentIntent,
+                paymentLink,
+            }) => {
+                const meta = metadata || {};
+                const metadataBookingId = String(meta.bookingId || '').trim();
                 let targetRef = null;
 
-                // Preferred match: explicit bookingId metadata (future-proof if added later).
                 if (metadataBookingId) {
-                    const q = await db
+                    const byBookingId = await db
                         .collection('tenants/whitecross/bookings')
                         .where('bookingId', '==', metadataBookingId)
                         .limit(1)
                         .get();
-                    if (!q.empty) targetRef = q.docs[0].ref;
+                    if (!byBookingId.empty) targetRef = byBookingId.docs[0].ref;
                 }
 
-                // Fallback match for current Payment Link flow: latest pending by email.
                 if (!targetRef && email) {
-                    const q = await db
+                    const pendingByEmail = await db
                         .collection('tenants/whitecross/bookings')
                         .where('status', '==', 'PENDING')
                         .where('source', '==', 'website')
                         .where('clientEmail', '==', email)
                         .get();
 
-                    if (!q.empty) {
-                        const docs = q.docs.slice().sort((a, b) => {
+                    if (!pendingByEmail.empty) {
+                        const docs = pendingByEmail.docs.slice().sort((a, b) => {
                             const av = a.get('pendingCreatedAt') || a.get('createdAt') || a.get('updatedAt');
                             const bv = b.get('pendingCreatedAt') || b.get('createdAt') || b.get('updatedAt');
                             const am = av?.toMillis ? av.toMillis() : 0;
@@ -237,75 +249,203 @@ exports.stripeWebhook = onRequest(
                     }
                 }
 
+                if (!targetRef && email) {
+                    const allByEmail = await db
+                        .collection('tenants/whitecross/bookings')
+                        .where('clientEmail', '==', email)
+                        .get();
+
+                    if (!allByEmail.empty) {
+                        const docs = allByEmail.docs
+                            .filter((d) => {
+                                const row = d.data() || {};
+                                const status = String(row.status || '').toUpperCase();
+                                const source = String(row.source || '').toLowerCase();
+                                const reason = String(row.cancelReason || '').toLowerCase();
+                                return status === 'CANCELLED' && source === 'website' && reason === 'expired_pending';
+                            })
+                            .sort((a, b) => {
+                                const av = a.get('cancelledAt') || a.get('updatedAt') || a.get('createdAt');
+                                const bv = b.get('cancelledAt') || b.get('updatedAt') || b.get('createdAt');
+                                const am = av?.toMillis ? av.toMillis() : 0;
+                                const bm = bv?.toMillis ? bv.toMillis() : 0;
+                                return bm - am;
+                            });
+
+                        if (docs.length) targetRef = docs[0].ref;
+                    }
+                }
+
                 if (!targetRef) {
-                    // No PENDING found — if session has full metadata, create a CONFIRMED booking
-                    const meta = session?.metadata || {};
                     if (meta.bookingId && meta.serviceId && meta.date && meta.time) {
                         console.log('stripeWebhook: no pending found, creating CONFIRMED from metadata', meta.bookingId);
-                        const months = { January:0, February:1, March:2, April:3, May:4, June:5, July:6, August:7, September:8, October:9, November:10, December:11 };
-                        let startTime = null, endTime = null;
+                        let startTime = null;
+                        let endTime = null;
                         try {
-                            const dateParts = meta.date.split('-'); // YYYY-MM-DD
+                            const dateParts = meta.date.split('-');
                             const [th, tm, ap] = (meta.time.match(/(\d+):(\d+)\s*(AM|PM)/i) || []).slice(1);
-                            let h = parseInt(th), m = parseInt(tm);
+                            let h = parseInt(th, 10);
+                            const m = parseInt(tm, 10);
                             if (ap?.toUpperCase() === 'PM' && h !== 12) h += 12;
                             if (ap?.toUpperCase() === 'AM' && h === 12) h = 0;
-                            const d = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]), h, m, 0);
+                            const d = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10), h, m, 0);
                             startTime = admin.firestore.Timestamp.fromDate(d);
-                            endTime   = admin.firestore.Timestamp.fromDate(new Date(d.getTime() + 30 * 60 * 1000));
+                            endTime = admin.firestore.Timestamp.fromDate(new Date(d.getTime() + 30 * 60 * 1000));
                         } catch {}
 
                         const newRef = db.collection('tenants/whitecross/bookings').doc();
                         await newRef.set({
-                            bookingId:      meta.bookingId,
-                            tenantId:       'whitecross',
-                            clientName:     meta.clientName  || 'Guest',
-                            clientEmail:    meta.clientEmail || email || '',
-                            clientPhone:    meta.clientPhone || '',
-                            barberId:       meta.barberId    || '',
-                            barberName:     meta.barberName  || '',
-                            serviceId:      meta.serviceId,
-                            price:          parseFloat(meta.price) || 0,
-                            paymentType:    meta.paymentType || 'FULL',
-                            status:         'CONFIRMED',
-                            paymentState:   'PAID',
-                            source:         'website',
-                            paidAt:         admin.firestore.Timestamp.now(),
-                            stripeSessionId: session.id || null,
-                            stripeAmountPaid: amountPaid,
-                            stripeEventId:  event.id || null,
-                            startTime:      startTime,
-                            endTime:        endTime,
-                            createdAt:      admin.firestore.Timestamp.now(),
-                            updatedAt:      admin.firestore.Timestamp.now(),
-                            note:           'Auto-created by Stripe webhook (no matching pending)',
-                        });
-                    } else {
-                        console.warn('stripeWebhook: no matching pending booking and insufficient metadata', {
-                            email, metadataBookingId, sessionId: session.id,
-                        });
-                    }
-                } else {
-                    await targetRef.set(
-                        {
+                            bookingId: meta.bookingId,
+                            tenantId: 'whitecross',
+                            clientName: meta.clientName || 'Guest',
+                            clientEmail: meta.clientEmail || email || '',
+                            clientPhone: meta.clientPhone || '',
+                            barberId: meta.barberId || '',
+                            barberName: meta.barberName || '',
+                            serviceId: meta.serviceId,
+                            price: parseFloat(meta.price) || 0,
+                            paymentType: meta.paymentType || 'FULL',
                             status: 'CONFIRMED',
                             paymentState: 'PAID',
+                            source: 'website',
                             paidAt: admin.firestore.Timestamp.now(),
-                            stripeSessionId: session.id || null,
-                            stripePaymentIntent: session.payment_intent || null,
-                            stripePaymentLink: session.payment_link || null,
-                            stripeEventId: event.id || null,
+                            stripeSessionId: sessionId || null,
+                            stripePaymentIntent: paymentIntent || null,
+                            stripePaymentLink: paymentLink || null,
                             stripeAmountPaid: amountPaid,
+                            stripeEventId: event.id || null,
+                            startTime: startTime,
+                            endTime: endTime,
+                            createdAt: admin.firestore.Timestamp.now(),
                             updatedAt: admin.firestore.Timestamp.now(),
-                        },
-                        { merge: true }
-                    );
-                    console.log('stripeWebhook: booking confirmed from Stripe webhook', {
-                        ref: targetRef.path,
+                            note: 'Auto-created by Stripe webhook (no matching pending)',
+                        });
+                        return;
+                    }
+
+                    console.warn('stripeWebhook: no matching booking and insufficient metadata', {
                         email,
-                        sessionId: session.id,
+                        metadataBookingId,
+                        sessionId,
+                        paymentIntent,
                     });
+                    return;
                 }
+
+                // Always backfill key fields from metadata if missing
+                const updateData = {
+                    status: 'CONFIRMED',
+                    paymentState: 'PAID',
+                    paidAt: admin.firestore.Timestamp.now(),
+                    stripeSessionId: sessionId || null,
+                    stripePaymentIntent: paymentIntent || null,
+                    stripePaymentLink: paymentLink || null,
+                    stripeEventId: event.id || null,
+                    stripeAmountPaid: amountPaid,
+                    cancelReason: admin.firestore.FieldValue.delete(),
+                    cancelledAt: admin.firestore.FieldValue.delete(),
+                    updatedAt: admin.firestore.Timestamp.now(),
+                };
+                // Backfill missing fields from metadata
+                if (meta) {
+                    if (meta.date) updateData.date = meta.date;
+                    if (meta.time) updateData.time = meta.time;
+                    // Always set service name, never expose serviceId to client
+                    if (meta.serviceName) updateData.service = meta.serviceName;
+                    else if (meta.service) updateData.service = meta.service;
+                    if (meta.barberName) updateData.barberName = meta.barberName;
+                    if (meta.barberId) updateData.barberId = meta.barberId;
+                    if (meta.price) updateData.price = parseFloat(meta.price) || 0;
+                    if (meta.clientName) updateData.clientName = meta.clientName;
+                    if (meta.clientPhone) updateData.clientPhone = meta.clientPhone;
+                    if (meta.clientEmail) updateData.clientEmail = meta.clientEmail;
+                    if (meta.paymentType) updateData.paymentType = meta.paymentType;
+                }
+                await targetRef.set(updateData, { merge: true });
+
+                console.log('stripeWebhook: booking confirmed from Stripe webhook', {
+                    ref: targetRef.path,
+                    email,
+                    sessionId,
+                    paymentIntent,
+                    eventType: event.type,
+                });
+            };
+
+            if (handledSessionEvents.has(event.type)) {
+                const session = event.data.object || {};
+
+                if (
+                    event.type === 'checkout.session.completed' &&
+                    session?.payment_status &&
+                    String(session.payment_status).toLowerCase() !== 'paid'
+                ) {
+                    console.log('stripeWebhook: checkout completed but not paid yet; waiting for async success', {
+                        sessionId: session.id,
+                        paymentStatus: session.payment_status,
+                    });
+                    res.status(200).json({ received: true, skipped: 'not_paid_yet' });
+                    return;
+                }
+
+                await confirmBookingFromPayment({
+                    metadata: session?.metadata || {},
+                    email: String(session?.customer_details?.email || session?.customer_email || '').trim(),
+                    amountPaid: Number.isFinite(session?.amount_total) ? session.amount_total / 100 : null,
+                    sessionId: session.id || null,
+                    paymentIntent: session.payment_intent || null,
+                    paymentLink: session.payment_link || null,
+                });
+            } else if (handledPaymentEvents.has(event.type)) {
+                const obj = event.data.object || {};
+                let metadata = obj?.metadata || {};
+                let email = String(
+                    obj?.receipt_email ||
+                    obj?.charges?.data?.[0]?.billing_details?.email ||
+                    obj?.billing_details?.email ||
+                    ''
+                ).trim();
+                let paymentIntent = obj?.payment_intent || obj?.id || null;
+                let sessionId = null;
+                let paymentLink = null;
+                let amountPaid = null;
+
+                if (event.type === 'payment_intent.succeeded') {
+                    amountPaid = Number.isFinite(obj?.amount_received) ? obj.amount_received / 100 : null;
+                } else {
+                    amountPaid = Number.isFinite(obj?.amount_captured) ? obj.amount_captured / 100 : null;
+                }
+
+                if (stripeApi && paymentIntent) {
+                    try {
+                        const sessions = await stripeApi.checkout.sessions.list({ payment_intent: String(paymentIntent), limit: 1 });
+                        const session = sessions?.data?.[0];
+                        if (session) {
+                            metadata = Object.keys(metadata || {}).length ? metadata : (session.metadata || {});
+                            email = email || String(session?.customer_details?.email || session?.customer_email || '').trim();
+                            sessionId = session.id || null;
+                            paymentLink = session.payment_link || null;
+                            if (amountPaid === null && Number.isFinite(session?.amount_total)) {
+                                amountPaid = session.amount_total / 100;
+                            }
+                        }
+                    } catch (lookupErr) {
+                        console.warn('stripeWebhook: checkout session lookup failed for payment event', {
+                            eventType: event.type,
+                            paymentIntent,
+                            error: lookupErr?.message || String(lookupErr),
+                        });
+                    }
+                }
+
+                await confirmBookingFromPayment({
+                    metadata,
+                    email,
+                    amountPaid,
+                    sessionId,
+                    paymentIntent,
+                    paymentLink,
+                });
             }
 
             res.status(200).json({ received: true });
