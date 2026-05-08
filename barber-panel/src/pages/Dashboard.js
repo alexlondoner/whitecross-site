@@ -2503,6 +2503,7 @@ const activeBarbers = barberFilter === 'all'
                 {key:'confirmed',   label:'Confirmed',      color:'#4caf50'},
                 {key:'pending',     label:'Pending',        color:'#ff9800'},
                 {key:'checkedout',  label:'Checked Out',    color:'#2196f3'},
+                {key:'unpaid',      label:'Unpaid',         color:'#ff5252'},
                 {key:'needscheckout',label:'Needs Checkout',color:'#ff5252'},
                 {key:'revenue',     label:'Revenue',        color:'#d4af37'},
                 {key:'discount',    label:'Discount Given', color:'#4caf50'},
