@@ -273,12 +273,13 @@ export default function Bookings() {
   const PERIOD_LABELS = { today: 'Day', week: 'Week', month: 'Month', '3months': '3 Months', year: 'Year', all: 'All Time' };
 
   const statPills = [
-    { key: 'confirmed',  label: 'Confirmed',   value: baseFiltered.filter(b => b.status === 'CONFIRMED').length,   color: '#4caf50' },
-    { key: 'pending',    label: 'Pending',      value: baseFiltered.filter(b => b.status === 'PENDING').length,     color: '#ff9800' },
-    { key: 'checkedout', label: 'Checked Out',  value: baseFiltered.filter(b => b.status === 'CHECKED_OUT').length, color: '#2196f3' },
-    { key: 'cancelled',  label: 'Cancelled',    value: baseFiltered.filter(b => b.status === 'CANCELLED').length,   color: '#ff5252' },
-    { key: 'noshow',     label: 'No Show',      value: baseFiltered.filter(b => b.status === 'NO_SHOW').length,     color: '#9c27b0' },
-  ];
+      { key: 'confirmed',  label: 'Confirmed',   value: baseFiltered.filter(b => b.status === 'CONFIRMED').length,   color: '#4caf50' },
+      { key: 'pending',    label: 'Pending',      value: baseFiltered.filter(b => b.status === 'PENDING').length,     color: '#ff9800' },
+      { key: 'checkedout', label: 'Checked Out',  value: baseFiltered.filter(b => b.status === 'CHECKED_OUT').length, color: '#2196f3' },
+      { key: 'unpaid',     label: 'Unpaid',       value: baseFiltered.filter(b => b.status === 'UNPAID').length,      color: '#ff5252' },
+      { key: 'cancelled',  label: 'Cancelled',    value: baseFiltered.filter(b => b.status === 'CANCELLED').length,   color: '#ff5252' },
+      { key: 'noshow',     label: 'No Show',      value: baseFiltered.filter(b => b.status === 'NO_SHOW').length,     color: '#9c27b0' },
+    ];
   const sourcePills = [
     { key: 'booksy',      label: 'Booksy',        value: baseFiltered.filter(b => b.source === 'Booksy').length,         color: '#9c27b0' },
     { key: 'fresha',      label: 'Fresha',         value: baseFiltered.filter(b => b.source === 'Fresha').length,         color: '#2196f3' },

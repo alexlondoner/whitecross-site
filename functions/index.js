@@ -333,6 +333,22 @@ exports.stripeWebhook = onRequest(
                 }
 
                 // Always backfill key fields from metadata if missing
+
+                // Calculate paidAmount and remaining
+                let priceNum = 0;
+                if (meta && meta.price) priceNum = parseFloat(meta.price) || 0;
+                let paymentType = (meta && meta.paymentType) ? meta.paymentType : 'FULL';
+                let depositAmount = 0;
+                if (paymentType === 'DEPOSIT') {
+                    // Use DEPOSIT_AMOUNTS or fallback to 10
+                    depositAmount = DEPOSIT_AMOUNTS[meta.serviceId] || 10;
+                } else {
+                    depositAmount = priceNum;
+                }
+                let paidAmount = paymentType === 'DEPOSIT' ? depositAmount : priceNum;
+                let remaining = priceNum - paidAmount;
+                if (remaining < 0) remaining = 0;
+
                 const updateData = {
                     status: 'CONFIRMED',
                     paymentState: 'PAID',
@@ -342,6 +358,8 @@ exports.stripeWebhook = onRequest(
                     stripePaymentLink: paymentLink || null,
                     stripeEventId: event.id || null,
                     stripeAmountPaid: amountPaid,
+                    paidAmount: paidAmount,
+                    remaining: remaining,
                     cancelReason: admin.firestore.FieldValue.delete(),
                     cancelledAt: admin.firestore.FieldValue.delete(),
                     updatedAt: admin.firestore.Timestamp.now(),
@@ -355,7 +373,7 @@ exports.stripeWebhook = onRequest(
                     else if (meta.service) updateData.service = meta.service;
                     if (meta.barberName) updateData.barberName = meta.barberName;
                     if (meta.barberId) updateData.barberId = meta.barberId;
-                    if (meta.price) updateData.price = parseFloat(meta.price) || 0;
+                    if (meta.price) updateData.price = priceNum;
                     if (meta.clientName) updateData.clientName = meta.clientName;
                     if (meta.clientPhone) updateData.clientPhone = meta.clientPhone;
                     if (meta.clientEmail) updateData.clientEmail = meta.clientEmail;

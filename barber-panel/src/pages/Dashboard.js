@@ -2531,6 +2531,7 @@ const activeBarbers = barberFilter === 'all'
           confirmed: b=>b.status==='CONFIRMED',
           pending: b=>b.status==='PENDING',
           checkedout: b=>b.status==='CHECKED_OUT',
+          unpaid: b=>b.status==='UNPAID',
           needscheckout: b=>{
             if(b.status!=='CONFIRMED'&&b.status!=='PENDING') return false;
             const mins=convertTo24(b.time||'');
@@ -2548,8 +2549,8 @@ const activeBarbers = barberFilter === 'all'
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
           productsale: b=>(b.source||'').toLowerCase()==='product sale'||getProductsTotal(b.soldProducts)>0,
         };
-        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', needscheckout:'#ff5252', revenue:'#d4af37', discount:'#4caf50', tips:'#ff9800', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
-        const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Products Sold' };
+        const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', unpaid:'#ff5252', needscheckout:'#ff5252', revenue:'#d4af37', discount:'#4caf50', tips:'#ff9800', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
+        const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', unpaid:'Unpaid', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Products Sold' };
         const filtered = pillFilter === 'needscheckout' ? needsCheckoutBookings : statsBookings.filter(filterMap[pillFilter]||filterMap.total);
         const pillColor = pillColors[pillFilter]||'#d4af37';
         return (
