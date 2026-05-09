@@ -126,7 +126,14 @@ export default function Clients() {
       .filter(c => !hiddenKeys.has(c.phone) && !hiddenKeys.has(c.email) && !hiddenKeys.has(c.name?.toLowerCase()))
       .map(c => {
         const manual = manualClients.find(m => !m.hidden && ((m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name.toLowerCase()));
-        return { ...c, birthday: manual?.birthday || '', notes: manual?.notes || '', manualId: manual?.id };
+        return {
+          ...c,
+          phone: manual?.phone || c.phone,
+          email: manual?.email || c.email,
+          birthday: manual?.birthday || '',
+          notes: manual?.notes || '',
+          manualId: manual?.id
+        };
       });
     manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
@@ -231,9 +238,9 @@ export default function Clients() {
       } else {
         // Booking-only client — search by ORIGINAL values to find any existing doc
         const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
-        const origPhone = normalizePhone(editingClient.phone);
-        const origEmail = (editingClient.email || '').trim().toLowerCase();
-        const origName  = (editingClient.name || '').trim().toLowerCase();
+        const origPhone = normalizePhone(editingClient._origPhone);
+        const origEmail = (editingClient._origEmail || '').trim().toLowerCase();
+        const origName  = (editingClient._origName || '').trim().toLowerCase();
         const snap = await getDocs(clientsRef);
         let foundId = null;
         snap.forEach(docSnap => {
@@ -309,37 +316,12 @@ export default function Clients() {
           <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Clients</h1>
           <p style={{ fontSize: '0.7rem', color: 'var(--muted)', margin: '2px 0 0', letterSpacing: '0.5px' }}>{allClients.length} total clients · {totalVisits} visits</p>
         </div>
+      </div>
+
         <button onClick={() => setShowAddForm(true)}
           style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
-          } else {
-            // Booking-only client — search by ORIGINAL values to find any existing doc
-            const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
-            const origPhone = normalizePhone(editingClient._origPhone);
-            const origEmail = (editingClient._origEmail || '').trim().toLowerCase();
-            const origName  = (editingClient._origName || '').trim().toLowerCase();
-            const snap = await getDocs(clientsRef);
-            let foundId = null;
-            snap.forEach(docSnap => {
-              if (foundId) return; // stop once matched
-              const d = docSnap.data();
-              const docPhone = normalizePhone(d.phone);
-              const docEmail = (d.email || '').trim().toLowerCase();
-              const docName  = (d.name  || '').trim().toLowerCase();
-              if (origPhone && docPhone && origPhone === docPhone) { foundId = docSnap.id; }
-              else if (origEmail && docEmail && origEmail === docEmail) { foundId = docSnap.id; }
-              else if (origName  && docName  && origName  === docName)  { foundId = docSnap.id; }
-            });
-            if (foundId) {
-              await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
-              setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
-            } else {
-              const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
-              setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
-            }
-          }
-            </div>
-          ))}
-        </div>
+          Add Client
+        </button>
 
         {/* Active segment banner */}
         {activeSegment && (
@@ -558,7 +540,7 @@ export default function Clients() {
             </div>
           )}
         </div>
-      </>)}
+      
 
       {/* ── SEGMENTS TAB ── */}
       {tab === 'segments' && (
@@ -708,6 +690,7 @@ export default function Clients() {
           </div>
         </div>
       )}
+      {/* The main flex column container closes here */}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+// removed duplicate import
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { deleteBooking } from '../firestoreActions';
 
 const PAGE_SIZE = 100;
@@ -105,6 +106,13 @@ export default function Bookings() {
   const [barbers, setBarbers]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [totalFetched, setTotalFetched] = useState(0);
+
+  // New client modal state
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [addClientForm, setAddClientForm] = useState({ name: '', phone: '', email: '', notes: '' });
+  const [addClientSaving, setAddClientSaving] = useState(false);
+  const [addClientError, setAddClientError] = useState('');
+  const [newClientId, setNewClientId] = useState(null);
 
   const [periodFilter, setPeriodFilter] = useState('month');
   const [navAnchor, setNavAnchor]       = useState(new Date());
@@ -291,6 +299,58 @@ export default function Bookings() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
+      {/* Add New Client Modal */}
+      {showAddClient && (
+        <div style={{ position: 'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.18)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:'12px', boxShadow:'0 2px 24px #0002', padding:'32px 28px', minWidth:'320px', maxWidth:'90vw', position:'relative' }}>
+            <button onClick={()=>setShowAddClient(false)} style={{ position:'absolute', top:10, right:12, background:'none', border:'none', color:'#888', fontSize:'1.3rem', cursor:'pointer' }}>×</button>
+            <h2 style={{ fontSize:'1.1rem', marginBottom:'18px', color:'#d4af37' }}>Add New Client</h2>
+            <form onSubmit={async e => {
+              e.preventDefault();
+              setAddClientSaving(true); setAddClientError('');
+              try {
+                if (!addClientForm.name.trim()) throw new Error('Name is required');
+                const docRef = await addDoc(collection(db, 'tenants/whitecross/clients'), {
+                  ...addClientForm,
+                  createdAt: serverTimestamp(),
+                });
+                setNewClientId(docRef.id);
+                setShowAddClient(false);
+                setAddClientForm({ name: '', phone: '', email: '', notes: '' });
+                // Optionally: show a toast or feedback
+              } catch (err) {
+                setAddClientError(err.message || 'Failed to add client');
+              } finally {
+                setAddClientSaving(false);
+              }
+            }}>
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Name*</label>
+                <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+                  value={addClientForm.name} onChange={e=>setAddClientForm(f=>({...f, name:e.target.value}))} required />
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Phone</label>
+                <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+                  value={addClientForm.phone} onChange={e=>setAddClientForm(f=>({...f, phone:e.target.value}))} />
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Email</label>
+                <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+                  value={addClientForm.email} onChange={e=>setAddClientForm(f=>({...f, email:e.target.value}))} />
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Notes</label>
+                <textarea style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4, minHeight:40 }}
+                  value={addClientForm.notes} onChange={e=>setAddClientForm(f=>({...f, notes:e.target.value}))} />
+              </div>
+              {addClientError && <div style={{ color:'#ff5252', marginBottom:10 }}>{addClientError}</div>}
+              <button type="submit" disabled={addClientSaving} style={{ background:'#d4af37', color:'#222', fontWeight:700, border:'none', borderRadius:'6px', padding:'10px 22px', fontSize:'1rem', cursor:'pointer' }}>{addClientSaving ? 'Saving…' : 'Add Client'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
@@ -360,7 +420,11 @@ export default function Bookings() {
       </div>
 
       {/* Search + Barber tabs + Sort */}
-      <div style={{ display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap' }}>
+          {/* Add New Client Button */}
+          <button onClick={()=>setShowAddClient(true)} style={{ background:'#d4af37', color:'#222', fontWeight:700, border:'none', borderRadius:'6px', padding:'8px 18px', fontSize:'0.92rem', cursor:'pointer', marginRight:10 }}>
+            + Add New Client
+          </button>
         <input
           placeholder="Search name, service, phone, ID..."
           value={search} onChange={e => setSearch(e.target.value)}

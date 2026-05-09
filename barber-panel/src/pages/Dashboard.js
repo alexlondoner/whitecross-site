@@ -3,9 +3,76 @@ import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config, { seedServices } from '../config';
-  // ...existing state and hooks...
-  // extras state is managed via setExtras and useState; do not redeclare here
 import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale } from '../firestoreActions';
+import { addDoc, serverTimestamp } from 'firebase/firestore';
+
+// AddClientModal: Reusable modal for adding a new client inline
+function AddClientModal({ open, onClose, onAdd }) {
+  const [form, setForm] = React.useState({ name: '', phone: '', email: '', notes: '' });
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      if (!form.name.trim()) throw new Error('Name is required');
+      // Add to Firestore
+      const docRef = await addDoc(collection(db, 'tenants/whitecross/clients'), {
+        ...form,
+        createdAt: serverTimestamp(),
+      });
+      if (onAdd) onAdd({ id: docRef.id, ...form });
+      setForm({ name: '', phone: '', email: '', notes: '' });
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to add client');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div style={{ position: 'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.18)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ background:'#fff', borderRadius:'12px', boxShadow:'0 2px 24px #0002', padding:'32px 28px', minWidth:'320px', maxWidth:'90vw', position:'relative' }}>
+        <button onClick={onClose} style={{ position:'absolute', top:10, right:12, background:'none', border:'none', color:'#888', fontSize:'1.3rem', cursor:'pointer' }}>×</button>
+        <h2 style={{ fontSize:'1.1rem', marginBottom:'18px', color:'#d4af37' }}>Add New Client</h2>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Name*</label>
+            <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+              value={form.name} onChange={e=>setForm(f=>({...f, name:e.target.value}))} required />
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Phone</label>
+            <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+              value={form.phone} onChange={e=>setForm(f=>({...f, phone:e.target.value}))} />
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Email</label>
+            <input style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4 }}
+              value={form.email} onChange={e=>setForm(f=>({...f, email:e.target.value}))} />
+          </div>
+          <div style={{ marginBottom:16 }}>
+            <label style={{ fontSize:'0.8rem', color:'#888', fontWeight:600 }}>Notes</label>
+            <textarea style={{ width:'100%', padding:'8px', borderRadius:'6px', border:'1px solid #ccc', marginTop:4, minHeight:40 }}
+              value={form.notes} onChange={e=>setForm(f=>({...f, notes:e.target.value}))} />
+          </div>
+          {error && <div style={{ color:'#ff5252', marginBottom:10 }}>{error}</div>}
+          <button type="submit" disabled={saving} style={{ background:'#d4af37', color:'#222', fontWeight:700, border:'none', borderRadius:'6px', padding:'10px 22px', fontSize:'1rem', cursor:'pointer' }}>{saving ? 'Saving…' : 'Add Client'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Place this inside your main component, after all other useState hooks:
+// const [showAddClient, setShowAddClient] = useState(false);
+// const handleAddClientInline = (client) => {
+//   setClientName(client.name || '');
+//   setClientPhone(client.phone || '');
+// };
 
 // Utility to get extras from services
 function getExtrasFromServices(services) {
@@ -396,6 +463,12 @@ function ProductSelector({ products, value, onChange }) {
 function ProductSalePanel({ barbers, products, onClose, onSaved }) {
   const [clientName, setClientName] = useState('Walk-in');
   const [clientPhone, setClientPhone] = useState('');
+  const [showAddClient, setShowAddClient] = useState(false);
+  const handleAddClientInline = (client) => {
+    setClientName(client.name || '');
+    setClientPhone(client.phone || '');
+    setShowAddClient(false);
+  };
   const [barber, setBarber] = useState(barbers[0] ? barbers[0].name.toLowerCase() : '');
   const [soldProducts, setSoldProducts] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -487,8 +560,23 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
         </div>
         <div>
           <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Client</label>
-          <input value={clientName} onChange={(e)=>setClientName(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
+              {/* Add Client Modal for inline client creation */}
+              <AddClientModal open={showAddClient} onClose={()=>setShowAddClient(false)} onAdd={handleAddClientInline} />
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input value={clientName} onChange={(e)=>setClientName(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
+            <button
+              type="button"
+              onClick={()=>setShowAddClient(true)}
+              style={{ padding:'0 8px', background:'none', color:'#d4af37', border:'1px solid #d4af37', borderRadius:'50%', fontWeight:'700', fontSize:'1.2rem', cursor:'pointer', height:'28px', width:'28px', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:'1' }}
+              title="Add new client"
+              aria-label="Add new client"
+            >+
+            </button>
+          </div>
         </div>
+        {/* Add Client Modal for inline client creation */}
+        {/* Place this at the root of your component's return: */}
+        {/* <AddClientModal open={showAddClient} onClose={()=>setShowAddClient(false)} onAdd={handleAddClientInline} /> */}
         <div>
           <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Phone (optional)</label>
           <input value={clientPhone} onChange={(e)=>setClientPhone(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
@@ -1185,6 +1273,20 @@ function BookingProductsPanel({ booking, products, initialProducts, onClose, onS
 }
 
 function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers, existingBookings, specialHours, onClose, onSaved }) {
+    const [showAddClient, setShowAddClient] = useState(false);
+    const handleAddClientInline = (client) => {
+      let code = '+44', local = String(client.phone || '');
+      for (const cc of COUNTRY_CODES) { if(local.startsWith(cc.code)){code=cc.code;local=local.slice(cc.code.length).trim();break;} }
+      setForm(f => ({
+        ...f,
+        name: client.name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        _countryCode: code,
+        _phoneLocal: local
+      }));
+      setShowAddClient(false);
+    };
   const isEdit = !!preBooking;
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -1376,33 +1478,46 @@ const handleSave = async (goCheckout = false) => {
         <button onClick={onClose} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1rem', width:'24px', height:'24px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'50%' }}>x</button>
       </div>
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
-        <div style={{ position:'relative' }}>
-          <label style={lbl}>Customer Name *</label>
-          <input value={form.name}
-            onChange={e=>{ setForm({...form,name:e.target.value}); setShowSuggestions(true); }}
-            onBlur={()=>setTimeout(()=>setShowSuggestions(false),150)}
-            placeholder="Full name or search existing..." style={inp} />
-          {showSuggestions && suggestions.length > 0 && (
-            <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', zIndex:30, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', maxHeight:'200px', overflowY:'auto', marginTop:'4px' }}>
-              {suggestions.map((c,i) => (
-                <div key={i} onClick={()=>{
-                  let code='+44', local=String(c.phone||'');
-                  for (const cc of COUNTRY_CODES) { if(local.startsWith(cc.code)){code=cc.code;local=local.slice(cc.code.length).trim();break;} }
-                  setForm({...form, name:c.name, email:c.email||'', phone:c.phone||'', _countryCode:code, _phoneLocal:local});
-                  setShowSuggestions(false);
-                }}
-                style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.08)'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                  <div>
-                    <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
-                    <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{c.phone}{c.visits>0?' · '+c.visits+' visits':''}</div>
+        <div style={{ position:'relative', display:'flex', alignItems:'center', gap:'6px' }}>
+          <div style={{ flex:1 }}>
+            <label style={lbl}>Customer Name *</label>
+            <input value={form.name}
+              onChange={e=>{ setForm({...form,name:e.target.value}); setShowSuggestions(true); }}
+              onBlur={()=>setTimeout(()=>setShowSuggestions(false),150)}
+              placeholder="Full name or search existing..." style={inp} />
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', zIndex:30, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', maxHeight:'200px', overflowY:'auto', marginTop:'4px' }}>
+                {suggestions.map((c,i) => (
+                  <div key={i} onClick={()=>{
+                    let code='+44', local=String(c.phone||'');
+                    for (const cc of COUNTRY_CODES) { if(local.startsWith(cc.code)){code=cc.code;local=local.slice(cc.code.length).trim();break;} }
+                    setForm({...form, name:c.name, email:c.email||'', phone:c.phone||'', _countryCode:code, _phoneLocal:local});
+                    setShowSuggestions(false);
+                  }}
+                  style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.08)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <div>
+                      <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
+                      <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{c.phone}{c.visits>0?' · '+c.visits+' visits':''}</div>
+                    </div>
+                    {c.totalSpent>0 && <span style={{ fontSize:'0.68rem', color:'#d4af37', fontWeight:'600' }}>£{c.totalSpent.toFixed(0)}</span>}
                   </div>
-                  {c.totalSpent>0 && <span style={{ fontSize:'0.68rem', color:'#d4af37', fontWeight:'600' }}>£{c.totalSpent.toFixed(0)}</span>}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddClient(true)}
+            title="Add new client"
+            style={{ width:'28px', height:'28px', borderRadius:'50%', border:'1px solid var(--border)', background:'transparent', color:'#d4af37', fontSize:'1.2rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', marginTop:'20px' }}
+            onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.08)'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+          >
+            +
+          </button>
+          <AddClientModal open={showAddClient} onClose={()=>setShowAddClient(false)} onAdd={handleAddClientInline} />
         </div>
         <div>
           <label style={lbl}>Phone</label>
@@ -1645,6 +1760,16 @@ const handleSave = async () => {
 }
 
 function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, specialHours, products, onClose, onSaved }) {
+    const [showAddClient, setShowAddClient] = useState(false);
+    const handleAddClientInline = (client) => {
+      setSearch(client.name || '');
+      setSelectedClient({
+        name: client.name || '',
+        phone: client.phone || '',
+        email: client.email || ''
+      });
+      setShowAddClient(false);
+    };
   const formDate = preDate || new Date();
   const availableBarbers = getAvailableBarbersForDate(barbers, formDate);
   const [clients, setClients] = useState([]);
@@ -1801,39 +1926,52 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'14px' }}>
 
         {/* Client search */}
-        <div style={{ position:'relative' }}>
-          <label style={lbl}>Client (optional)</label>
-          <input
-            value={search}
-            onChange={e => { setSearch(e.target.value); setShowClientList(true); setSelectedClient(null); }}
-            placeholder="Search name or phone..."
-            style={inp}
-          />
-          {showClientList && filteredClients.length > 0 && (
-            <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', zIndex:20, boxShadow:'0 8px 24px rgba(0,0,0,0.3)', maxHeight:'180px', overflowY:'auto', marginTop:'4px' }}>
-              {filteredClients.map((c, i) => (
-                <div key={i} onClick={() => selectClient(c)}
-                  style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}
-                  onMouseEnter={e => e.currentTarget.style.background='rgba(212,175,55,0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                  <div>
-                    <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
-                    <div style={{ fontSize:'0.65rem', color:'var(--muted)' }}>{c.phone} · {c.visits} visits</div>
+        <div style={{ position:'relative', display:'flex', alignItems:'center', gap:'6px' }}>
+          <div style={{ flex:1 }}>
+            <label style={lbl}>Client (optional)</label>
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); setShowClientList(true); setSelectedClient(null); }}
+              placeholder="Search name or phone..."
+              style={inp}
+            />
+            {showClientList && filteredClients.length > 0 && (
+              <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', zIndex:20, boxShadow:'0 8px 24px rgba(0,0,0,0.3)', maxHeight:'180px', overflowY:'auto', marginTop:'4px' }}>
+                {filteredClients.map((c, i) => (
+                  <div key={i} onClick={() => selectClient(c)}
+                    style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(212,175,55,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <div>
+                      <div style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
+                      <div style={{ fontSize:'0.65rem', color:'var(--muted)' }}>{c.phone} · {c.visits} visits</div>
+                    </div>
+                    <div style={{ fontSize:'0.65rem', color:'#d4af37' }}>{c.totalSpent}</div>
                   </div>
-                  <div style={{ fontSize:'0.65rem', color:'#d4af37' }}>{c.totalSpent}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {selectedClient && (
-            <div style={{ marginTop:'8px', padding:'8px 12px', background:'rgba(212,175,55,0.06)', borderRadius:'8px', border:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--text)' }}>{selectedClient.name}</div>
-                <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{selectedClient.visits} visits · {selectedClient.totalSpent} spent · Last: {selectedClient.lastService}</div>
+                ))}
               </div>
-              <button onClick={() => { setSelectedClient(null); setSearch(''); }} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'0.8rem' }}>✕</button>
-            </div>
-          )}
+            )}
+            {selectedClient && (
+              <div style={{ marginTop:'8px', padding:'8px 12px', background:'rgba(212,175,55,0.06)', borderRadius:'8px', border:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--text)' }}>{selectedClient.name}</div>
+                  <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{selectedClient.visits} visits · {selectedClient.totalSpent} spent · Last: {selectedClient.lastService}</div>
+                </div>
+                <button onClick={() => { setSelectedClient(null); setSearch(''); }} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'0.8rem' }}>✕</button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddClient(true)}
+            title="Add new client"
+            style={{ width:'28px', height:'28px', borderRadius:'50%', border:'1px solid var(--border)', background:'transparent', color:'#d4af37', fontSize:'1.2rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', marginTop:'20px' }}
+            onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.08)'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+          >
+            +
+          </button>
+          <AddClientModal open={showAddClient} onClose={()=>setShowAddClient(false)} onAdd={handleAddClientInline} />
         </div>
 
         {/* Phone & Email — only when no existing client selected */}
@@ -2233,6 +2371,16 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
 }
 
 export default function Dashboard() {
+  // ...existing useState hooks...
+  const [clientName, setClientName] = useState('Walk-in');
+  const [clientPhone, setClientPhone] = useState('');
+  // Add Client Modal state and handler (must be after clientName/clientPhone)
+  const [showAddClient, setShowAddClient] = useState(false);
+  const handleAddClientInline = (client) => {
+    setClientName(client.name || '');
+    setClientPhone(client.phone || '');
+    setShowAddClient(false);
+  };
   const [bookings, setBookings] = useState([]); 
   const [products, setProducts] = useState([]); // Only retail products
   const [extras, setExtras] = useState([]); // Add-ons from services
