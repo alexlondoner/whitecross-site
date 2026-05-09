@@ -205,8 +205,14 @@ export default function Clients() {
     finally { setAddSaving(false); }
   };
 
+  // Store original identifying fields for edit lookup
   const openEditClient = (client) => {
-    setEditingClient(client);
+    setEditingClient({
+      ...client,
+      _origPhone: client.phone,
+      _origEmail: client.email,
+      _origName: client.name,
+    });
     setEditForm({ name: client.name, phone: client.phone, email: client.email, birthday: client.birthday || '', notes: client.notes || '' });
     setShowEditForm(true);
   };
@@ -305,33 +311,32 @@ export default function Clients() {
         </div>
         <button onClick={() => setShowAddForm(true)}
           style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
-          + Add Client
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--border)' }}>
-        {[{ key: 'list', label: 'Client List' }, { key: 'segments', label: 'Client Segments' }].map(t => (
-          <button key={t.key} onClick={() => { setTab(t.key); if (t.key === 'segments') setActiveSegment(null); }}
-            style={{ padding: '8px 20px', background: 'transparent', border: 'none', borderBottom: tab === t.key ? '2px solid #d4af37' : '2px solid transparent', color: tab === t.key ? '#d4af37' : 'var(--muted)', fontWeight: tab === t.key ? '700' : '400', fontSize: '0.82rem', cursor: 'pointer', marginBottom: '-1px', transition: 'color 0.15s' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── CLIENT LIST TAB ── */}
-      {tab === 'list' && (<>
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {[
-            { label: 'Total Clients', value: allClients.length, color: '#d4af37' },
-            { label: 'Revenue',       value: '£' + totalRevenue.toFixed(0), color: '#4caf50' },
-            { label: 'Avg Spend',     value: '£' + avgSpend.toFixed(0), color: '#2196f3' },
-            { label: 'VIP (5+)',      value: vipCount, color: '#9c27b0' },
-          ].map(s => (
-            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '6px 12px', background: s.color + '10', border: '1px solid ' + s.color + '25', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.92rem', fontWeight: '800', color: s.color }}>{s.value}</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase' }}>{s.label}</span>
+          } else {
+            // Booking-only client — search by ORIGINAL values to find any existing doc
+            const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
+            const origPhone = normalizePhone(editingClient._origPhone);
+            const origEmail = (editingClient._origEmail || '').trim().toLowerCase();
+            const origName  = (editingClient._origName || '').trim().toLowerCase();
+            const snap = await getDocs(clientsRef);
+            let foundId = null;
+            snap.forEach(docSnap => {
+              if (foundId) return; // stop once matched
+              const d = docSnap.data();
+              const docPhone = normalizePhone(d.phone);
+              const docEmail = (d.email || '').trim().toLowerCase();
+              const docName  = (d.name  || '').trim().toLowerCase();
+              if (origPhone && docPhone && origPhone === docPhone) { foundId = docSnap.id; }
+              else if (origEmail && docEmail && origEmail === docEmail) { foundId = docSnap.id; }
+              else if (origName  && docName  && origName  === docName)  { foundId = docSnap.id; }
+            });
+            if (foundId) {
+              await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
+              setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
+            } else {
+              const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
+              setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
+            }
+          }
             </div>
           ))}
         </div>

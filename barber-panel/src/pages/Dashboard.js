@@ -401,6 +401,15 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  // New: allow user to pick sale date (default today) and time (default now)
+  const [saleDate, setSaleDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().slice(0, 10); // yyyy-mm-dd
+  });
+  const [saleTime, setSaleTime] = useState(() => {
+    const now = new Date();
+    return now.toTimeString().slice(0,5); // HH:mm
+  });
 
   const total = getProductsTotal(soldProducts);
 
@@ -408,6 +417,9 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
     if (!soldProducts.length || total <= 0) return;
     setSaving(true);
     try {
+      // Combine date and time into a Date object
+      const dateTimeStr = saleDate + 'T' + saleTime + ':00';
+      const saleDateObj = new Date(dateTimeStr);
       const bookingId = await createProductSale({
         clientName: clientName.trim() || 'Walk-in',
         clientPhone: clientPhone.trim(),
@@ -415,6 +427,7 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
         soldProducts,
         paymentMethod,
         note: note.trim(),
+        saleDate: saleDateObj,
       });
 
       if (onSaved) {
@@ -430,8 +443,8 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
           status: 'CHECKED_OUT',
           paymentMethod,
           source: 'Product Sale',
-          date: formatDateKey(new Date()),
-          time: new Date().toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase(),
+          date: formatDateKey(saleDateObj),
+          time: saleDateObj.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase(),
         });
       }
       onClose();
@@ -450,6 +463,28 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
         <button onClick={onClose} style={{ background:'transparent', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:'1rem' }}>x</button>
       </div>
       <div style={{ overflowY:'auto', flex:1, padding:'16px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+        {/* New: Sale Date & Time Picker */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Sale Date</label>
+            <input
+              type="date"
+              value={saleDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={e => setSaleDate(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Sale Time</label>
+            <input
+              type="time"
+              value={saleTime}
+              onChange={e => setSaleTime(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }}
+            />
+          </div>
+        </div>
         <div>
           <label style={{ display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' }}>Client</label>
           <input value={clientName} onChange={(e)=>setClientName(e.target.value)} style={{ width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' }} />
@@ -531,12 +566,17 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
     const prod = retailProducts.find(ap => ap.id === (p.productId || p.id));
     return !!prod;
   })));
-  const [localExtras, setLocalExtras] = useState(() => normalizeSoldProducts((booking.soldProducts || []).filter(p => {
+  // For backward compatibility, support both localAddOns and localExtras as aliases for add-ons/extras
+  const [localAddOns, setLocalAddOns] = useState(() => normalizeSoldProducts((booking.soldAddOns || []).filter(p => {
     const prod = extrasList.find(ap => ap.id === (p.productId || p.id));
     return !!prod;
   })));
+  // Alias for UI: localExtras/setLocalExtras/extrasTotal (for CollapsiblePanel below)
+  const localExtras = localAddOns;
+  const setLocalExtras = setLocalAddOns;
   const productsTotal = getProductsTotal(localProducts);
-  const extrasTotal = getProductsTotal(localExtras);
+  const addOnsTotal = getProductsTotal(localAddOns);
+  const extrasTotal = addOnsTotal;
   const depositAmount = booking.source === 'Booksy'
     ? (config.platforms?.booksy?.depositEnabled ? config.platforms.booksy.depositAmount : 0)
     : booking.source === 'Fresha'
@@ -544,7 +584,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
     : 0;
   const alreadyPaid = depositAmount;
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
-  const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal + extrasTotal;
+  const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal + addOnsTotal;
   const discountAmt = discountApplied;
   const subtotal = Math.max(0, startingTotal - discountAmt + serviceCharge);
   const tipAmt = tip;
@@ -572,25 +612,26 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
         note,
         splitSecond,
         splitAmount,
-        soldProducts: [...localProducts, ...localExtras],
+        soldProducts: localProducts,
+        soldAddOns: localAddOns,
         serviceCharge,
       });
     } catch (err) {
       console.error('Checkout error:', err);
     } finally {
       setSaving(false);
-      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt, splitSecond, splitAmount: parseFloat(splitAmount) || 0, soldProducts: [...localProducts, ...localExtras], serviceCharge });
+      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt, splitSecond, splitAmount: parseFloat(splitAmount) || 0, soldProducts: localProducts, soldAddOns: localAddOns, serviceCharge });
     }
   };
   const handleSaveUnpaid = async () => {
     setSaving(true);
     try {
-      await saveUnpaidBooking({ bookingId: booking.bookingId, soldProducts: [...localProducts, ...localExtras], serviceCharge, discount: discountAmt });
+      await saveUnpaidBooking({ bookingId: booking.bookingId, soldProducts: localProducts, soldAddOns: localAddOns, serviceCharge, discount: discountAmt });
     } catch (err) {
       console.error('Save unpaid error:', err);
     } finally {
       setSaving(false);
-      if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0, splitSecond: '', splitAmount: 0, soldProducts: [...localProducts, ...localExtras], serviceCharge });
+      if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0, splitSecond: '', splitAmount: 0, soldProducts: localProducts, soldAddOns: localAddOns, serviceCharge });
     }
   };
   const inp = { padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none' };
@@ -1897,7 +1938,8 @@ function ReceiptPanel({ booking, barbers, clientData, onClose, onEdit }) {
   const discount = parseFloat(String(booking.discount || '0').replace('£', '').replace('-', '')) || 0;
   const tip = parseFloat(String(booking.tip || '0').replace('£', '')) || 0;
   // Always derive total from service config price + sold products so stale paidAmount never bleeds through
-  const calculatedTotal = Math.max(0, basePrice + productsTotal - discount + tip + (parseFloat(booking.serviceCharge || 0) || 0));
+  // Discount applies only to main service, not products/extras
+  const calculatedTotal = Math.max(0, (basePrice - discount) + productsTotal + tip + (parseFloat(booking.serviceCharge || 0) || 0));
   const paymentMethod = booking.paymentMethod || booking.paymentType || 'CASH';
   const barberColor = getBColor(booking.barber, barbers);
 
@@ -2210,7 +2252,7 @@ export default function Dashboard() {
   const [showPillSettings, setShowPillSettings] = useState(false);
   const [pillsCollapsed, setPillsCollapsed] = useState(false);
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
-  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','needscheckout','revenue','discount','tips','booksy','fresha','website','walkin','productsale'];
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','needscheckout','revenue','discount','tips','booksy','fresha','website','walkin','productsale','addonsale'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
   const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
@@ -2551,6 +2593,7 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('website') && <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
         {!pillsCollapsed && visiblePills.has('walkin') && <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
         {!pillsCollapsed && visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
+        {!pillsCollapsed && visiblePills.has('addonsale') && <StatPill label="Add-ons Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldAddOns).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#ff9800" active={pillFilter==='addonsale'} onClick={()=>setPillFilter(pillFilter==='addonsale'?null:'addonsale')} />}
 
         {/* Gear button */}
         {!pillsCollapsed && <div style={{ position:'relative', marginLeft:'auto' }}>
@@ -2576,6 +2619,7 @@ const activeBarbers = barberFilter === 'all'
                 {key:'website',     label:'Website',        color:'#4caf50'},
                 {key:'walkin',      label:'Walk-in',        color:'#ff9800'},
                 {key:'productsale', label:'Products Sold',  color:'#03a9f4'},
+                {key:'addonsale',   label:'Add-ons Sold',   color:'#ff9800'},
               ].map(p => (
                 <label key={p.key} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
                   <div onClick={()=>togglePillVisibility(p.key)}
@@ -2612,7 +2656,10 @@ const activeBarbers = barberFilter === 'all'
           fresha: b=>(b.source||'').toLowerCase()==='fresha',
           website: b=>(b.source||'').toLowerCase()==='website',
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
-          productsale: b=>(b.source||'').toLowerCase()==='product sale'||getProductsTotal(b.soldProducts)>0,
+          // Show all bookings with products sold, whether with a service or standalone product sales
+          productsale: b=>getProductsTotal(b.soldProducts)>0,
+          // Only show bookings with add-ons (soldAddOns)
+          addonsale: b=>Array.isArray(b.soldAddOns) && b.soldAddOns.length>0 && getProductsTotal(b.soldAddOns)>0,
         };
         const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', unpaid:'#ff5252', needscheckout:'#ff5252', revenue:'#d4af37', discount:'#4caf50', tips:'#ff9800', booksy:'#9c27b0', fresha:'#2196f3', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
         const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', unpaid:'Unpaid', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Products Sold' };

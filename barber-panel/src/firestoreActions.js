@@ -26,6 +26,16 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
             qty: parseInt(p.qty, 10) || 0,
           }))
       : [],
+    soldAddOns: Array.isArray(arguments[0].soldAddOns)
+      ? arguments[0].soldAddOns
+          .filter((p) => p && p.qty > 0)
+          .map((p) => ({
+            productId: p.productId || p.id || '',
+            name: p.name || '',
+            price: parseFloat(p.price) || 0,
+            qty: parseInt(p.qty, 10) || 0,
+          }))
+      : [],
     note: note || '',
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
@@ -43,6 +53,16 @@ export async function saveUnpaidBooking({ bookingId, soldProducts, serviceCharge
     serviceCharge: serviceCharge || 0,
     soldProducts: Array.isArray(soldProducts)
       ? soldProducts
+          .filter((p) => p && p.qty > 0)
+          .map((p) => ({
+            productId: p.productId || p.id || '',
+            name: p.name || '',
+            price: parseFloat(p.price) || 0,
+            qty: parseInt(p.qty, 10) || 0,
+          }))
+      : [],
+    soldAddOns: Array.isArray(arguments[0].soldAddOns)
+      ? arguments[0].soldAddOns
           .filter((p) => p && p.qty > 0)
           .map((p) => ({
             productId: p.productId || p.id || '',
@@ -97,9 +117,9 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
   return bookingId;
 }
 
-export async function createProductSale({ clientName, clientEmail, clientPhone, barber, soldProducts, paymentMethod, note }) {
+export async function createProductSale({ clientName, clientEmail, clientPhone, barber, soldProducts, paymentMethod, note, saleDate }) {
   const bookingId = 'SALE-' + Date.now();
-  const now = new Date();
+  const saleDateObj = saleDate instanceof Date ? saleDate : new Date();
   const validProducts = (Array.isArray(soldProducts) ? soldProducts : [])
     .filter((p) => p && p.qty > 0)
     .map((p) => ({
@@ -119,8 +139,8 @@ export async function createProductSale({ clientName, clientEmail, clientPhone, 
     clientPhone: clientPhone || '',
     barberId: barber || '',
     serviceId: '',
-    startTime: Timestamp.fromDate(now),
-    endTime: Timestamp.fromDate(now),
+    startTime: Timestamp.fromDate(saleDateObj),
+    endTime: Timestamp.fromDate(saleDateObj),
     status: 'CHECKED_OUT',
     paymentMethod: paymentMethod || 'CASH',
     paymentType: paymentMethod || 'CASH',
@@ -131,8 +151,8 @@ export async function createProductSale({ clientName, clientEmail, clientPhone, 
     soldProducts: validProducts,
     note: note || '',
     source: 'Product Sale',
-    checkedOutAt: Timestamp.fromDate(now),
-    createdAt: Timestamp.fromDate(now),
+    checkedOutAt: Timestamp.fromDate(saleDateObj),
+    createdAt: Timestamp.fromDate(saleDateObj),
   });
 
   return bookingId;
