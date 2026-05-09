@@ -1,8 +1,54 @@
+
 import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config, { seedServices } from '../config';
+  // ...existing state and hooks...
+  // extras state is managed via setExtras and useState; do not redeclare here
 import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale } from '../firestoreActions';
+
+// Utility to get extras from services
+function getExtrasFromServices(services) {
+  return (services || []).filter(s => s.category === 'Extras').map(s => ({
+    id: s.id,
+    name: s.name,
+    price: s.price,
+    category: 'Extras',
+    active: true,
+    inStock: true,
+  }));
+}
+
+// ── CollapsiblePanel ─────────────────────────────────────────────────────
+function CollapsiblePanel({ title, color = '#d4af37', children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ marginBottom: '18px', borderRadius: '14px', border: `1px solid ${color}30`, background: open ? `${color}08` : 'rgba(0,0,0,0.04)', boxShadow: open ? `0 2px 12px ${color}18` : undefined }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          cursor: 'pointer',
+          padding: '13px 18px',
+          background: open ? `${color}12` : 'transparent',
+          borderRadius: '14px',
+          userSelect: 'none',
+          fontWeight: 700,
+          color,
+          fontSize: '0.98rem',
+          letterSpacing: '0.5px',
+          transition: 'background 0.18s',
+        }}
+      >
+        <span style={{ fontSize: '1.15em', marginRight: '2px', transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+        <span>{title}</span>
+      </div>
+      {open && <div style={{ padding: '14px 18px 8px 18px' }}>{children}</div>}
+    </div>
+  );
+}
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -456,7 +502,7 @@ function ProductSalePanel({ barbers, products, onClose, onSaved }) {
 }
 
 // ── CHECKOUT PANEL ────────────────────────────────────────────────────────
-function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit }) {
+function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete, isEdit }) {
   const [step, setStep] = useState('cart');
   const [isEditCheckout, setIsEditCheckout] = useState(false);
   const [discountType, setDiscountType] = useState('%');
@@ -476,8 +522,21 @@ function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit
   const serviceLabel = getBookingServiceLabel(booking);
   const priceFromBooking = parseFloat(String(booking.price ?? booking.paidAmount ?? '0').replace('£', '')) || 0;
   const basePrice = priceFromBooking > 0 ? priceFromBooking : (svc ? svc.price : 0);
-  const [localProducts, setLocalProducts] = useState(() => normalizeSoldProducts(booking.soldProducts));
+  // Use explicit props for products and extras (passed from Dashboard)
+  const retailProducts = Array.isArray(products) ? products : [];
+  const extrasList = Array.isArray(extras) ? extras : [];
+
+  // State for each selector
+  const [localProducts, setLocalProducts] = useState(() => normalizeSoldProducts((booking.soldProducts || []).filter(p => {
+    const prod = retailProducts.find(ap => ap.id === (p.productId || p.id));
+    return !!prod;
+  })));
+  const [localExtras, setLocalExtras] = useState(() => normalizeSoldProducts((booking.soldProducts || []).filter(p => {
+    const prod = extrasList.find(ap => ap.id === (p.productId || p.id));
+    return !!prod;
+  })));
   const productsTotal = getProductsTotal(localProducts);
+  const extrasTotal = getProductsTotal(localExtras);
   const depositAmount = booking.source === 'Booksy'
     ? (config.platforms?.booksy?.depositEnabled ? config.platforms.booksy.depositAmount : 0)
     : booking.source === 'Fresha'
@@ -485,7 +544,7 @@ function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit
     : 0;
   const alreadyPaid = depositAmount;
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
-  const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal;
+  const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal + extrasTotal;
   const discountAmt = discountApplied;
   const subtotal = Math.max(0, startingTotal - discountAmt + serviceCharge);
   const tipAmt = tip;
@@ -500,7 +559,7 @@ function CheckoutPanel({ booking, barbers, products, onClose, onComplete, isEdit
     }
   };
 
-const handleCheckout = async (method) => {
+  const handleCheckout = async (method) => {
     setSaving(true);
     const finalMethod = method || paymentMethod;
     try {
@@ -513,25 +572,25 @@ const handleCheckout = async (method) => {
         note,
         splitSecond,
         splitAmount,
-        soldProducts: localProducts,
+        soldProducts: [...localProducts, ...localExtras],
         serviceCharge,
       });
     } catch (err) {
       console.error('Checkout error:', err);
     } finally {
       setSaving(false);
-      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt, splitSecond, splitAmount: parseFloat(splitAmount) || 0, soldProducts: localProducts, serviceCharge });
+      if (onComplete) onComplete({ method: finalMethod, total, discount: discountAmt, tip: tipAmt, splitSecond, splitAmount: parseFloat(splitAmount) || 0, soldProducts: [...localProducts, ...localExtras], serviceCharge });
     }
   };
- const handleSaveUnpaid = async () => {
+  const handleSaveUnpaid = async () => {
     setSaving(true);
     try {
-      await saveUnpaidBooking({ bookingId: booking.bookingId, soldProducts: localProducts, serviceCharge, discount: discountAmt });
+      await saveUnpaidBooking({ bookingId: booking.bookingId, soldProducts: [...localProducts, ...localExtras], serviceCharge, discount: discountAmt });
     } catch (err) {
       console.error('Save unpaid error:', err);
     } finally {
       setSaving(false);
-        if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0, splitSecond: '', splitAmount: 0, soldProducts: localProducts, serviceCharge });
+      if (onComplete) onComplete({ method: 'UNPAID', total, discount: discountAmt, tip: 0, splitSecond: '', splitAmount: 0, soldProducts: [...localProducts, ...localExtras], serviceCharge });
     }
   };
   const inp = { padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none' };
@@ -579,25 +638,27 @@ const handleCheckout = async (method) => {
                   </div>
                   <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37' }}>£{basePrice}</span>
                 </div>
-                <div style={{ padding: '12px 14px', background: 'rgba(33,150,243,0.04)', borderRadius: '12px', border: '1px solid rgba(33,150,243,0.18)' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#8bc4ff', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>Retail Products (optional)</div>
-                  {products && products.length > 0 ? (
-                    <ProductSelector products={products} value={localProducts} onChange={setLocalProducts} />
-                  ) : (
-                    localProducts.map((p, i) => (
-                      <div key={p.productId + i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: i === localProducts.length - 1 ? 0 : '6px' }}>
-                        <span style={{ fontSize:'0.76rem', color:'var(--text)' }}>{p.name} × {p.qty}</span>
-                        <span style={{ fontSize:'0.76rem', color:'#8bc4ff', fontWeight:'700' }}>£{(p.price * p.qty).toFixed(2)}</span>
-                      </div>
-                    ))
-                  )}
+                {/* Collapsible Retail Products */}
+                <CollapsiblePanel title="Retail Products (optional)" color="#8bc4ff">
+                  <ProductSelector products={retailProducts} value={localProducts} onChange={setLocalProducts} />
                   {productsTotal > 0 && (
                     <div style={{ marginTop:'8px', paddingTop:'8px', borderTop:'1px solid rgba(33,150,243,0.2)', display:'flex', justifyContent:'space-between' }}>
                       <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products total</span>
                       <span style={{ fontSize:'0.78rem', color:'#8bc4ff', fontWeight:'700' }}>£{productsTotal.toFixed(2)}</span>
                     </div>
                   )}
-                </div>
+                </CollapsiblePanel>
+                {/* Collapsible Extras/Add-ons */}
+                <CollapsiblePanel title="Add-ons & Extras (optional)" color="#ff9800">
+                  <ProductSelector products={extrasList} value={localExtras} onChange={setLocalExtras} />
+                  {extrasTotal > 0 && (
+                    <div style={{ marginTop:'8px', paddingTop:'8px', borderTop:'1px solid rgba(255,152,0,0.2)', display:'flex', justifyContent:'space-between' }}>
+                      <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Add-ons total</span>
+                      <span style={{ fontSize:'0.78rem', color:'#ff9800', fontWeight:'700' }}>£{extrasTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                </CollapsiblePanel>
+
                 <div style={{ padding: '14px 16px', background: 'var(--card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   <p style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 10px', fontWeight: '600' }}>Discount</p>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -2131,7 +2192,8 @@ const IS_CLOSED = !!(dayHours && dayHours.closed);
 
 export default function Dashboard() {
   const [bookings, setBookings] = useState([]); 
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState([]); // Only retail products
+  const [extras, setExtras] = useState([]); // Add-ons from services
   const [bookingProductsDraft, setBookingProductsDraft] = useState({});
   const [specialHours, setSpecialHours] = useState([]);
   const [showWalkIn, setShowWalkIn] = useState(false);
@@ -2236,7 +2298,8 @@ useEffect(() => {
 
       const fetchedBarbers = barbersSnap.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
       setBarbers(fetchedBarbers);
-      setProducts((Array.isArray(productsList) ? productsList : []).filter((p) => p && p.active !== false));
+      setProducts((Array.isArray(productsList) ? productsList : []).filter((p) => p && p.active !== false && p.category !== 'Extras'));
+      setExtras(getExtrasFromServices(config.services));
 
       const barberNameById = fetchedBarbers.reduce((acc, b) => {
         if (!b?.name) return acc;
@@ -2826,6 +2889,7 @@ const activeBarbers = barberFilter === 'all'
                   booking={selectedBooking}
                   barbers={barbers}
                   products={products}
+                  extras={extras}
                   isEdit={isEditCheckout}
                   onClose={()=>setShowCheckout(false)}
                   onComplete={(result)=>{

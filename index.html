@@ -2,22 +2,7 @@
 <html lang="en">
 <head>
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
-    authDomain: "havuz-44f70.firebaseapp.com",
-    projectId: "havuz-44f70",
-    storageBucket: "havuz-44f70.firebasestorage.app",
-    messagingSenderId: "1050766582653",
-    appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  window._db = db;
-  window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
+    // ...existing code...
 </script>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/favicon.png">
@@ -497,7 +482,7 @@
 
 <script type="module">
     import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     var app = getApps().length ? getApps()[0] : initializeApp({
         apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -508,6 +493,8 @@
         appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
     });
     var db = getFirestore(app);
+    window._db = db;
+    window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
 
     /* Services realtime sync */
     onSnapshot(
