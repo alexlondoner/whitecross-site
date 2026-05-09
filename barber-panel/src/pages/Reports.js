@@ -434,7 +434,10 @@ export default function Reports() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Reports</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Reports</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.7rem', color: 'var(--muted)', margin: '2px 0 0' }}>{active.length} bookings · {checkedOut.length} checked out</p>
         </div>
         <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>

@@ -138,7 +138,10 @@ export default function Products() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text)', margin: 0, letterSpacing: '-0.5px' }}>🛒 Products</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text)', margin: 0, letterSpacing: '-0.5px' }}>🛒 Products</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '4px 0 0' }}>Manage shop products — sell in-store or add to client checkouts</p>
         </div>
         <button onClick={openAdd}

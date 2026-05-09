@@ -180,7 +180,10 @@ export default function Services() {
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
-          <h1 style={{ fontSize:'1.4rem', fontWeight:'800', color:'var(--text)', margin:0 }}>Services</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize:'1.4rem', fontWeight:'800', color:'var(--text)', margin:0 }}>Services</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize:'0.72rem', color:'var(--muted)', margin:'4px 0 0' }}>{services.length} services · manage pricing & duration</p>
         </div>
         <button onClick={openNew}

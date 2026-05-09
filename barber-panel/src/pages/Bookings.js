@@ -354,7 +354,10 @@ export default function Bookings() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>All Bookings</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>All Bookings</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
             {loading ? 'Loading...' : `${filtered.length} shown${totalFetched !== filtered.length ? ` of ${totalFetched} fetched` : ''}`}
           </p>

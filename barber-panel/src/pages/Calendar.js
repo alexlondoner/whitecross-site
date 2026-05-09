@@ -87,7 +87,10 @@ export default function Calendar() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', margin: 0 }}>Calendar</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', margin: 0 }}>Calendar</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--muted)', margin: '4px 0 0' }}>
             {bookings.length} bookings loaded · click any day for details
           </p>

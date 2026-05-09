@@ -179,7 +179,10 @@ export default function Barbers() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Team Members</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Team Members</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{barbers.length} team member{barbers.length !== 1 ? 's' : ''}</p>
         </div>
         <button onClick={openAdd} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>

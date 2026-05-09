@@ -533,7 +533,10 @@ export default function Settings({ theme, onToggleTheme }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', color: '#c0c0c0', marginBottom: '4px' }}>Settings</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.4rem', color: '#c0c0c0', marginBottom: '4px' }}>Settings</h1>
+            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+          </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Shop info, opening hours & platform settings</p>
         </div>
         <button onClick={handleSave} disabled={saving}
