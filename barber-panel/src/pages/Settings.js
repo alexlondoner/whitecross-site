@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -297,6 +297,42 @@ export default function Settings({ theme, onToggleTheme }) {
   const [diagResult, setDiagResult] = useState(null);
   const [onlineBkList, setOnlineBkList] = useState(null);
   const [deletingIds, setDeletingIds] = useState(new Set());
+  const [loyaltyBackfilling, setLoyaltyBackfilling] = useState(false);
+  const [loyaltyResult, setLoyaltyResult] = useState('');
+
+  const runLoyaltyBackfill = async () => {
+    if (!window.confirm('Calculate loyalty points from ALL past checkouts and write to client profiles. Run once only — continue?')) return;
+    setLoyaltyBackfilling(true);
+    setLoyaltyResult('Working...');
+    try {
+      const bookSnap = await getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('status', '==', 'CHECKED_OUT')));
+      const history = {};
+      bookSnap.docs.forEach(d => {
+        const b = d.data();
+        const key = b.clientPhone || b.clientEmail;
+        if (!key) return;
+        const pts = Math.floor(parseFloat(String(b.paidAmount || 0)) || 0);
+        if (!history[key]) history[key] = { phone: b.clientPhone || '', email: b.clientEmail || '', pts: 0, visits: 0 };
+        history[key].pts += pts;
+        history[key].visits++;
+      });
+      const clientSnap = await getDocs(collection(db, 'tenants/whitecross/clients'));
+      let updated = 0, skipped = 0;
+      for (const cd of clientSnap.docs) {
+        const c = cd.data();
+        const key = c.phone || c.email;
+        const h = history[key];
+        if (!h || h.pts === 0) { skipped++; continue; }
+        await updateDoc(cd.ref, { loyaltyPoints: h.pts });
+        updated++;
+      }
+      setLoyaltyResult(`Done! ${updated} clients updated, ${skipped} skipped (no history).`);
+    } catch (err) {
+      setLoyaltyResult('Error: ' + err.message);
+    } finally {
+      setLoyaltyBackfilling(false);
+    }
+  };
 
   const runServiceMigration = async () => {
     if (!window.confirm('Fix service names on imported bookings? This is a one-time operation.')) return;
@@ -890,6 +926,17 @@ export default function Settings({ theme, onToggleTheme }) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Loyalty Backfill — run once */}
+      <div style={{ ...cardStyle, borderColor: 'rgba(212,175,55,0.2)' }}>
+        <h2 style={{ ...sectionTitle }}>Loyalty Points — One-Time Backfill</h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '16px' }}>Calculate points from all past checkouts and write to registered client profiles. Run once only.</p>
+        <button onClick={runLoyaltyBackfill} disabled={loyaltyBackfilling}
+          style={{ padding: '10px 20px', background: loyaltyBackfilling ? 'rgba(212,175,55,0.1)' : 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '8px', color: '#d4af37', cursor: loyaltyBackfilling ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+          {loyaltyBackfilling ? 'Running...' : '⭐ Backfill Loyalty Points'}
+        </button>
+        {loyaltyResult && <p style={{ marginTop: '12px', fontSize: '0.82rem', color: loyaltyResult.startsWith('Error') ? '#ff5252' : '#4caf50', fontWeight: '600' }}>{loyaltyResult}</p>}
       </div>
 
       {/* Danger Zone */}
