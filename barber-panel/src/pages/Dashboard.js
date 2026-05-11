@@ -2040,20 +2040,6 @@ function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBoo
           </div>
         )}
 
-        {/* Retail Products (optional — customer buying products on the spot) */}
-        {products && products.length > 0 && (
-          <div>
-            <label style={lbl}>Add Products <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
-            <ProductSelector products={products} value={walkInProducts} onChange={setWalkInProducts} />
-            {getProductsTotal(walkInProducts) > 0 && (
-              <div style={{ marginTop:'6px', padding:'8px 12px', background:'rgba(33,150,243,0.06)', borderRadius:'8px', border:'1px solid rgba(33,150,243,0.2)', display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products subtotal</span>
-                <span style={{ fontSize:'0.78rem', color:'#8bc4ff', fontWeight:'700' }}>£{getProductsTotal(walkInProducts).toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Buttons */}
         <div style={{ display:'flex', gap:'8px', paddingTop:'4px' }}>
           <button onClick={onClose} style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem' }}>Cancel</button>
