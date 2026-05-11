@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config, { seedServices } from '../config';
-import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale } from '../firestoreActions';
+import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale, getClientLoyaltyPoints } from '../firestoreActions';
 import { addDoc, serverTimestamp } from 'firebase/firestore';
 
 // AddClientModal: Reusable modal for adding a new client inline
@@ -640,6 +640,10 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const [note, setNote] = useState('');
   const [serviceCharge, setServiceCharge] = useState(0);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [clientPoints, setClientPoints] = useState(0);
+  const [pointsInput, setPointsInput] = useState('');
+  const [pointsApplied, setPointsApplied] = useState(0);
+  const LOYALTY_REDEEM_RATE = 100; // 100 pts = £1 off
 
   const svc = findServiceByBookingValue(booking.service);
   const serviceLabel = getBookingServiceLabel(booking);
@@ -676,9 +680,16 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
   const startingTotal = (alreadyPaid > 0 ? remainingDue : basePrice) + productsTotal + addOnsTotal;
   const discountAmt = discountApplied;
-  const subtotal = Math.max(0, startingTotal - discountAmt + serviceCharge);
+  const subtotal = Math.max(0, startingTotal - discountAmt - pointsApplied + serviceCharge);
   const tipAmt = tip;
   const total = subtotal + tipAmt;
+
+  useEffect(() => {
+    const phone = booking.phone || booking.clientPhone || '';
+    const email = booking.email || booking.clientEmail || '';
+    if (!phone && !email) return;
+    getClientLoyaltyPoints({ phone, email }).then(pts => setClientPoints(pts || 0)).catch(() => {});
+  }, [booking.bookingId]);
 
   const applyDiscount = () => {
     const val = parseFloat(discountValue) || 0;
@@ -705,6 +716,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
         soldProducts: localProducts,
         soldAddOns: localAddOns,
         serviceCharge,
+        loyaltyPointsRedeemed: pointsApplied > 0 ? Math.round(pointsApplied * LOYALTY_REDEEM_RATE) : 0,
       });
     } catch (err) {
       console.error('Checkout error:', err);
@@ -810,6 +822,35 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                     {discountAmt > 0 && <span style={{ fontSize: '0.85rem', color: '#4caf50', fontWeight: '700' }}>-£{discountAmt.toFixed(2)}</span>}
                   </div>
                 </div>
+                {clientPoints > 0 && (
+                  <div style={{ padding: '14px 16px', background: 'rgba(212,175,55,0.04)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: pointsApplied > 0 ? '0' : '10px' }}>
+                      <p style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0, fontWeight: '600' }}>Loyalty Points</p>
+                      <span style={{ fontSize: '0.72rem', color: '#d4af37', fontWeight: '700' }}>⭐ {clientPoints} pts available</span>
+                    </div>
+                    {pointsApplied > 0 ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <span style={{ fontSize: '0.82rem', color: '#4caf50', fontWeight: '600' }}>-£{pointsApplied.toFixed(2)} off ({Math.round(pointsApplied * LOYALTY_REDEEM_RATE)} pts)</span>
+                        <button onClick={() => { setPointsApplied(0); setPointsInput(''); }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input type="number" min="0" max={clientPoints} value={pointsInput}
+                          onChange={e => setPointsInput(e.target.value)}
+                          placeholder={`e.g. ${Math.min(clientPoints, 500)}`}
+                          style={{ ...inp, width: '100px' }} />
+                        <button onClick={() => {
+                          const pts = Math.min(parseInt(pointsInput) || 0, clientPoints);
+                          if (pts >= 50) { setPointsApplied(pts / LOYALTY_REDEEM_RATE); } else { setPointsInput(''); }
+                        }} style={{ padding: '9px 16px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+                          Redeem
+                        </button>
+                        {pointsInput > 0 && <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>= £{((parseInt(pointsInput) || 0) / LOYALTY_REDEEM_RATE).toFixed(2)} off</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {serviceCharge > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,152,0,0.06)', borderRadius: '10px', border: '1px solid rgba(255,152,0,0.15)' }}>
                     <span style={{ fontSize: '0.78rem', color: '#ff9800' }}>Service charge</span>
@@ -1001,6 +1042,12 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                   <span style={{ fontSize: '0.73rem', color: '#4caf50', fontWeight: '600' }}>-£{discountAmt.toFixed(2)}</span>
                 </div>
               )}
+              {pointsApplied > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>Points redeemed ⭐</span>
+                  <span style={{ fontSize: '0.73rem', color: '#d4af37', fontWeight: '600' }}>-£{pointsApplied.toFixed(2)}</span>
+                </div>
+              )}
               {serviceCharge > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.73rem', color: 'var(--muted)' }}>Service charge</span>
@@ -1040,6 +1087,14 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [noShowing, setNoShowing] = useState(false);
+  const [clientPoints, setClientPoints] = useState(null);
+  useEffect(() => {
+    if (!booking) return;
+    const phone = booking.phone || '';
+    const email = booking.email || '';
+    if (!phone && !email) { setClientPoints(null); return; }
+    getClientLoyaltyPoints({ phone, email }).then(pts => setClientPoints(pts || 0)).catch(() => {});
+  }, [booking?.bookingId]);
   if (!booking) return null;
   const color = getBColor(booking.barber, barbers);
 
@@ -1117,6 +1172,9 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
             )}
             {booking.status === 'CHECKED_OUT' && (
               <button onClick={onViewReceipt} style={{ padding:'2px 8px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'6px', color:'#d4af37', fontSize:'0.6rem', fontWeight:'600', cursor:'pointer' }}>Receipt</button>
+            )}
+            {clientPoints > 0 && (
+              <span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'0.58rem', fontWeight:'700', letterSpacing:'1px', color:'#d4af37', background:'rgba(212,175,55,0.15)' }}>⭐ {clientPoints} pts</span>
             )}
           </div>
           </div>

@@ -1,14 +1,15 @@
 import { db } from './firebase';
-import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp, orderBy, increment } from 'firebase/firestore';
 
 const TENANT = 'tenants/whitecross';
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────
-export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, note, splitSecond, splitAmount, soldProducts, serviceCharge }) {
+export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, note, splitSecond, splitAmount, soldProducts, soldAddOns, serviceCharge, loyaltyPointsRedeemed }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
   const ref = snap.docs[0].ref;
+  const bookingData = snap.docs[0].data();
   await updateDoc(ref, {
     status: 'CHECKED_OUT',
     paymentMethod,
@@ -26,8 +27,8 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
             qty: parseInt(p.qty, 10) || 0,
           }))
       : [],
-    soldAddOns: Array.isArray(arguments[0].soldAddOns)
-      ? arguments[0].soldAddOns
+    soldAddOns: Array.isArray(soldAddOns)
+      ? soldAddOns
           .filter((p) => p && p.qty > 0)
           .map((p) => ({
             productId: p.productId || p.id || '',
@@ -40,7 +41,51 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
     checkedOutAt: Timestamp.fromDate(new Date()),
+    loyaltyPointsEarned: Math.floor(total),
+    loyaltyPointsRedeemed: loyaltyPointsRedeemed || 0,
   });
+
+  // Award loyalty points to client — non-critical, never blocks checkout
+  try {
+    const phone = bookingData.clientPhone || '';
+    const email = bookingData.clientEmail || '';
+    const pointsEarned = Math.floor(total);
+    const redeemed = loyaltyPointsRedeemed || 0;
+    const netDelta = pointsEarned - redeemed;
+    if ((phone || email) && netDelta !== 0) {
+      const clientsRef = collection(db, `${TENANT}/clients`);
+      let clientDocRef = null;
+      if (phone) {
+        const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
+        if (!s.empty) clientDocRef = s.docs[0].ref;
+      }
+      if (!clientDocRef && email) {
+        const s = await getDocs(query(clientsRef, where('email', '==', email)));
+        if (!s.empty) clientDocRef = s.docs[0].ref;
+      }
+      if (clientDocRef) {
+        await updateDoc(clientDocRef, { loyaltyPoints: increment(netDelta) });
+      }
+    }
+  } catch (err) {
+    console.warn('Loyalty points update failed (non-critical):', err.message);
+  }
+}
+
+export async function getClientLoyaltyPoints({ phone, email }) {
+  if (!phone && !email) return 0;
+  try {
+    const clientsRef = collection(db, `${TENANT}/clients`);
+    if (phone) {
+      const snap = await getDocs(query(clientsRef, where('phone', '==', phone)));
+      if (!snap.empty) return snap.docs[0].data().loyaltyPoints || 0;
+    }
+    if (email) {
+      const snap = await getDocs(query(clientsRef, where('email', '==', email)));
+      if (!snap.empty) return snap.docs[0].data().loyaltyPoints || 0;
+    }
+  } catch (e) {}
+  return 0;
 }
 
 export async function saveUnpaidBooking({ bookingId, soldProducts, serviceCharge, discount }) {
