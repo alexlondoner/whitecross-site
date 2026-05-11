@@ -24,6 +24,253 @@ const SEGMENT_DEFS = [
   { key: 'birthdays',    label: 'Upcoming birthdays',    color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
+function ClientDetailPanel({ client, onClose, onEdit, onDelete, getSvcLabel }) {
+  const [detailTab, setDetailTab] = React.useState('overview');
+
+  const favBarber = Object.entries(client.barbers || {}).sort((a, b) => b[1] - a[1])[0];
+  const avatarColor = getBColor(favBarber?.[0]);
+  const pts = client.loyaltyPoints || 0;
+  const redeemable = Math.floor(pts / 100);
+  const nextMilestone = pts < 100 ? 100 : Math.ceil(pts / 100) * 100;
+  const pctFill = Math.min(pts / 500 * 100, 100);
+
+  const statRows = [
+    { label: 'APPOINTMENTS', value: client.visits, sub: null },
+    { label: 'NO-SHOWS', value: client.bookings.filter(b => b.status === 'NO_SHOW').length, sub: null },
+    { label: 'CANCELLED', value: client.cancelled, sub: null },
+    { label: 'TOTAL SPENT', value: '£' + client.totalSpent.toFixed(2), sub: null },
+    { label: 'AVG / VISIT', value: client.visits ? '£' + (client.totalSpent / client.visits).toFixed(0) : '—', sub: null },
+    { label: 'TIPS GIVEN', value: client.totalTip > 0 ? '£' + client.totalTip.toFixed(2) : '—', sub: null },
+  ];
+
+  const tabBtn = (key, label) => (
+    <button onClick={() => setDetailTab(key)} style={{
+      flex: 1, padding: '9px 0', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase',
+      color: detailTab === key ? '#d4af37' : 'var(--muted)',
+      borderBottom: detailTab === key ? '2px solid #d4af37' : '2px solid transparent',
+      transition: 'color 0.15s, border-color 0.15s',
+    }}>{label}</button>
+  );
+
+  return (
+    <div style={{ width: '340px', flexShrink: 0, background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)', boxShadow: '0 8px 40px rgba(0,0,0,0.35)' }}>
+
+      {/* ── HERO ── */}
+      <div style={{ padding: '22px 22px 0', background: 'linear-gradient(180deg, rgba(212,175,55,0.07) 0%, transparent 100%)', flexShrink: 0 }}>
+        {/* top bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+          <span style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: '700' }}>Client Profile</span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button onClick={onEdit} title="Edit" style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.25)', background: 'transparent', color: '#d4af37', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✎</button>
+            <button onClick={onDelete} title="Delete" style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid rgba(255,82,82,0.25)', background: 'transparent', color: '#ff5252', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑</button>
+            <button onClick={onClose} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+
+        {/* avatar + name */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', paddingBottom: '18px' }}>
+          <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: avatarColor + '18', border: '2.5px solid ' + avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', fontWeight: '800', color: avatarColor, flexShrink: 0, boxShadow: '0 0 0 4px ' + avatarColor + '18' }}>
+            {(client.name[0] || '?').toUpperCase()}
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', flexWrap: 'wrap' }}>
+              {client.name}
+            </div>
+            {/* badges */}
+            <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '7px' }}>
+              {client.visits >= 5 && <span style={{ fontSize: '0.58rem', background: 'rgba(212,175,55,0.18)', color: '#d4af37', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', letterSpacing: '0.8px', border: '1px solid rgba(212,175,55,0.3)' }}>VIP</span>}
+              {client.visits === 1 && <span style={{ fontSize: '0.58rem', background: 'rgba(76,175,80,0.18)', color: '#4caf50', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', letterSpacing: '0.8px', border: '1px solid rgba(76,175,80,0.3)' }}>NEW</span>}
+              {client.isManualOnly && <span style={{ fontSize: '0.58rem', background: 'rgba(33,150,243,0.15)', color: '#64b5f6', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', letterSpacing: '0.8px', border: '1px solid rgba(33,150,243,0.3)' }}>WALK-IN</span>}
+              {pts >= 100 && <span style={{ fontSize: '0.58rem', background: 'rgba(212,175,55,0.12)', color: '#d4af37', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', letterSpacing: '0.8px', border: '1px solid rgba(212,175,55,0.25)' }}>⭐ {pts} PTS</span>}
+            </div>
+            {/* contact */}
+            {client.phone && <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '7px' }}>{client.phone}</div>}
+            {client.email && <div style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: '2px' }}>{client.email}</div>}
+            {client.birthday && <div style={{ fontSize: '0.65rem', color: '#e91e63', marginTop: '4px' }}>🎂 {new Date(client.birthday).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</div>}
+          </div>
+
+          {/* action buttons */}
+          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+            {client.phone && (
+              <a href={'https://wa.me/' + String(client.phone).replace(/[\s+\-()]/g, '')} target="_blank" rel="noreferrer"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', textDecoration: 'none' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#25D36614', border: '1px solid #25D36628', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>💬</div>
+                <span style={{ fontSize: '0.58rem', color: '#25D366', fontWeight: '700', letterSpacing: '0.5px' }}>WhatsApp</span>
+              </a>
+            )}
+            {client.email && (
+              <a href={'mailto:' + client.email}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', textDecoration: 'none' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>✉️</div>
+                <span style={{ fontSize: '0.58rem', color: '#d4af37', fontWeight: '700', letterSpacing: '0.5px' }}>Email</span>
+              </a>
+            )}
+            {client.phone && (
+              <a href={'tel:' + client.phone}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', textDecoration: 'none' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(33,150,243,0.08)', border: '1px solid rgba(33,150,243,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>📞</div>
+                <span style={{ fontSize: '0.58rem', color: '#64b5f6', fontWeight: '700', letterSpacing: '0.5px' }}>Call</span>
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* tabs */}
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          {tabBtn('overview', 'Overview')}
+          {tabBtn('history', 'History')}
+          {tabBtn('loyalty', 'Loyalty')}
+        </div>
+      </div>
+
+      {/* ── TAB BODY ── */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+
+        {/* OVERVIEW */}
+        {detailTab === 'overview' && (
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* notes */}
+            {client.notes && (
+              <div style={{ padding: '10px 14px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.15)' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '5px' }}>Notes</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text)', lineHeight: '1.5', fontStyle: 'italic' }}>{client.notes}</div>
+              </div>
+            )}
+
+            {/* stats grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              {statRows.map(s => (
+                <div key={s.label} style={{ padding: '10px 10px 8px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text)', lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontSize: '0.54rem', color: 'var(--muted)', letterSpacing: '0.8px', marginTop: '4px', fontWeight: '600' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* favourite service + barber */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '8px' }}>Top Services</div>
+              {Object.entries(client.services || {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, count]) => {
+                const total = Object.values(client.services).reduce((a, b) => a + b, 0);
+                const pct = total ? Math.round(count / total * 100) : 0;
+                return (
+                  <div key={id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: '600' }}>{getSvcLabel(id)}</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{count}x</span>
+                    </div>
+                    <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: pct + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '2px' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* barbers breakdown */}
+            {Object.keys(client.barbers || {}).length > 0 && (
+              <div>
+                <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '8px' }}>Barbers</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {Object.entries(client.barbers).sort((a, b) => b[1] - a[1]).map(([name, cnt]) => (
+                    <span key={name} style={{ fontSize: '0.65rem', color: getBColor(name), background: getBColor(name) + '15', border: '1px solid ' + getBColor(name) + '30', padding: '3px 10px', borderRadius: '20px', fontWeight: '700' }}>
+                      {name} · {cnt}x
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* first/last visit */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                <div style={{ fontSize: '0.54rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>First Visit</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: '600' }}>{client.firstVisit || '—'}</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                <div style={{ fontSize: '0.54rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>Last Visit</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: '600' }}>{client.lastVisit || '—'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* HISTORY */}
+        {detailTab === 'history' && (
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {client.bookings.length === 0 && <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.78rem' }}>No bookings yet</div>}
+            {client.bookings.slice().reverse().slice(0, 20).map((b, i) => (
+              <div key={i} style={{ padding: '11px 14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text)' }}>{getSvcLabel(b.service)}</div>
+                    <div style={{ fontSize: '0.63rem', color: 'var(--muted)', marginTop: '2px' }}>{b.date} · {b.time || ''}</div>
+                    {b.barber && <div style={{ fontSize: '0.63rem', color: getBColor(b.barber), marginTop: '2px', fontWeight: '600' }}>{b.barber}</div>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#d4af37' }}>{b.paidAmount ? '£' + b.paidAmount : (b.price ? '£' + b.price : '—')}</div>
+                    <span style={{ fontSize: '0.55rem', color: b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800', background: b.status === 'CHECKED_OUT' ? 'rgba(76,175,80,0.15)' : b.status === 'CANCELLED' ? 'rgba(255,82,82,0.15)' : 'rgba(255,152,0,0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700', marginTop: '4px', display: 'inline-block' }}>
+                      {b.status === 'CHECKED_OUT' ? 'PAID' : b.status}
+                    </span>
+                    {b.tip && parseFloat(String(b.tip).replace('£', '')) > 0 && <div style={{ fontSize: '0.6rem', color: '#4caf50', marginTop: '2px' }}>+£{b.tip} tip</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* LOYALTY */}
+        {detailTab === 'loyalty' && (
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* big points display */}
+            <div style={{ textAlign: 'center', padding: '24px 20px', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(184,134,11,0.06))', borderRadius: '14px', border: '1px solid rgba(212,175,55,0.25)' }}>
+              <div style={{ fontSize: '3rem', fontWeight: '900', color: '#d4af37', lineHeight: 1 }}>{pts}</div>
+              <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700', marginTop: '6px' }}>Loyalty Points</div>
+              {redeemable > 0 && (
+                <div style={{ marginTop: '12px', padding: '6px 16px', background: 'rgba(212,175,55,0.15)', borderRadius: '20px', display: 'inline-block', fontSize: '0.72rem', color: '#d4af37', fontWeight: '700' }}>
+                  £{redeemable} available to redeem
+                </div>
+              )}
+            </div>
+
+            {/* progress bar */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: '600' }}>Progress to £{Math.ceil(nextMilestone / 100)} reward</span>
+                <span style={{ fontSize: '0.62rem', color: '#d4af37', fontWeight: '700' }}>{pts} / {nextMilestone} pts</span>
+              </div>
+              <div style={{ height: '8px', background: 'rgba(212,175,55,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: pctFill + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '4px', transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+              </div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '5px' }}>100 pts = £1 discount · Earned 10 pts per £1 spent</div>
+            </div>
+
+            {/* milestones */}
+            <div>
+              <div style={{ fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>Milestones</div>
+              {[100, 250, 500, 1000].map(milestone => {
+                const reached = pts >= milestone;
+                return (
+                  <div key={milestone} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: reached ? 'rgba(212,175,55,0.2)' : 'var(--card)', border: '1.5px solid ' + (reached ? '#d4af37' : 'var(--border)'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem' }}>
+                      {reached ? '✓' : ''}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.72rem', color: reached ? 'var(--text)' : 'var(--muted)', fontWeight: reached ? '700' : '500' }}>{milestone} pts — £{milestone / 100} reward</div>
+                    </div>
+                    {reached && <span style={{ fontSize: '0.58rem', color: '#d4af37', fontWeight: '700' }}>REACHED</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Clients() {
   const [bookings, setBookings] = useState([]);
   const [manualClients, setManualClients] = useState([]);
@@ -452,117 +699,13 @@ export default function Clients() {
           </div>
 
           {/* Client detail panel */}
-          {selectedClient && (
-            <div style={{ width: '300px', flexShrink: 0, background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.04)', flexShrink: 0 }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '600' }}>Client Profile</span>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <button onClick={() => openEditClient(selectedClient)} title="Edit client"
-                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '6px', color: '#d4af37', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteClient(selectedClient)} title="Delete client"
-                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
-                    Delete
-                  </button>
-                  <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>
-                </div>
-              </div>
-              <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#d4af3722', border: '2px solid #d4af3744', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: '800', color: '#d4af37', flexShrink: 0 }}>
-                    {selectedClient.name[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {selectedClient.name}
-                      {selectedClient.visits >= 5 && <span style={{ fontSize: '0.58rem', background: 'rgba(212,175,55,0.2)', color: '#d4af37', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>VIP</span>}
-                    </div>
-                    {selectedClient.phone && <div style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: '2px' }}>{selectedClient.phone}</div>}
-                    {selectedClient.email && <div style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{selectedClient.email}</div>}
-                    {selectedClient.birthday && <div style={{ fontSize: '0.65rem', color: '#e91e63', marginTop: '2px' }}>🎂 {new Date(selectedClient.birthday).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</div>}
-                    {selectedClient.notes && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '4px', fontStyle: 'italic' }}>{selectedClient.notes}</div>}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {[
-                    { label: 'Visits', value: selectedClient.visits, color: '#d4af37' },
-                    { label: 'Total Spent', value: '£' + selectedClient.totalSpent.toFixed(2), color: '#4caf50' },
-                    { label: 'Tips Given', value: selectedClient.totalTip > 0 ? '£' + selectedClient.totalTip.toFixed(2) : '--', color: '#4caf50' },
-                    { label: 'Discounts', value: selectedClient.totalDiscount > 0 ? '£' + selectedClient.totalDiscount.toFixed(2) : '--', color: '#ff9800' },
-                    { label: 'Avg/Visit', value: '£' + (selectedClient.visits ? selectedClient.totalSpent / selectedClient.visits : 0).toFixed(0), color: '#2196f3' },
-                    { label: 'Cancelled', value: selectedClient.cancelled, color: '#ff5252' },
-                  ].map(s => (
-                    <div key={s.label} style={{ padding: '10px 12px', background: s.color + '08', border: '1px solid ' + s.color + '20', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '1rem', fontWeight: '700', color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '0.5px', marginTop: '1px' }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.2)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Loyalty Points</span>
-                    <span style={{ fontSize: '1rem', color: '#d4af37', fontWeight: '800' }}>⭐ {selectedClient.loyaltyPoints || 0}</span>
-                  </div>
-                  <div style={{ height: '6px', background: 'rgba(212,175,55,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
-                    <div style={{ width: Math.min((selectedClient.loyaltyPoints || 0) / 500 * 100, 100) + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '3px', transition: 'width 0.5s' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>
-                      {(selectedClient.loyaltyPoints || 0) >= 100
-                        ? `£${Math.floor((selectedClient.loyaltyPoints || 0) / 100)} available to redeem`
-                        : `${100 - (selectedClient.loyaltyPoints || 0)} pts until first £1 off`}
-                    </span>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>100 pts = £1</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>Services</div>
-                  {Object.entries(selectedClient.services).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, count]) => (
-                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text)' }}>{getSvcLabel(id)}</span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{count}x</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>History</div>
-                  {selectedClient.bookings.slice().reverse().slice(0, 10).map((b, i) => (
-                    <div key={i} style={{ padding: '8px 10px', background: 'rgba(212,175,55,0.04)', borderRadius: '8px', marginBottom: '6px', border: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--text)' }}>{b.date}</span>
-                        <span style={{ fontSize: '0.68rem', fontWeight: '700', color: '#d4af37' }}>{b.paidAmount ? '£' + b.paidAmount : (b.price ? '£' + b.price : '--')}</span>
-                      </div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{getSvcLabel(b.service)} · {(b.barber || '').toUpperCase()}</div>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
-                        <span style={{ fontSize: '0.58rem', color: b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800', background: b.status === 'CHECKED_OUT' ? 'rgba(76,175,80,0.15)' : b.status === 'CANCELLED' ? 'rgba(255,82,82,0.15)' : 'rgba(255,152,0,0.15)', padding: '1px 5px', borderRadius: '3px' }}>{b.status}</span>
-                        {b.tip && parseFloat(String(b.tip).replace('£', '')) > 0 && <span style={{ fontSize: '0.58rem', color: '#4caf50', background: 'rgba(76,175,80,0.1)', padding: '1px 5px', borderRadius: '3px' }}>tip £{b.tip}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {selectedClient.phone && (
-                    <a href={'https://wa.me/' + String(selectedClient.phone).replace(/[\s+\-()]/g, '')} target="_blank" rel="noreferrer"
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: '#25D36610', border: '1px solid #25D36630', borderRadius: '8px', color: '#25D366', fontSize: '0.72rem', textDecoration: 'none', fontWeight: '600' }}>
-                      WhatsApp
-                    </a>
-                  )}
-                  {selectedClient.email && (
-                    <a href={'mailto:' + selectedClient.email}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: 'rgba(212,175,55,0.06)', border: '1px solid var(--border)', borderRadius: '8px', color: '#d4af37', fontSize: '0.72rem', textDecoration: 'none', fontWeight: '600' }}>
-                      Email
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          {selectedClient && <ClientDetailPanel
+            client={selectedClient}
+            onClose={() => setSelectedClient(null)}
+            onEdit={() => openEditClient(selectedClient)}
+            onDelete={() => handleDeleteClient(selectedClient)}
+            getSvcLabel={getSvcLabel}
+          />}
         </div>
       
 
