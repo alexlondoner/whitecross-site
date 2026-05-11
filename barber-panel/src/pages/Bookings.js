@@ -129,7 +129,7 @@ export default function Bookings() {
 
   const changePeriod = (key) => { setPeriodFilter(key); setNavAnchor(new Date()); setActiveFilter(null); };
   const nav = (dir) => setNavAnchor(a => stepAnchor(periodFilter, a, dir));
-  const goToday = () => setNavAnchor(new Date());
+  const goToday = () => { setPeriodFilter('today'); setNavAnchor(new Date()); };
 
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [periodFilter, navAnchor, search, activeFilter, barberFilter, sortBy]);
 
