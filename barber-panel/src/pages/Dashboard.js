@@ -669,6 +669,8 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
     ? (config.platforms?.booksy?.depositEnabled ? config.platforms.booksy.depositAmount : 0)
     : booking.source === 'Fresha'
     ? (config.platforms?.fresha?.depositEnabled ? config.platforms.fresha.depositAmount : 0)
+    : (booking.paymentType === 'DEPOSIT' && booking.paidAmount)
+    ? parseFloat(String(booking.paidAmount).replace('£', '')) || 0
     : 0;
   const alreadyPaid = depositAmount;
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
@@ -1140,7 +1142,13 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
             { label:'Barber', value:(booking.barber||'').toUpperCase() },
             { label:'Phone', value:booking.phone },
             { label:'Email', value:booking.email },
-            { label:'Amount', value:getDisplayedAmount(booking), color:'#4caf50' },
+            ...(booking.paymentType === 'DEPOSIT' && booking.paidAmount
+              ? [
+                  { label:'Deposit Paid', value:`£${parseFloat(String(booking.paidAmount).replace('£','')).toFixed(2)}`, color:'#4caf50' },
+                  { label:'Remaining', value:`£${Math.max(0, parseFloat(String(booking.price||0)) - parseFloat(String(booking.paidAmount).replace('£',''))).toFixed(2)}`, color:'#ff9800' },
+                  { label:'Total', value:getDisplayedAmount(booking), color:'var(--muted)' },
+                ]
+              : [{ label:'Amount', value:getDisplayedAmount(booking), color:'#4caf50' }]),
             { label:'Source', value:booking.source||'Website', color: booking.source==='Booksy'?'#9c27b0': booking.source==='Fresha'?'#2196f3': booking.source==='Manual'?'#ff9800':'#4caf50' },
             { label:'ID', value:booking.bookingId||('WCB-'+Math.random().toString(36).substr(2,6).toUpperCase()) },
           ].map((item,i)=>(

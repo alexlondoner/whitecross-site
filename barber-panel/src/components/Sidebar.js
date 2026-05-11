@@ -19,7 +19,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
   const [hoveredItem, setHoveredItem] = useState(null);
 
   // Dynamic values based on state
-  const sidebarWidth = isCollapsed ? '72px' : '200px';
+  const sidebarWidth = isCollapsed ? '72px' : '220px';
 
   return (
     <aside style={{
@@ -28,13 +28,21 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
       top: 0,
       bottom: 0,
       width: sidebarWidth,
-      background: isLight ? '#ffffff' : '#111111',
-      borderRight: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(212,175,55,0.1)',
+      background: isLight
+        ? 'linear-gradient(135deg, #fffbe7 0%, #f7ecd0 100%)'
+        : 'linear-gradient(135deg, #18140a 0%, #23201a 100%)',
+      borderRight: 'none',
+      boxShadow: isLight
+        ? '2px 0 24px 0 rgba(212,175,55,0.07)'
+        : '2px 0 32px 0 rgba(212,175,55,0.13)',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 100,
-      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // Smooth slide
-      overflow: 'visible'
+      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      overflow: 'visible',
+      borderTopRightRadius: '18px',
+      borderBottomRightRadius: '18px',
+      border: isLight ? '1.5px solid #f3e3b2' : '1.5px solid #2d2412',
     }}>
       
       {/* Gold Toggle Tab — sits on the outer edge of the sidebar */}
@@ -42,22 +50,22 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{
           position: 'absolute',
-          right: '-14px',
+          right: '-16px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '14px',
-          height: '48px',
+          width: '18px',
+          height: '54px',
           background: 'linear-gradient(180deg, #d4af37 0%, #b8932a 100%)',
           border: 'none',
-          borderRadius: '0 6px 6px 0',
+          borderRadius: '0 10px 10px 0',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: '#000',
-          fontSize: '8px',
+          fontSize: '10px',
           zIndex: 101,
-          boxShadow: '2px 0 8px rgba(212,175,55,0.4)',
+          boxShadow: '2px 0 12px rgba(212,175,55,0.25)',
           transition: 'width 0.2s, box-shadow 0.2s',
           padding: 0,
         }}
@@ -71,90 +79,123 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
         }}>▶</span>
       </button>
 
-      {/* Logo Section */}
+      {/* Logo Section + Gold Line */}
       <div style={{
-        padding: isCollapsed ? '16px 10px' : '18px 16px',
-        borderBottom: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(212,175,55,0.1)',
-        minHeight: isCollapsed ? '76px' : '146px',
+        padding: isCollapsed ? '16px 10px 10px' : '22px 18px 12px',
+        borderBottom: 'none',
+        minHeight: isCollapsed ? '76px' : '140px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        flexDirection: 'column',
+        position: 'relative',
       }}>
+        <div style={{ width: '100%', height: '6px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '0 0 8px 8px', marginBottom: isCollapsed ? '10px' : '18px', boxShadow: '0 2px 8px #d4af3722' }} />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isCollapsed ? '0' : '8px' }}>
           <img
             src="/logo.png"
             alt="Whitecross Barbers"
             style={{
-              width: isCollapsed ? '40px' : '88px',
-              height: isCollapsed ? '40px' : '88px',
-              objectFit: 'contain'
+              width: isCollapsed ? '40px' : '80px',
+              height: isCollapsed ? '40px' : '80px',
+              objectFit: 'contain',
+              borderRadius: '12px',
+              boxShadow: '0 2px 12px #d4af3722',
+              background: '#fff',
+              border: '1.5px solid #e7d7a2',
             }}
           />
           {!isCollapsed && (
             <div style={{
               fontFamily: 'Georgia, serif',
-              fontSize: '0.9rem',
+              fontSize: '1.05rem',
               color: '#d4af37',
-              letterSpacing: '2px',
+              letterSpacing: '2.5px',
               fontWeight: '700',
               lineHeight: 1,
-              textAlign: 'center'
+              textAlign: 'center',
+              marginTop: '2px',
+              textShadow: '0 1px 8px #d4af3740',
             }}>
               I CUT
             </div>
           )}
         </div>
+        {!isCollapsed && (
+          <div style={{ width: '80%', height: '2px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '2px', margin: '18px auto 0', opacity: 0.5 }} />
+        )}
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '16px 12px' }}>
+      <nav style={{ flex: 1, padding: '18px 10px 10px' }}>
         {navItems.map(item => (
-          <div key={item.id} style={{ position: 'relative', marginBottom: '4px' }}>
+          <div key={item.id} style={{ position: 'relative', marginBottom: '6px' }}>
             <button
               onClick={() => setActivePage(item.id)}
               onMouseEnter={() => setHoveredItem(item.id)}
               onMouseLeave={() => setHoveredItem(null)}
-              title={isCollapsed ? item.label : ""} // Basic tooltip for symbol look
+              title={isCollapsed ? item.label : ""}
               style={{
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                padding: '12px 14px',
-                borderRadius: '8px',
+                padding: isCollapsed ? '13px 0' : '13px 18px',
+                borderRadius: '10px',
                 border: 'none',
-                background: activePage === item.id ? 'rgba(212,175,55,0.12)' : 'transparent',
-                color: activePage === item.id ? '#d4af37' : (isLight ? '#4a4030' : '#7a7260'),
+                background: activePage === item.id
+                  ? 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)'
+                  : 'transparent',
+                color: activePage === item.id ? '#d4af37' : (isLight ? '#4a4030' : '#e4c46a'),
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                borderLeft: activePage === item.id ? '3px solid #d4af37' : '3px solid transparent',
+                transition: 'all 0.22s cubic-bezier(.4,0,.2,1)',
+                boxShadow: activePage === item.id
+                  ? '0 2px 16px #d4af3730, 0 0 0 2px #d4af3722'
+                  : hoveredItem === item.id
+                    ? '0 2px 12px #d4af3722'
+                    : 'none',
+                borderLeft: activePage === item.id ? '4px solid #d4af37' : '4px solid transparent',
+                filter: activePage === item.id ? 'blur(0.1px) brightness(1.08)' : 'none',
               }}
             >
-              <span style={{ fontSize: '1.2rem', minWidth: '32px', textAlign: 'center' }}>{item.icon}</span>
+              <span style={{
+                fontSize: isCollapsed ? '1.45rem' : '1.25rem',
+                minWidth: isCollapsed ? '100%' : '32px',
+                textAlign: 'center',
+                transition: 'transform 0.18s',
+                transform: hoveredItem === item.id ? 'scale(1.18) rotate(-8deg)' : 'scale(1)',
+                filter: activePage === item.id ? 'drop-shadow(0 0 6px #d4af37cc)' : 'none',
+              }}>{item.icon}</span>
               {!isCollapsed && (
-                <span style={{ marginLeft: '12px', fontSize: '0.88rem', fontWeight: activePage === item.id ? '600' : '400', whiteSpace: 'nowrap' }}>
+                <span style={{
+                  marginLeft: '14px',
+                  fontSize: '1.01rem',
+                  fontWeight: activePage === item.id ? '700' : '500',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.5px',
+                  textShadow: activePage === item.id ? '0 1px 8px #d4af3740' : 'none',
+                }}>
                   {item.label}
                 </span>
               )}
             </button>
-
             {isCollapsed && hoveredItem === item.id && (
               <div style={{
                 position: 'absolute',
                 left: 'calc(100% + 10px)',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                background: isLight ? '#ffffff' : '#1a1a14',
+                background: isLight ? '#fffbe7' : '#23201a',
                 color: isLight ? '#3b3324' : '#e4c46a',
-                border: '1px solid rgba(212,175,55,0.35)',
+                border: '1.5px solid #d4af37',
                 borderRadius: '8px',
-                padding: '7px 10px',
-                fontSize: '0.76rem',
-                fontWeight: 600,
+                padding: '8px 14px',
+                fontSize: '0.92rem',
+                fontWeight: 700,
                 letterSpacing: '0.2px',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
+                boxShadow: '0 10px 24px rgba(212,175,55,0.18)',
                 zIndex: 200,
-                pointerEvents: 'none'
+                pointerEvents: 'none',
               }}>
                 {item.label}
               </div>
@@ -165,9 +206,12 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
 
       {/* Shop info & Footer */}
       <div style={{
-        padding: isCollapsed ? '16px 10px' : '16px 24px',
-        borderTop: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(212,175,55,0.1)',
-        background: isCollapsed ? 'transparent' : 'inherit'
+        padding: isCollapsed ? '16px 10px' : '18px 24px',
+        borderTop: 'none',
+        background: isCollapsed ? 'transparent' : 'inherit',
+        borderTopLeftRadius: '16px',
+        borderTopRightRadius: '16px',
+        marginTop: 'auto',
       }}>
         {!isCollapsed && (
           <div style={{ fontSize: '0.72rem', color: isLight ? '#9a8a70' : '#7a7260', marginBottom: '12px' }}>
@@ -216,16 +260,22 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           title={isCollapsed ? 'Sign Out' : ''}
           style={{
             width: '100%',
-            padding: '10px 0',
-            background: 'transparent',
-            border: isCollapsed ? 'none' : '1px solid rgba(255,82,82,0.3)',
-            borderRadius: '6px',
+            padding: isCollapsed ? '10px 0' : '12px 0',
+            background: 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)',
+            border: 'none',
+            borderRadius: '8px',
             color: '#ff5252',
-            fontSize: isCollapsed ? '1.2rem' : '0.75rem',
+            fontSize: isCollapsed ? '1.2rem' : '0.95rem',
             cursor: 'pointer',
+            fontWeight: 700,
+            marginTop: '8px',
+            boxShadow: '0 2px 8px #ff525222',
+            transition: 'background 0.18s',
           }}
+          onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg,#ffe7e7 60%,#ffd6d6 100%)'}
+          onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)'}
         >
-          {isCollapsed ? 'Logout' : 'Sign Out'}
+          {isCollapsed ? '🚪' : 'Sign Out'}
         </button>
       </div>
     </aside>
