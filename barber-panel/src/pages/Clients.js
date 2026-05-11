@@ -20,6 +20,7 @@ const SEGMENT_DEFS = [
   { key: 'loyal',        label: 'Loyal clients',         color: '#d4af37', desc: 'Clients with 2 or more visits in the last 5 months' },
   { key: 'lapsed',       label: 'Lapsed clients',        color: '#ff5252', desc: 'Clients with 3 or more visits in the last 12 months, and no visits in the last 2 months' },
   { key: 'highSpenders', label: 'High spenders',         color: '#9c27b0', desc: 'Clients with more than £81 in sales in the last 12 months' },
+  { key: 'highPoints',   label: 'High points',           color: '#d4af37', desc: 'Clients with 100 or more loyalty points — ready to redeem' },
   { key: 'birthdays',    label: 'Upcoming birthdays',    color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
@@ -132,14 +133,15 @@ export default function Clients() {
           email: manual?.email || c.email,
           birthday: manual?.birthday || '',
           notes: manual?.notes || '',
-          manualId: manual?.id
+          manualId: manual?.id,
+          loyaltyPoints: manual?.loyaltyPoints || 0,
         };
       });
     manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
-        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt });
+        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, loyaltyPoints: m.loyaltyPoints || 0 });
       }
     });
     return merged;
@@ -163,6 +165,7 @@ export default function Clients() {
         return yr >= 3 && rec === 0;
       }),
       highSpenders: allClients.filter(c => c.bookings.filter(b => b.startTimeRaw && b.startTimeRaw >= ago(365) && b.status !== 'CANCELLED').reduce((s, b) => s + (parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0), 0) > 81),
+      highPoints: allClients.filter(c => (c.loyaltyPoints || 0) >= 100),
       birthdays: allClients.filter(c => {
         if (!c.birthday) return false;
         try {
@@ -379,6 +382,7 @@ export default function Clients() {
                       { label: 'Total Spent', key: 'totalSpent' },
                       { label: 'Avg/Visit', key: null },
                       { label: 'Tips', key: 'totalTip' },
+                      { label: 'Points', key: 'loyaltyPoints' },
                       { label: 'Last Visit', key: 'lastVisit' },
                       { label: 'Fav Service', key: null },
                       { label: 'Barber', key: null },
@@ -422,6 +426,11 @@ export default function Clients() {
                         <td style={{ padding: '12px 14px', fontSize: '0.85rem', color: '#d4af37', fontWeight: '700' }}>£{c.totalSpent.toFixed(2)}</td>
                         <td style={{ padding: '12px 14px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{c.visits ? (c.totalSpent / c.visits).toFixed(0) : '0'}</td>
                         <td style={{ padding: '12px 14px', fontSize: '0.78rem', color: c.totalTip > 0 ? '#4caf50' : 'var(--muted)' }}>{c.totalTip > 0 ? '£' + c.totalTip.toFixed(2) : '--'}</td>
+                        <td style={{ padding: '12px 14px' }}>
+                          {c.loyaltyPoints > 0
+                            ? <span style={{ fontSize: '0.75rem', color: '#d4af37', fontWeight: '700' }}>⭐ {c.loyaltyPoints}</span>
+                            : <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>--</span>}
+                        </td>
                         <td style={{ padding: '12px 14px', fontSize: '0.75rem', color: 'var(--muted)' }}>{c.lastVisit || '--'}</td>
                         <td style={{ padding: '12px 14px', fontSize: '0.72rem', color: 'var(--text)' }}>{favSvc ? getSvcLabel(favSvc[0]) : '--'}</td>
                         <td style={{ padding: '12px 14px' }}>
@@ -492,16 +501,21 @@ export default function Clients() {
                   ))}
                 </div>
 
-                <div style={{ padding: '10px 14px', background: 'rgba(212,175,55,0.04)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Loyalty</span>
-                    <span style={{ fontSize: '0.65rem', color: '#d4af37' }}>{selectedClient.visits}/10</span>
+                <div style={{ padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Loyalty Points</span>
+                    <span style={{ fontSize: '1rem', color: '#d4af37', fontWeight: '800' }}>⭐ {selectedClient.loyaltyPoints || 0}</span>
                   </div>
-                  <div style={{ height: '6px', background: 'rgba(212,175,55,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ width: Math.min(selectedClient.visits / 10 * 100, 100) + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '3px', transition: 'width 0.5s' }} />
+                  <div style={{ height: '6px', background: 'rgba(212,175,55,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+                    <div style={{ width: Math.min((selectedClient.loyaltyPoints || 0) / 500 * 100, 100) + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '3px', transition: 'width 0.5s' }} />
                   </div>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '4px' }}>
-                    {selectedClient.visits >= 10 ? '🎉 Free service earned!' : selectedClient.visits >= 5 ? '10% discount active' : `${5 - selectedClient.visits} more visits for 10% discount`}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>
+                      {(selectedClient.loyaltyPoints || 0) >= 100
+                        ? `£${Math.floor((selectedClient.loyaltyPoints || 0) / 100)} available to redeem`
+                        : `${100 - (selectedClient.loyaltyPoints || 0)} pts until first £1 off`}
+                    </span>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>100 pts = £1</span>
                   </div>
                 </div>
 
@@ -573,7 +587,7 @@ export default function Clients() {
                     </div>
                     <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: seg.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <span style={{ fontSize: '1.1rem' }}>
-                        {{ new: '🆕', recent: '🕐', firstVisit: '✨', loyal: '⭐', lapsed: '💤', highSpenders: '💎', birthdays: '🎂' }[seg.key]}
+                        {{ new: '🆕', recent: '🕐', firstVisit: '✨', loyal: '⭐', lapsed: '💤', highSpenders: '💎', highPoints: '🏆', birthdays: '🎂' }[seg.key]}
                       </span>
                     </div>
                   </div>
@@ -588,7 +602,8 @@ export default function Clients() {
                             {(c.name[0] || '?').toUpperCase()}
                           </div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text)' }}>{c.name}</span>
-                          {c.visits > 0 && <span style={{ fontSize: '0.62rem', color: 'var(--muted)', marginLeft: 'auto' }}>{c.visits}v</span>}
+                          {c.loyaltyPoints > 0 && <span style={{ fontSize: '0.6rem', color: '#d4af37', marginLeft: 'auto' }}>⭐{c.loyaltyPoints}</span>}
+                          {!c.loyaltyPoints && c.visits > 0 && <span style={{ fontSize: '0.62rem', color: 'var(--muted)', marginLeft: 'auto' }}>{c.visits}v</span>}
                         </div>
                       ))}
                       {count > 3 && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', paddingLeft: '30px' }}>+{count - 3} more clients</div>}
