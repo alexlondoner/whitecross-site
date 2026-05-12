@@ -51,6 +51,7 @@ function getTransporter() {
 const SERVICE_NAMES = {
     'full-experience': 'The Full Experience',
     'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+    'full-skin-fade-beard-luxury': 'Full Skin Fade & Beard Luxury',
     'i-cut-deluxe': 'I CUT Deluxe',
     'i-cut-royal': 'I CUT Royal',
     'senior-full-experience': 'Senior Full Experience',
@@ -74,7 +75,7 @@ const SERVICE_NAMES = {
 
 const DEPOSIT_AMOUNTS = {
     'i-cut-royal': 10, 'i-cut-deluxe': 10,
-    'full-skinfade-beard-luxury': 10, 'full-experience': 10,
+    'full-skinfade-beard-luxury': 10, 'full-skin-fade-beard-luxury': 10, 'full-experience': 10,
 };
 
 exports.health = onRequest((req, res) => {
@@ -1067,7 +1068,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const todayPaid   = parseFloat(String(after.paidAmount || '0').replace('£', '')) || 0;
         const fullPrice   = parseFloat(String(after.price || '0').replace('£', '')) || todayPaid;
         const isDeposit   = after.paymentType === 'DEPOSIT' && fullPrice > todayPaid;
-        const depositPaid = isDeposit ? (fullPrice - todayPaid) : 0;
+        const depositPaid = isDeposit ? (DEPOSIT_AMOUNTS[after.serviceId] || DEPOSIT_AMOUNTS[after.service] || 10) : 0;
         const paidAmount  = isDeposit ? fullPrice : todayPaid;  // show full service value as total
         const pointsEarned = after.loyaltyPointsEarned || 0;
         const redeemed    = after.loyaltyPointsRedeemed || 0;
