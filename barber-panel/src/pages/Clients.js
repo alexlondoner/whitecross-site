@@ -51,7 +51,7 @@ export default function Clients() {
   const [noteInput, setNoteInput] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const [detailTab, setDetailTab] = useState('overview');
-  const [memberTierSelect, setMemberTierSelect] = useState('standard');
+  const [memberTierSelect, setMemberTierSelect] = useState('');
   const [memberSaving, setMemberSaving] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -235,6 +235,7 @@ export default function Clients() {
   useEffect(() => {
     setNoteInput(selectedClient?.notes || '');
     setDetailTab('overview');
+    setMemberTierSelect(selectedClient?.isMember ? (selectedClient.membershipTier || 'standard') : '');
   }, [selectedClient?.name]);
 
   const saveNote = async () => {
@@ -753,9 +754,9 @@ export default function Clients() {
                             </button>
                           ))}
                         </div>
-                        <button onClick={() => promoteMember(selectedClient, memberTierSelect)} disabled={memberSaving}
-                          style={{ width: '100%', padding: '9px', background: memberSaving ? 'transparent' : 'rgba(123,31,162,0.15)', border: '1px solid rgba(123,31,162,0.4)', borderRadius: '8px', color: '#ce93d8', cursor: memberSaving ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
-                          {memberSaving ? 'Saving...' : '◆ Add to MemberZone'}
+                        <button onClick={() => promoteMember(selectedClient, memberTierSelect)} disabled={memberSaving || !memberTierSelect}
+                          style={{ width: '100%', padding: '9px', background: (!memberTierSelect || memberSaving) ? 'transparent' : 'rgba(123,31,162,0.15)', border: '1px solid ' + (!memberTierSelect ? 'var(--border)' : 'rgba(123,31,162,0.4)'), borderRadius: '8px', color: !memberTierSelect ? 'var(--muted)' : '#ce93d8', cursor: (!memberTierSelect || memberSaving) ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                          {memberSaving ? 'Saving...' : !memberTierSelect ? 'Select a tier first' : '◆ Add to MemberZone'}
                         </button>
                       </div>
                     )}
