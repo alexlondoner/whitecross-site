@@ -16,10 +16,12 @@ const lbl = { display: 'block', fontSize: '0.62rem', color: 'var(--muted)', lett
 const MEMBERSHIP_TIERS = [
   { key: 'standard', label: 'Standard', color: '#7b1fa2', desc: 'Priority booking + monthly perks' },
   { key: 'premium',  label: 'Premium',  color: '#d4af37', desc: 'All Standard benefits + exclusive slots + free monthly service' },
+  { key: 'student',  label: 'Student',  color: '#0288d1', desc: 'Student discount applied at checkout — no loyalty points' },
 ];
 
 const SEGMENT_DEFS = [
   { key: 'members',      label: 'MemberZone',            color: '#7b1fa2', desc: 'Active MemberZone subscribers' },
+  { key: 'students',     label: 'Students',              color: '#0288d1', desc: 'Student discount clients' },
   { key: 'new',          label: 'New clients',            color: '#4caf50', desc: 'Clients added in the last 30 days' },
   { key: 'recent',       label: 'Recent clients',         color: '#2196f3', desc: 'Clients with appointments in the last 30 days' },
   { key: 'firstVisit',   label: 'First visit',            color: '#ff9800', desc: 'Clients with no past appointments, but with appointments in the future' },
@@ -168,6 +170,7 @@ export default function Clients() {
     const ago = (days) => new Date(now - days * 24 * 3600 * 1000);
     return {
       members: allClients.filter(c => c.isMember),
+      students: allClients.filter(c => c.isMember && c.membershipTier === 'student'),
       new: allClients.filter(c => c.isManualOnly ? (c.addedAt && c.addedAt >= ago(30)) : (c.firstVisitRaw && c.firstVisitRaw >= ago(30))),
       recent: allClients.filter(c => c.lastVisitRaw && c.lastVisitRaw >= ago(30)),
       firstVisit: allClients.filter(c => {
@@ -644,7 +647,11 @@ export default function Clients() {
                         <div style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text)', marginBottom: '5px' }}>{selectedClient.name}</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                           {selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
-                          {selectedClient.isMember && <span style={{ fontSize: '0.55rem', background: 'rgba(123,31,162,0.2)', color: '#ce93d8', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>◆ {(selectedClient.membershipTier || 'member').toUpperCase()}</span>}
+                          {selectedClient.isMember && (() => {
+                            const t = MEMBERSHIP_TIERS.find(t => t.key === selectedClient.membershipTier) || MEMBERSHIP_TIERS[0];
+                            const icon = t.key === 'student' ? '🎓' : '◆';
+                            return <span style={{ fontSize: '0.55rem', background: t.color + '28', color: t.color, padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>{icon} {t.label.toUpperCase()}</span>;
+                          })()}
                           {!selectedClient.isMember && selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
                           {selectedClient.isManualOnly && <span style={{ fontSize: '0.55rem', background: 'rgba(33,150,243,0.15)', color: '#2196f3', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>ADDED</span>}
                           {!selectedClient.isManualOnly && selectedClient.visits === 1 && <span style={{ fontSize: '0.55rem', background: 'rgba(76,175,80,0.15)', color: '#4caf50', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>NEW</span>}
@@ -721,12 +728,15 @@ export default function Clients() {
                     </div>
 
                     {/* MemberZone */}
-                    {selectedClient.isMember ? (
-                      <div style={{ padding: '14px', background: 'rgba(123,31,162,0.08)', borderRadius: '10px', border: '1px solid rgba(123,31,162,0.3)' }}>
+                    {selectedClient.isMember ? (() => {
+                      const activeTier = MEMBERSHIP_TIERS.find(t => t.key === selectedClient.membershipTier) || MEMBERSHIP_TIERS[0];
+                      const tIcon = activeTier.key === 'student' ? '🎓' : '◆';
+                      return (
+                      <div style={{ padding: '14px', background: activeTier.color + '12', borderRadius: '10px', border: '1px solid ' + activeTier.color + '44' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
-                            <div style={{ fontSize: '0.6rem', color: '#ce93d8', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>◆ MemberZone</div>
-                            <div style={{ fontSize: '0.88rem', color: '#ce93d8', fontWeight: '700', textTransform: 'capitalize' }}>{selectedClient.membershipTier || 'Standard'}</div>
+                            <div style={{ fontSize: '0.6rem', color: activeTier.color, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>{tIcon} MemberZone</div>
+                            <div style={{ fontSize: '0.88rem', color: activeTier.color, fontWeight: '700' }}>{activeTier.label}</div>
                             {selectedClient.memberSince && (
                               <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>
                                 Since {(selectedClient.memberSince?.toDate ? selectedClient.memberSince.toDate() : new Date(selectedClient.memberSince)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -738,10 +748,12 @@ export default function Clients() {
                             Remove
                           </button>
                         </div>
-                        <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(123,31,162,0.08)', borderRadius: '6px', fontSize: '0.62rem', color: '#ce93d8' }}>
-                          Loyalty points paused — member benefits apply
+                        <div style={{ marginTop: '10px', padding: '8px', background: activeTier.color + '12', borderRadius: '6px', fontSize: '0.62rem', color: activeTier.color }}>
+                          {activeTier.key === 'student' ? 'Student discount applied at checkout — loyalty points paused' : 'Loyalty points paused — member benefits apply'}
                         </div>
                       </div>
+                      );
+                    })()
                     ) : (
                       <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>Promote to MemberZone</div>

@@ -642,6 +642,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [clientPoints, setClientPoints] = useState(0);
   const [clientIsMember, setClientIsMember] = useState(false);
+  const [clientMemberTier, setClientMemberTier] = useState('');
   const [matchedClientName, setMatchedClientName] = useState('');
   const [pointsInput, setPointsInput] = useState('');
   const [pointsApplied, setPointsApplied] = useState(0);
@@ -701,6 +702,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
     getClientLoyaltyPoints({ phone, email }).then(result => {
       setClientPoints(result.points || 0);
       setClientIsMember(result.isMember || false);
+      setClientMemberTier(result.membershipTier || '');
       setMatchedClientName(result.clientName || '');
     }).catch(() => {});
   }, [booking.bookingId]);
@@ -837,8 +839,8 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                   </div>
                 </div>
                 {clientIsMember ? (
-                  <div style={{ padding: '10px 14px', background: 'rgba(123,31,162,0.08)', borderRadius: '10px', border: '1px solid rgba(123,31,162,0.25)', fontSize: '0.68rem', color: '#ce93d8', fontWeight: '600' }}>
-                    ◆ MemberZone — loyalty points paused
+                  <div style={{ padding: '10px 14px', background: clientMemberTier === 'student' ? 'rgba(2,136,209,0.08)' : 'rgba(123,31,162,0.08)', borderRadius: '10px', border: '1px solid ' + (clientMemberTier === 'student' ? 'rgba(2,136,209,0.3)' : 'rgba(123,31,162,0.25)'), fontSize: '0.68rem', color: clientMemberTier === 'student' ? '#29b6f6' : '#ce93d8', fontWeight: '600' }}>
+                    {clientMemberTier === 'student' ? '🎓 Student — discount applies · loyalty points paused' : '◆ MemberZone — loyalty points paused'}
                   </div>
                 ) : effectiveClientPoints > 0 && (
                   <div style={{ padding: '14px 16px', background: 'rgba(212,175,55,0.04)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)' }}>

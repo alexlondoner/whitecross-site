@@ -131,9 +131,9 @@ export async function getClientLoyaltyPoints({ phone, email }) {
       }
     }
 
-    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false, clientName: data.name || '' };
+    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false, clientName: data.name || '', membershipTier: data.membershipTier || '' };
   } catch (e) {}
-  return { points: 0, isMember: false, clientName: '' };
+  return { points: 0, isMember: false, clientName: '', membershipTier: '' };
 }
 
 export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, serviceCharge, discount }) {
