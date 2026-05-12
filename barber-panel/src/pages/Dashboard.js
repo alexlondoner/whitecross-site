@@ -687,6 +687,12 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const tipAmt = tip;
   const total = subtotal + tipAmt;
 
+  // For edit checkout, effective redeemable = balance before this visit
+  const isEditCheckoutMode = String(booking.status || '').toUpperCase() === 'CHECKED_OUT';
+  const prevEarnedPts   = isEditCheckoutMode ? (booking.loyaltyPointsEarned   || 0) : 0;
+  const prevRedeemedPts = isEditCheckoutMode ? (booking.loyaltyPointsRedeemed || 0) : 0;
+  const effectiveClientPoints = Math.max(0, clientPoints - prevEarnedPts + prevRedeemedPts);
+
   useEffect(() => {
     const phone = booking.phone || booking.clientPhone || '';
     const email = booking.email || booking.clientEmail || '';
@@ -832,11 +838,11 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                   <div style={{ padding: '10px 14px', background: 'rgba(123,31,162,0.08)', borderRadius: '10px', border: '1px solid rgba(123,31,162,0.25)', fontSize: '0.68rem', color: '#ce93d8', fontWeight: '600' }}>
                     ◆ MemberZone — loyalty points paused
                   </div>
-                ) : clientPoints > 0 && (
+                ) : effectiveClientPoints > 0 && (
                   <div style={{ padding: '14px 16px', background: 'rgba(212,175,55,0.04)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: pointsApplied > 0 ? '0' : '10px' }}>
                       <p style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0, fontWeight: '600' }}>Loyalty Points</p>
-                      <span style={{ fontSize: '0.72rem', color: '#d4af37', fontWeight: '700' }}>⭐ {clientPoints} pts available</span>
+                      <span style={{ fontSize: '0.72rem', color: '#d4af37', fontWeight: '700' }}>⭐ {effectiveClientPoints} pts available</span>
                     </div>
                     {pointsApplied > 0 ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
@@ -847,37 +853,37 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="number" min="0" max={clientPoints} value={pointsInput}
+                          <input type="number" min="0" max={effectiveClientPoints} value={pointsInput}
                             onChange={e => {
                               const val = parseInt(e.target.value) || 0;
                               setPointsInput(e.target.value);
-                              if (val > clientPoints) setPointsInput(String(clientPoints));
+                              if (val > effectiveClientPoints) setPointsInput(String(effectiveClientPoints));
                             }}
                             placeholder="pts"
-                            style={{ ...inp, width: '80px', borderColor: parseInt(pointsInput) > clientPoints ? '#ff5252' : undefined }} />
+                            style={{ ...inp, width: '80px', borderColor: parseInt(pointsInput) > effectiveClientPoints ? '#ff5252' : undefined }} />
                           <button onClick={() => {
                             const typed = parseInt(pointsInput) || 0;
-                            const pts = Math.min(typed, clientPoints);
+                            const pts = Math.min(typed, effectiveClientPoints);
                             if (pts >= 20) { setPointsApplied(pts / LOYALTY_REDEEM_RATE); setPointsInput(String(pts)); }
                           }} style={{ padding: '9px 14px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
                             Redeem
                           </button>
-                          {clientPoints >= 20 && (
+                          {effectiveClientPoints >= 20 && (
                             <button onClick={() => {
-                              setPointsInput(String(clientPoints));
-                              setPointsApplied(clientPoints / LOYALTY_REDEEM_RATE);
+                              setPointsInput(String(effectiveClientPoints));
+                              setPointsApplied(effectiveClientPoints / LOYALTY_REDEEM_RATE);
                             }} style={{ padding: '9px 14px', background: 'rgba(212,175,55,0.2)', border: '1px solid rgba(212,175,55,0.5)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                              Use All · £{(clientPoints / LOYALTY_REDEEM_RATE).toFixed(2).replace(/\.00$/, '')}
+                              Use All · £{(effectiveClientPoints / LOYALTY_REDEEM_RATE).toFixed(2).replace(/\.00$/, '')}
                             </button>
                           )}
                         </div>
-                        {pointsInput > 0 && parseInt(pointsInput) > clientPoints && (
-                          <span style={{ fontSize: '0.68rem', color: '#ff5252' }}>Max {clientPoints} pts available</span>
+                        {pointsInput > 0 && parseInt(pointsInput) > effectiveClientPoints && (
+                          <span style={{ fontSize: '0.68rem', color: '#ff5252' }}>Max {effectiveClientPoints} pts available</span>
                         )}
-                        {pointsInput > 0 && parseInt(pointsInput) <= clientPoints && parseInt(pointsInput) < 20 && (
+                        {pointsInput > 0 && parseInt(pointsInput) <= effectiveClientPoints && parseInt(pointsInput) < 20 && (
                           <span style={{ fontSize: '0.68rem', color: '#ff9800' }}>Min 20 pts to redeem</span>
                         )}
-                        {pointsInput > 0 && parseInt(pointsInput) >= 20 && parseInt(pointsInput) <= clientPoints && (
+                        {pointsInput > 0 && parseInt(pointsInput) >= 20 && parseInt(pointsInput) <= effectiveClientPoints && (
                           <span style={{ fontSize: '0.68rem', color: '#4caf50' }}>= £{((parseInt(pointsInput) || 0) / LOYALTY_REDEEM_RATE).toFixed(2)} off</span>
                         )}
                       </div>
