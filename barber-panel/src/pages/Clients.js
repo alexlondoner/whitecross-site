@@ -728,50 +728,52 @@ export default function Clients() {
                     </div>
 
                     {/* MemberZone */}
-                    {selectedClient.isMember ? (() => {
-                      const activeTier = MEMBERSHIP_TIERS.find(t => t.key === selectedClient.membershipTier) || MEMBERSHIP_TIERS[0];
-                      const tIcon = activeTier.key === 'student' ? '🎓' : '◆';
-                      return (
-                      <div style={{ padding: '14px', background: activeTier.color + '12', borderRadius: '10px', border: '1px solid ' + activeTier.color + '44' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ fontSize: '0.6rem', color: activeTier.color, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>{tIcon} MemberZone</div>
-                            <div style={{ fontSize: '0.88rem', color: activeTier.color, fontWeight: '700' }}>{activeTier.label}</div>
-                            {selectedClient.memberSince && (
-                              <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>
-                                Since {(selectedClient.memberSince?.toDate ? selectedClient.memberSince.toDate() : new Date(selectedClient.memberSince)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {(() => {
+                      if (selectedClient.isMember) {
+                        const activeTier = MEMBERSHIP_TIERS.find(t => t.key === selectedClient.membershipTier) || MEMBERSHIP_TIERS[0];
+                        const tIcon = activeTier.key === 'student' ? '🎓' : '◆';
+                        return (
+                          <div style={{ padding: '14px', background: activeTier.color + '12', borderRadius: '10px', border: '1px solid ' + activeTier.color + '44' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: activeTier.color, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>{tIcon} MemberZone</div>
+                                <div style={{ fontSize: '0.88rem', color: activeTier.color, fontWeight: '700' }}>{activeTier.label}</div>
+                                {selectedClient.memberSince && (
+                                  <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>
+                                    Since {(selectedClient.memberSince?.toDate ? selectedClient.memberSince.toDate() : new Date(selectedClient.memberSince)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                              <button onClick={() => demoteMember(selectedClient)} disabled={memberSaving}
+                                style={{ padding: '4px 10px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.62rem', fontWeight: '600' }}>
+                                Remove
+                              </button>
+                            </div>
+                            <div style={{ marginTop: '10px', padding: '8px', background: activeTier.color + '12', borderRadius: '6px', fontSize: '0.62rem', color: activeTier.color }}>
+                              {activeTier.key === 'student' ? 'Student discount applied at checkout — loyalty points paused' : 'Loyalty points paused — member benefits apply'}
+                            </div>
                           </div>
-                          <button onClick={() => demoteMember(selectedClient)} disabled={memberSaving}
-                            style={{ padding: '4px 10px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.62rem', fontWeight: '600' }}>
-                            Remove
+                        );
+                      }
+                      return (
+                        <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>Promote to MemberZone</div>
+                          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                            {MEMBERSHIP_TIERS.map(t => (
+                              <button key={t.key} onClick={() => setMemberTierSelect(t.key)}
+                                style={{ flex: 1, padding: '8px', background: memberTierSelect === t.key ? t.color + '22' : 'transparent', border: '1px solid ' + (memberTierSelect === t.key ? t.color : 'var(--border)'), borderRadius: '8px', color: memberTierSelect === t.key ? t.color : 'var(--muted)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}>
+                                {t.label}
+                                <div style={{ fontSize: '0.55rem', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
+                              </button>
+                            ))}
+                          </div>
+                          <button onClick={() => promoteMember(selectedClient, memberTierSelect)} disabled={memberSaving || !memberTierSelect}
+                            style={{ width: '100%', padding: '9px', background: (!memberTierSelect || memberSaving) ? 'transparent' : 'rgba(123,31,162,0.15)', border: '1px solid ' + (!memberTierSelect ? 'var(--border)' : 'rgba(123,31,162,0.4)'), borderRadius: '8px', color: !memberTierSelect ? 'var(--muted)' : '#ce93d8', cursor: (!memberTierSelect || memberSaving) ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                            {memberSaving ? 'Saving...' : !memberTierSelect ? 'Select a tier first' : '◆ Add to MemberZone'}
                           </button>
                         </div>
-                        <div style={{ marginTop: '10px', padding: '8px', background: activeTier.color + '12', borderRadius: '6px', fontSize: '0.62rem', color: activeTier.color }}>
-                          {activeTier.key === 'student' ? 'Student discount applied at checkout — loyalty points paused' : 'Loyalty points paused — member benefits apply'}
-                        </div>
-                      </div>
                       );
-                    })()
-                    ) : (
-                      <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>Promote to MemberZone</div>
-                        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                          {MEMBERSHIP_TIERS.map(t => (
-                            <button key={t.key} onClick={() => setMemberTierSelect(t.key)}
-                              style={{ flex: 1, padding: '8px', background: memberTierSelect === t.key ? t.color + '22' : 'transparent', border: '1px solid ' + (memberTierSelect === t.key ? t.color : 'var(--border)'), borderRadius: '8px', color: memberTierSelect === t.key ? t.color : 'var(--muted)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}>
-                              {t.label}
-                              <div style={{ fontSize: '0.55rem', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
-                            </button>
-                          ))}
-                        </div>
-                        <button onClick={() => promoteMember(selectedClient, memberTierSelect)} disabled={memberSaving || !memberTierSelect}
-                          style={{ width: '100%', padding: '9px', background: (!memberTierSelect || memberSaving) ? 'transparent' : 'rgba(123,31,162,0.15)', border: '1px solid ' + (!memberTierSelect ? 'var(--border)' : 'rgba(123,31,162,0.4)'), borderRadius: '8px', color: !memberTierSelect ? 'var(--muted)' : '#ce93d8', cursor: (!memberTierSelect || memberSaving) ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
-                          {memberSaving ? 'Saving...' : !memberTierSelect ? 'Select a tier first' : '◆ Add to MemberZone'}
-                        </button>
-                      </div>
-                    )}
+                    })()}
 
                     {/* Services */}
                     {Object.keys(selectedClient.services).length > 0 && (
