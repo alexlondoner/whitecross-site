@@ -299,6 +299,69 @@ export default function Settings({ theme, onToggleTheme }) {
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [loyaltyBackfilling, setLoyaltyBackfilling] = useState(false);
   const [loyaltyResult, setLoyaltyResult] = useState('');
+  const [cleanupInput, setCleanupInput] = useState('');
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState('');
+
+  const runTestCleanup = async () => {
+    const raw = cleanupInput.trim();
+    if (!raw) { setCleanupResult('Enter an email or phone number first.'); return; }
+    if (!window.confirm(`Delete ALL data for "${raw}"?\n\n• All client docs with this email/phone\n• All bookings with this email/phone\n• All hidden (soft-deleted) records\n\nThis cannot be undone.`)) return;
+
+    setCleanupRunning(true);
+    setCleanupResult('Running...');
+    try {
+      const db2 = db;
+      const clientsRef = collection(db2, `tenants/${TENANT}/clients`);
+      const bookingsRef = collection(db2, `tenants/${TENANT}/bookings`);
+      const isEmail = raw.includes('@');
+      const batch = writeBatch(db2);
+      let clientCount = 0, bookingCount = 0;
+
+      if (isEmail) {
+        const cSnap = await getDocs(query(clientsRef, where('email', '==', raw)));
+        cSnap.forEach(d => { batch.delete(d.ref); clientCount++; });
+        const bSnap = await getDocs(query(bookingsRef, where('clientEmail', '==', raw)));
+        bSnap.forEach(d => { batch.delete(d.ref); bookingCount++; });
+      } else {
+        const cSnap = await getDocs(query(clientsRef, where('phone', '==', raw)));
+        cSnap.forEach(d => { batch.delete(d.ref); clientCount++; });
+        const bSnap = await getDocs(query(bookingsRef, where('clientPhone', '==', raw)));
+        bSnap.forEach(d => { batch.delete(d.ref); bookingCount++; });
+      }
+
+      // Also sweep ALL hidden docs (leftover from old soft-delete)
+      const hiddenSnap = await getDocs(query(clientsRef, where('hidden', '==', true)));
+      hiddenSnap.forEach(d => { batch.delete(d.ref); clientCount++; });
+
+      await batch.commit();
+      setCleanupResult(`✓ Deleted ${clientCount} client doc(s) + ${bookingCount} booking(s) for "${raw}". Hidden records also swept.`);
+      setCleanupInput('');
+    } catch (e) {
+      setCleanupResult('Error: ' + e.message);
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
+
+  const runTestCleanupHiddenOnly = async () => {
+    if (!window.confirm('Delete all hidden (soft-deleted) client records? This sweeps ghost records left over from the old delete system.')) return;
+    setCleanupRunning(true);
+    setCleanupResult('Running...');
+    try {
+      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const hiddenSnap = await getDocs(query(clientsRef, where('hidden', '==', true)));
+      const batch = writeBatch(db);
+      let count = 0;
+      hiddenSnap.forEach(d => { batch.delete(d.ref); count++; });
+      await batch.commit();
+      setCleanupResult(`✓ Deleted ${count} hidden client record(s).`);
+    } catch (e) {
+      setCleanupResult('Error: ' + e.message);
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
 
   const runLoyaltyBackfill = async () => {
     if (!window.confirm('Recalculate loyalty points from ALL past checkouts and write to client profiles. Safe to run multiple times — continue?')) return;
@@ -989,10 +1052,30 @@ export default function Settings({ theme, onToggleTheme }) {
       {/* Danger Zone */}
       <div style={{ ...cardStyle, borderColor: 'rgba(255,82,82,0.2)' }}>
         <h2 style={{ ...sectionTitle, color: '#ff5252' }}>Danger Zone</h2>
-        <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '16px' }}>These actions cannot be undone.</p>
-        <button style={{ padding: '10px 20px', background: 'transparent', border: '1px solid rgba(255,82,82,0.4)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
-          🗑️ Clear All Pending Bookings
-        </button>
+        <p style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '20px' }}>These actions cannot be undone.</p>
+
+        {/* Test data cleanup */}
+        <p style={{ fontSize: '0.82rem', color: 'var(--text)', fontWeight: '600', marginBottom: '8px' }}>🧹 Test Data Cleanup</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: '12px' }}>Enter your test email or phone number. Deletes all client docs + bookings matching that contact, plus all hidden (soft-deleted) records.</p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
+          <input
+            value={cleanupInput}
+            onChange={e => { setCleanupInput(e.target.value); setCleanupResult(''); }}
+            placeholder="your@email.com or 07700900000"
+            style={{ padding: '9px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.82rem', width: '260px' }}
+          />
+          <button onClick={runTestCleanup} disabled={cleanupRunning || !cleanupInput.trim()}
+            style={{ padding: '10px 18px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.4)', borderRadius: '8px', color: '#ff5252', cursor: cleanupRunning ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            {cleanupRunning ? 'Deleting…' : 'Delete All for This Contact'}
+          </button>
+          <button onClick={runTestCleanupHiddenOnly} disabled={cleanupRunning}
+            style={{ padding: '10px 18px', background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.3)', borderRadius: '8px', color: '#ff9800', cursor: cleanupRunning ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+            Sweep Hidden Records
+          </button>
+        </div>
+        {cleanupResult && (
+          <p style={{ fontSize: '0.8rem', color: cleanupResult.startsWith('✓') ? '#4caf50' : '#ff5252', fontWeight: '600', marginTop: '4px' }}>{cleanupResult}</p>
+        )}
       </div>
 
     </div>
