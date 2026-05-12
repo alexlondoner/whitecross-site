@@ -670,12 +670,14 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const productsTotal = getProductsTotal(localProducts);
   const addOnsTotal = getProductsTotal(localAddOns);
   const extrasTotal = addOnsTotal;
+  // Fixed deposit amounts per service — must match functions/index.js DEPOSIT_AMOUNTS
+  const WEBSITE_DEPOSITS = { 'i-cut-royal': 10, 'i-cut-deluxe': 10, 'full-skinfade-beard-luxury': 10, 'full-experience': 10 };
   const depositAmount = booking.source === 'Booksy'
     ? (config.platforms?.booksy?.depositEnabled ? config.platforms.booksy.depositAmount : 0)
     : booking.source === 'Fresha'
     ? (config.platforms?.fresha?.depositEnabled ? config.platforms.fresha.depositAmount : 0)
-    : (booking.paymentType === 'DEPOSIT' && booking.paidAmount)
-    ? parseFloat(String(booking.paidAmount).replace('£', '')) || 0
+    : (booking.paymentType === 'DEPOSIT')
+    ? (WEBSITE_DEPOSITS[booking.service] || WEBSITE_DEPOSITS[booking.serviceId] || 10)
     : 0;
   const alreadyPaid = depositAmount;
   const remainingDue = Math.max(0, basePrice - alreadyPaid);
@@ -1238,11 +1240,11 @@ function BookingDetail({ booking, barbers, onClose, onEdit, onDelete, onCheckout
             { label:'Barber', value:(booking.barber||'').toUpperCase() },
             { label:'Phone', value:booking.phone },
             { label:'Email', value:booking.email },
-            ...(booking.paymentType === 'DEPOSIT' && booking.paidAmount
+            ...(booking.paymentType === 'DEPOSIT' && booking.paidAmount && booking.status !== 'CHECKED_OUT'
               ? [
                   { label:'Deposit Paid', value:`£${parseFloat(String(booking.paidAmount).replace('£','')).toFixed(2)}`, color:'#4caf50' },
                   { label:'Remaining', value:`£${Math.max(0, parseFloat(String(booking.price||0)) - parseFloat(String(booking.paidAmount).replace('£',''))).toFixed(2)}`, color:'#ff9800' },
-                  { label:'Total', value:getDisplayedAmount(booking), color:'var(--muted)' },
+                  { label:'Total', value:`£${parseFloat(String(booking.price||0)).toFixed(2)}`, color:'var(--muted)' },
                 ]
               : [{ label:'Amount', value:getDisplayedAmount(booking), color:'#4caf50' }]),
             { label:'Source', value:booking.source||'Website', color: booking.source==='Booksy'?'#9c27b0': booking.source==='Fresha'?'#2196f3': booking.source==='Manual'?'#ff9800':'#4caf50' },

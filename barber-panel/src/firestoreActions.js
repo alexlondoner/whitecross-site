@@ -74,16 +74,20 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
       const isMember = clientDoc?.data()?.isMember || false;
       if (!isMember) {
         const pointsEarned = hasDiscount ? 0 : Math.floor(fullPrice);
-        const netDelta = pointsEarned - redeemed;
+        // If this is an edit (booking was already CHECKED_OUT), reverse previous effect first
+        const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
+        const prevEarned   = wasCheckedOut ? (bookingData.loyaltyPointsEarned   || 0) : 0;
+        const prevRedeemed = wasCheckedOut ? (bookingData.loyaltyPointsRedeemed || 0) : 0;
+        const netDelta = (pointsEarned - redeemed) - (prevEarned - prevRedeemed);
         if (netDelta !== 0) {
           if (clientDoc) {
             await updateDoc(clientDoc.ref, { loyaltyPoints: increment(netDelta) });
-          } else {
+          } else if (!wasCheckedOut) {
             await addDoc(clientsRef, {
               name: bookingData.clientName || '',
               phone,
               email,
-              loyaltyPoints: Math.max(0, netDelta),
+              loyaltyPoints: Math.max(0, pointsEarned - redeemed),
               createdAt: Timestamp.fromDate(new Date()),
             });
           }

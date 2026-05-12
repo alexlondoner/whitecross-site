@@ -1064,7 +1064,11 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const name        = after.clientName || 'Guest';
         const service     = SERVICE_NAMES[after.serviceId] || after.serviceId || 'Service';
         const barber      = (after.barberName || after.barberId || 'TBC').toUpperCase();
-        const paidAmount  = parseFloat(String(after.paidAmount || after.price || '0').replace('£', '')) || 0;
+        const todayPaid   = parseFloat(String(after.paidAmount || '0').replace('£', '')) || 0;
+        const fullPrice   = parseFloat(String(after.price || '0').replace('£', '')) || todayPaid;
+        const isDeposit   = after.paymentType === 'DEPOSIT' && fullPrice > todayPaid;
+        const depositPaid = isDeposit ? (fullPrice - todayPaid) : 0;
+        const paidAmount  = isDeposit ? fullPrice : todayPaid;  // show full service value as total
         const pointsEarned = after.loyaltyPointsEarned || 0;
         const redeemed    = after.loyaltyPointsRedeemed || 0;
         const discount    = parseFloat(String(after.discount || '0').replace('£', '')) || 0;
@@ -1241,10 +1245,25 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                         <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">-£${(redeemed / REDEEM_RATE).toFixed(2)} (${redeemed} pts)</td>
                     </tr>
                     ` : ''}
+                    ${isDeposit ? `
+                    <tr style="border-top:1px solid #222;">
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;padding-bottom:4px;">Deposit (online)</td>
+                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-top:12px;padding-bottom:4px;">£${depositPaid.toFixed(2)} ✓</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Paid today</td>
+                        <td style="color:#fff;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">£${todayPaid.toFixed(2)}</td>
+                    </tr>
+                    <tr style="border-top:1px solid #333;">
+                        <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">Total</td>
+                        <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">£${paidAmount.toFixed(2)}</td>
+                    </tr>
+                    ` : `
                     <tr style="border-top:1px solid #222;">
                         <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">Total Paid</td>
                         <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">£${paidAmount.toFixed(2)}</td>
                     </tr>
+                    `}
                 </table>
             </div>
 
