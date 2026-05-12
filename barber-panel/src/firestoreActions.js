@@ -42,8 +42,8 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     splitAmount: splitAmount || 0,
     checkedOutAt: Timestamp.fromDate(new Date()),
     loyaltyPointsEarned: (discount && discount > 0) ? 0 : Math.floor(
-      // For deposit bookings, earn on full service price not just remaining amount paid today
-      (bookingData.paymentType === 'DEPOSIT' && bookingData.price)
+      // Always earn on full service price — loyalty redemption shouldn't reduce points earned
+      bookingData.price
         ? parseFloat(String(bookingData.price).replace('£', '')) || total
         : total
     ),
@@ -55,8 +55,8 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     const phone = bookingData.clientPhone || '';
     const email = bookingData.clientEmail || '';
     const hasDiscount = discount && discount > 0;
-    // For deposit bookings earn on full service price
-    const fullPrice = (bookingData.paymentType === 'DEPOSIT' && bookingData.price)
+    // Always earn on full service price — loyalty redemption shouldn't reduce points earned
+    const fullPrice = bookingData.price
       ? parseFloat(String(bookingData.price).replace('£', '')) || total
       : total;
     const redeemed = loyaltyPointsRedeemed || 0;
