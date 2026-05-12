@@ -642,6 +642,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [clientPoints, setClientPoints] = useState(0);
   const [clientIsMember, setClientIsMember] = useState(false);
+  const [matchedClientName, setMatchedClientName] = useState('');
   const [pointsInput, setPointsInput] = useState('');
   const [pointsApplied, setPointsApplied] = useState(0);
   const LOYALTY_REDEEM_RATE = 20; // 20 pts = £1 off
@@ -700,6 +701,7 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
     getClientLoyaltyPoints({ phone, email }).then(result => {
       setClientPoints(result.points || 0);
       setClientIsMember(result.isMember || false);
+      setMatchedClientName(result.clientName || '');
     }).catch(() => {});
   }, [booking.bookingId]);
 
@@ -844,6 +846,11 @@ function CheckoutPanel({ booking, barbers, products, extras, onClose, onComplete
                       <p style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0, fontWeight: '600' }}>Loyalty Points</p>
                       <span style={{ fontSize: '0.72rem', color: '#d4af37', fontWeight: '700' }}>⭐ {effectiveClientPoints} pts available</span>
                     </div>
+                    {matchedClientName && matchedClientName.toLowerCase() !== (booking.clientName || booking.name || '').toLowerCase() && (
+                      <div style={{ fontSize: '0.65rem', color: '#ff9800', fontWeight: '600', marginBottom: '6px', padding: '4px 8px', background: 'rgba(255,152,0,0.08)', borderRadius: '6px', border: '1px solid rgba(255,152,0,0.25)' }}>
+                        ⚠ Points matched to: <strong>{matchedClientName}</strong> — confirm before redeeming
+                      </div>
+                    )}
                     {pointsApplied > 0 ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                         <span style={{ fontSize: '0.82rem', color: '#4caf50', fontWeight: '600' }}>-£{pointsApplied.toFixed(2)} off ({Math.round(pointsApplied * LOYALTY_REDEEM_RATE)} pts)</span>

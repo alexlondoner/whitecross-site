@@ -127,9 +127,9 @@ export async function getClientLoyaltyPoints({ phone, email }) {
       }
     }
 
-    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false };
+    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false, clientName: data.name || '' };
   } catch (e) {}
-  return { points: 0, isMember: false };
+  return { points: 0, isMember: false, clientName: '' };
 }
 
 export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, serviceCharge, discount }) {
