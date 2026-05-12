@@ -1036,6 +1036,20 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
 
         const db = getAdminDb();
 
+        // Check if checkout emails are enabled in settings
+        try {
+            const settingsSnap = await db.doc('tenants/whitecross/settings/settings').get();
+            if (settingsSnap.exists) {
+                const s = settingsSnap.data();
+                if (s.checkoutEmailEnabled === false) {
+                    console.log('Checkout emails disabled — skipping.');
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn('Could not read settings, sending email anyway:', err.message);
+        }
+
         // Fetch client doc for loyalty points + member status
         let loyaltyPoints = 0;
         let isMember = false;

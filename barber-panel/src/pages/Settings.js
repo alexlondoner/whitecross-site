@@ -759,6 +759,23 @@ export default function Settings({ theme, onToggleTheme }) {
             <div style={{ position: 'absolute', top: '4px', left: settings.emailConfirmationEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </div>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+          <div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text)', fontWeight: '600', marginBottom: '4px' }}>
+              Send Checkout Receipt + Loyalty Card Email
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+              {settings.checkoutEmailEnabled !== false
+                ? 'Clients receive a receipt + loyalty card email after checkout'
+                : 'Checkout emails are currently disabled'}
+            </div>
+          </div>
+          <div
+            onClick={() => setSettings(s => ({ ...s, checkoutEmailEnabled: s.checkoutEmailEnabled === false ? true : false }))}
+            style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.checkoutEmailEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', top: '4px', left: settings.checkoutEmailEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          </div>
+        </div>
       </div>
 
       {/* Products */}
