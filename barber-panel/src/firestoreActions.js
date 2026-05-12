@@ -41,7 +41,12 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
     checkedOutAt: Timestamp.fromDate(new Date()),
-    loyaltyPointsEarned: Math.floor(total),
+    loyaltyPointsEarned: (discount && discount > 0) ? 0 : Math.floor(
+      // For deposit bookings, earn on full service price not just remaining amount paid today
+      (bookingData.paymentType === 'DEPOSIT' && bookingData.price)
+        ? parseFloat(String(bookingData.price).replace('£', '')) || total
+        : total
+    ),
     loyaltyPointsRedeemed: loyaltyPointsRedeemed || 0,
   });
 
@@ -49,22 +54,40 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
   try {
     const phone = bookingData.clientPhone || '';
     const email = bookingData.clientEmail || '';
-    const pointsEarned = Math.floor(total);
+    const hasDiscount = discount && discount > 0;
+    // For deposit bookings earn on full service price
+    const fullPrice = (bookingData.paymentType === 'DEPOSIT' && bookingData.price)
+      ? parseFloat(String(bookingData.price).replace('£', '')) || total
+      : total;
     const redeemed = loyaltyPointsRedeemed || 0;
-    const netDelta = pointsEarned - redeemed;
-    if ((phone || email) && netDelta !== 0) {
+    if (phone || email) {
       const clientsRef = collection(db, `${TENANT}/clients`);
-      let clientDocRef = null;
+      let clientDoc = null;
       if (phone) {
         const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
-        if (!s.empty) clientDocRef = s.docs[0].ref;
+        if (!s.empty) clientDoc = s.docs[0];
       }
-      if (!clientDocRef && email) {
+      if (!clientDoc && email) {
         const s = await getDocs(query(clientsRef, where('email', '==', email)));
-        if (!s.empty) clientDocRef = s.docs[0].ref;
+        if (!s.empty) clientDoc = s.docs[0];
       }
-      if (clientDocRef) {
-        await updateDoc(clientDocRef, { loyaltyPoints: increment(netDelta) });
+      const isMember = clientDoc?.data()?.isMember || false;
+      if (!isMember) {
+        const pointsEarned = hasDiscount ? 0 : Math.floor(fullPrice);
+        const netDelta = pointsEarned - redeemed;
+        if (netDelta !== 0) {
+          if (clientDoc) {
+            await updateDoc(clientDoc.ref, { loyaltyPoints: increment(netDelta) });
+          } else {
+            await addDoc(clientsRef, {
+              name: bookingData.clientName || '',
+              phone,
+              email,
+              loyaltyPoints: Math.max(0, netDelta),
+              createdAt: Timestamp.fromDate(new Date()),
+            });
+          }
+        }
       }
     }
   } catch (err) {
@@ -73,22 +96,39 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
 }
 
 export async function getClientLoyaltyPoints({ phone, email }) {
-  if (!phone && !email) return 0;
+  if (!phone && !email) return { points: 0, isMember: false };
   try {
     const clientsRef = collection(db, `${TENANT}/clients`);
+    const normPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+    let data = null;
+
+    // Try exact phone match first
     if (phone) {
       const snap = await getDocs(query(clientsRef, where('phone', '==', phone)));
-      if (!snap.empty) return snap.docs[0].data().loyaltyPoints || 0;
+      if (!snap.empty) data = snap.docs[0].data();
     }
-    if (email) {
+    // Try exact email match
+    if (!data && email) {
       const snap = await getDocs(query(clientsRef, where('email', '==', email)));
-      if (!snap.empty) return snap.docs[0].data().loyaltyPoints || 0;
+      if (!snap.empty) data = snap.docs[0].data();
     }
+    // Fallback: normalized phone scan (handles +44 vs 07 format mismatch)
+    if (!data && phone) {
+      const norm = normPhone(phone);
+      if (norm.length >= 9) {
+        const allSnap = await getDocs(clientsRef);
+        allSnap.forEach(d => {
+          if (!data && normPhone(d.data().phone) === norm) data = d.data();
+        });
+      }
+    }
+
+    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false };
   } catch (e) {}
-  return 0;
+  return { points: 0, isMember: false };
 }
 
-export async function saveUnpaidBooking({ bookingId, soldProducts, serviceCharge, discount }) {
+export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, serviceCharge, discount }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
@@ -106,8 +146,8 @@ export async function saveUnpaidBooking({ bookingId, soldProducts, serviceCharge
             qty: parseInt(p.qty, 10) || 0,
           }))
       : [],
-    soldAddOns: Array.isArray(arguments[0].soldAddOns)
-      ? arguments[0].soldAddOns
+    soldAddOns: Array.isArray(soldAddOns)
+      ? soldAddOns
           .filter((p) => p && p.qty > 0)
           .map((p) => ({
             productId: p.productId || p.id || '',

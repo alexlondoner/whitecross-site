@@ -1017,3 +1017,273 @@ exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
     await batch.commit();
     console.log(`cleanupExpiredPending: cancelled ${snap.size} expired pending booking(s)`);
 });
+
+// ── Loyalty card email: fires when a booking is checked out ──────────────────
+exports.sendLoyaltyCardEmail = onDocumentUpdated(
+    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+    async (event) => {
+        const before = event.data.before.data();
+        const after  = event.data.after.data();
+        if (!before || !after) return;
+
+        const prevStatus = String(before.status || '').trim().toUpperCase();
+        const newStatus  = String(after.status  || '').trim().toUpperCase();
+        if (newStatus !== 'CHECKED_OUT' || prevStatus === 'CHECKED_OUT') return;
+
+        const email = after.clientEmail;
+        if (!email) return;
+
+        const db = getAdminDb();
+
+        // Fetch client doc for loyalty points + member status
+        let loyaltyPoints = 0;
+        let isMember = false;
+        try {
+            const phone = after.clientPhone || '';
+            let clientData = null;
+            if (phone) {
+                const snap = await db.collection('tenants/whitecross/clients').where('phone', '==', phone).limit(1).get();
+                if (!snap.empty) clientData = snap.docs[0].data();
+            }
+            if (!clientData) {
+                const snap = await db.collection('tenants/whitecross/clients').where('email', '==', email).limit(1).get();
+                if (!snap.empty) clientData = snap.docs[0].data();
+            }
+            if (clientData) {
+                loyaltyPoints = clientData.loyaltyPoints || 0;
+                isMember = clientData.isMember || false;
+            }
+        } catch (err) {
+            console.warn('sendLoyaltyCardEmail: could not fetch client doc', err.message);
+        }
+
+        // Members don't earn points — send a simpler receipt, no card
+        // (uncomment below to skip email for members entirely)
+        // if (isMember) return;
+
+        const name        = after.clientName || 'Guest';
+        const service     = SERVICE_NAMES[after.serviceId] || after.serviceId || 'Service';
+        const barber      = (after.barberName || after.barberId || 'TBC').toUpperCase();
+        const paidAmount  = parseFloat(String(after.paidAmount || after.price || '0').replace('£', '')) || 0;
+        const pointsEarned = after.loyaltyPointsEarned || 0;
+        const redeemed    = after.loyaltyPointsRedeemed || 0;
+        const discount    = parseFloat(String(after.discount || '0').replace('£', '')) || 0;
+
+        let dateStr = 'Today';
+        if (after.startTime) {
+            const d = after.startTime.toDate();
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        // Loyalty progress
+        const REDEEM_RATE = 20; // 20pts = £1
+        const milestones = [100, 250, 500, 1000];
+        const nextMilestone = milestones.find(m => loyaltyPoints < m) || 1000;
+        const prevMilestone = milestones[milestones.indexOf(nextMilestone) - 1] || 0;
+        const progressPct = Math.min(Math.round(((loyaltyPoints - prevMilestone) / (nextMilestone - prevMilestone)) * 100), 100);
+        const redeemable = Math.floor(loyaltyPoints / REDEEM_RATE);
+
+        // Progress bar (table-based for email compatibility)
+        const filledCells = Math.round(progressPct / 5); // 20 cells total
+        const barCells = Array.from({ length: 20 }, (_, i) =>
+            `<td style="width:5%;height:8px;background:${i < filledCells ? '#d4af37' : '#2a2a2a'};${i === 0 ? 'border-radius:4px 0 0 4px;' : ''}${i === 19 ? 'border-radius:0 4px 4px 0;' : ''}"></td>`
+        ).join('');
+
+        // Milestone icons
+        const milestoneRows = [
+            { pts: 100,  label: '£5 reward',   icon: '🥉' },
+            { pts: 250,  label: '£12.50 reward', icon: '🥈' },
+            { pts: 500,  label: '£25 reward',  icon: '🥇' },
+            { pts: 1000, label: '£50 reward',  icon: '👑' },
+        ].map(m => `
+            <tr>
+                <td style="padding:7px 0;border-bottom:1px solid #1e1e1e;font-size:16px;">${m.icon}</td>
+                <td style="padding:7px 0;border-bottom:1px solid #1e1e1e;font-size:13px;color:${loyaltyPoints >= m.pts ? '#fff' : '#555'};padding-left:10px;font-weight:${loyaltyPoints >= m.pts ? '700' : '400'};">${m.pts} pts — ${m.label}</td>
+                <td style="padding:7px 0;border-bottom:1px solid #1e1e1e;font-size:12px;color:${loyaltyPoints >= m.pts ? '#4caf50' : '#444'};text-align:right;">${loyaltyPoints >= m.pts ? '✓ Reached' : (m.pts - loyaltyPoints) + ' to go'}</td>
+            </tr>
+        `).join('');
+
+        const memberSection = isMember ? `
+            <div style="margin:20px 0;padding:16px 20px;background:#1a0d24;border:1px solid #4a2070;border-radius:4px;text-align:center;">
+                <p style="margin:0;color:#ce93d8;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">◆ MemberZone ${after.membershipTier ? '· ' + after.membershipTier.toUpperCase() : ''}</p>
+                <p style="margin:6px 0 0 0;color:#9c4dcc;font-size:11px;">Your membership benefits are active.</p>
+            </div>
+        ` : '';
+
+        const pointsSection = !isMember ? `
+            <!-- Loyalty Card -->
+            <div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:4px;overflow:hidden;margin:30px 0;">
+
+                <!-- Card header -->
+                <div style="background:linear-gradient(135deg,#1a1500,#0d0d0d);padding:22px 24px 18px;border-bottom:1px solid #222;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td>
+                                <p style="margin:0;color:#d4af37;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;">Loyalty Card</p>
+                                <p style="margin:4px 0 0 0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">${name}</p>
+                            </td>
+                            <td style="text-align:right;vertical-align:top;">
+                                <p style="margin:0;color:#d4af37;font-size:32px;font-weight:800;line-height:1;">⭐ ${loyaltyPoints}</p>
+                                <p style="margin:2px 0 0 0;color:#888;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Points</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Progress bar -->
+                <div style="padding:18px 24px 14px;">
+                    <table width="100%" cellpadding="0" cellspacing="1" style="margin-bottom:8px;">
+                        <tr>${barCells}</tr>
+                    </table>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="font-size:11px;color:#555;">${prevMilestone} pts</td>
+                            <td style="font-size:11px;color:#d4af37;text-align:center;font-weight:700;">Next: ${nextMilestone} pts</td>
+                            <td style="font-size:11px;color:#555;text-align:right;">${progressPct}%</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Redeem value -->
+                ${redeemable > 0 ? `
+                <div style="margin:0 24px 18px;padding:14px;background:#0f1f0f;border:1px solid #1e3d1e;border-radius:3px;text-align:center;">
+                    <p style="margin:0;color:#4caf50;font-size:18px;font-weight:800;">£${redeemable} available to redeem</p>
+                    <p style="margin:4px 0 0 0;color:#2e7d32;font-size:11px;">Tell your barber at your next visit · Min 20 pts</p>
+                </div>
+                ` : `
+                <div style="margin:0 24px 18px;padding:12px;background:#111;border:1px solid #222;border-radius:3px;text-align:center;">
+                    <p style="margin:0;color:#555;font-size:12px;">${20 - loyaltyPoints > 0 ? (20 - loyaltyPoints) + ' more points until your first £1 off' : 'Redeem at your next visit'}</p>
+                </div>
+                `}
+
+                <!-- This visit summary -->
+                <div style="padding:0 24px 18px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1e1e1e;padding-top:14px;">
+                        <tr>
+                            <td style="padding:5px 0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:1px;">This visit</td>
+                            <td style="padding:5px 0;color:#888;font-size:12px;text-align:right;">${dateStr}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 0;color:#aaa;font-size:13px;">${service}</td>
+                            <td style="padding:3px 0;color:#d4af37;font-size:14px;font-weight:700;text-align:right;">£${paidAmount.toFixed(2)}</td>
+                        </tr>
+                        ${pointsEarned > 0 ? `
+                        <tr>
+                            <td colspan="2" style="padding:6px 0 0 0;color:#d4af37;font-size:12px;font-weight:600;">+ ${pointsEarned} points earned</td>
+                        </tr>
+                        ` : ''}
+                        ${redeemed > 0 ? `
+                        <tr>
+                            <td colspan="2" style="padding:3px 0 0 0;color:#4caf50;font-size:12px;">− ${redeemed} points redeemed (£${(redeemed / REDEEM_RATE).toFixed(2)} off)</td>
+                        </tr>
+                        ` : ''}
+                        ${discount > 0 && pointsEarned === 0 ? `
+                        <tr>
+                            <td colspan="2" style="padding:3px 0 0 0;color:#888;font-size:11px;">Discount applied — points not earned on this visit</td>
+                        </tr>
+                        ` : ''}
+                    </table>
+                </div>
+
+                <!-- Milestones -->
+                <div style="background:#0a0a0a;border-top:1px solid #1e1e1e;padding:18px 24px;">
+                    <p style="margin:0 0 10px 0;color:#555;font-size:10px;letter-spacing:2px;text-transform:uppercase;">Milestones</p>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        ${milestoneRows}
+                    </table>
+                </div>
+
+                <!-- Rate info -->
+                <div style="padding:12px 24px;text-align:center;background:#070707;">
+                    <p style="margin:0;color:#333;font-size:10px;letter-spacing:1px;">1 pt per £1 spent · 20 pts = £1 off · Min 20 pts to redeem</p>
+                </div>
+            </div>
+        ` : '';
+
+        const htmlBody = `<!DOCTYPE html>
+<html>
+<head><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap');</style></head>
+<body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
+    <div style="max-width:560px;margin:0 auto;color:#ffffff;">
+
+        <!-- Header -->
+        <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
+            <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+        </div>
+
+        <!-- Body -->
+        <div style="background:#111;border:1px solid #1a1a1a;border-top:none;padding:36px 32px;">
+            <p style="color:#d4af37;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px 0;font-weight:700;">Payment Receipt</p>
+            <h2 style="margin:0 0 6px 0;font-size:24px;font-weight:300;color:#fff;">Thanks, <strong>${name}</strong></h2>
+            <p style="margin:0 0 28px 0;color:#666;font-size:13px;">${service} · ${barber} · ${dateStr}</p>
+
+            <!-- Receipt summary -->
+            <div style="background:#161616;border:1px solid #222;padding:20px 24px;border-radius:3px;margin-bottom:8px;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Service</td>
+                        <td style="color:#fff;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">${service}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Barber</td>
+                        <td style="color:#fff;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">${barber}</td>
+                    </tr>
+                    ${discount > 0 ? `
+                    <tr>
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Discount</td>
+                        <td style="color:#ff9800;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">-£${discount.toFixed(2)}</td>
+                    </tr>
+                    ` : ''}
+                    ${redeemed > 0 ? `
+                    <tr>
+                        <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Points Redeemed</td>
+                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">-£${(redeemed / REDEEM_RATE).toFixed(2)} (${redeemed} pts)</td>
+                    </tr>
+                    ` : ''}
+                    <tr style="border-top:1px solid #222;">
+                        <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">Total Paid</td>
+                        <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">£${paidAmount.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+
+            ${memberSection}
+            ${pointsSection}
+
+            <!-- Footer contact -->
+            <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;margin-top:8px;">
+                <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
+                    136 Whitecross Street, London EC1Y 8QJ<br>
+                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
+                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
+            <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        try {
+            const subject = isMember
+                ? `Receipt – ${service} · ${dateStr} | I CUT Whitecross`
+                : `Receipt + Your Loyalty Card · ⭐ ${loyaltyPoints} pts | I CUT Whitecross`;
+            await getTransporter().sendMail({
+                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+                to: email,
+                subject,
+                html: htmlBody,
+            });
+            console.log(`Loyalty card email sent to ${email} · ${loyaltyPoints} pts`);
+        } catch (err) {
+            console.error('sendLoyaltyCardEmail error:', err);
+        }
+    }
+);
+
+// ── ONE-TIME: backfill loyalty points from checkout history ───────────────────

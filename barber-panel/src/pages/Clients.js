@@ -13,15 +13,21 @@ function getBColor(barber) {
 const inp = { width: '100%', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };
 const lbl = { display: 'block', fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '5px', fontWeight: '600' };
 
+const MEMBERSHIP_TIERS = [
+  { key: 'standard', label: 'Standard', color: '#7b1fa2', desc: 'Priority booking + monthly perks' },
+  { key: 'premium',  label: 'Premium',  color: '#d4af37', desc: 'All Standard benefits + exclusive slots + free monthly service' },
+];
+
 const SEGMENT_DEFS = [
-  { key: 'new',          label: 'New clients',          color: '#4caf50', desc: 'Clients added in the last 30 days' },
-  { key: 'recent',       label: 'Recent clients',        color: '#2196f3', desc: 'Clients with appointments in the last 30 days' },
-  { key: 'firstVisit',   label: 'First visit',           color: '#ff9800', desc: 'Clients with no past appointments, but with appointments in the future' },
-  { key: 'loyal',        label: 'Loyal clients',         color: '#d4af37', desc: 'Clients with 2 or more visits in the last 5 months' },
-  { key: 'lapsed',       label: 'Lapsed clients',        color: '#ff5252', desc: 'Clients with 3 or more visits in the last 12 months, and no visits in the last 2 months' },
-  { key: 'highSpenders', label: 'High spenders',         color: '#9c27b0', desc: 'Clients with more than £81 in sales in the last 12 months' },
-  { key: 'highPoints',   label: 'High points',           color: '#d4af37', desc: 'Clients with 100 or more loyalty points — ready to redeem' },
-  { key: 'birthdays',    label: 'Upcoming birthdays',    color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
+  { key: 'members',      label: 'MemberZone',            color: '#7b1fa2', desc: 'Active MemberZone subscribers' },
+  { key: 'new',          label: 'New clients',            color: '#4caf50', desc: 'Clients added in the last 30 days' },
+  { key: 'recent',       label: 'Recent clients',         color: '#2196f3', desc: 'Clients with appointments in the last 30 days' },
+  { key: 'firstVisit',   label: 'First visit',            color: '#ff9800', desc: 'Clients with no past appointments, but with appointments in the future' },
+  { key: 'loyal',        label: 'Loyal clients',          color: '#d4af37', desc: 'Clients with 2 or more visits in the last 5 months' },
+  { key: 'lapsed',       label: 'Lapsed clients',         color: '#ff5252', desc: 'Clients with 3 or more visits in the last 12 months, and no visits in the last 2 months' },
+  { key: 'highSpenders', label: 'High spenders',          color: '#9c27b0', desc: 'Clients with more than £81 in sales in the last 12 months' },
+  { key: 'highPoints',   label: 'High points',            color: '#d4af37', desc: 'Clients with 50 or more loyalty points — £5+ available to redeem' },
+  { key: 'birthdays',    label: 'Upcoming birthdays',     color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
 export default function Clients() {
@@ -42,6 +48,11 @@ export default function Clients() {
   const [addSaving, setAddSaving] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
+  const [noteInput, setNoteInput] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [detailTab, setDetailTab] = useState('overview');
+  const [memberTierSelect, setMemberTierSelect] = useState('standard');
+  const [memberSaving, setMemberSaving] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
 
@@ -135,13 +146,16 @@ export default function Clients() {
           notes: manual?.notes || '',
           manualId: manual?.id,
           loyaltyPoints: manual?.loyaltyPoints || 0,
+          isMember: manual?.isMember || false,
+          membershipTier: manual?.membershipTier || '',
+          memberSince: manual?.memberSince || null,
         };
       });
     manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
-        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, loyaltyPoints: m.loyaltyPoints || 0 });
+        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
       }
     });
     return merged;
@@ -151,6 +165,7 @@ export default function Clients() {
     const now = new Date();
     const ago = (days) => new Date(now - days * 24 * 3600 * 1000);
     return {
+      members: allClients.filter(c => c.isMember),
       new: allClients.filter(c => c.isManualOnly ? (c.addedAt && c.addedAt >= ago(30)) : (c.firstVisitRaw && c.firstVisitRaw >= ago(30))),
       recent: allClients.filter(c => c.lastVisitRaw && c.lastVisitRaw >= ago(30)),
       firstVisit: allClients.filter(c => {
@@ -165,7 +180,7 @@ export default function Clients() {
         return yr >= 3 && rec === 0;
       }),
       highSpenders: allClients.filter(c => c.bookings.filter(b => b.startTimeRaw && b.startTimeRaw >= ago(365) && b.status !== 'CANCELLED').reduce((s, b) => s + (parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0), 0) > 81),
-      highPoints: allClients.filter(c => (c.loyaltyPoints || 0) >= 100),
+      highPoints: allClients.filter(c => (c.loyaltyPoints || 0) >= 50),
       birthdays: allClients.filter(c => {
         if (!c.birthday) return false;
         try {
@@ -213,6 +228,98 @@ export default function Clients() {
       setShowAddForm(false);
     } catch (e) { console.error(e); }
     finally { setAddSaving(false); }
+  };
+
+  useEffect(() => {
+    setNoteInput(selectedClient?.notes || '');
+    setDetailTab('overview');
+  }, [selectedClient?.name]);
+
+  const saveNote = async () => {
+    if (!selectedClient) return;
+    setNoteSaving(true);
+    try {
+      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const noteVal = noteInput.trim();
+      const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
+
+      let targetId = selectedClient.manualId || null;
+      if (!targetId) {
+        const snap = await getDocs(clientsRef);
+        const origPhone = normalizePhone(selectedClient.phone);
+        const origEmail = (selectedClient.email || '').toLowerCase().trim();
+        const origName  = (selectedClient.name  || '').toLowerCase().trim();
+        snap.forEach(d => {
+          if (targetId) return;
+          const dd = d.data();
+          const dp = normalizePhone(dd.phone);
+          const de = (dd.email || '').toLowerCase().trim();
+          const dn = (dd.name  || '').toLowerCase().trim();
+          if (origPhone && dp && origPhone === dp) targetId = d.id;
+          else if (origEmail && de && origEmail === de) targetId = d.id;
+          else if (origName && dn && origName === dn) targetId = d.id;
+        });
+      }
+
+      if (targetId) {
+        await updateDoc(doc(db, `tenants/${TENANT}/clients`, targetId), { notes: noteVal });
+        setManualClients(prev => prev.map(m => m.id === targetId ? { ...m, notes: noteVal } : m));
+      } else {
+        const ref = await addDoc(clientsRef, {
+          name: selectedClient.name, phone: selectedClient.phone, email: selectedClient.email,
+          notes: noteVal, createdAt: serverTimestamp(),
+        });
+        setManualClients(prev => [...prev, { id: ref.id, name: selectedClient.name, phone: selectedClient.phone, email: selectedClient.email, notes: noteVal, createdAt: new Date() }]);
+      }
+      setSelectedClient(prev => prev ? { ...prev, notes: noteVal } : null);
+    } catch (e) { console.error('saveNote error:', e); }
+    finally { setNoteSaving(false); }
+  };
+
+  const resolveMemberDocId = async (client) => {
+    if (client.manualId) return client.manualId;
+    const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+    const norm = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
+    const snap = await getDocs(clientsRef);
+    let found = null;
+    snap.forEach(d => {
+      if (found) return;
+      const dd = d.data();
+      if (client.phone && norm(dd.phone) === norm(client.phone)) found = d.id;
+      else if (client.email && (dd.email || '').toLowerCase() === client.email.toLowerCase()) found = d.id;
+      else if (client.name && (dd.name || '').toLowerCase() === client.name.toLowerCase()) found = d.id;
+    });
+    if (found) return found;
+    const ref = await addDoc(clientsRef, { name: client.name, phone: client.phone, email: client.email, createdAt: serverTimestamp() });
+    return ref.id;
+  };
+
+  const promoteMember = async (client, tier) => {
+    if (!window.confirm(`Promote ${client.name} to MemberZone (${tier})? Their loyalty points (${client.loyaltyPoints || 0} pts) will be reset to 0.`)) return;
+    setMemberSaving(true);
+    try {
+      const docId = await resolveMemberDocId(client);
+      await updateDoc(doc(db, `tenants/${TENANT}/clients`, docId), {
+        isMember: true, membershipTier: tier, memberSince: serverTimestamp(), loyaltyPoints: 0,
+      });
+      const update = { isMember: true, membershipTier: tier, memberSince: new Date(), loyaltyPoints: 0, manualId: docId };
+      setManualClients(prev => prev.map(m => m.id === docId ? { ...m, ...update } : m));
+      setSelectedClient(prev => prev ? { ...prev, ...update } : null);
+    } catch (e) { console.error('promoteMember error:', e); }
+    finally { setMemberSaving(false); }
+  };
+
+  const demoteMember = async (client) => {
+    if (!window.confirm(`Remove ${client.name} from MemberZone?`)) return;
+    setMemberSaving(true);
+    try {
+      const docId = await resolveMemberDocId(client);
+      await updateDoc(doc(db, `tenants/${TENANT}/clients`, docId), { isMember: false, membershipTier: '' });
+      const update = { isMember: false, membershipTier: '' };
+      setManualClients(prev => prev.map(m => m.id === docId ? { ...m, ...update } : m));
+      setSelectedClient(prev => prev ? { ...prev, ...update } : null);
+    } catch (e) { console.error('demoteMember error:', e); }
+    finally { setMemberSaving(false); }
   };
 
   // Store original identifying fields for edit lookup
@@ -451,118 +558,281 @@ export default function Clients() {
             </div>
           </div>
 
-          {/* Client detail panel */}
-          {selectedClient && (
-            <div style={{ width: '300px', flexShrink: 0, background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.04)', flexShrink: 0 }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '600' }}>Client Profile</span>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <button onClick={() => openEditClient(selectedClient)} title="Edit client"
-                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '6px', color: '#d4af37', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteClient(selectedClient)} title="Delete client"
-                    style={{ padding: '4px 9px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
-                    Delete
-                  </button>
-                  <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>
-                </div>
-              </div>
-              <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#d4af3722', border: '2px solid #d4af3744', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: '800', color: '#d4af37', flexShrink: 0 }}>
-                    {selectedClient.name[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {selectedClient.name}
-                      {selectedClient.visits >= 5 && <span style={{ fontSize: '0.58rem', background: 'rgba(212,175,55,0.2)', color: '#d4af37', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>VIP</span>}
-                    </div>
-                    {selectedClient.phone && <div style={{ fontSize: '0.68rem', color: 'var(--muted)', marginTop: '2px' }}>{selectedClient.phone}</div>}
-                    {selectedClient.email && <div style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{selectedClient.email}</div>}
-                    {selectedClient.birthday && <div style={{ fontSize: '0.65rem', color: '#e91e63', marginTop: '2px' }}>🎂 {new Date(selectedClient.birthday).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</div>}
-                    {selectedClient.notes && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '4px', fontStyle: 'italic' }}>{selectedClient.notes}</div>}
-                  </div>
-                </div>
+          {/* ── CLIENT DETAIL PANEL ── */}
+          {selectedClient && (() => {
+            const pts = selectedClient.loyaltyPoints || 0;
+            const milestones = [100, 250, 500, 1000];
+            const nextMilestone = milestones.find(m => pts < m) || milestones[milestones.length - 1];
+            const prevMilestone = milestones[milestones.indexOf(nextMilestone) - 1] || 0;
+            const progress = Math.min(((pts - prevMilestone) / (nextMilestone - prevMilestone)) * 100, 100);
+            const topBarber = Object.entries(selectedClient.barbers || {}).sort((a,b) => b[1]-a[1])[0];
+            const topBarberColor = topBarber ? getBColor(topBarber[0]) : '#d4af37';
+            return (
+              <div style={{ width: '360px', flexShrink: 0, background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)' }}>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {[
-                    { label: 'Visits', value: selectedClient.visits, color: '#d4af37' },
-                    { label: 'Total Spent', value: '£' + selectedClient.totalSpent.toFixed(2), color: '#4caf50' },
-                    { label: 'Tips Given', value: selectedClient.totalTip > 0 ? '£' + selectedClient.totalTip.toFixed(2) : '--', color: '#4caf50' },
-                    { label: 'Discounts', value: selectedClient.totalDiscount > 0 ? '£' + selectedClient.totalDiscount.toFixed(2) : '--', color: '#ff9800' },
-                    { label: 'Avg/Visit', value: '£' + (selectedClient.visits ? selectedClient.totalSpent / selectedClient.visits : 0).toFixed(0), color: '#2196f3' },
-                    { label: 'Cancelled', value: selectedClient.cancelled, color: '#ff5252' },
-                  ].map(s => (
-                    <div key={s.label} style={{ padding: '10px 12px', background: s.color + '08', border: '1px solid ' + s.color + '20', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '1rem', fontWeight: '700', color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '0.5px', marginTop: '1px' }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ padding: '14px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.2)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Loyalty Points</span>
-                    <span style={{ fontSize: '1rem', color: '#d4af37', fontWeight: '800' }}>⭐ {selectedClient.loyaltyPoints || 0}</span>
-                  </div>
-                  <div style={{ height: '6px', background: 'rgba(212,175,55,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
-                    <div style={{ width: Math.min((selectedClient.loyaltyPoints || 0) / 500 * 100, 100) + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '3px', transition: 'width 0.5s' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>
-                      {(selectedClient.loyaltyPoints || 0) >= 100
-                        ? `£${Math.floor((selectedClient.loyaltyPoints || 0) / 100)} available to redeem`
-                        : `${100 - (selectedClient.loyaltyPoints || 0)} pts until first £1 off`}
-                    </span>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>100 pts = £1</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>Services</div>
-                  {Object.entries(selectedClient.services).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, count]) => (
-                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text)' }}>{getSvcLabel(id)}</span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{count}x</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>History</div>
-                  {selectedClient.bookings.slice().reverse().slice(0, 10).map((b, i) => (
-                    <div key={i} style={{ padding: '8px 10px', background: 'rgba(212,175,55,0.04)', borderRadius: '8px', marginBottom: '6px', border: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--text)' }}>{b.date}</span>
-                        <span style={{ fontSize: '0.68rem', fontWeight: '700', color: '#d4af37' }}>{b.paidAmount ? '£' + b.paidAmount : (b.price ? '£' + b.price : '--')}</span>
+                {/* Header */}
+                <div style={{ padding: '18px 18px 0', background: 'rgba(212,175,55,0.03)', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: topBarberColor + '22', border: '3px solid ' + topBarberColor + '66', boxShadow: '0 0 0 4px ' + topBarberColor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', fontWeight: '800', color: topBarberColor, flexShrink: 0 }}>
+                        {selectedClient.name[0].toUpperCase()}
                       </div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{getSvcLabel(b.service)} · {(b.barber || '').toUpperCase()}</div>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
-                        <span style={{ fontSize: '0.58rem', color: b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800', background: b.status === 'CHECKED_OUT' ? 'rgba(76,175,80,0.15)' : b.status === 'CANCELLED' ? 'rgba(255,82,82,0.15)' : 'rgba(255,152,0,0.15)', padding: '1px 5px', borderRadius: '3px' }}>{b.status}</span>
-                        {b.tip && parseFloat(String(b.tip).replace('£', '')) > 0 && <span style={{ fontSize: '0.58rem', color: '#4caf50', background: 'rgba(76,175,80,0.1)', padding: '1px 5px', borderRadius: '3px' }}>tip £{b.tip}</span>}
+                      <div>
+                        <div style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text)', marginBottom: '5px' }}>{selectedClient.name}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
+                          {selectedClient.isMember && <span style={{ fontSize: '0.55rem', background: 'rgba(123,31,162,0.2)', color: '#ce93d8', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>◆ {(selectedClient.membershipTier || 'member').toUpperCase()}</span>}
+                          {!selectedClient.isMember && selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
+                          {selectedClient.isManualOnly && <span style={{ fontSize: '0.55rem', background: 'rgba(33,150,243,0.15)', color: '#2196f3', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>ADDED</span>}
+                          {!selectedClient.isManualOnly && selectedClient.visits === 1 && <span style={{ fontSize: '0.55rem', background: 'rgba(76,175,80,0.15)', color: '#4caf50', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>NEW</span>}
+                          {!selectedClient.isMember && pts >= 20 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>⭐ £{Math.floor(pts/20)}</span>}
+                        </div>
+                        {selectedClient.phone && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '5px' }}>{selectedClient.phone}</div>}
+                        {selectedClient.email && <div style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{selectedClient.email}</div>}
+                        {selectedClient.birthday && <div style={{ fontSize: '0.62rem', color: '#e91e63', marginTop: '2px' }}>🎂 {new Date(selectedClient.birthday).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</div>}
                       </div>
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                      <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>×</button>
+                      <button onClick={() => openEditClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600' }}>Edit</button>
+                      <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+                    {selectedClient.phone && (
+                      <a href={'https://wa.me/' + String(selectedClient.phone).replace(/[\s+\-()]/g, '')} target="_blank" rel="noreferrer"
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '8px 4px', background: '#25D36612', border: '1px solid #25D36630', borderRadius: '10px', color: '#25D366', textDecoration: 'none' }}>
+                        <span style={{ fontSize: '1rem' }}>💬</span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: '600' }}>WhatsApp</span>
+                      </a>
+                    )}
+                    {selectedClient.email && (
+                      <a href={'mailto:' + selectedClient.email}
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '8px 4px', background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '10px', color: '#d4af37', textDecoration: 'none' }}>
+                        <span style={{ fontSize: '1rem' }}>✉️</span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: '600' }}>Email</span>
+                      </a>
+                    )}
+                    {selectedClient.phone && (
+                      <a href={'tel:' + selectedClient.phone}
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '8px 4px', background: 'rgba(33,150,243,0.07)', border: '1px solid rgba(33,150,243,0.2)', borderRadius: '10px', color: '#2196f3', textDecoration: 'none' }}>
+                        <span style={{ fontSize: '1rem' }}>📞</span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: '600' }}>Call</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Tabs */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginLeft: '-18px', marginRight: '-18px', paddingLeft: '18px', gap: '0' }}>
+                    {['overview','history','loyalty'].map(t => (
+                      <button key={t} onClick={() => setDetailTab(t)}
+                        style={{ padding: '8px 16px', background: 'transparent', border: 'none', borderBottom: detailTab === t ? '2px solid #d4af37' : '2px solid transparent', color: detailTab === t ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.68rem', fontWeight: '600', textTransform: 'capitalize', letterSpacing: '0.5px', marginBottom: '-1px' }}>
+                        {t === 'overview' ? 'Overview' : t === 'history' ? 'History' : 'Loyalty'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {selectedClient.phone && (
-                    <a href={'https://wa.me/' + String(selectedClient.phone).replace(/[\s+\-()]/g, '')} target="_blank" rel="noreferrer"
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: '#25D36610', border: '1px solid #25D36630', borderRadius: '8px', color: '#25D366', fontSize: '0.72rem', textDecoration: 'none', fontWeight: '600' }}>
-                      WhatsApp
-                    </a>
-                  )}
-                  {selectedClient.email && (
-                    <a href={'mailto:' + selectedClient.email}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: 'rgba(212,175,55,0.06)', border: '1px solid var(--border)', borderRadius: '8px', color: '#d4af37', fontSize: '0.72rem', textDecoration: 'none', fontWeight: '600' }}>
-                      Email
-                    </a>
-                  )}
+                {/* Tab content */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                  {/* ── OVERVIEW TAB ── */}
+                  {detailTab === 'overview' && (<>
+                    {/* Stats grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px' }}>
+                      {[
+                        { label: 'Visits', value: selectedClient.visits, color: '#d4af37' },
+                        { label: 'Total', value: '£' + selectedClient.totalSpent.toFixed(0), color: '#4caf50' },
+                        { label: 'Avg/Visit', value: '£' + (selectedClient.visits ? (selectedClient.totalSpent / selectedClient.visits).toFixed(0) : '0'), color: '#2196f3' },
+                        { label: 'Tips', value: selectedClient.totalTip > 0 ? '£' + selectedClient.totalTip.toFixed(0) : '--', color: '#4caf50' },
+                        { label: 'Discounts', value: selectedClient.totalDiscount > 0 ? '£' + selectedClient.totalDiscount.toFixed(0) : '--', color: '#ff9800' },
+                        { label: 'Cancelled', value: selectedClient.cancelled || 0, color: '#ff5252' },
+                      ].map(s => (
+                        <div key={s.label} style={{ padding: '9px 10px', background: s.color + '0a', border: '1px solid ' + s.color + '22', borderRadius: '8px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.92rem', fontWeight: '700', color: s.color }}>{s.value}</div>
+                          <div style={{ fontSize: '0.56rem', color: 'var(--muted)', letterSpacing: '0.5px', marginTop: '2px' }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* MemberZone */}
+                    {selectedClient.isMember ? (
+                      <div style={{ padding: '14px', background: 'rgba(123,31,162,0.08)', borderRadius: '10px', border: '1px solid rgba(123,31,162,0.3)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontSize: '0.6rem', color: '#ce93d8', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>◆ MemberZone</div>
+                            <div style={{ fontSize: '0.88rem', color: '#ce93d8', fontWeight: '700', textTransform: 'capitalize' }}>{selectedClient.membershipTier || 'Standard'}</div>
+                            {selectedClient.memberSince && (
+                              <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '3px' }}>
+                                Since {(selectedClient.memberSince?.toDate ? selectedClient.memberSince.toDate() : new Date(selectedClient.memberSince)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => demoteMember(selectedClient)} disabled={memberSaving}
+                            style={{ padding: '4px 10px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.62rem', fontWeight: '600' }}>
+                            Remove
+                          </button>
+                        </div>
+                        <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(123,31,162,0.08)', borderRadius: '6px', fontSize: '0.62rem', color: '#ce93d8' }}>
+                          Loyalty points paused — member benefits apply
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>Promote to MemberZone</div>
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                          {MEMBERSHIP_TIERS.map(t => (
+                            <button key={t.key} onClick={() => setMemberTierSelect(t.key)}
+                              style={{ flex: 1, padding: '8px', background: memberTierSelect === t.key ? t.color + '22' : 'transparent', border: '1px solid ' + (memberTierSelect === t.key ? t.color : 'var(--border)'), borderRadius: '8px', color: memberTierSelect === t.key ? t.color : 'var(--muted)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}>
+                              {t.label}
+                              <div style={{ fontSize: '0.55rem', fontWeight: '400', marginTop: '2px', opacity: 0.8 }}>{t.desc}</div>
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={() => promoteMember(selectedClient, memberTierSelect)} disabled={memberSaving}
+                          style={{ width: '100%', padding: '9px', background: memberSaving ? 'transparent' : 'rgba(123,31,162,0.15)', border: '1px solid rgba(123,31,162,0.4)', borderRadius: '8px', color: '#ce93d8', cursor: memberSaving ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                          {memberSaving ? 'Saving...' : '◆ Add to MemberZone'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Services */}
+                    {Object.keys(selectedClient.services).length > 0 && (
+                      <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: '600' }}>Services</div>
+                        {Object.entries(selectedClient.services).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id, count]) => {
+                          const maxCount = Math.max(...Object.values(selectedClient.services));
+                          return (
+                            <div key={id} style={{ marginBottom: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text)' }}>{getSvcLabel(id)}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: '600' }}>{count}x</span>
+                              </div>
+                              <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: (count/maxCount*100) + '%', height: '100%', background: topBarberColor, borderRadius: '2px' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Barber breakdown */}
+                    {Object.keys(selectedClient.barbers || {}).length > 0 && (
+                      <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: '600' }}>Barbers</div>
+                        {Object.entries(selectedClient.barbers).sort((a,b) => b[1]-a[1]).map(([barber, count]) => (
+                          <div key={barber} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: getBColor(barber) }} />
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: '600' }}>{barber}</span>
+                            </div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{count} visit{count !== 1 ? 's' : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>Notes</div>
+                      <textarea value={noteInput} onChange={e => setNoteInput(e.target.value)} placeholder="Preferences, allergies, anything to remember..." rows={2}
+                        style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '7px', color: 'var(--text)', fontSize: '0.78rem', outline: 'none', resize: 'vertical', lineHeight: '1.5', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                      <button onClick={saveNote} disabled={noteSaving || noteInput.trim() === (selectedClient.notes || '').trim()}
+                        style={{ marginTop: '6px', padding: '5px 14px', background: (noteSaving || noteInput.trim() === (selectedClient.notes || '').trim()) ? 'transparent' : 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '6px', color: '#d4af37', fontSize: '0.72rem', fontWeight: '600', cursor: (noteSaving || noteInput.trim() === (selectedClient.notes || '').trim()) ? 'default' : 'pointer', opacity: (noteSaving || noteInput.trim() === (selectedClient.notes || '').trim()) ? 0.4 : 1 }}>
+                        {noteSaving ? 'Saving...' : 'Save Note'}
+                      </button>
+                    </div>
+                  </>)}
+
+                  {/* ── HISTORY TAB ── */}
+                  {detailTab === 'history' && (<>
+                    {selectedClient.bookings.length === 0
+                      ? <div style={{ color: 'var(--muted)', fontSize: '0.78rem', textAlign: 'center', marginTop: '24px' }}>No booking history</div>
+                      : selectedClient.bookings.slice().reverse().map((b, i) => {
+                          const statusColor = b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800';
+                          const amount = b.paidAmount ? '£' + b.paidAmount : (b.price ? '£' + b.price : '--');
+                          return (
+                            <div key={i} style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                                <div>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text)' }}>{getSvcLabel(b.service)}</div>
+                                  <div style={{ fontSize: '0.62rem', color: 'var(--muted)', marginTop: '2px' }}>{b.date} · {(b.barber || '').toUpperCase()}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#d4af37' }}>{amount}</div>
+                                  {b.tip && parseFloat(String(b.tip).replace('£','')) > 0 && <div style={{ fontSize: '0.58rem', color: '#4caf50' }}>+£{b.tip} tip</div>}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.58rem', color: statusColor, background: statusColor + '18', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>{b.status.replace('_',' ')}</span>
+                                {b.discount && parseFloat(String(b.discount).replace('£','')) > 0 && <span style={{ fontSize: '0.58rem', color: '#ff9800', background: 'rgba(255,152,0,0.1)', padding: '2px 6px', borderRadius: '4px' }}>-£{b.discount} off</span>}
+                              </div>
+                            </div>
+                          );
+                        })
+                    }
+                  </>)}
+
+                  {/* ── LOYALTY TAB ── */}
+                  {detailTab === 'loyalty' && (<>
+                    {/* Big counter */}
+                    <div style={{ padding: '24px 16px', background: 'rgba(212,175,55,0.06)', borderRadius: '14px', border: '1px solid rgba(212,175,55,0.2)', textAlign: 'center' }}>
+                      <div style={{ fontSize: '3rem', fontWeight: '800', color: '#d4af37', lineHeight: 1 }}>⭐ {pts}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '6px', fontWeight: '600' }}>LOYALTY POINTS</div>
+                      <div style={{ fontSize: '0.85rem', color: pts >= 20 ? '#4caf50' : 'var(--muted)', marginTop: '8px', fontWeight: '700' }}>
+                        {pts >= 20 ? `£${Math.floor(pts/20)} available to redeem` : `${20 - pts} pts until first £1 off`}
+                      </div>
+                    </div>
+
+                    {/* Progress to next milestone */}
+                    <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: '600' }}>{prevMilestone} pts</span>
+                        <span style={{ fontSize: '0.65rem', color: '#d4af37', fontWeight: '700' }}>Next: {nextMilestone} pts</span>
+                      </div>
+                      <div style={{ height: '8px', background: 'rgba(212,175,55,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: progress + '%', height: '100%', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '4px', transition: 'width 0.6s' }} />
+                      </div>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '6px', textAlign: 'center' }}>
+                        {nextMilestone - pts} pts to next milestone
+                      </div>
+                    </div>
+
+                    {/* Milestones */}
+                    <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: '600' }}>Milestones</div>
+                      {[
+                        { pts: 100, label: '£5 reward', icon: '🥉' },
+                        { pts: 250, label: '£12.50 reward', icon: '🥈' },
+                        { pts: 500, label: '£25 reward', icon: '🥇' },
+                        { pts: 1000, label: '£50 reward', icon: '👑' },
+                      ].map(m => (
+                        <div key={m.pts} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', opacity: pts >= m.pts ? 1 : 0.45 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1rem' }}>{m.icon}</span>
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: pts >= m.pts ? 'var(--text)' : 'var(--muted)', fontWeight: '600' }}>{m.pts} pts</div>
+                              <div style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>{m.label}</div>
+                            </div>
+                          </div>
+                          {pts >= m.pts
+                            ? <span style={{ fontSize: '0.65rem', color: '#4caf50', fontWeight: '700' }}>✓ Reached</span>
+                            : <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{m.pts - pts} pts away</span>
+                          }
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ fontSize: '0.62rem', color: 'var(--muted)', textAlign: 'center' }}>20 pts = £1 · Earn 1pt per £1 spent · Min 20pts to redeem</div>
+                  </>)}
+
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       
 

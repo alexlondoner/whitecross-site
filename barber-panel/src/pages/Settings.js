@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -301,32 +301,79 @@ export default function Settings({ theme, onToggleTheme }) {
   const [loyaltyResult, setLoyaltyResult] = useState('');
 
   const runLoyaltyBackfill = async () => {
-    if (!window.confirm('Calculate loyalty points from ALL past checkouts and write to client profiles. Run once only — continue?')) return;
+    if (!window.confirm('Recalculate loyalty points from ALL past checkouts and write to client profiles. Safe to run multiple times — continue?')) return;
     setLoyaltyBackfilling(true);
     setLoyaltyResult('Working...');
     try {
+      // Normalize phone: strip non-digits, take last 10 chars so +447… and 07… both become 7XXXXXXXXX
+      const normPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+
+      // Step 1: build history — keyed by canonical id, indexed by phone/email/name
+      const history = {};       // canonicalKey → { phone, email, name, pts }
+      const byPhone = {};       // normalizedPhone → canonicalKey
+      const byEmail = {};       // email → canonicalKey
+      const byName  = {};       // lowercaseName → canonicalKey
+
       const bookSnap = await getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('status', '==', 'CHECKED_OUT')));
-      const history = {};
       bookSnap.docs.forEach(d => {
         const b = d.data();
-        const key = b.clientPhone || b.clientEmail;
-        if (!key) return;
+        if (!b.clientName || b.clientName === 'Walk-in') return;
+        const discountAmt = parseFloat(String(b.discount || '0').replace('£', '').replace('-', '')) || 0;
+        if (discountAmt > 0) return; // no points on discounted transactions
         const pts = Math.floor(parseFloat(String(b.paidAmount || 0)) || 0);
-        if (!history[key]) history[key] = { phone: b.clientPhone || '', email: b.clientEmail || '', pts: 0, visits: 0 };
-        history[key].pts += pts;
-        history[key].visits++;
+        const phone = normPhone(b.clientPhone);
+        const email = (b.clientEmail || '').toLowerCase().trim();
+        const name  = (b.clientName  || '').toLowerCase().trim();
+
+        // Find or create canonical key
+        let canon = (phone && byPhone[phone]) || (email && byEmail[email]) || (name && name.length > 3 && byName[name]);
+        if (!canon) {
+          canon = phone || email || name;
+          if (!canon) return;
+        }
+        if (!history[canon]) history[canon] = { phone: b.clientPhone || '', email: b.clientEmail || '', name: b.clientName || '', pts: 0 };
+        history[canon].pts += pts;
+        if (phone) byPhone[phone] = canon;
+        if (email) byEmail[email] = canon;
+        if (name && name.length > 3) byName[name] = canon;
       });
+
+      // Step 2: update existing client docs (match by normalized phone, email, or name)
       const clientSnap = await getDocs(collection(db, 'tenants/whitecross/clients'));
-      let updated = 0, skipped = 0;
+      const handledCanons = new Set();
+      let updated = 0, created = 0, skipped = 0;
+
       for (const cd of clientSnap.docs) {
         const c = cd.data();
-        const key = c.phone || c.email;
-        const h = history[key];
-        if (!h || h.pts === 0) { skipped++; continue; }
+        if (c.hidden) continue;
+        const cPhone = normPhone(c.phone);
+        const cEmail = (c.email || '').toLowerCase().trim();
+        const cName  = (c.name  || '').toLowerCase().trim();
+
+        const canon = (cPhone && byPhone[cPhone]) || (cEmail && byEmail[cEmail]) || (cName && cName.length > 3 && byName[cName]);
+        if (!canon || !history[canon]) { skipped++; continue; }
+        if (handledCanons.has(canon)) { skipped++; continue; } // duplicate doc — skip
+        const h = history[canon];
+        // Always update if client has checkout history — even pts=0 (all discounted) must overwrite old points
         await updateDoc(cd.ref, { loyaltyPoints: h.pts });
+        handledCanons.add(canon);
         updated++;
       }
-      setLoyaltyResult(`Done! ${updated} clients updated, ${skipped} skipped (no history).`);
+
+      // Step 3: create docs for booking-only clients not matched to any existing doc
+      for (const [canon, h] of Object.entries(history)) {
+        if (handledCanons.has(canon) || h.pts === 0) continue;
+        await addDoc(collection(db, 'tenants/whitecross/clients'), {
+          name: h.name,
+          phone: h.phone,
+          email: h.email,
+          loyaltyPoints: h.pts,
+          createdAt: serverTimestamp(),
+        });
+        created++;
+      }
+
+      setLoyaltyResult(`Done! ${updated} updated · ${created} new profiles created · ${skipped} skipped`);
     } catch (err) {
       setLoyaltyResult('Error: ' + err.message);
     } finally {
