@@ -396,10 +396,19 @@ export default function Clients() {
       }
       matchedBookingRefs.forEach(ref => batch.delete(ref));
 
-      // Delete the client doc if one exists
-      if (client.manualId) {
-        batch.delete(doc(db, `tenants/${TENANT}/clients`, client.manualId));
+      // Delete the client doc (active + any lingering hidden docs with same phone/email)
+      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const clientDocRefs = new Set();
+      if (client.manualId) clientDocRefs.add(client.manualId);
+      if (client.phone) {
+        const byPhone = await getDocs(query(clientsRef, where('phone', '==', client.phone)));
+        byPhone.forEach(d => clientDocRefs.add(d.id));
       }
+      if (client.email) {
+        const byEmail = await getDocs(query(clientsRef, where('email', '==', client.email)));
+        byEmail.forEach(d => clientDocRefs.add(d.id));
+      }
+      clientDocRefs.forEach(id => batch.delete(doc(db, `tenants/${TENANT}/clients`, id)));
 
       await batch.commit();
 

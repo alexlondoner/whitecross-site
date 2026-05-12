@@ -106,15 +106,19 @@ export async function getClientLoyaltyPoints({ phone, email }) {
     const normPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
     let data = null;
 
+    const notHidden = (d) => !d.data().hidden;
+
     // Try exact phone match first
     if (phone) {
       const snap = await getDocs(query(clientsRef, where('phone', '==', phone)));
-      if (!snap.empty) data = snap.docs[0].data();
+      const visible = snap.docs.find(notHidden);
+      if (visible) data = visible.data();
     }
     // Try exact email match
     if (!data && email) {
       const snap = await getDocs(query(clientsRef, where('email', '==', email)));
-      if (!snap.empty) data = snap.docs[0].data();
+      const visible = snap.docs.find(notHidden);
+      if (visible) data = visible.data();
     }
     // Fallback: normalized phone scan (handles +44 vs 07 format mismatch)
     if (!data && phone) {
@@ -122,7 +126,7 @@ export async function getClientLoyaltyPoints({ phone, email }) {
       if (norm.length >= 9) {
         const allSnap = await getDocs(clientsRef);
         allSnap.forEach(d => {
-          if (!data && normPhone(d.data().phone) === norm) data = d.data();
+          if (!data && notHidden(d) && normPhone(d.data().phone) === norm) data = d.data();
         });
       }
     }
