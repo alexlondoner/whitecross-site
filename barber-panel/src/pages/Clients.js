@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
 
@@ -379,21 +379,36 @@ export default function Clients() {
   };
 
   const handleDeleteClient = async (client) => {
-    if (!window.confirm(`Delete "${client.name}" from the system? This will hide them from the client list.`)) return;
+    if (!window.confirm(`Delete "${client.name}" permanently?\n\nThis will delete:\n• The client record\n• ALL their bookings\n\nThis cannot be undone.`)) return;
     try {
-      if (client.manualId && client.isManualOnly) {
-        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId));
+      const bookingsRef = collection(db, `tenants/${TENANT}/bookings`);
+      const batch = writeBatch(db);
+
+      // Find and delete all bookings matching by phone or email
+      const matchedBookingRefs = new Set();
+      if (client.phone) {
+        const byPhone = await getDocs(query(bookingsRef, where('clientPhone', '==', client.phone)));
+        byPhone.forEach(d => matchedBookingRefs.add(d.ref));
+      }
+      if (client.email) {
+        const byEmail = await getDocs(query(bookingsRef, where('clientEmail', '==', client.email)));
+        byEmail.forEach(d => matchedBookingRefs.add(d.ref));
+      }
+      matchedBookingRefs.forEach(ref => batch.delete(ref));
+
+      // Delete the client doc if one exists
+      if (client.manualId) {
+        batch.delete(doc(db, `tenants/${TENANT}/clients`, client.manualId));
+      }
+
+      await batch.commit();
+
+      // Update local state
+      if (client.manualId) {
         setManualClients(prev => prev.filter(m => m.id !== client.manualId));
-      } else if (client.manualId) {
-        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId));
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { name: client.name, phone: client.phone, email: client.email, hidden: true, createdAt: serverTimestamp() });
-        setManualClients(prev => [...prev.filter(m => m.id !== client.manualId), { id: ref.id, name: client.name, phone: client.phone, email: client.email, hidden: true }]);
-      } else {
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), { name: client.name, phone: client.phone, email: client.email, hidden: true, createdAt: serverTimestamp() });
-        setManualClients(prev => [...prev, { id: ref.id, name: client.name, phone: client.phone, email: client.email, hidden: true }]);
       }
       setSelectedClient(null);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert('Delete failed: ' + e.message); }
   };
 
   const toggleSort = (col) => {
