@@ -37,7 +37,7 @@ export default function Clients() {
   const [tab, setTab] = useState('list');
   const [search, setSearch] = useState('');
   const [segSearch, setSegSearch] = useState('');
-  const [sortBy, setSortBy] = useState('totalSpent');
+  const [sortBy, setSortBy] = useState('registeredAt');
   const [sortDir, setSortDir] = useState('desc');
   const [selectedClient, setSelectedClient] = useState(null);
   const [filterBarber, setFilterBarber] = useState('all');
@@ -138,6 +138,7 @@ export default function Clients() {
       .filter(c => !hiddenKeys.has(c.phone) && !hiddenKeys.has(c.email) && !hiddenKeys.has(c.name?.toLowerCase()))
       .map(c => {
         const manual = manualClients.find(m => !m.hidden && ((m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name.toLowerCase()));
+        const manualAddedAt = manual?.createdAt?.toDate ? manual.createdAt.toDate() : (manual?.createdAt ? new Date(manual.createdAt) : null);
         return {
           ...c,
           phone: manual?.phone || c.phone,
@@ -149,13 +150,14 @@ export default function Clients() {
           isMember: manual?.isMember || false,
           membershipTier: manual?.membershipTier || '',
           memberSince: manual?.memberSince || null,
+          registeredAt: manualAddedAt || c.firstVisitRaw || new Date(0),
         };
       });
     manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
-        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
+        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, registeredAt: addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
       }
     });
     return merged;
@@ -483,21 +485,55 @@ export default function Clients() {
         )}
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email..."
-            style={{ padding: '7px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.82rem', outline: 'none', minWidth: '240px' }} />
-          <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-            <button onClick={() => setFilterBarber('all')} style={{ padding: '7px 12px', border: 'none', cursor: 'pointer', background: filterBarber === 'all' ? 'rgba(212,175,55,0.2)' : 'transparent', color: filterBarber === 'all' ? '#d4af37' : 'var(--muted)', fontSize: '0.78rem', fontWeight: '600' }}>All</button>
-            {barbers.map(b => (
-              <button key={b.id} onClick={() => setFilterBarber(b.name)}
-                style={{ padding: '7px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: '600', transition: 'all 0.15s',
-                  background: filterBarber === b.name ? (b.color || '#d4af37') + '20' : 'transparent',
-                  color: filterBarber === b.name ? (b.color || '#d4af37') : 'var(--muted)' }}>
-                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: b.color || '#d4af37' }} />{b.name}
-              </button>
-            ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Row 1: search + count */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: '0.82rem', pointerEvents: 'none' }}>🔍</span>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email..."
+                style={{ width: '100%', padding: '8px 12px 8px 30px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', padding: '0 4px' }}>{filtered.length} clients</span>
           </div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: 'auto' }}>{filtered.length} results</span>
+
+          {/* Row 2: Sort */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', flexShrink: 0, marginRight: '2px' }}>Sort</span>
+            {[
+              { key: 'registeredAt', label: 'Recently Added' },
+              { key: 'lastVisitRaw',  label: 'Last Visit' },
+              { key: 'totalSpent',   label: 'Spent' },
+              { key: 'visits',       label: 'Visits' },
+              { key: 'loyaltyPoints', label: 'Points' },
+              { key: 'totalTip',     label: 'Tips' },
+              { key: 'name',         label: 'Name' },
+            ].map(opt => {
+              const active = sortBy === opt.key;
+              return (
+                <button key={opt.key} onClick={() => toggleSort(opt.key)}
+                  style={{ padding: '5px 10px', border: '1px solid ' + (active ? 'rgba(212,175,55,0.5)' : 'var(--border)'), borderRadius: '6px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: active ? '700' : '500', background: active ? 'rgba(212,175,55,0.12)' : 'transparent', color: active ? '#d4af37' : 'var(--muted)', transition: 'all 0.15s' }}>
+                  {opt.label}{active ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Row 3: Barber filter */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', flexShrink: 0, marginRight: '2px' }}>Barber</span>
+            <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button onClick={() => setFilterBarber('all')} style={{ padding: '6px 12px', border: 'none', cursor: 'pointer', background: filterBarber === 'all' ? 'rgba(212,175,55,0.2)' : 'transparent', color: filterBarber === 'all' ? '#d4af37' : 'var(--muted)', fontSize: '0.75rem', fontWeight: '600' }}>All</button>
+              {barbers.map(b => (
+                <button key={b.id} onClick={() => setFilterBarber(filterBarber === b.name ? 'all' : b.name)}
+                  style={{ padding: '6px 12px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: '600', transition: 'all 0.15s',
+                    background: filterBarber === b.name ? (b.color || '#d4af37') + '22' : 'transparent',
+                    color: filterBarber === b.name ? (b.color || '#d4af37') : 'var(--muted)' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: filterBarber === b.name ? (b.color || '#d4af37') : 'var(--muted)', transition: 'background 0.15s' }} />
+                  {b.name}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '14px', flex: 1, overflow: 'hidden' }}>
@@ -508,19 +544,22 @@ export default function Clients() {
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--card)', zIndex: 5 }}>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     {[
-                      { label: 'Client', key: 'name' },
-                      { label: 'Visits', key: 'visits' },
+                      { label: 'Client',      key: 'name' },
+                      { label: 'Visits',      key: 'visits' },
                       { label: 'Total Spent', key: 'totalSpent' },
-                      { label: 'Avg/Visit', key: null },
-                      { label: 'Tips', key: 'totalTip' },
-                      { label: 'Points', key: 'loyaltyPoints' },
-                      { label: 'Last Visit', key: 'lastVisit' },
+                      { label: 'Avg/Visit',   key: null },
+                      { label: 'Tips',        key: 'totalTip' },
+                      { label: 'Points',      key: 'loyaltyPoints' },
+                      { label: 'Last Visit',  key: 'lastVisitRaw' },
+                      { label: 'Added',       key: 'registeredAt' },
                       { label: 'Fav Service', key: null },
-                      { label: 'Barber', key: null },
-                      { label: 'Status', key: null },
+                      { label: 'Barber',      key: null },
                     ].map(h => (
-                      <th key={h.label} onClick={() => h.key && toggleSort(h.key)} style={{ ...col, textAlign: 'left', color: sortBy === h.key ? '#d4af37' : 'var(--muted)' }}>
-                        {h.label}{sortBy === h.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                      <th key={h.label} onClick={() => h.key && toggleSort(h.key)}
+                        style={{ ...col, textAlign: 'left', cursor: h.key ? 'pointer' : 'default',
+                          color: sortBy === h.key ? '#d4af37' : 'var(--muted)',
+                          userSelect: 'none' }}>
+                        {h.label}{sortBy === h.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : (h.key ? ' ·' : '')}
                       </th>
                     ))}
                   </tr>
@@ -563,15 +602,14 @@ export default function Clients() {
                             : <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>--</span>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: '0.75rem', color: 'var(--muted)' }}>{c.lastVisit || '--'}</td>
+                        <td style={{ padding: '12px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>
+                          {c.registeredAt && c.registeredAt > new Date(1000)
+                            ? c.registeredAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
+                            : '--'}
+                        </td>
                         <td style={{ padding: '12px 14px', fontSize: '0.72rem', color: 'var(--text)' }}>{favSvc ? getSvcLabel(favSvc[0]) : '--'}</td>
                         <td style={{ padding: '12px 14px' }}>
                           {favBarber && <span style={{ fontSize: '0.68rem', color: getBColor(favBarber[0]), background: getBColor(favBarber[0]) + '18', padding: '2px 7px', borderRadius: '4px', fontWeight: '600' }}>{favBarber[0]?.toUpperCase()}</span>}
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {c.checkedOut > 0 && <span style={{ fontSize: '0.6rem', color: '#4caf50', background: 'rgba(76,175,80,0.15)', padding: '2px 5px', borderRadius: '4px' }}>{c.checkedOut} paid</span>}
-                            {c.cancelled > 0 && <span style={{ fontSize: '0.6rem', color: '#ff5252', background: 'rgba(255,82,82,0.15)', padding: '2px 5px', borderRadius: '4px' }}>{c.cancelled} cancelled</span>}
-                          </div>
                         </td>
                       </tr>
                     );
