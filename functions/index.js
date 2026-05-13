@@ -1,5 +1,5 @@
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
-const { onRequest } = require('firebase-functions/v2/https');
+const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const nodemailer = require('nodemailer');
 const Stripe = require('stripe');
@@ -104,53 +104,103 @@ exports.createCheckoutSession = onRequest(
             bookingId, serviceId, serviceName, price,
             barberId, barberName, date, time,
             clientName, clientEmail, clientPhone, paymentType,
+            // Group booking fields
+            groupId, groupMembers,
         } = req.body || {};
 
-        if (!bookingId || !serviceId || !price) {
+        const isGroup = !!(groupId && Array.isArray(groupMembers) && groupMembers.length > 1);
+
+        if (!isGroup && (!bookingId || !serviceId || !price)) {
             res.status(400).json({ error: 'Missing required fields' });
             return;
         }
-
-        const isDeposit  = paymentType === 'DEPOSIT';
-        const depositAmt = DEPOSIT_AMOUNTS[serviceId] || 10;
-        const chargeGBP  = isDeposit ? depositAmt : Math.max(0, parseFloat(price) || 0);
-        if (chargeGBP <= 0) { res.status(400).json({ error: 'Invalid amount' }); return; }
+        if (isGroup && (!groupId || !groupMembers.length)) {
+            res.status(400).json({ error: 'Missing group fields' });
+            return;
+        }
 
         try {
-            const stripe  = new Stripe(stripeKey);
-            const session = await stripe.checkout.sessions.create({
-                payment_method_types: ['card'],
-                line_items: [{
+            const stripe = new Stripe(stripeKey);
+            let session;
+
+            if (isGroup) {
+                const lineItems = groupMembers.map((m, i) => ({
                     price_data: {
                         currency: 'gbp',
                         product_data: {
-                            name: isDeposit ? `Deposit – ${serviceName}` : serviceName,
-                            description: `${barberName || 'Barber'} · ${date} at ${time}`,
+                            name: `Person ${i + 1} – ${SERVICE_NAMES[m.serviceId] || m.serviceName || m.serviceId}`,
+                            description: `${m.barberName || 'Barber'} · ${date}`,
                         },
-                        unit_amount: Math.round(chargeGBP * 100),
+                        unit_amount: Math.round((parseFloat(m.price) || 0) * 100),
                     },
                     quantity: 1,
-                }],
-                mode: 'payment',
-                customer_email: clientEmail || undefined,
-                metadata: {
-                    bookingId,
-                    serviceId:   serviceId   || '',
-                    barberId:    barberId     || '',
-                    barberName:  barberName   || '',
-                    date:        date         || '',
-                    time:        time         || '',
-                    clientName:  clientName   || '',
-                    clientPhone: clientPhone  || '',
-                    clientEmail: clientEmail  || '',
-                    paymentType: isDeposit ? 'DEPOSIT' : 'FULL',
-                    price:       String(price),
-                },
-                success_url: testMode
-                    ? `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}&testMode=1`
-                    : `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}`,
-                cancel_url: `https://whitecrossbarbers.com/?cancelled=${bookingId}#booking`,
-            });
+                })).filter(li => li.price_data.unit_amount > 0);
+
+                if (!lineItems.length) {
+                    res.status(400).json({ error: 'No valid line items for group' });
+                    return;
+                }
+
+                session = await stripe.checkout.sessions.create({
+                    payment_method_types: ['card'],
+                    line_items: lineItems,
+                    mode: 'payment',
+                    customer_email: clientEmail || undefined,
+                    metadata: {
+                        groupId,
+                        bookingId:   groupMembers[0].bookingId || '',
+                        clientName:  clientName  || '',
+                        clientPhone: clientPhone || '',
+                        clientEmail: clientEmail || '',
+                        paymentType: 'FULL',
+                        isGroup:     'true',
+                        groupSize:   String(groupMembers.length),
+                    },
+                    success_url: testMode
+                        ? `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${groupMembers[0].bookingId}&testMode=1`
+                        : `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${groupMembers[0].bookingId}`,
+                    cancel_url: `https://whitecrossbarbers.com/?cancelled=${groupMembers[0].bookingId}#booking`,
+                });
+            } else {
+                const isDeposit  = paymentType === 'DEPOSIT';
+                const depositAmt = DEPOSIT_AMOUNTS[serviceId] || 10;
+                const chargeGBP  = isDeposit ? depositAmt : Math.max(0, parseFloat(price) || 0);
+                if (chargeGBP <= 0) { res.status(400).json({ error: 'Invalid amount' }); return; }
+
+                session = await stripe.checkout.sessions.create({
+                    payment_method_types: ['card'],
+                    line_items: [{
+                        price_data: {
+                            currency: 'gbp',
+                            product_data: {
+                                name: isDeposit ? `Deposit – ${serviceName}` : serviceName,
+                                description: `${barberName || 'Barber'} · ${date} at ${time}`,
+                            },
+                            unit_amount: Math.round(chargeGBP * 100),
+                        },
+                        quantity: 1,
+                    }],
+                    mode: 'payment',
+                    customer_email: clientEmail || undefined,
+                    metadata: {
+                        bookingId,
+                        serviceId:   serviceId   || '',
+                        barberId:    barberId     || '',
+                        barberName:  barberName   || '',
+                        date:        date         || '',
+                        time:        time         || '',
+                        clientName:  clientName   || '',
+                        clientPhone: clientPhone  || '',
+                        clientEmail: clientEmail  || '',
+                        paymentType: isDeposit ? 'DEPOSIT' : 'FULL',
+                        price:       String(price),
+                    },
+                    success_url: testMode
+                        ? `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}&testMode=1`
+                        : `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${bookingId}`,
+                    cancel_url: `https://whitecrossbarbers.com/?cancelled=${bookingId}#booking`,
+                });
+            }
 
             res.json({ url: session.url, sessionId: session.id });
         } catch (err) {
@@ -219,6 +269,33 @@ exports.stripeWebhook = onRequest(
                 paymentLink,
             }) => {
                 const meta = metadata || {};
+
+                // ── Group booking: confirm all members at once ──────────────
+                if (meta.isGroup === 'true' && meta.groupId) {
+                    const groupSnap = await db
+                        .collection('tenants/whitecross/bookings')
+                        .where('groupId', '==', meta.groupId)
+                        .get();
+                    if (!groupSnap.empty) {
+                        const batch = db.batch();
+                        groupSnap.docs.forEach(doc => {
+                            batch.update(doc.ref, {
+                                status:              'CONFIRMED',
+                                paymentState:        'PAID',
+                                paidAt:              admin.firestore.Timestamp.now(),
+                                stripeSessionId:     sessionId || null,
+                                stripePaymentIntent: paymentIntent || null,
+                                stripeAmountPaid:    amountPaid,
+                                stripeEventId:       event.id || null,
+                                updatedAt:           admin.firestore.Timestamp.now(),
+                            });
+                        });
+                        await batch.commit();
+                        console.log(`stripeWebhook: confirmed ${groupSnap.size} group bookings for groupId=${meta.groupId}`);
+                    }
+                    return;
+                }
+
                 const metadataBookingId = String(meta.bookingId || '').trim();
                 let targetRef = null;
 
@@ -486,6 +563,10 @@ exports.sendBookingConfirmation = onDocumentCreated(
         const status = String(data.status || '').trim().toUpperCase();
         if (status !== 'CONFIRMED') return;
 
+        // Skip walk-ins — they're already there, no confirmation needed
+        const source = String(data.source || '').trim().toLowerCase();
+        if (['walk-in', 'walk_in', 'walkin'].includes(source)) return;
+
         const email = data.clientEmail;
         if (!email) return;
 
@@ -512,11 +593,8 @@ exports.sendBookingConfirmation = onDocumentCreated(
         let dateStr = 'TBC', timeStr = 'TBC';
         if (data.startTime) {
             const d = data.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const h12 = h % 12 || 12;
-            timeStr = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
         }
 
 
@@ -641,6 +719,9 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
         // Only fire when transitioning to CONFIRMED (e.g. PENDING → CONFIRMED via Stripe)
         if (prevStatus === 'CONFIRMED' || newStatus !== 'CONFIRMED') return;
 
+        // For group bookings: only the lead sends the email
+        if (after.groupId && after.groupLead === false) return;
+
         const email = after.clientEmail;
         if (!email) return;
 
@@ -667,11 +748,8 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
         let dateStr = 'TBC', timeStr = 'TBC';
         if (data.startTime) {
             const d = data.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const h12 = h % 12 || 12;
-            timeStr = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
         }
 
         const totalPriceNum   = data.price ? Number(data.price) : 0;
@@ -797,6 +875,9 @@ exports.notifyNewBooking = onDocumentCreated(
         const ONLINE_SOURCES = ['booksy', 'fresha', 'website'];
         if (!ONLINE_SOURCES.includes(source)) return;
 
+        // For group bookings: only notify once (for the lead)
+        if (data.groupId && data.groupLead === false) return;
+
         const token      = process.env.WC_TELEGRAM_TOKEN;
         const chatIdsRaw = process.env.WC_TELEGRAM_CHAT_IDS;
         if (!token || !chatIdsRaw) {
@@ -813,14 +894,13 @@ exports.notifyNewBooking = onDocumentCreated(
         let dateStr = 'TBC', timeStr = 'TBC';
         if (data.startTime) {
             const d = data.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            timeStr = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
         }
 
-        const phone = data.clientPhone ? `\n📞 ${data.clientPhone}` : '';
-        const msg = `📅 <b>New Booking</b> · ${srcLabel}\n👤 ${name}${phone}\n✂️ ${service}\n💈 ${barber}\n🕐 ${dateStr} at ${timeStr}\n🆔 <code>${bookingId}</code>`;
+        const phone      = data.clientPhone ? `\n📞 ${data.clientPhone}` : '';
+        const groupLabel = data.groupId ? `\n👥 Group Booking ×${data.groupSize || '?'}` : '';
+        const msg = `📅 <b>New Booking</b> · ${srcLabel}${groupLabel}\n👤 ${name}${phone}\n✂️ ${service}\n💈 ${barber}\n🕐 ${dateStr} at ${timeStr}\n🆔 <code>${bookingId}</code>`;
 
         try {
             await sendTelegramMessage(token, chatIdsRaw, msg);
@@ -828,7 +908,7 @@ exports.notifyNewBooking = onDocumentCreated(
         } catch (err) {
             console.error('Telegram error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'new_booking', 'New Booking', `${name} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
+        await writeNotification(getAdminDb(), 'whitecross', 'new_booking', 'New Booking', `${name}${data.groupId ? ` (Group ×${data.groupSize})` : ''} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
     }
 );
 
@@ -862,10 +942,8 @@ exports.notifyBookingCancelled = onDocumentUpdated(
         let dateStr = 'TBC', timeStr = 'TBC';
         if (after.startTime) {
             const d = after.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            timeStr = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
         }
 
         const phone = after.clientPhone ? `\n📞 ${after.clientPhone}` : '';
@@ -898,6 +976,9 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         // Only fire when transitioning INTO CONFIRMED (not already confirmed)
         if (newStatus !== 'CONFIRMED' || prevStatus === 'CONFIRMED') return;
 
+        // For group bookings: only notify once (for the lead)
+        if (after.groupId && after.groupLead === false) return;
+
         const source = String(after.source || '').trim().toLowerCase();
         const ONLINE_SOURCES = ['booksy', 'fresha', 'website'];
         if (!ONLINE_SOURCES.includes(source)) return;
@@ -916,10 +997,8 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         let dateStr = 'TBC', timeStr = 'TBC';
         if (after.startTime) {
             const d = after.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            timeStr = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
         }
 
         const phone = after.clientPhone ? `\n📞 ${after.clientPhone}` : '';
@@ -965,10 +1044,9 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
 
         const fmtDate = (ts) => {
             const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000);
-            const dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-            const h = d.getHours(), m = d.getMinutes();
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            return `${dateStr} at ${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+            const dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
+            const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
+            return `${dateStr} at ${timeStr}`;
         };
 
         const oldDateTime = before.startTime ? fmtDate(before.startTime) : 'unknown';
@@ -1091,7 +1169,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         let dateStr = 'Today';
         if (after.startTime) {
             const d = after.startTime.toDate();
-            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' });
         }
 
         // Loyalty progress
@@ -1100,7 +1178,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const nextMilestone = milestones.find(m => loyaltyPoints < m) || 1000;
         const prevMilestone = milestones[milestones.indexOf(nextMilestone) - 1] || 0;
         const progressPct = Math.min(Math.round(((loyaltyPoints - prevMilestone) / (nextMilestone - prevMilestone)) * 100), 100);
-        const redeemable = Math.floor(loyaltyPoints / REDEEM_RATE);
+        const redeemable = (loyaltyPoints / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
 
         // Progress bar (table-based for email compatibility)
         const filledCells = Math.round(progressPct / 5); // 20 cells total
@@ -1164,14 +1242,14 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                 </div>
 
                 <!-- Redeem value -->
-                ${redeemable > 0 ? `
+                ${loyaltyPoints >= 20 ? `
                 <div style="margin:0 24px 18px;padding:14px;background:#0f1f0f;border:1px solid #1e3d1e;border-radius:3px;text-align:center;">
                     <p style="margin:0;color:#4caf50;font-size:18px;font-weight:800;">£${redeemable} available to redeem</p>
                     <p style="margin:4px 0 0 0;color:#2e7d32;font-size:11px;">Tell your barber at your next visit · Min 20 pts</p>
                 </div>
                 ` : `
                 <div style="margin:0 24px 18px;padding:12px;background:#111;border:1px solid #222;border-radius:3px;text-align:center;">
-                    <p style="margin:0;color:#555;font-size:12px;">${20 - loyaltyPoints > 0 ? (20 - loyaltyPoints) + ' more points until your first £1 off' : 'Redeem at your next visit'}</p>
+                    <p style="margin:0;color:#555;font-size:12px;">${20 - loyaltyPoints} more points until your first £1 off</p>
                 </div>
                 `}
 
@@ -1319,5 +1397,64 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         }
     }
 );
+
+// ── Staff account creation (callable) ────────────────────────────────────────
+exports.createStaffUser = onCall({ cors: true }, async (request) => {
+    try {
+        const callerUid = request.auth?.uid;
+        console.log('createStaffUser called, callerUid:', callerUid);
+        if (!callerUid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+
+        const db = getAdminDb();
+
+        const callerDoc = await db.doc(`tenants/whitecross/staff/${callerUid}`).get();
+        const isOwner = !callerDoc.exists || callerDoc.data().role === 'owner';
+        console.log('callerDoc exists:', callerDoc.exists, 'isOwner:', isOwner);
+        if (!isOwner) throw new HttpsError('permission-denied', 'Only owners can create staff accounts.');
+
+        const { name, email, password, role } = request.data || {};
+        console.log('Creating user:', email, 'role:', role);
+        if (!name || !email || !password) throw new HttpsError('invalid-argument', 'name, email and password are required.');
+        if (!['owner', 'admin', 'staff'].includes(role)) throw new HttpsError('invalid-argument', 'role must be "owner", "admin" or "staff".');
+
+        let userRecord;
+        try {
+            userRecord = await admin.auth().createUser({ email, password, displayName: name });
+            console.log('Auth user created:', userRecord.uid);
+        } catch (err) {
+            console.error('createUser error:', err.code, err.message);
+            if (err.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'Bu email zaten kayıtlı.');
+            throw new HttpsError('internal', 'Kullanıcı oluşturulamadı: ' + err.message);
+        }
+
+        try {
+            await admin.auth().setCustomUserClaims(userRecord.uid, { tenantId: 'whitecross' });
+            console.log('Custom claims set for:', userRecord.uid);
+        } catch (err) {
+            console.error('setCustomUserClaims error:', err.message);
+            throw new HttpsError('internal', 'Claim hatası: ' + err.message);
+        }
+
+        try {
+            await db.doc(`tenants/whitecross/staff/${userRecord.uid}`).set({
+                name,
+                email,
+                role,
+                createdAt: admin.firestore.Timestamp.now(),
+                createdBy: callerUid,
+            });
+            console.log('Staff doc written for:', userRecord.uid);
+        } catch (err) {
+            console.error('Firestore write error:', err.message);
+            throw new HttpsError('internal', 'Firestore yazma hatası: ' + err.message);
+        }
+
+        return { uid: userRecord.uid };
+    } catch (err) {
+        if (err instanceof HttpsError) throw err;
+        console.error('createStaffUser unhandled error:', err);
+        throw new HttpsError('internal', err.message || 'Bilinmeyen hata');
+    }
+});
 
 // ── ONE-TIME: backfill loyalty points from checkout history ───────────────────

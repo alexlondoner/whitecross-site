@@ -5,8 +5,8 @@
 }
 
 body {
-  background: #0a0a0a;
-  color: #e8e0cc;
+  background: #0e0e0b;
+  color: #e8e4d9;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -15,22 +15,24 @@ body {
   --gold: #d4af37;
   --gold-light: #f5e17a;
   --gold-dark: #8b6914;
-  --bg: #0a0a0a;
-  --dark: #111111;
-  --card: #161610;
-  --card2: #0f0f0a;
-  --border: rgba(212,175,55,0.15);
-  --border-hover: rgba(212,175,55,0.35);
-  --text: #e8e0cc;
+  --bg: #0e0e0b;
+  --dark: #141410;
+  --card: #141410;
+  --card2: #0e0e0b;
+  --border: #2a2820;
+  --border-hover: rgba(212,175,55,0.45);
+  --text: #e8e4d9;
   --muted: #7a7260;
+  --muted2: #4a4840;
+  --hover-bg: #1e1e16;
   --success: #4caf50;
   --danger: #ff5252;
   --warning: #ff9800;
-  --grid-bg: #161610;
+  --grid-bg: #0e0e0b;
   --slot-bg: transparent;
-  --slot-hover: rgba(212,175,55,0.04);
-  --slot-past: rgba(0,0,0,0.12);
-  --time-color: #444;
+  --slot-hover: rgba(212,175,55,0.05);
+  --slot-past: #0a0a08;
+  --time-color: #3a3830;
 }
 body.light {
   background: #f0efe8;
@@ -43,6 +45,8 @@ body.light {
   --border-hover: rgba(139,105,20,0.35);
   --text: #1a1a14;
   --muted: #6b6050;
+  --muted2: #9a9080;
+  --hover-bg: rgba(0,0,0,0.04);
   --grid-bg: #ffffff;
   --slot-bg: transparent;
   --slot-hover: rgba(212,175,55,0.06);

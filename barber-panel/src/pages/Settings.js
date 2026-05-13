@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TENANT = 'whitecross';
@@ -66,7 +68,7 @@ function getLocalDateKey(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-export default function Settings({ theme, onToggleTheme }) {
+export default function Settings({ theme, onToggleTheme, isAdmin = true, authUser }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -302,6 +304,87 @@ export default function Settings({ theme, onToggleTheme }) {
   const [cleanupInput, setCleanupInput] = useState('');
   const [cleanupRunning, setCleanupRunning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState('');
+
+  // Staff management
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '', role: 'admin' });
+  const [staffCreating, setStaffCreating] = useState(false);
+  const [staffResult, setStaffResult] = useState('');
+  const [registeringMe, setRegisteringMe] = useState(false);
+
+  const loadStaff = async () => {
+    setStaffLoading(true);
+    try {
+      const snap = await getDocs(collection(db, `tenants/${TENANT}/staff`));
+      setStaffList(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+    } catch (e) {
+      console.error('loadStaff:', e);
+    } finally {
+      setStaffLoading(false);
+    }
+  };
+
+  const createStaff = async () => {
+    const { name, email, password, role } = staffForm;
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setStaffResult('Fill in name, email and password.');
+      return;
+    }
+    setStaffCreating(true);
+    setStaffResult('Creating account...');
+    try {
+      const functions = getFunctions();
+      const fn = httpsCallable(functions, 'createStaffUser');
+      await fn({ name: name.trim(), email: email.trim(), password, role });
+      setStaffResult(`✓ Account created for ${email.trim()}`);
+      setStaffForm({ name: '', email: '', password: '', role: 'staff' });
+      await loadStaff();
+    } catch (e) {
+      setStaffResult('Error: ' + (e.message || 'Unknown error'));
+    } finally {
+      setStaffCreating(false);
+    }
+  };
+
+  const updateStaffRole = async (uid, newRole) => {
+    try {
+      await updateDoc(doc(db, `tenants/${TENANT}/staff`, uid), { role: newRole });
+      setStaffList(prev => prev.map(s => s.uid === uid ? { ...s, role: newRole } : s));
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  const deleteStaff = async (uid, email) => {
+    if (!window.confirm(`Remove staff account for ${email}? They will no longer be able to log in.`)) return;
+    try {
+      await deleteDoc(doc(db, `tenants/${TENANT}/staff`, uid));
+      setStaffList(prev => prev.filter(s => s.uid !== uid));
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  const registerMeAsAdmin = async () => {
+    if (!authUser) { alert('Not logged in.'); return; }
+    if (!window.confirm(`Register your account (${authUser.email}) as Admin? This lets the panel recognise you as owner.`)) return;
+    setRegisteringMe(true);
+    try {
+      await setDoc(doc(db, `tenants/${TENANT}/staff`, authUser.uid), {
+        name: authUser.displayName || 'Owner',
+        email: authUser.email,
+        role: 'owner',
+        createdAt: Timestamp.now(),
+      }, { merge: true });
+      setStaffResult('✓ Saved as Owner. Refresh the page to apply.');
+      await loadStaff();
+    } catch (e) {
+      setStaffResult('Error: ' + e.message);
+    } finally {
+      setRegisteringMe(false);
+    }
+  };
 
   const runTestCleanup = async () => {
     const raw = cleanupInput.trim();
@@ -754,7 +837,11 @@ export default function Settings({ theme, onToggleTheme }) {
             </div>
           </div>
           <div
-            onClick={() => setSettings(s => ({ ...s, emailConfirmationEnabled: s.emailConfirmationEnabled === false ? true : false }))}
+            onClick={() => {
+              const next = settings.emailConfirmationEnabled === false ? true : false;
+              setSettings(s => ({ ...s, emailConfirmationEnabled: next }));
+              setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { emailConfirmationEnabled: next }, { merge: true }).catch(() => {});
+            }}
             style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.emailConfirmationEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '4px', left: settings.emailConfirmationEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </div>
@@ -771,7 +858,11 @@ export default function Settings({ theme, onToggleTheme }) {
             </div>
           </div>
           <div
-            onClick={() => setSettings(s => ({ ...s, checkoutEmailEnabled: s.checkoutEmailEnabled === false ? true : false }))}
+            onClick={() => {
+              const next = settings.checkoutEmailEnabled === false ? true : false;
+              setSettings(s => ({ ...s, checkoutEmailEnabled: next }));
+              setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { checkoutEmailEnabled: next }, { merge: true }).catch(() => {});
+            }}
             style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.checkoutEmailEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '4px', left: settings.checkoutEmailEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </div>
@@ -943,6 +1034,9 @@ export default function Settings({ theme, onToggleTheme }) {
         )}
       </div>
 
+      {/* Owner-only sections */}
+      {isAdmin && (<>
+
       {/* Platform Settings */}
       <div style={cardStyle}>
         <h2 style={sectionTitle}>Platform Settings</h2>
@@ -1066,6 +1160,93 @@ export default function Settings({ theme, onToggleTheme }) {
         {loyaltyResult && <p style={{ marginTop: '12px', fontSize: '0.82rem', color: loyaltyResult.startsWith('Error') ? '#ff5252' : '#4caf50', fontWeight: '600' }}>{loyaltyResult}</p>}
       </div>
 
+      {/* Staff Accounts */}
+      <div style={{ ...cardStyle, borderColor: 'rgba(212,175,55,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+          <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text)', margin: 0 }}>👥 Staff Accounts</h2>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isAdmin && (
+              <button onClick={loadStaff} disabled={staffLoading}
+                style={{ padding: '8px 14px', background: 'rgba(180,180,180,0.08)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: staffLoading ? 'not-allowed' : 'pointer', fontSize: '0.75rem' }}>
+                {staffLoading ? 'Loading...' : '↻ Load List'}
+              </button>
+            )}
+          </div>
+        </div>
+
+
+        {staffResult && (
+          <p style={{ fontSize: '0.82rem', fontWeight: '600', color: staffResult.startsWith('✓') ? '#4caf50' : '#ff5252', marginBottom: '12px' }}>{staffResult}</p>
+        )}
+
+        {isAdmin && (
+          <>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '18px' }}>
+              Create accounts for staff. <strong>Admin</strong> can do everything except delete clients or cancel bookings. <strong>Staff</strong> is same. Only <strong>Owner</strong> sees delete/cancel buttons.
+            </p>
+
+            {staffList.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                {staffList.map(s => (
+                  <div key={s.uid} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'rgba(180,180,180,0.04)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{s.email}</div>
+                    </div>
+                    <select value={s.role} onChange={e => updateStaffRole(s.uid, e.target.value)}
+                      style={{ padding: '6px 10px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '6px', color: s.role === 'owner' ? '#d4af37' : 'var(--text)', fontSize: '0.78rem', cursor: 'pointer' }}>
+                      <option value="staff">Staff</option>
+                      <option value="admin">Admin</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                    <button onClick={() => deleteStaff(s.uid, s.email)}
+                      style={{ padding: '6px 12px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem' }}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ padding: '16px', background: 'rgba(180,180,180,0.03)', border: '1px solid rgba(180,180,180,0.1)', borderRadius: '10px' }}>
+              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text)', marginBottom: '12px' }}>Create New Account</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>Name</label>
+                  <input value={staffForm.name} onChange={e => setStaffForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Arda" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Email</label>
+                  <input type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="arda@icut.co.uk" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Password</label>
+                  <input type="password" value={staffForm.password} onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Min 6 characters" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Role</label>
+                  <select value={staffForm.role} onChange={e => setStaffForm(f => ({ ...f, role: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="staff">Staff — view & checkout only</option>
+                    <option value="admin">Admin — no delete/cancel</option>
+                    <option value="owner">Owner — full access</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={createStaff} disabled={staffCreating}
+                  style={{ padding: '10px 22px', background: staffCreating ? 'rgba(212,175,55,0.1)' : 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: staffCreating ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.82rem' }}>
+                  {staffCreating ? 'Creating...' : '+ Create Account'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Danger Zone */}
       <div style={{ ...cardStyle, borderColor: 'rgba(255,82,82,0.2)' }}>
         <h2 style={{ ...sectionTitle, color: '#ff5252' }}>Danger Zone</h2>
@@ -1094,6 +1275,8 @@ export default function Settings({ theme, onToggleTheme }) {
           <p style={{ fontSize: '0.8rem', color: cleanupResult.startsWith('✓') ? '#4caf50' : '#ff5252', fontWeight: '600', marginTop: '4px' }}>{cleanupResult}</p>
         )}
       </div>
+
+      </>)}
 
     </div>
   );

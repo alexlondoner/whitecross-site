@@ -32,7 +32,7 @@ const SEGMENT_DEFS = [
   { key: 'birthdays',    label: 'Upcoming birthdays',     color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
-export default function Clients() {
+export default function Clients({ isAdmin = true }) {
   const [bookings, setBookings] = useState([]);
   const [manualClients, setManualClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -655,7 +655,7 @@ export default function Clients() {
                           {!selectedClient.isMember && selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
                           {selectedClient.isManualOnly && <span style={{ fontSize: '0.55rem', background: 'rgba(33,150,243,0.15)', color: '#2196f3', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>ADDED</span>}
                           {!selectedClient.isManualOnly && selectedClient.visits === 1 && <span style={{ fontSize: '0.55rem', background: 'rgba(76,175,80,0.15)', color: '#4caf50', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>NEW</span>}
-                          {!selectedClient.isMember && pts >= 20 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>⭐ £{Math.floor(pts/20)}</span>}
+                          {!selectedClient.isMember && pts > 0 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>⭐ {pts} pts</span>}
                         </div>
                         {selectedClient.phone && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '5px' }}>{selectedClient.phone}</div>}
                         {selectedClient.email && <div style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{selectedClient.email}</div>}
@@ -665,7 +665,7 @@ export default function Clients() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
                       <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>×</button>
                       <button onClick={() => openEditClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600' }}>Edit</button>
-                      <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>
+                      {isAdmin && <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>}
                     </div>
                   </div>
 

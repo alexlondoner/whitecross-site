@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './firebase';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
-import Dashboard from './pages/Dashboard';
-import Bookings from './pages/Bookings';
-import Barbers from './pages/Barbers';
-import Calendar from './pages/Calendar';
-import Settings from './pages/Settings';
 import Login from './pages/Login';
-import Clients from './pages/Clients';
-import Reports from './pages/Reports';
-import Finance from './pages/Finance';
-import OnlineProfile from './pages/OnlineProfile';
-import Products from './pages/Products';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Bookings = lazy(() => import('./pages/Bookings'));
+const Barbers = lazy(() => import('./pages/Barbers'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Clients = lazy(() => import('./pages/Clients'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Finance = lazy(() => import('./pages/Finance'));
+const OnlineProfile = lazy(() => import('./pages/OnlineProfile'));
+const Products = lazy(() => import('./pages/Products'));
 import config from './config';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import './App.css';
 
 async function loadServicesIntoConfig() {
@@ -35,6 +36,7 @@ async function loadServicesIntoConfig() {
 function App() {
   const [authUser, setAuthUser] = useState(undefined); // undefined = still checking
   const [tenantId, setTenantId] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(true); // default true until role loaded
   const [activePage, setActivePage] = useState('dashboard');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -55,10 +57,22 @@ function App() {
         } catch {
           setTenantId(null);
         }
+        // Fetch role from Firestore — no doc = admin (backwards compat for owner)
+        try {
+          const staffDoc = await getDoc(doc(db, 'tenants/whitecross/staff', firebaseUser.uid));
+          if (staffDoc.exists()) {
+            setIsAdmin(staffDoc.data().role === 'owner'); // only owner sees delete/cancel
+          } else {
+            setIsAdmin(true); // no doc = owner (backwards compat)
+          }
+        } catch {
+          setIsAdmin(true);
+        }
         setAuthUser(firebaseUser);
       } else {
         setAuthUser(null);
         setTenantId(null);
+        setIsAdmin(true);
       }
     });
     return unsubscribe;
@@ -92,17 +106,17 @@ function App() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard':     return <Dashboard tenantId={tenantId} />;
-      case 'bookings':      return <Bookings tenantId={tenantId} />;
-      case 'barbers':       return <Barbers tenantId={tenantId} />;
-      case 'online-profile':return <OnlineProfile tenantId={tenantId} />;
-      case 'calendar':      return <Calendar tenantId={tenantId} />;
-      case 'clients':       return <Clients tenantId={tenantId} />;
-      case 'reports':       return <Reports tenantId={tenantId} />;
-      case 'finance':       return <Finance tenantId={tenantId} />;
-      case 'products':      return <Products tenantId={tenantId} />;
-      case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} />;
-      default:              return <Dashboard tenantId={tenantId} />;
+      case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'online-profile':return <OnlineProfile tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'calendar':      return <Calendar tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'clients':       return <Clients tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'reports':       return <Reports tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'finance':       return <Finance tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'products':      return <Products tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} authUser={authUser} />;
+      default:              return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
     }
   };
 
@@ -128,7 +142,9 @@ function App() {
         overflowY: 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
-        {renderPage()}
+        <Suspense fallback={<div style={{ color: '#888', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+          {renderPage()}
+        </Suspense>
       </main>
     </div>
   );

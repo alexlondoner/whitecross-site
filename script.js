@@ -445,10 +445,202 @@ var todayStr = now.getFullYear() + '-' +
         });
     }
 
-    /* PREFETCH DUPLICATE CHECK */
+    /* DUPLICATE CHECK — Firestore */
     var _dupCachePhone = '';
     var _dupCacheDate = '';
     var _dupCacheResult = null;
+
+    /* ── GROUP BOOKING STATE ─────────────────────────────────────── */
+    var _isGroupMode = false;
+    var _groupExtraMembers = []; // [{ serviceId, duration, price }] for persons 2, 3, ...
+    var _groupAssignments  = []; // filled when a slot is selected: [{ barberId, barberName, startMs, endMs, serviceId, price }]
+
+    async function checkDuplicateInFirestore(phone, dateStr) {
+        try {
+            var firebase = window._firebase;
+            var db = window._db;
+            if (!firebase || !db || !phone || !dateStr) return { duplicate: false };
+            var snap = await firebase.getDocs(firebase.query(
+                firebase.collection(db, 'tenants/whitecross/bookings'),
+                firebase.where('clientPhone', '==', phone)
+            ));
+            var targetDay = new Date(dateStr).toDateString();
+            var found = snap.docs.some(function(d) {
+                var data = d.data();
+                var s = String(data.status || '').toUpperCase();
+                if (s === 'CANCELLED' || s === 'NO_SHOW' || s === 'BLOCKED') return false;
+                if (!data.startTime) return false;
+                var bDate = data.startTime.toDate ? data.startTime.toDate() : new Date(data.startTime.seconds * 1000);
+                return bDate.toDateString() === targetDay;
+            });
+            return { duplicate: found };
+        } catch(e) {
+            return { duplicate: false };
+        }
+    }
+
+    /* ── GROUP BOOKING UI ────────────────────────────────────────── */
+    function initGroupBookingUI() {
+        var submitBtn = form && form.querySelector('.submit-btn');
+        if (!submitBtn) return;
+
+        var wrap = document.createElement('div');
+        wrap.id = 'groupBookingWrap';
+        wrap.innerHTML = [
+            '<div id="groupToggleRow" style="margin:18px 0 4px;">',
+            '  <button type="button" id="groupToggleBtn" style="',
+            '    width:100%;padding:10px 14px;background:transparent;',
+            '    border:1px dashed #3a3820;border-radius:10px;color:#7a7260;',
+            '    font-size:0.78rem;letter-spacing:1px;cursor:pointer;transition:all 0.2s;',
+            '  ">👥 Group Booking — Add more people</button>',
+            '</div>',
+            '<div id="groupMembersWrap" style="display:none;margin-bottom:14px;">',
+            '  <div style="font-size:0.6rem;color:#7a7260;letter-spacing:2px;',
+            '    text-transform:uppercase;margin-bottom:10px;padding:0 2px;">Additional guests</div>',
+            '  <div id="groupMemberRows"></div>',
+            '  <button type="button" id="addGroupMemberBtn" style="',
+            '    width:100%;padding:9px;margin-top:8px;background:transparent;',
+            '    border:1px dashed #2a2820;border-radius:8px;color:#d4af3799;',
+            '    font-size:0.75rem;cursor:pointer;transition:all 0.2s;',
+            '  ">+ Add another person</button>',
+            '</div>',
+        ].join('');
+        form.insertBefore(wrap, submitBtn);
+
+        document.getElementById('groupToggleBtn').addEventListener('click', function() {
+            _isGroupMode = !_isGroupMode;
+            var btn = document.getElementById('groupToggleBtn');
+            var mw  = document.getElementById('groupMembersWrap');
+            if (_isGroupMode) {
+                btn.style.borderColor  = '#d4af37';
+                btn.style.color        = '#d4af37';
+                btn.style.background   = '#d4af3710';
+                btn.textContent        = '👥 Group Booking — ON';
+                mw.style.display = 'block';
+                if (_groupExtraMembers.length === 0) addGroupMemberRow();
+            } else {
+                btn.style.borderColor  = '#3a3820';
+                btn.style.color        = '#7a7260';
+                btn.style.background   = 'transparent';
+                btn.textContent        = '👥 Group Booking — Add more people';
+                mw.style.display = 'none';
+                _groupExtraMembers = [];
+                _groupAssignments  = [];
+                document.getElementById('groupMemberRows').innerHTML = '';
+            }
+            var d = document.getElementById('date').value;
+            if (d) checkAvailability(d);
+        });
+
+        document.getElementById('addGroupMemberBtn').addEventListener('click', function() {
+            var max = Math.max(ACTIVE_BARBERS.length * 2, 4);
+            if (_groupExtraMembers.length >= max - 1) return;
+            addGroupMemberRow();
+        });
+    }
+
+    function addGroupMemberRow() {
+        var idx  = _groupExtraMembers.length;
+        _groupExtraMembers.push({ serviceId: '', duration: 30, price: 0 });
+
+        var svcs = window.SERVICES || [];
+        var opts = svcs.filter(function(s) { return s.category !== 'Extras'; }).map(function(s) {
+            return '<option value="' + s.id + '">' + s.name + (s.price ? ' — £' + s.price : '') + '</option>';
+        }).join('');
+
+        var row = document.createElement('div');
+        row.className = 'group-member-row';
+        row.dataset.idx = idx;
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+        row.innerHTML = [
+            '<span style="font-size:0.65rem;color:#7a7260;white-space:nowrap;min-width:56px;">Person ' + (idx + 2) + '</span>',
+            '<select class="gm-svc-select" style="',
+            '  flex:1;padding:8px 10px;background:#1a1a14;border:1px solid #2a2820;',
+            '  border-radius:8px;color:#e8e4d9;font-size:0.78rem;outline:none;',
+            '">',
+            '<option value="">Select service...</option>',
+            opts,
+            '</select>',
+            '<button type="button" class="remove-gm-btn" style="',
+            '  background:transparent;border:1px solid #3a3820;border-radius:6px;',
+            '  color:#7a7260;padding:6px 9px;cursor:pointer;font-size:0.75rem;flex-shrink:0;',
+            '">✕</button>',
+        ].join('');
+        document.getElementById('groupMemberRows').appendChild(row);
+
+        row.querySelector('.gm-svc-select').addEventListener('change', function() {
+            var svcId = this.value;
+            var svcObj = (window.SERVICES || []).find(function(s) { return s.id === svcId; });
+            _groupExtraMembers[idx] = {
+                serviceId: svcId,
+                duration:  svcObj ? (parseInt(svcObj.duration) || 30) : 30,
+                price:     svcObj ? (parseFloat(svcObj.price) || 0) : 0,
+            };
+            var d = document.getElementById('date').value;
+            if (d) checkAvailability(d);
+        });
+
+        row.querySelector('.remove-gm-btn').addEventListener('click', function() {
+            _groupExtraMembers.splice(idx, 1);
+            row.remove();
+            // Re-index remaining rows
+            document.querySelectorAll('.group-member-row').forEach(function(r, i) {
+                r.dataset.idx = i;
+                r.querySelector('span').textContent = 'Person ' + (i + 2);
+            });
+            var d = document.getElementById('date').value;
+            if (d) checkAvailability(d);
+        });
+    }
+
+    function canScheduleGroup(slotStartMs, allDurations, busyMap, scheduledBarbers, dateStr) {
+        var localBusy = {};
+        scheduledBarbers.forEach(function(sb) {
+            localBusy[sb.barber.id] = (busyMap[sb.barber.id] || []).map(function(b) {
+                return { start: b.start, end: b.end };
+            });
+        });
+
+        var assignments = [];
+        for (var i = 0; i < allDurations.length; i++) {
+            var dur     = allDurations[i].duration;
+            var svcId   = allDurations[i].serviceId;
+            var price   = allDurations[i].price;
+            var placed  = false;
+
+            for (var delay = 0; delay <= 120 && !placed; delay += 30) {
+                var tryStart = slotStartMs + delay * 60000;
+                var tryEnd   = tryStart + dur * 60000;
+
+                for (var j = 0; j < scheduledBarbers.length && !placed; j++) {
+                    var sb  = scheduledBarbers[j];
+                    var sch = sb.schedule;
+                    var schOpenMs  = getLocalDate(dateStr, parseInt(sch.open.split(':')[0]),  parseInt(sch.open.split(':')[1])).getTime();
+                    var schCloseMs = getLocalDate(dateStr, parseInt(sch.close.split(':')[0]), parseInt(sch.close.split(':')[1])).getTime();
+                    if (tryStart < schOpenMs || tryEnd > schCloseMs) continue;
+
+                    var clash = (localBusy[sb.barber.id] || []).some(function(b) {
+                        return tryStart < b.end && tryEnd > b.start;
+                    });
+                    if (clash) continue;
+
+                    localBusy[sb.barber.id].push({ start: tryStart, end: tryEnd });
+                    assignments.push({
+                        barberId:    sb.barber.id,
+                        barberName:  sb.barber.name || '',
+                        startMs:     tryStart,
+                        endMs:       tryEnd,
+                        serviceId:   svcId,
+                        price:       price,
+                        memberIndex: i,
+                    });
+                    placed = true;
+                }
+            }
+            if (!placed) return null;
+        }
+        return assignments;
+    }
 
     function prefetchDuplicate() {
         var phone = document.getElementById('phone').value.trim();
@@ -458,8 +650,7 @@ var todayStr = now.getFullYear() + '-' +
         _dupCachePhone = phone;
         _dupCacheDate = date;
         _dupCacheResult = null;
-        var url = 'https://script.google.com/macros/s/AKfycbzJjVnihDm3vqoWJznZvbg6ayE71688rxXa-OyrHG3-nlrwGCBMfNc77eE-dyLcfQ7P/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
-        fetch(url).then(function(r) { return r.json(); }).then(function(result) { _dupCacheResult = result; }).catch(function() {});
+        checkDuplicateInFirestore(phone, date).then(function(result) { _dupCacheResult = result; });
     }
 
     document.getElementById('phone').addEventListener('blur', prefetchDuplicate);
@@ -708,8 +899,6 @@ var todayStr = now.getFullYear() + '-' +
                 submitBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span> Securing your slot...';
             }
 
-            var checkUrl = 'https://script.google.com/macros/s/AKfycbxjewnButgDfQqQvgZATtwgNV7JOQhyKVtK4gWPyF7KSY3EzHUbJ2C5Mgny4qjGvVs0/exec?check=duplicate&phone=' + encodeURIComponent(phone) + '&date=' + encodeURIComponent(date);
-
             function handlePayment() {
                 if (_isExtra || !_hasDeposit) {
                     proceedToPayment('FULL');
@@ -730,30 +919,44 @@ var todayStr = now.getFullYear() + '-' +
                 if (_dupCacheResult !== null) {
                     callback(_dupCacheResult);
                 } else {
-                    fetch(checkUrl)
-                        .then(function(r) { return r.json(); })
+                    checkDuplicateInFirestore(phone, date)
                         .then(callback)
-                        .catch(function(err) {
-                            console.log('Duplicate check failed:', err);
-                            isSubmitting = false;
-                            handlePayment();
-                        });
+                        .catch(function() { handlePayment(); });
                 }
             }
 
-            runCheck(function(result) {
-                if (result.duplicate) {
-                    if (!confirm("You already have a booking on this date. Are you sure you want to book again?")) {
-                        isSubmitting = false;
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = '\u2702 BOOK MY APPOINTMENT';
-                        }
-                        return;
-                    }
+            if (_isGroupMode && _groupExtraMembers.length > 0) {
+                // Validate all group members have a service selected
+                var allHaveService = _groupExtraMembers.every(function(m) { return !!m.serviceId; });
+                if (!allHaveService) {
+                    isSubmitting = false;
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '✂ BOOK MY APPOINTMENT'; }
+                    alert('Please select a service for each person in your group.');
+                    return;
                 }
-                handlePayment();
-            });
+                if (!_groupAssignments || _groupAssignments.length === 0) {
+                    isSubmitting = false;
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '✂ BOOK MY APPOINTMENT'; }
+                    alert('Please select a time slot for your group booking.');
+                    return;
+                }
+                // Group bookings: skip duplicate check and deposit popup, always full payment
+                proceedToPayment('FULL');
+            } else {
+                runCheck(function(result) {
+                    if (result.duplicate) {
+                        if (!confirm("You already have a booking on this date. Are you sure you want to book again?")) {
+                            isSubmitting = false;
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = '\u2702 BOOK MY APPOINTMENT';
+                            }
+                            return;
+                        }
+                    }
+                    handlePayment();
+                });
+            }
         });
     }
 
@@ -844,6 +1047,12 @@ var todayStr = now.getFullYear() + '-' +
     }
 
     function proceedToPayment(paymentType) {
+        // Group booking — delegate to dedicated handler
+        if (_isGroupMode && _groupExtraMembers.length > 0 && _groupAssignments.length > 0) {
+            proceedToGroupPayment();
+            return;
+        }
+
         var data = window._pendingFormData;
         data.paymentType = paymentType;
         data.status = 'PENDING';
@@ -896,6 +1105,121 @@ var todayStr = now.getFullYear() + '-' +
         }).catch(function(err) {
             console.error('proceedToPayment error:', err);
             showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
+        });
+    }
+
+    function proceedToGroupPayment() {
+        var data     = window._pendingFormData;
+        var groupId  = 'GRP-' + Date.now();
+        var firebase = window._firebase;
+        var db       = window._db;
+
+        // Build full assignment list: lead is assignments[0], extras follow
+        var allAssignments = _groupAssignments;
+        var groupSize = allAssignments.length;
+
+        var popup = document.getElementById('successPopup');
+        if (popup) {
+            document.getElementById('popup-icon').innerText  = '⏳';
+            document.getElementById('popup-title').innerText = 'Securing your slots...';
+            document.getElementById('popup-text').innerText  = 'Please wait while we prepare your group payment.';
+            popup.style.display = 'flex';
+        }
+
+        // Create PENDING bookings for all group members
+        var bookingIds = [];
+        var writes = allAssignments.map(function(assignment, idx) {
+            var bookingId = 'WCB-' + (Date.now() + idx);
+            bookingIds.push(bookingId);
+            var startDate = new Date(assignment.startMs);
+            var endDate   = new Date(assignment.endMs);
+            var payload = {
+                bookingId:    bookingId,
+                tenantId:     'whitecross',
+                clientName:   data.name,
+                clientEmail:  data.email,
+                clientPhone:  data.phone,
+                barberId:     assignment.barberId,
+                barberName:   assignment.barberName || '',
+                serviceId:    assignment.serviceId,
+                startTime:    firebase.Timestamp.fromDate(startDate),
+                endTime:      firebase.Timestamp.fromDate(endDate),
+                status:       'PENDING',
+                paymentType:  'FULL',
+                paymentState: 'PENDING',
+                source:       'website',
+                groupId:      groupId,
+                groupSize:    groupSize,
+                groupLead:    idx === 0,
+                groupIndex:   idx,
+                pendingCreatedAt: firebase.Timestamp.fromDate(new Date()),
+                expiresAt:    firebase.Timestamp.fromDate(new Date(Date.now() + 15 * 60 * 1000)),
+                updatedAt:    firebase.Timestamp.fromDate(new Date()),
+            };
+            return firebase.setDoc(firebase.doc(db, 'tenants/whitecross/bookings', bookingId), payload);
+        });
+
+        var leadSvcObj = (window.SERVICES || []).find(function(s) { return s.id === allAssignments[0].serviceId; });
+
+        // Store lead booking in sessionStorage for success page
+        sessionStorage.setItem('pendingBooking', JSON.stringify({
+            bookingId:   bookingIds[0],
+            name:        data.name,
+            email:       data.email,
+            phone:       data.phone,
+            date:        data.date,
+            time:        data.time,
+            service:     allAssignments[0].serviceId,
+            barber:      allAssignments[0].barberId,
+            barberName:  allAssignments[0].barberName,
+            paymentType: 'FULL',
+            isGroup:     true,
+            groupId:     groupId,
+            groupBookingIds: bookingIds,
+        }));
+
+        Promise.all(writes).then(function() {
+            // Build group members payload for Stripe
+            var groupMembers = allAssignments.map(function(a, i) {
+                var svcObj = (window.SERVICES || []).find(function(s) { return s.id === a.serviceId; });
+                return {
+                    bookingId:   bookingIds[i],
+                    serviceId:   a.serviceId,
+                    serviceName: svcObj ? svcObj.name : a.serviceId,
+                    price:       a.price || (svcObj ? parseFloat(svcObj.price || 0) : 0),
+                    barberId:    a.barberId,
+                    barberName:  a.barberName,
+                };
+            });
+
+            return fetch(CREATE_SESSION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    groupId:      groupId,
+                    groupMembers: groupMembers,
+                    bookingId:    bookingIds[0],
+                    date:         data.date,
+                    time:         data.time,
+                    clientName:   data.name,
+                    clientEmail:  data.email,
+                    clientPhone:  data.phone,
+                    paymentType:  'FULL',
+                    testMode:     IS_TEST_MODE || undefined,
+                }),
+            });
+        }).then(function(r) {
+            if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : '?'));
+            return r.json();
+        }).then(function(result) {
+            if (result.url) {
+                setTimeout(function() { window.location.href = result.url; }, 400);
+            } else {
+                showPopupError('Payment setup failed. Please try again.');
+            }
+        }).catch(function(err) {
+            console.error('proceedToGroupPayment error:', err);
+            showPopupError('Group payment setup failed. Please try again or call us on 020 3621 5929.');
         });
     }
 
@@ -1084,8 +1408,23 @@ var todayStr = now.getFullYear() + '-' +
                 var busy = false;
                 var assignedBarber = '';
                 var assignedBarberName = '';
+                var groupAssignmentsForSlot = null;
 
-                if (barber === 'no-preference') {
+                var groupActive = _isGroupMode && _groupExtraMembers.length > 0 &&
+                    _groupExtraMembers.every(function(m) { return !!m.serviceId; });
+
+                if (groupActive) {
+                    // Build full member list: lead first, then extras
+                    var leadSvcObj = (window.SERVICES || []).find(function(s) { return s.id === service; });
+                    var allMembers = [{ serviceId: service, duration: duration, price: leadSvcObj ? parseFloat(leadSvcObj.price || 0) : 0 }]
+                        .concat(_groupExtraMembers);
+                    groupAssignmentsForSlot = canScheduleGroup(slotStart, allMembers, busyMap, scheduledBarbers, date);
+                    busy = !groupAssignmentsForSlot;
+                    if (!busy) {
+                        assignedBarber     = groupAssignmentsForSlot[0].barberId;
+                        assignedBarberName = groupAssignmentsForSlot[0].barberName;
+                    }
+                } else if (barber === 'no-preference') {
                     var available = scheduledBarbers
                         .map(function(x) { return x.barber; })
                         .filter(function(b) { return isInSchedule(b) && !isBusy(b.id); });
@@ -1114,14 +1453,17 @@ var todayStr = now.getFullYear() + '-' +
                 btn.disabled = busy;
 
                 if (!busy) {
-                    btn.addEventListener('click', function() {
-                        timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(function(b) { b.classList.remove('selected'); });
-                        btn.classList.add('selected');
-                        hiddenTime.value = slot.label;
-                        hiddenTime.dataset.afterHours = 'false';
-                        hiddenTime.dataset.assignedBarber = assignedBarber;
-                        hiddenTime.dataset.assignedBarberName = assignedBarberName;
-                    });
+                    (function(capturedAssignments) {
+                        btn.addEventListener('click', function() {
+                            timeSlotsGrid.querySelectorAll('.time-slot-btn').forEach(function(b) { b.classList.remove('selected'); });
+                            btn.classList.add('selected');
+                            hiddenTime.value = slot.label;
+                            hiddenTime.dataset.afterHours = 'false';
+                            hiddenTime.dataset.assignedBarber = assignedBarber;
+                            hiddenTime.dataset.assignedBarberName = assignedBarberName;
+                            _groupAssignments = capturedAssignments || [];
+                        });
+                    })(groupAssignmentsForSlot);
                 }
                 timeSlotsGrid.appendChild(btn);
             });
@@ -1204,7 +1546,28 @@ var todayStr = now.getFullYear() + '-' +
             popup.style.display = 'flex';
         }
 
-        if (bookingData && bookingData.date && bookingData.time) {
+        if (bookingData && bookingData.isGroup && bookingData.groupBookingIds) {
+            // Confirm all group bookings client-side (webhook also does this server-side)
+            var fb2 = window._firebase;
+            var db2 = window._db;
+            if (fb2 && db2) {
+                bookingData.groupBookingIds.forEach(function(gBid, gi) {
+                    fb2.getDocs(fb2.query(
+                        fb2.collection(db2, 'tenants/' + TENANT + '/bookings'),
+                        fb2.where('bookingId', '==', gBid)
+                    )).then(function(snap) {
+                        if (!snap.empty) {
+                            fb2.updateDoc(snap.docs[0].ref, {
+                                status: 'CONFIRMED',
+                                paymentState: 'PAID',
+                                paidAt: fb2.Timestamp.fromDate(new Date()),
+                            });
+                        }
+                    }).catch(function() {});
+                });
+            }
+            sessionStorage.removeItem('pendingBooking');
+        } else if (bookingData && bookingData.date && bookingData.time) {
             writeBookingStatus(bookingData, 'CONFIRMED', 'PAID').then(function(ok) {
                 if (ok) sessionStorage.removeItem('pendingBooking');
             });
@@ -1212,6 +1575,8 @@ var todayStr = now.getFullYear() + '-' +
 
         window.history.replaceState({}, '', window.location.pathname);
     }
+
+    if (form) initGroupBookingUI();
 
     setTimeout(function() {
         initBarberSelector();

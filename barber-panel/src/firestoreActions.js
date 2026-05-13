@@ -41,12 +41,7 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
     checkedOutAt: Timestamp.fromDate(new Date()),
-    loyaltyPointsEarned: (discount && discount > 0) ? 0 : Math.floor(
-      // Always earn on full service price — loyalty redemption shouldn't reduce points earned
-      bookingData.price
-        ? parseFloat(String(bookingData.price).replace('£', '')) || total
-        : total
-    ),
+    loyaltyPointsEarned: 0, // placeholder — overwritten below after member check
     loyaltyPointsRedeemed: loyaltyPointsRedeemed || 0,
   });
 
@@ -55,14 +50,15 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     const phone = bookingData.clientPhone || '';
     const email = bookingData.clientEmail || '';
     const hasDiscount = discount && discount > 0;
-    // Always earn on full service price — loyalty redemption shouldn't reduce points earned
     const fullPrice = bookingData.price
       ? parseFloat(String(bookingData.price).replace('£', '')) || total
       : total;
     const redeemed = loyaltyPointsRedeemed || 0;
+
+    // Look up client to check membership before deciding points
+    let clientDoc = null;
     if (phone || email) {
       const clientsRef = collection(db, `${TENANT}/clients`);
-      let clientDoc = null;
       if (phone) {
         const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
         if (!s.empty) clientDoc = s.docs[0];
@@ -71,26 +67,32 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
         const s = await getDocs(query(clientsRef, where('email', '==', email)));
         if (!s.empty) clientDoc = s.docs[0];
       }
-      const isMember = clientDoc?.data()?.isMember || false;
-      if (!isMember) {
-        const pointsEarned = hasDiscount ? 0 : Math.floor(fullPrice);
-        // If this is an edit (booking was already CHECKED_OUT), reverse previous effect first
-        const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
-        const prevEarned   = wasCheckedOut ? (bookingData.loyaltyPointsEarned   || 0) : 0;
-        const prevRedeemed = wasCheckedOut ? (bookingData.loyaltyPointsRedeemed || 0) : 0;
-        const netDelta = (pointsEarned - redeemed) - (prevEarned - prevRedeemed);
-        if (netDelta !== 0) {
-          if (clientDoc) {
-            await updateDoc(clientDoc.ref, { loyaltyPoints: increment(netDelta) });
-          } else if (!wasCheckedOut) {
-            await addDoc(clientsRef, {
-              name: bookingData.clientName || '',
-              phone,
-              email,
-              loyaltyPoints: Math.max(0, pointsEarned - redeemed),
-              createdAt: Timestamp.fromDate(new Date()),
-            });
-          }
+    }
+
+    const isMember = clientDoc?.data()?.isMember || false;
+    // Members (including students) earn 0 points; discount also blocks points
+    const pointsEarned = (isMember || hasDiscount) ? 0 : Math.floor(fullPrice);
+
+    // Write the correct loyaltyPointsEarned back to the booking
+    await updateDoc(ref, { loyaltyPointsEarned: pointsEarned });
+
+    if (!isMember && (phone || email)) {
+      const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
+      const prevEarned   = wasCheckedOut ? (bookingData.loyaltyPointsEarned   || 0) : 0;
+      const prevRedeemed = wasCheckedOut ? (bookingData.loyaltyPointsRedeemed || 0) : 0;
+      const netDelta = (pointsEarned - redeemed) - (prevEarned - prevRedeemed);
+      if (netDelta !== 0) {
+        const clientsRef = collection(db, `${TENANT}/clients`);
+        if (clientDoc) {
+          await updateDoc(clientDoc.ref, { loyaltyPoints: increment(netDelta) });
+        } else if (!wasCheckedOut) {
+          await addDoc(clientsRef, {
+            name: bookingData.clientName || '',
+            phone,
+            email,
+            loyaltyPoints: Math.max(0, pointsEarned - redeemed),
+            createdAt: Timestamp.fromDate(new Date()),
+          });
         }
       }
     }
