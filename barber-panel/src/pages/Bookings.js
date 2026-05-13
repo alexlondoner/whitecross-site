@@ -505,13 +505,11 @@ export default function Bookings() {
                 : (config.services
                     ? (config.services.find(s => s.id === b.service) || {}).name || b.service
                     : b.service);
-              // For group lead bookings, price is stored as group total — show individual service price instead
-              const individualPrice = b.groupId
-                ? (() => { const svc = config.services && config.services.find(s => s.id === b.service); return svc ? '£' + parseFloat(svc.price || 0).toFixed(2) : null; })()
-                : null;
+              // For group bookings, servicePrice holds individual service price; price holds group total for lead
+              const rawPrice = b.groupId && b.servicePrice != null ? b.servicePrice : b.price;
               const displayAmount = isProductSale
                 ? (soldProductsTotal(b) > 0 ? '£' + soldProductsTotal(b).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'))
-                : (individualPrice || b.price || (b.paidAmount ? '£' + b.paidAmount : '—'));
+                : (rawPrice != null && rawPrice !== '' ? '£' + parseFloat(rawPrice).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'));
               const isCancelled = b.status === 'CANCELLED';
               const isConfirming = confirmDeleteId === b.bookingId;
               const isDeleting   = deletingId === b.bookingId;
@@ -562,8 +560,8 @@ export default function Bookings() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: '700', color: isProductSale ? '#03a9f4' : '#d4af37' }}>{displayAmount}</span>
-                    {!isProductSale && b.paidAmount && b.paidAmount !== b.price && (
-                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Paid: £{parseFloat(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
+                    {!isProductSale && b.paidAmount && b.paymentType === 'DEPOSIT' && (
+                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Dep: £{parseFloat(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
                     )}
                     {b.status === 'CHECKED_OUT' && b.paymentMethod && (
                       <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>{b.paymentMethod}</span>
