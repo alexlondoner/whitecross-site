@@ -941,7 +941,17 @@ var todayStr = now.getFullYear() + '-' +
                     return;
                 }
                 // Group bookings: show deposit/full choice with group-specific amounts
-                var groupTotal = (_groupAssignments || []).reduce(function(sum, a) {
+                // Re-read lead service from form (slots may have been rendered before service was chosen)
+                var _popupLeadService = document.getElementById('service').value || '';
+                var _popupLeadSvcObj = (window.SERVICES || []).find(function(s) { return s.id === _popupLeadService; });
+                var _popupAssignments = (_groupAssignments || []).slice();
+                if (_popupAssignments.length > 0 && _popupLeadService) {
+                    _popupAssignments[0] = Object.assign({}, _popupAssignments[0], {
+                        serviceId: _popupLeadService,
+                        price: _popupLeadSvcObj ? parseFloat(_popupLeadSvcObj.price || 0) : _popupAssignments[0].price,
+                    });
+                }
+                var groupTotal = _popupAssignments.reduce(function(sum, a) {
                     var svc = (window.SERVICES || []).find(function(s) { return s.id === a.serviceId; });
                     return sum + (a.price > 0 ? a.price : (svc ? parseFloat(svc.price || 0) : 0));
                 }, 0);
