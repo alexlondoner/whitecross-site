@@ -505,9 +505,13 @@ export default function Bookings() {
                 : (config.services
                     ? (config.services.find(s => s.id === b.service) || {}).name || b.service
                     : b.service);
+              // For group lead bookings, price is stored as group total — show individual service price instead
+              const individualPrice = b.groupId
+                ? (() => { const svc = config.services && config.services.find(s => s.id === b.service); return svc ? '£' + parseFloat(svc.price || 0).toFixed(2) : null; })()
+                : null;
               const displayAmount = isProductSale
                 ? (soldProductsTotal(b) > 0 ? '£' + soldProductsTotal(b).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'))
-                : (b.price || (b.paidAmount ? '£' + b.paidAmount : '—'));
+                : (individualPrice || b.price || (b.paidAmount ? '£' + b.paidAmount : '—'));
               const isCancelled = b.status === 'CANCELLED';
               const isConfirming = confirmDeleteId === b.bookingId;
               const isDeleting   = deletingId === b.bookingId;
