@@ -321,7 +321,7 @@ exports.stripeWebhook = onRequest(
                         .get();
                     if (!groupSnap.empty) {
                         const isGroupDeposit   = meta.paymentType === 'DEPOSIT';
-                        const depositPerPerson = parseFloat(meta.groupDepositPerPerson) || 20;
+                        const depositPerPerson = parseFloat(meta.groupDepositPerPerson) || 10;
                         const batch = db.batch();
                         groupSnap.docs.forEach(doc => {
                             const existing = doc.data();

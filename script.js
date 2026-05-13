@@ -1139,7 +1139,17 @@ var todayStr = now.getFullYear() + '-' +
         var db       = window._db;
 
         // Build full assignment list: lead is assignments[0], extras follow
-        var allAssignments = _groupAssignments;
+        var allAssignments = _groupAssignments.slice(); // copy so we don't mutate global
+        // Always re-read lead's service + price from the current form values
+        // (slots may have been generated before the user selected their service)
+        var currentLeadService = document.getElementById('service').value || '';
+        var currentLeadSvcObj = (window.SERVICES || []).find(function(s) { return s.id === currentLeadService; });
+        if (allAssignments.length > 0 && currentLeadService) {
+            allAssignments[0] = Object.assign({}, allAssignments[0], {
+                serviceId: currentLeadService,
+                price: currentLeadSvcObj ? parseFloat(currentLeadSvcObj.price || 0) : allAssignments[0].price,
+            });
+        }
         var groupSize = allAssignments.length;
         var groupTotalPrice = allAssignments.reduce(function(sum, a) {
             var svc = (window.SERVICES || []).find(function(s) { return s.id === a.serviceId; });
