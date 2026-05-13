@@ -393,6 +393,7 @@ function CartStep({
   effectiveClientPoints,
   clientIsMember, clientMemberTier,
   matchedClientName,
+  welcomeOffer,
   LOYALTY_REDEEM_RATE,
   onSaveUnpaid, onContinue,
   saving,
@@ -550,6 +551,38 @@ function CartStep({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {welcomeOffer && welcomeOffer.value && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '10px',
+          background: 'rgba(212,175,55,0.07)',
+          border: '1px solid rgba(212,175,55,0.25)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
+        }}>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: '700', color: T.gold, letterSpacing: '0.5px' }}>
+              ♛ {welcomeOffer.value}% Welcome Offer
+            </div>
+            <div style={{ fontSize: '0.62rem', color: T.muted, marginTop: '2px' }}>
+              Website sign-up discount — active
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setDiscountType('%');
+              setDiscountValue(String(welcomeOffer.value));
+              setDiscountApplied(Math.round(startingTotal * welcomeOffer.value / 100 * 100) / 100);
+            }}
+            style={{
+              padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.3)',
+              background: 'rgba(212,175,55,0.12)', color: T.gold,
+              fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            Apply {welcomeOffer.value}% off
+          </button>
         </div>
       )}
 
@@ -776,6 +809,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   const [matchedClientName, setMatchedClientName] = useState('');
   const [pointsInput, setPointsInput] = useState('');
   const [pointsApplied, setPointsApplied] = useState(0);
+  const [welcomeOffer, setWelcomeOffer] = useState(null);
 
   const LOYALTY_REDEEM_RATE = 20;
 
@@ -823,6 +857,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
       setClientIsMember(result.isMember || false);
       setClientMemberTier(result.membershipTier || '');
       setMatchedClientName(result.clientName || '');
+      setWelcomeOffer(result.welcomeOffer || null);
     }).catch(() => {});
   }, [booking.bookingId]);
 
@@ -949,6 +984,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
                 effectiveClientPoints={effectiveClientPoints}
                 clientIsMember={clientIsMember} clientMemberTier={clientMemberTier}
                 matchedClientName={matchedClientName}
+                welcomeOffer={welcomeOffer}
                 LOYALTY_REDEEM_RATE={LOYALTY_REDEEM_RATE}
                 onSaveUnpaid={handleSaveUnpaid}
                 onContinue={() => setStep('tip')}

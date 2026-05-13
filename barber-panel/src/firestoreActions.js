@@ -133,9 +133,19 @@ export async function getClientLoyaltyPoints({ phone, email }) {
       }
     }
 
-    if (data) return { points: data.loyaltyPoints || 0, isMember: data.isMember || false, clientName: data.name || '', membershipTier: data.membershipTier || '' };
+    if (data) {
+      const offer = data.welcomeOffer || null;
+      const offerActive = offer && offer.expiresAt && (offer.expiresAt.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt)) > new Date();
+      return {
+        points: data.loyaltyPoints || 0,
+        isMember: data.isMember || false,
+        clientName: data.name || '',
+        membershipTier: data.membershipTier || '',
+        welcomeOffer: offerActive ? offer : null,
+      };
+    }
   } catch (e) {}
-  return { points: 0, isMember: false, clientName: '', membershipTier: '' };
+  return { points: 0, isMember: false, clientName: '', membershipTier: '', welcomeOffer: null };
 }
 
 export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, serviceCharge, discount }) {

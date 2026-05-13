@@ -73,6 +73,31 @@ const SERVICE_NAMES = {
     'wash-hot-towel': 'Wash, Style & Hot Towel'
 };
 
+const SERVICE_PRICES = {
+    'i-cut-royal': 65,
+    'i-cut-deluxe': 55,
+    'full-skinfade-beard-luxury': 48,
+    'full-skin-fade-beard-luxury': 48,
+    'full-experience': 40,
+    'senior-full-experience': 35,
+    'skin-fade': 32,
+    'scissor-cut': 30,
+    'classic-sbs': 28,
+    'hot-towel-shave': 22,
+    'clipper-cut': 22,
+    'senior-haircut': 23,
+    'young-gents': 20,
+    'young-gents-skin-fade': 24,
+    'full-facial': 24,
+    'beard-dyeing': 24,
+    'face-mask': 12,
+    'face-steam': 12,
+    'threading': 10,
+    'waxing': 10,
+    'shape-up-clean-up': 20,
+    'wash-hot-towel': 10,
+};
+
 const DEPOSIT_AMOUNTS = {
     'i-cut-royal': 10, 'i-cut-deluxe': 10,
     'full-skinfade-beard-luxury': 10, 'full-skin-fade-beard-luxury': 10, 'full-experience': 10,
@@ -105,7 +130,7 @@ exports.createCheckoutSession = onRequest(
             barberId, barberName, date, time,
             clientName, clientEmail, clientPhone, paymentType,
             // Group booking fields
-            groupId, groupMembers,
+            groupId, groupMembers, groupDepositPerPerson,
         } = req.body || {};
 
         const isGroup = !!(groupId && Array.isArray(groupMembers) && groupMembers.length > 1);
@@ -124,20 +149,37 @@ exports.createCheckoutSession = onRequest(
             let session;
 
             if (isGroup) {
-                const lineItems = groupMembers.map((m, i) => ({
-                    price_data: {
-                        currency: 'gbp',
-                        product_data: {
-                            name: `Person ${i + 1} – ${SERVICE_NAMES[m.serviceId] || m.serviceName || m.serviceId}`,
-                            description: `${m.barberName || 'Barber'} · ${date}`,
+                const isGroupDeposit   = paymentType === 'DEPOSIT';
+                const depositPerPerson = parseFloat(groupDepositPerPerson) || 10;
+
+                const lineItems = groupMembers.map((m, i) => {
+                    // Deposit mode: flat £20/person. Full mode: actual service price
+                    let chargeAmount;
+                    if (isGroupDeposit) {
+                        chargeAmount = depositPerPerson;
+                    } else {
+                        chargeAmount = parseFloat(m.price) > 0
+                            ? parseFloat(m.price)
+                            : (SERVICE_PRICES[m.serviceId] || 0);
+                    }
+                    const label = isGroupDeposit
+                        ? `Deposit – Person ${i + 1} (${SERVICE_NAMES[m.serviceId] || m.serviceName || m.serviceId})`
+                        : `Person ${i + 1} – ${SERVICE_NAMES[m.serviceId] || m.serviceName || m.serviceId}`;
+                    return {
+                        price_data: {
+                            currency: 'gbp',
+                            product_data: {
+                                name: label,
+                                description: `${m.barberName || 'Barber'} · ${date}`,
+                            },
+                            unit_amount: Math.round(chargeAmount * 100),
                         },
-                        unit_amount: Math.round((parseFloat(m.price) || 0) * 100),
-                    },
-                    quantity: 1,
-                })).filter(li => li.price_data.unit_amount > 0);
+                        quantity: 1,
+                    };
+                }).filter(li => li.price_data.unit_amount >= 50);
 
                 if (!lineItems.length) {
-                    res.status(400).json({ error: 'No valid line items for group' });
+                    res.status(400).json({ error: 'Could not resolve prices for group booking' });
                     return;
                 }
 
@@ -148,13 +190,14 @@ exports.createCheckoutSession = onRequest(
                     customer_email: clientEmail || undefined,
                     metadata: {
                         groupId,
-                        bookingId:   groupMembers[0].bookingId || '',
-                        clientName:  clientName  || '',
-                        clientPhone: clientPhone || '',
-                        clientEmail: clientEmail || '',
-                        paymentType: 'FULL',
-                        isGroup:     'true',
-                        groupSize:   String(groupMembers.length),
+                        bookingId:             groupMembers[0].bookingId || '',
+                        clientName:            clientName  || '',
+                        clientPhone:           clientPhone || '',
+                        clientEmail:           clientEmail || '',
+                        paymentType:           isGroupDeposit ? 'DEPOSIT' : 'FULL',
+                        isGroup:               'true',
+                        groupSize:             String(groupMembers.length),
+                        groupDepositPerPerson: isGroupDeposit ? String(depositPerPerson) : '0',
                     },
                     success_url: testMode
                         ? `https://whitecrossbarbers.com/success.html?session_id={CHECKOUT_SESSION_ID}&id=${groupMembers[0].bookingId}&testMode=1`
@@ -277,21 +320,28 @@ exports.stripeWebhook = onRequest(
                         .where('groupId', '==', meta.groupId)
                         .get();
                     if (!groupSnap.empty) {
+                        const isGroupDeposit   = meta.paymentType === 'DEPOSIT';
+                        const depositPerPerson = parseFloat(meta.groupDepositPerPerson) || 20;
                         const batch = db.batch();
                         groupSnap.docs.forEach(doc => {
+                            const existing = doc.data();
+                            const memberPrice = parseFloat(existing.price) || 0;
+                            const memberDeposit = isGroupDeposit ? depositPerPerson : memberPrice;
                             batch.update(doc.ref, {
                                 status:              'CONFIRMED',
-                                paymentState:        'PAID',
+                                paymentState:        isGroupDeposit ? 'DEPOSIT_PAID' : 'PAID',
+                                paymentType:         isGroupDeposit ? 'DEPOSIT' : 'FULL',
                                 paidAt:              admin.firestore.Timestamp.now(),
                                 stripeSessionId:     sessionId || null,
                                 stripePaymentIntent: paymentIntent || null,
                                 stripeAmountPaid:    amountPaid,
+                                paidAmount:          isGroupDeposit ? memberDeposit : memberPrice,
                                 stripeEventId:       event.id || null,
                                 updatedAt:           admin.firestore.Timestamp.now(),
                             });
                         });
                         await batch.commit();
-                        console.log(`stripeWebhook: confirmed ${groupSnap.size} group bookings for groupId=${meta.groupId}`);
+                        console.log(`stripeWebhook: confirmed ${groupSnap.size} group bookings (${meta.paymentType}) for groupId=${meta.groupId}`);
                     }
                     return;
                 }
@@ -430,7 +480,7 @@ exports.stripeWebhook = onRequest(
 
                 const updateData = {
                     status: 'CONFIRMED',
-                    paymentState: 'PAID',
+                    paymentState: paymentType === 'DEPOSIT' ? 'DEPOSIT_PAID' : 'PAID',
                     paidAt: admin.firestore.Timestamp.now(),
                     stripeSessionId: sessionId || null,
                     stripePaymentIntent: paymentIntent || null,

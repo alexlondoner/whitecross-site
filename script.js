@@ -940,8 +940,30 @@ var todayStr = now.getFullYear() + '-' +
                     alert('Please select a time slot for your group booking.');
                     return;
                 }
-                // Group bookings: skip duplicate check and deposit popup, always full payment
-                proceedToPayment('FULL');
+                // Group bookings: show deposit/full choice with group-specific amounts
+                var groupTotal = (_groupAssignments || []).reduce(function(sum, a) {
+                    var svc = (window.SERVICES || []).find(function(s) { return s.id === a.serviceId; });
+                    return sum + (a.price > 0 ? a.price : (svc ? parseFloat(svc.price || 0) : 0));
+                }, 0);
+                var groupDepositPerPerson = 10;
+                var groupDepositTotal = groupDepositPerPerson * _groupAssignments.length;
+
+                var popup = document.getElementById('paymentChoicePopup');
+                popup.querySelector('h2').textContent = 'Secure Your Group Booking';
+                popup.querySelector('p').textContent = 'Choose how you\'d like to secure your group appointment.';
+                document.getElementById('btnFullPayment').textContent = '✅ Pay in Full — £' + groupTotal.toFixed(0);
+                document.getElementById('btnDeposit').textContent = '🔒 Pay Deposit — £10 × ' + _groupAssignments.length + ' = £' + groupDepositTotal;
+                popup.querySelector('p:last-of-type').textContent = 'Deposit secures all ' + _groupAssignments.length + ' slots. Remaining £' + (groupTotal - groupDepositTotal).toFixed(0) + ' paid on the day.';
+                popup.style.display = 'flex';
+
+                document.getElementById('btnFullPayment').onclick = function() {
+                    popup.style.display = 'none';
+                    proceedToPayment('FULL');
+                };
+                document.getElementById('btnDeposit').onclick = function() {
+                    popup.style.display = 'none';
+                    proceedToPayment('DEPOSIT');
+                };
             } else {
                 runCheck(function(result) {
                     if (result.duplicate) {
@@ -1049,7 +1071,7 @@ var todayStr = now.getFullYear() + '-' +
     function proceedToPayment(paymentType) {
         // Group booking — delegate to dedicated handler
         if (_isGroupMode && _groupExtraMembers.length > 0 && _groupAssignments.length > 0) {
-            proceedToGroupPayment();
+            proceedToGroupPayment(paymentType);
             return;
         }
 
@@ -1108,8 +1130,10 @@ var todayStr = now.getFullYear() + '-' +
         });
     }
 
-    function proceedToGroupPayment() {
+    function proceedToGroupPayment(paymentType) {
         var data     = window._pendingFormData;
+        var isDeposit = paymentType === 'DEPOSIT';
+        var groupDepositPerPerson = 10;
         var groupId  = 'GRP-' + Date.now();
         var firebase = window._firebase;
         var db       = window._db;
@@ -1117,6 +1141,10 @@ var todayStr = now.getFullYear() + '-' +
         // Build full assignment list: lead is assignments[0], extras follow
         var allAssignments = _groupAssignments;
         var groupSize = allAssignments.length;
+        var groupTotalPrice = allAssignments.reduce(function(sum, a) {
+            var svc = (window.SERVICES || []).find(function(s) { return s.id === a.serviceId; });
+            return sum + (a.price > 0 ? a.price : (svc ? parseFloat(svc.price || 0) : 0));
+        }, 0);
 
         var popup = document.getElementById('successPopup');
         if (popup) {
@@ -1133,21 +1161,33 @@ var todayStr = now.getFullYear() + '-' +
             bookingIds.push(bookingId);
             var startDate = new Date(assignment.startMs);
             var endDate   = new Date(assignment.endMs);
+            var memberTime = startDate.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London'
+            });
             var payload = {
                 bookingId:    bookingId,
                 tenantId:     'whitecross',
+                name:         data.name,
+                email:        data.email,
+                phone:        data.phone,
                 clientName:   data.name,
                 clientEmail:  data.email,
                 clientPhone:  data.phone,
+                date:         data.date,
+                time:         memberTime,
+                barber:       assignment.barberId,
                 barberId:     assignment.barberId,
                 barberName:   assignment.barberName || '',
+                service:      assignment.serviceId,
                 serviceId:    assignment.serviceId,
+                price:        idx === 0 ? groupTotalPrice : assignment.price,
+                depositPerPerson: isDeposit ? groupDepositPerPerson : 0,
                 startTime:    firebase.Timestamp.fromDate(startDate),
                 endTime:      firebase.Timestamp.fromDate(endDate),
                 status:       'PENDING',
-                paymentType:  'FULL',
+                paymentType:  isDeposit ? 'DEPOSIT' : 'FULL',
                 paymentState: 'PENDING',
-                source:       'website',
+                source:       'Website',
                 groupId:      groupId,
                 groupSize:    groupSize,
                 groupLead:    idx === 0,
@@ -1172,7 +1212,7 @@ var todayStr = now.getFullYear() + '-' +
             service:     allAssignments[0].serviceId,
             barber:      allAssignments[0].barberId,
             barberName:  allAssignments[0].barberName,
-            paymentType: 'FULL',
+            paymentType: isDeposit ? 'DEPOSIT' : 'FULL',
             isGroup:     true,
             groupId:     groupId,
             groupBookingIds: bookingIds,
@@ -1196,15 +1236,16 @@ var todayStr = now.getFullYear() + '-' +
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    groupId:      groupId,
-                    groupMembers: groupMembers,
-                    bookingId:    bookingIds[0],
-                    date:         data.date,
-                    time:         data.time,
-                    clientName:   data.name,
-                    clientEmail:  data.email,
-                    clientPhone:  data.phone,
-                    paymentType:  'FULL',
+                    groupId:               groupId,
+                    groupMembers:          groupMembers,
+                    bookingId:             bookingIds[0],
+                    date:                  data.date,
+                    time:                  data.time,
+                    clientName:            data.name,
+                    clientEmail:           data.email,
+                    clientPhone:           data.phone,
+                    paymentType:           isDeposit ? 'DEPOSIT' : 'FULL',
+                    groupDepositPerPerson: isDeposit ? groupDepositPerPerson : 0,
                     testMode:     IS_TEST_MODE || undefined,
                 }),
             });

@@ -389,14 +389,14 @@ export default function BookingDetail({
                 }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', color: T.text, fontWeight: '500' }}>
-                      Person {(m.groupIndex ?? i) + 2}
+                      Person {m.groupIndex != null ? m.groupIndex + 1 : i + 2}
                     </div>
                     <div style={{ fontSize: '0.62rem', color: T.muted }}>
                       {(m.barberName || m.barber || '').toUpperCase()} · {mTime}
                     </div>
                   </div>
                   <div style={{ fontSize: '0.68rem', color: T.gold, fontWeight: '600', textAlign: 'right' }}>
-                    {m.serviceId || m.service || '–'}
+                    {getBookingServiceLabel({ service: m.serviceId || m.service }) || m.serviceId || m.service || '–'}
                   </div>
                 </div>
               );

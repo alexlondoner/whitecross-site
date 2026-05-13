@@ -158,6 +158,230 @@
         #stateLoading.hidden, #stateDetails.hidden { display: none; }
         #stateDetails { display: none; }
         #stateDetails.visible { display: block; }
+
+        /* ── Loyalty card ─────────────────────────────────────────── */
+        #loyaltyCard {
+            margin-top: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(212,175,55,0.25);
+            background: linear-gradient(135deg, #111 0%, #0d0d0d 100%);
+            overflow: hidden;
+            display: none;
+        }
+        #loyaltyCard.visible { display: block; }
+
+        .lc-header {
+            padding: 14px 20px;
+            background: rgba(212,175,55,0.06);
+            border-bottom: 1px solid rgba(212,175,55,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lc-crown { font-size: 1.2rem; }
+        .lc-title {
+            font-family: 'Cinzel', serif;
+            font-size: 0.72rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #b8860b, #d4af37);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .lc-body { padding: 20px; }
+
+        /* points display */
+        .lc-pts-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .lc-pts-num {
+            font-size: 2.4rem;
+            font-family: 'Cinzel', serif;
+            color: #d4af37;
+            line-height: 1;
+        }
+        .lc-pts-label {
+            font-size: 0.72rem;
+            color: #666;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .lc-welcome-back {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 18px;
+        }
+        .lc-welcome-back strong { color: #d4af37; }
+
+        /* progress bar */
+        .lc-progress-wrap {
+            margin-bottom: 18px;
+        }
+        .lc-progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #555;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .lc-progress-bar-bg {
+            height: 5px;
+            background: #1a1a1a;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .lc-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(to right, #b8860b, #d4af37);
+            border-radius: 99px;
+            transition: width 0.8s ease;
+        }
+        .lc-next-reward {
+            font-size: 0.7rem;
+            color: #555;
+            text-align: center;
+            margin-top: 6px;
+        }
+        .lc-next-reward strong { color: #888; }
+
+        /* redemption tiers */
+        .lc-tiers-label {
+            font-size: 0.6rem;
+            color: #444;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .lc-tiers {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid #1c1c18;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .lc-tier {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-bottom: 1px solid #1c1c18;
+            font-size: 0.78rem;
+            transition: background 0.15s;
+        }
+        .lc-tier:last-child { border-bottom: none; }
+        .lc-tier.unlocked { background: rgba(212,175,55,0.05); }
+        .lc-tier-pts {
+            min-width: 44px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.72rem;
+            color: #d4af37;
+            text-align: right;
+        }
+        .lc-tier.locked .lc-tier-pts { color: #333; }
+        .lc-tier-sep { color: #2a2a22; font-size: 0.7rem; }
+        .lc-tier-reward { color: #aaa; flex: 1; }
+        .lc-tier.locked .lc-tier-reward { color: #333; }
+        .lc-tier-badge {
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .lc-tier.unlocked .lc-tier-badge { background: rgba(212,175,55,0.15); color: #d4af37; }
+        .lc-tier.locked .lc-tier-badge { display: none; }
+
+        /* welcome offer banner */
+        .lc-offer-banner {
+            background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(184,134,11,0.06));
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .lc-offer-pct {
+            font-family: 'Cinzel', serif;
+            font-size: 1.6rem;
+            color: #d4af37;
+            line-height: 1;
+        }
+        .lc-offer-desc {
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+        .lc-offer-exp {
+            font-size: 0.65rem;
+            color: #555;
+            margin-top: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* enroll prompt */
+        .lc-enroll-text {
+            font-size: 0.82rem;
+            color: #777;
+            line-height: 1.7;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .lc-enroll-text strong { color: #d4af37; }
+
+        #btnEnroll {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-family: 'Cinzel', serif;
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            transition: filter 0.2s;
+        }
+        #btnEnroll:hover { filter: brightness(1.1); }
+        #btnEnroll:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+        #btnNoThanks {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 10px;
+            border: 1px solid #1e1e1a;
+            background: transparent;
+            color: #333;
+            font-size: 0.73rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        #btnNoThanks:hover { color: #555; }
+        .lc-enrolled-ok {
+            text-align: center;
+            font-size: 0.78rem;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+        .lc-enrolled-ok strong { color: #4caf50; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -198,9 +422,20 @@
 
 </div>
 
+<!-- Loyalty card (injected by JS) -->
+<div class="wrap" style="padding-top:0; padding-bottom:80px;">
+    <div id="loyaltyCard">
+        <div class="lc-header">
+            <span class="lc-crown">♛</span>
+            <span class="lc-title">Loyalty Programme</span>
+        </div>
+        <div class="lc-body" id="loyaltyBody"></div>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs }
+    import { getFirestore, collection, query, where, getDocs, addDoc, Timestamp }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -251,7 +486,7 @@
     function paymentRow(data) {
         // Show deposit/remaining if paymentType is DEPOSIT, else show paid in full
         const price = Number(data.price) || 0;
-        const paid = Number(data.paidAmount) || 0;
+        const paid = Number(data.paidAmount || data.stripeAmountPaid) || 0;
         const paymentType = (data.paymentType || '').toUpperCase();
         if (paymentType === 'DEPOSIT' && paid && price && paid < price) {
             const remaining = (price - paid).toFixed(2);
@@ -320,7 +555,7 @@
             if (!data.time) missing.push('Time');
             if (!data.service && !data.serviceId) missing.push('Service');
             if (!data.barberName && !data.barber) missing.push('Barber');
-            if (!data.paidAmount && !data.price) missing.push('Amount');
+            if (!data.paidAmount && !data.price && !data.stripeAmountPaid) missing.push('Amount');
 
             const rows = [
                 row('Name',    data.clientName),
@@ -336,9 +571,165 @@
             // Insert payment row(s) after barber
             const html = warning + rows.join('') + paymentRow(data);
             document.getElementById('detailRows').innerHTML = html;
+
+            // ── Loyalty check ──────────────────────────────────────
+            const clientPhone = data.clientPhone || data.phone || '';
+            const clientEmail = data.clientEmail || data.email || '';
+            const clientName  = data.clientName  || data.name  || '';
+            if (clientPhone || clientEmail) {
+                await renderLoyaltyCard({ clientPhone, clientEmail, clientName });
+            }
         }
         show('stateDetails');
     })();
+
+    // ── Redemption tiers (1 point = £1 spent, 1 point = £1 off) ──────────────
+    const TIERS = [
+        { pts: 20,  reward: 'Shape Up & Clean Up — free'         },
+        { pts: 28,  reward: 'Classic Short Back & Sides — free'  },
+        { pts: 32,  reward: 'Skin Fade Cut — free'               },
+        { pts: 40,  reward: 'The Full Experience — free'         },
+        { pts: 65,  reward: 'I CUT Royal — free'                 },
+    ];
+
+    function tiersHTML(currentPts) {
+        return TIERS.map(t => {
+            const unlocked = currentPts >= t.pts;
+            return `<div class="lc-tier ${unlocked ? 'unlocked' : 'locked'}">
+                <span class="lc-tier-pts">${t.pts} pts</span>
+                <span class="lc-tier-sep">→</span>
+                <span class="lc-tier-reward">${t.reward}</span>
+                ${unlocked ? '<span class="lc-tier-badge">Ready</span>' : ''}
+            </div>`;
+        }).join('');
+    }
+
+    function progressHTML(pts) {
+        const next = TIERS.find(t => t.pts > pts);
+        if (!next) return '';
+        const prev = [...TIERS].reverse().find(t => t.pts <= pts);
+        const base = prev ? prev.pts : 0;
+        const pct  = Math.min(100, Math.round(((pts - base) / (next.pts - base)) * 100));
+        return `<div class="lc-progress-wrap">
+            <div class="lc-progress-labels">
+                <span>${pts} pts</span><span>${next.pts} pts</span>
+            </div>
+            <div class="lc-progress-bar-bg">
+                <div class="lc-progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="lc-next-reward">${next.pts - pts} more points until <strong>${next.reward.split('—')[0].trim()}</strong></div>
+        </div>`;
+    }
+
+    function offerBannerHTML(offer) {
+        if (!offer || !offer.value) return '';
+        const exp = offer.expiresAt?.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt);
+        const expStr = exp.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        return `<div class="lc-offer-banner">
+            <div class="lc-offer-pct">${offer.value}% OFF</div>
+            <div class="lc-offer-desc">Welcome offer — ${offer.value}% off all services for your first 3 months.<br>Just mention it at the chair, no code needed.</div>
+            <div class="lc-offer-exp">Valid until ${expStr}</div>
+        </div>`;
+    }
+
+    // ── Loyalty card renderer ──────────────────────────────────────────────────
+    async function renderLoyaltyCard({ clientPhone, clientEmail, clientName }) {
+        const card = document.getElementById('loyaltyCard');
+        const body = document.getElementById('loyaltyBody');
+        const clientsRef = collection(db, 'tenants/whitecross/clients');
+
+        let existingSnap = null;
+        try {
+            if (clientPhone) {
+                const s = await getDocs(query(clientsRef, where('phone', '==', clientPhone)));
+                if (!s.empty) existingSnap = s.docs[0];
+            }
+            if (!existingSnap && clientEmail) {
+                const s = await getDocs(query(clientsRef, where('email', '==', clientEmail)));
+                if (!s.empty) existingSnap = s.docs[0];
+            }
+        } catch (_) {}
+
+        card.classList.add('visible');
+
+        if (existingSnap) {
+            // ── Returning member ────────────────────────────────────
+            const d   = existingSnap.data();
+            const pts = d.loyaltyPoints || 0;
+            const firstName = (d.name || clientName || '').split(' ')[0];
+            const offer = d.welcomeOffer || null;
+            const offerActive = offer && offer.expiresAt && (offer.expiresAt?.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt)) > new Date();
+
+            body.innerHTML = `
+                <div class="lc-pts-row">
+                    <span class="lc-pts-num">${pts}</span>
+                    <span class="lc-pts-label">points</span>
+                </div>
+                <div class="lc-welcome-back">Welcome back${firstName ? ', <strong>' + firstName + '</strong>' : ''}! Points from today will be added after your appointment.</div>
+                ${offerActive ? offerBannerHTML(offer) : ''}
+                ${progressHTML(pts)}
+                <div class="lc-tiers-label">What you can redeem</div>
+                <div class="lc-tiers">${tiersHTML(pts)}</div>`;
+        } else {
+            // ── New customer — show enroll prompt ───────────────────
+            body.innerHTML = `
+                <p class="lc-enroll-text">
+                    Earn <strong>1 point for every £1 spent</strong>.<br>
+                    Redeem at the chair — no app, no code needed.
+                </p>
+                <div class="lc-offer-banner" style="margin-bottom:14px;">
+                    <div class="lc-offer-pct">10% OFF</div>
+                    <div class="lc-offer-desc">Join today and get 10% off all services<br>for your first 3 months. Members only.</div>
+                </div>
+                <div class="lc-tiers-label">Redemption rewards</div>
+                <div class="lc-tiers" style="margin-bottom:18px;">${tiersHTML(0)}</div>
+                <button id="btnEnroll">Join Loyalty Programme</button>
+                <button id="btnNoThanks">No thanks</button>`;
+
+            document.getElementById('btnNoThanks').addEventListener('click', () => {
+                card.classList.remove('visible');
+            });
+
+            document.getElementById('btnEnroll').addEventListener('click', async () => {
+                const btn = document.getElementById('btnEnroll');
+                btn.disabled = true;
+                btn.textContent = 'Enrolling…';
+                try {
+                    const now      = new Date();
+                    const expDate  = new Date(now);
+                    expDate.setMonth(expDate.getMonth() + 3);
+
+                    await addDoc(clientsRef, {
+                        name:          clientName,
+                        phone:         clientPhone,
+                        email:         clientEmail,
+                        loyaltyPoints: 0,
+                        enrolledVia:   'website',
+                        createdAt:     Timestamp.fromDate(now),
+                        welcomeOffer:  {
+                            type:      'pct',
+                            value:     10,
+                            expiresAt: Timestamp.fromDate(expDate),
+                        },
+                    });
+
+                    const expStr = expDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                    body.innerHTML = `
+                        <div class="lc-enrolled-ok">
+                            <strong>✓ You're enrolled!</strong><br>
+                            Your 10% welcome discount is now active until ${expStr}.<br>
+                            Just mention it at the chair — no code needed.
+                        </div>
+                        <div class="lc-tiers-label">Your redemption rewards</div>
+                        <div class="lc-tiers">${tiersHTML(0)}</div>`;
+                } catch (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Join Loyalty Programme';
+                    console.error('Enroll error:', err);
+                }
+            });
+        }
+    }
 </script>
 
 </body>
