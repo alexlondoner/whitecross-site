@@ -144,7 +144,8 @@ export default function BookingDetail({
   }, [booking?.bookingId]);
 
   useEffect(() => {
-    if (!booking?.groupId) { setGroupMembers([]); return; }
+    setGroupMembers([]);
+    if (!booking?.groupId) return;
     getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('groupId', '==', booking.groupId)))
       .then(snap => {
         const members = snap.docs
@@ -154,7 +155,7 @@ export default function BookingDetail({
         setGroupMembers(members);
       })
       .catch(() => {});
-  }, [booking?.groupId]);
+  }, [booking?.bookingId]);
 
   if (!booking) return null;
 
