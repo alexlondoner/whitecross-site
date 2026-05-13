@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 // removed duplicate import
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { deleteBooking } from '../firestoreActions';
 
 const PAGE_SIZE = 100;
@@ -123,6 +123,23 @@ export default function Bookings() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
+  const [groupMembersCache, setGroupMembersCache] = useState({});
+
+  const toggleGroupExpand = (b) => {
+    if (!b.groupId) return;
+    const gid = b.groupId;
+    setExpandedGroupId(prev => prev === gid ? null : gid);
+    if (!groupMembersCache[gid]) {
+      getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('groupId', '==', gid)))
+        .then(snap => {
+          const members = snap.docs.map(d => d.data())
+            .filter(m => m.bookingId !== b.bookingId)
+            .sort((a, c) => (a.groupIndex ?? 99) - (c.groupIndex ?? 99));
+          setGroupMembersCache(prev => ({ ...prev, [gid]: members }));
+        }).catch(() => {});
+    }
+  };
 
   const navPeriods = ['today', 'week', 'month', 'year'];
   const canNav = navPeriods.includes(periodFilter);
@@ -495,13 +512,21 @@ export default function Bookings() {
               const isConfirming = confirmDeleteId === b.bookingId;
               const isDeleting   = deletingId === b.bookingId;
               return (
-                <div key={b.bookingId + i}
-                  style={{ position: 'relative', display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1fr', padding: '11px 16px', borderBottom: '1px solid var(--border)', transition: 'background 0.1s', background: isConfirming ? 'rgba(255,82,82,0.04)' : 'transparent' }}
+                <React.Fragment key={b.bookingId + i}>
+                <div
+                  style={{ position: 'relative', display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1fr', padding: '11px 16px', borderBottom: b.groupId && expandedGroupId === b.groupId ? 'none' : '1px solid var(--border)', transition: 'background 0.1s', background: isConfirming ? 'rgba(255,82,82,0.04)' : 'transparent' }}
                   onMouseEnter={e => { if (!isConfirming) e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }}
                   onMouseLeave={e => { if (!isConfirming) e.currentTarget.style.background = 'transparent'; }}>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text)' }}>{b.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text)' }}>{b.name}</span>
+                      {b.groupId && (
+                        <button onClick={() => toggleGroupExpand(b)} style={{ fontSize: '0.55rem', fontWeight: '700', color: '#d4af37', background: expandedGroupId === b.groupId ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '4px', padding: '1px 5px', cursor: 'pointer', lineHeight: 1.6 }}>
+                          👥 GROUP ×{b.groupSize || 2} {expandedGroupId === b.groupId ? '▲' : '▼'}
+                        </button>
+                      )}
+                    </div>
                     {b.phone && <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{b.phone}</span>}
                   </div>
 
@@ -568,6 +593,28 @@ export default function Bookings() {
                     </div>
                   )}
                 </div>
+                {b.groupId && expandedGroupId === b.groupId && (
+                  <div style={{ padding: '8px 16px 10px 28px', borderBottom: '1px solid var(--border)', background: 'rgba(212,175,55,0.03)' }}>
+                    {(groupMembersCache[b.groupId] || []).length === 0 ? (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Loading members…</span>
+                    ) : (groupMembersCache[b.groupId] || []).map((m, mi) => {
+                      const mSvcName = config.services
+                        ? (config.services.find(s => s.id === (m.serviceId || m.service)) || {}).name || m.serviceId || m.service || '–'
+                        : m.serviceId || m.service || '–';
+                      return (
+                        <div key={m.bookingId || mi} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0', fontSize: '0.72rem', color: 'var(--text)' }}>
+                          <span style={{ color: '#d4af37', fontWeight: '700', minWidth: '60px' }}>Person {(m.groupIndex ?? mi) + 1}</span>
+                          <span style={{ color: 'var(--muted)' }}>{(m.barberName || m.barber || '').toUpperCase()}</span>
+                          <span>·</span>
+                          <span>{m.time || '–'}</span>
+                          <span>·</span>
+                          <span>{mSvcName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
 
