@@ -1440,13 +1440,14 @@ var todayStr = now.getFullYear() + '-' +
             var slots = [];
             var openMins = timeToMins(open);
             var closeMins = timeToMins(close);
-            for (var mins = openMins; mins + duration <= closeMins; mins += 30) {
+            var step = duration <= 20 ? 15 : 30;
+            for (var mins = openMins; mins + duration <= closeMins; mins += step) {
                 if (isToday && mins <= nowMins + 15) continue;
                 var h = Math.floor(mins / 60);
                 var m = mins % 60;
                 var h12 = h % 12 || 12;
                 var ampm = h >= 12 ? 'PM' : 'AM';
-                slots.push({ h: h, m: m, label: h12 + ':' + (m === 0 ? '00' : '30') + ' ' + ampm });
+                slots.push({ h: h, m: m, label: h12 + ':' + (m < 10 ? '0' + m : m) + ' ' + ampm });
             }
             return slots;
         }
