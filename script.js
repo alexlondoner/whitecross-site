@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         barberGrid.innerHTML = dynamicBtns +
             '<button type="button" class="barber-btn" id="barber-no-preference" data-value="no-preference">' +
 '<span class="barber-icon" style="font-size:1.1rem;color:#d4af37;">★</span>' +
-            '<span class="barber-name">No Preference</span>' +
+            '<span class="barber-name">Any Barber</span>' +
             '</button>';
     }
 
