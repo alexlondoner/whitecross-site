@@ -30,7 +30,6 @@ function selectService(value) {
     if (serviceEl) serviceEl.value = value;
     closeInfo();
     document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
-    if (window._renderAddons) window._renderAddons();
     const dateInput = document.getElementById('date');
     if (dateInput && dateInput.value) checkAvailability(dateInput.value);
 }
@@ -216,7 +215,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!_svcs.length) return;
         var cats = [
             { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
-            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' }
+            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
+            { key: 'Extras',            contentId: 'extras-items',    btnLabel: 'Service Details' }
         ];
         cats.forEach(function(cat) {
             var content = document.getElementById(cat.contentId);
@@ -246,8 +246,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!select || !_svcs.length) return;
         var current = select.value;
         select.innerHTML = '<option value="" disabled selected>Select Service</option>';
-        var catOrder = ['Standard', 'Exclusive Bundles'];
-        var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages' };
+        var catOrder = ['Standard', 'Exclusive Bundles', 'Extras'];
+        var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
         catOrder.forEach(function(cat) {
             var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat; });
             if (!catSvcs.length) return;
@@ -289,7 +289,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 window.SERVICES = SERVICES;
                 renderServiceCards(SERVICES);
                 renderServiceDropdown(SERVICES);
-                if (window._renderAddons) window._renderAddons();
             }, function(err) {
                 console.warn('Realtime service sync failed:', err);
             });
@@ -755,45 +754,6 @@ var todayStr = now.getFullYear() + '-' +
 
     document.getElementById('phone').addEventListener('blur', prefetchDuplicate);
     document.getElementById('date').addEventListener('change', prefetchDuplicate);
-
-    /* ADD-ONS */
-    var _selectedAddons = {};
-
-    function renderExtrasCard() {
-        var list = document.getElementById('extrasToggleList');
-        if (!list) return;
-        var svcs = window.SERVICES || [];
-        var extras = svcs.filter(function(s) { return s.category === 'Extras'; });
-        if (!extras.length) return;
-        list.innerHTML = extras.map(function(ex) {
-            var sel = !!_selectedAddons[ex.id];
-            return '<div class="addon-row">' +
-                '<button type="button" class="addon-btn' + (sel ? ' selected' : '') + '" data-id="' + ex.id + '" data-price="' + ex.price + '">' +
-                '<span class="addon-check">' + (sel ? '✓' : '') + '</span>' +
-                '<span class="addon-name">' + ex.name + '</span>' +
-                '</button>' +
-                '<span class="addon-price">+£' + ex.price + '</span>' +
-                '<button type="button" class="addon-details-btn" onclick="openServiceStory(\'' + ex.id + '\')">Details</button>' +
-                '</div>';
-        }).join('');
-        list.querySelectorAll('.addon-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = btn.dataset.id;
-                var price = parseFloat(btn.dataset.price) || 0;
-                if (_selectedAddons[id]) { delete _selectedAddons[id]; }
-                else { _selectedAddons[id] = price; }
-                var addonsField = document.getElementById('addons');
-                if (addonsField) addonsField.value = Object.keys(_selectedAddons).join(',');
-                renderExtrasCard();
-            });
-        });
-        // If accordion is open, refresh its max-height so newly injected items are visible
-        var extrasContent = document.querySelector('.extras-content');
-        if (extrasContent && extrasContent.classList.contains('open')) {
-            extrasContent.style.maxHeight = extrasContent.scrollHeight + 'px';
-        }
-    }
-    window._renderAddons = renderExtrasCard;
 
     var _serviceDropdown = document.getElementById('service');
     if (_serviceDropdown) {
