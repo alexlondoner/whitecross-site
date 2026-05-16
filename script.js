@@ -30,6 +30,7 @@ function selectService(value) {
     if (serviceEl) serviceEl.value = value;
     closeInfo();
     document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
+    if (typeof renderAddons === 'function') renderAddons();
     const dateInput = document.getElementById('date');
     if (dateInput && dateInput.value) checkAvailability(dateInput.value);
 }
@@ -754,6 +755,65 @@ var todayStr = now.getFullYear() + '-' +
 
     document.getElementById('phone').addEventListener('blur', prefetchDuplicate);
     document.getElementById('date').addEventListener('change', prefetchDuplicate);
+
+    /* ADD-ONS */
+    var _selectedAddons = {};
+
+    function renderAddons() {
+        var svcId = (document.getElementById('service') || {}).value || '';
+        var section = document.getElementById('addonsSection');
+        var list = document.getElementById('addonsList');
+        if (!section || !list) return;
+
+        var svcs = window.SERVICES || [];
+        var extras = svcs.filter(function(s) { return s.category === 'Extras'; });
+
+        // Hide if no service selected or selected service is itself an Extra
+        var mainSvc = svcs.find(function(s) { return s.id === svcId; });
+        if (!svcId || !extras.length || (mainSvc && mainSvc.category === 'Extras')) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+        list.innerHTML = extras.map(function(ex) {
+            var sel = !!_selectedAddons[ex.id];
+            return '<button type="button" class="addon-btn' + (sel ? ' selected' : '') + '" data-id="' + ex.id + '" data-price="' + ex.price + '">' +
+                '<span>' + ex.name + '</span>' +
+                '<span style="display:flex;align-items:center;gap:10px;">' +
+                '<span class="addon-price">+£' + ex.price + '</span>' +
+                '<span class="addon-check">' + (sel ? '✓' : '') + '</span>' +
+                '</span>' +
+                '</button>';
+        }).join('');
+
+        list.querySelectorAll('.addon-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = btn.dataset.id;
+                var price = parseFloat(btn.dataset.price) || 0;
+                if (_selectedAddons[id]) {
+                    delete _selectedAddons[id];
+                } else {
+                    _selectedAddons[id] = price;
+                }
+                var addonsField = document.getElementById('addons');
+                if (addonsField) addonsField.value = Object.keys(_selectedAddons).join(',');
+                renderAddons();
+            });
+        });
+    }
+
+    var _serviceDropdown = document.getElementById('service');
+    if (_serviceDropdown) {
+        _serviceDropdown.addEventListener('change', function() {
+            _selectedAddons = {};
+            var addonsField = document.getElementById('addons');
+            if (addonsField) addonsField.value = '';
+            renderAddons();
+            var d = document.getElementById('date');
+            if (d && d.value) checkAvailability(d.value);
+        });
+    }
 
     /* EMAIL VALIDATION */
     var emailInput = document.getElementById('email');

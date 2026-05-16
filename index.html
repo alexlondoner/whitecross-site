@@ -182,22 +182,6 @@
       </div>
     </section>
 
-    <section class="card extras-card">
-      <h2 class="section-title bundle-title accordion-toggle" data-target="extras">
-        Extras
-        <span class="arrow arrow-extras">▼</span>
-      </h2>
-      <div class="accordion-content extras-content" id="extras-items" style="max-height:0px;">
-        <div class="service-item"><div class="s-info"><strong>Full Facial Treatment</strong><button class="details-btn" onclick="openServiceStory('full-facial')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£24</span><button class="details-btn" onclick="selectService('full-facial')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Beard Dyeing</strong><button class="details-btn" onclick="openServiceStory('beard-dyeing')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£24</span><button class="details-btn" onclick="selectService('beard-dyeing')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Face Mask</strong><button class="details-btn" onclick="openServiceStory('face-mask')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£12</span><button class="details-btn" onclick="selectService('face-mask')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Face Steam</strong><button class="details-btn" onclick="openServiceStory('face-steam')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£12</span><button class="details-btn" onclick="selectService('face-steam')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Threading</strong><button class="details-btn" onclick="openServiceStory('threading')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('threading')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Waxing (Nose &amp; Ears)</strong><button class="details-btn" onclick="openServiceStory('waxing')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('waxing')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Shape Up &amp; Clean Up</strong><button class="details-btn" onclick="openServiceStory('shape-up-clean-up')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£20</span><button class="details-btn" onclick="selectService('shape-up-clean-up')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-        <div class="service-item"><div class="s-info"><strong>Wash, Style &amp; Hot Towel</strong><button class="details-btn" onclick="openServiceStory('wash-hot-towel')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('wash-hot-towel')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
-      </div>
-    </section>
 
     <h2 class="form-header" id="booking">Fast & Secure Booking</h2>
 
@@ -228,17 +212,18 @@
                 <option value="young-gents">Young Gents (0–12) – £20</option>
                 <option value="young-gents-skin-fade">Young Gents Skin Fade (4–12) – £24</option>
             </optgroup>
-            <optgroup label="Extras">
-                <option value="full-facial">Full Facial Treatment – £24</option>
-                <option value="beard-dyeing">Beard Dyeing – £24</option>
-                <option value="face-mask">Face Mask – £12</option>
-                <option value="face-steam">Face Steam – £12</option>
-                <option value="threading">Threading – £10</option>
-                <option value="waxing">Waxing (Nose &amp; Ears) – £10</option>
-                <option value="shape-up-clean-up">Shape Up &amp; Clean Up – £20</option>
-                <option value="wash-hot-towel">Wash, Style &amp; Hot Towel – £10</option>
-            </optgroup>
         </select>
+
+        <!-- ADD-ONS -->
+        <div id="addonsSection" style="display:none;">
+          <div class="barber-section-header" style="margin-top:18px;">
+            <div class="barber-header-line"></div>
+            <span class="barber-header-text">Add-ons</span>
+            <div class="barber-header-line"></div>
+          </div>
+          <div id="addonsList" class="addons-list"></div>
+          <input type="hidden" id="addons" name="addons" value="">
+        </div>
 
         <div class="barber-section-header">
           <div class="barber-header-line"></div>
