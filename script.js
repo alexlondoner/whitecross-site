@@ -30,7 +30,7 @@ function selectService(value) {
     if (serviceEl) serviceEl.value = value;
     closeInfo();
     document.getElementById('bookingForm').scrollIntoView({ behavior: 'smooth' });
-    if (typeof renderAddons === 'function') renderAddons();
+    if (window._renderAddons) window._renderAddons();
     const dateInput = document.getElementById('date');
     if (dateInput && dateInput.value) checkAvailability(dateInput.value);
 }
@@ -759,7 +759,7 @@ var todayStr = now.getFullYear() + '-' +
     /* ADD-ONS */
     var _selectedAddons = {};
 
-    function renderAddons() {
+    window._renderAddons = function renderAddons() {
         var svcId = (document.getElementById('service') || {}).value || '';
         var section = document.getElementById('addonsSection');
         var list = document.getElementById('addonsList');
@@ -809,11 +809,14 @@ var todayStr = now.getFullYear() + '-' +
             _selectedAddons = {};
             var addonsField = document.getElementById('addons');
             if (addonsField) addonsField.value = '';
-            renderAddons();
+            window._renderAddons();
             var d = document.getElementById('date');
             if (d && d.value) checkAvailability(d.value);
         });
     }
+
+    // Render once on load in case service is pre-selected
+    window._renderAddons();
 
     /* EMAIL VALIDATION */
     var emailInput = document.getElementById('email');
