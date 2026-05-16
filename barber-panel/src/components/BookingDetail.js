@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { deleteBooking, cancelBooking, markNoShow, getClientLoyaltyPoints } from '../firestoreActions';
+import { logAudit } from '../utils/auditLogger';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import {
@@ -9,6 +10,7 @@ import {
   normalizeBookingStatus,
   pp,
 } from '../utils/bookingUtils';
+import config from '../config';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -119,6 +121,11 @@ function Overlay({ color, label }) {
 }
 
 // ─── MAIN BookingDetail ───────────────────────────────────────────────────────
+function safePrice(v) {
+  const n = parseFloat(String(v ?? '').replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
 export default function BookingDetail({
   booking, barbers, allBookings, isAdmin,
   onClose, onEdit, onDelete, onCheckout,
@@ -128,6 +135,8 @@ export default function BookingDetail({
   const [cancelling, setCancelling] = useState(false);
   const [noShowing, setNoShowing] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
   const [clientPoints, setClientPoints] = useState(null);
   const [clientIsMember, setClientIsMember] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
@@ -159,6 +168,51 @@ export default function BookingDetail({
 
   if (!booking) return null;
 
+  if (booking.status === 'BLOCKED') {
+    const fmtTime = (val) => {
+      if (!val) return '—';
+      if (typeof val === 'string') return val;
+      if (val?.toDate) return val.toDate().toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase();
+      return '—';
+    };
+    return (
+      <div style={{ width:'300px', flexShrink:0, background:T.bg, border:'1px solid rgba(255,82,82,0.25)', borderRadius:'16px', display:'flex', flexDirection:'column', overflow:'hidden', maxHeight:'calc(100vh - 200px)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,82,82,0.04)', flexShrink:0 }}>
+          <span style={{ fontSize:'0.85rem', fontWeight:'700', color:'#ff5252' }}>🚫 Blocked Time</span>
+          <button onClick={onClose} style={{ background:'transparent', border:'none', color:T.muted, cursor:'pointer', fontSize:'1rem' }}>✕</button>
+        </div>
+        <div style={{ padding:'20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+            {[
+              { label: 'Barber', value: (booking.barber || '').toUpperCase() },
+              { label: 'Date',   value: booking.date },
+              { label: 'From',   value: fmtTime(booking.time || booking.startTime) },
+              { label: 'To',     value: fmtTime(booking.endTime) },
+              ...(booking.note ? [{ label: 'Reason', value: booking.note }] : []),
+            ].map(row => (
+              <div key={row.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 12px', background:'rgba(255,82,82,0.04)', borderRadius:'8px' }}>
+                <span style={{ fontSize:'0.72rem', color:T.muted }}>{row.label}</span>
+                <span style={{ fontSize:'0.72rem', color:'var(--text)', fontWeight:'600' }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            disabled={deleting}
+            onClick={async () => {
+              if (!window.confirm('Remove this blocked time?')) return;
+              setDeleting(true);
+              try { await deleteBooking(booking.bookingId); onDelete(booking); }
+              catch (err) { alert('Delete failed: ' + (err?.message || 'Unknown error')); }
+              finally { setDeleting(false); }
+            }}
+            style={{ width:'100%', padding:'12px', background:deleting?'rgba(255,82,82,0.1)':'rgba(255,82,82,0.15)', border:'1px solid rgba(255,82,82,0.4)', borderRadius:'8px', color:'#ff5252', cursor:deleting?'not-allowed':'pointer', fontWeight:'700', fontSize:'0.82rem' }}>
+            {deleting ? 'Removing…' : 'Remove Block'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const color = getBColor(booking.barber, barbers);
   const serviceLabel = getBookingServiceLabel(booking);
   const status = normalizeBookingStatus(booking.status);
@@ -188,9 +242,9 @@ export default function BookingDetail({
     { label: 'Email', value: booking.email },
     ...(booking.paymentType === 'DEPOSIT' && booking.paidAmount && status !== 'CHECKED_OUT'
       ? [
-          { label: 'Deposit paid', value: `£${parseFloat(String(booking.paidAmount).replace('£', '')).toFixed(2)}`, color: T.green },
-          { label: 'Remaining', value: `£${Math.max(0, parseFloat(String(booking.price || 0)) - parseFloat(String(booking.paidAmount).replace('£', ''))).toFixed(2)}`, color: T.orange },
-          { label: 'Total', value: `£${parseFloat(String(booking.price || 0)).toFixed(2)}` },
+          { label: 'Deposit paid', value: `£${safePrice(booking.paidAmount).toFixed(2)}`, color: T.green },
+          { label: 'Remaining',    value: `£${Math.max(0, safePrice(booking.price) - safePrice(booking.paidAmount)).toFixed(2)}`, color: T.orange },
+          { label: 'Total',        value: `£${safePrice(booking.price).toFixed(2)}` },
         ]
       : [{ label: 'Amount', value: getDisplayedAmount(booking), color: T.green }]
     ),
@@ -438,7 +492,11 @@ export default function BookingDetail({
                 onClick={async () => {
                   if (!window.confirm('Cancel this booking?')) return;
                   setCancelling(true);
-                  try { await cancelBooking(booking.bookingId); if (onStatusChange) onStatusChange(booking.bookingId, 'CANCELLED'); }
+                  try {
+                    await cancelBooking(booking.bookingId);
+                    logAudit('CANCEL_BOOKING', { bookingId: booking.bookingId, clientName: booking.clientName || booking.name, service: booking.serviceId || booking.service, date: booking.date, time: booking.time, barber: booking.barberId || booking.barber });
+                    if (onStatusChange) onStatusChange(booking.bookingId, 'CANCELLED');
+                  }
                   catch (err) { console.error(err); alert('Failed: ' + err.message); }
                   finally { setCancelling(false); }
                 }}
@@ -451,7 +509,11 @@ export default function BookingDetail({
               onClick={async () => {
                 if (!window.confirm('Mark as No Show?')) return;
                 setNoShowing(true);
-                try { await markNoShow(booking.bookingId); if (onStatusChange) onStatusChange(booking.bookingId, 'NO_SHOW'); }
+                try {
+                  await markNoShow(booking.bookingId);
+                  logAudit('NO_SHOW', { bookingId: booking.bookingId, clientName: booking.clientName || booking.name, service: booking.serviceId || booking.service, date: booking.date, time: booking.time, barber: booking.barberId || booking.barber });
+                  if (onStatusChange) onStatusChange(booking.bookingId, 'NO_SHOW');
+                }
                 catch (err) { console.error(err); alert('Failed: ' + err.message); }
                 finally { setNoShowing(false); }
               }}
@@ -515,19 +577,68 @@ export default function BookingDetail({
           >WhatsApp</a>
 
           {booking.email && (
-            <a
-              href={`mailto:${booking.email}`}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: '6px', padding: '10px',
-                background: T.goldFaint, border: `1px solid ${T.border}`,
-                borderRadius: '8px', color: T.gold,
-                fontSize: '0.75rem', textDecoration: 'none', fontWeight: '600',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = `${T.gold}18`}
-              onMouseLeave={e => e.currentTarget.style.background = T.goldFaint}
-            >Email</a>
+            status === 'CHECKED_OUT' ? (
+              <button
+                disabled={sendingReceipt}
+                onClick={async () => {
+                  setSendingReceipt(true);
+                  try {
+                    const total = parseFloat(String(booking.paidAmount || booking.price || '0').replace('£', '')) || 0;
+                    const res = await fetch(config.sendReceiptUrl, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        email: booking.email,
+                        name: booking.name,
+                        service: serviceLabel,
+                        barber: booking.barber,
+                        date: booking.date,
+                        time: booking.time,
+                        total,
+                        discount: parseFloat(String(booking.discount || '0').replace('£', '')) || 0,
+                        tip: parseFloat(String(booking.tip || '0').replace('£', '')) || 0,
+                        paymentMethod: booking.paymentMethod || booking.paymentType || 'Cash',
+                        bookingId: booking.bookingId,
+                        soldProducts: booking.soldProducts || [],
+                        soldAddOns: booking.soldAddOns || [],
+                      }),
+                    });
+                    if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.error || 'Send failed'); }
+                    setReceiptSent(true);
+                    setTimeout(() => setReceiptSent(false), 3000);
+                  } catch (err) {
+                    alert('Failed to send: ' + (err.message || 'Unknown error'));
+                  } finally {
+                    setSendingReceipt(false);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '6px', padding: '10px', width: '100%',
+                  background: receiptSent ? '#4caf5010' : T.goldFaint,
+                  border: `1px solid ${receiptSent ? '#4caf5040' : T.border}`,
+                  borderRadius: '8px', color: receiptSent ? '#4caf50' : T.gold,
+                  fontSize: '0.75rem', fontWeight: '600', cursor: sendingReceipt ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s', opacity: sendingReceipt ? 0.6 : 1,
+                }}
+              >
+                {sendingReceipt ? 'Sending…' : receiptSent ? '✓ Receipt Sent' : 'Email Receipt'}
+              </button>
+            ) : (
+              <a
+                href={`mailto:${booking.email}`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '6px', padding: '10px',
+                  background: T.goldFaint, border: `1px solid ${T.border}`,
+                  borderRadius: '8px', color: T.gold,
+                  fontSize: '0.75rem', textDecoration: 'none', fontWeight: '600',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `${T.gold}18`}
+                onMouseLeave={e => e.currentTarget.style.background = T.goldFaint}
+              >Email</a>
+            )
           )}
         </div>
       </div>

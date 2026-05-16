@@ -6,18 +6,20 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "hosting": {
-    "site": "whitecrossbarbers-admin",
-    "public": "barber-panel/build",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      { "source": "**", "destination": "/index.html" }
-    ]
-  },
+  "hosting": [
+    {
+      "site": "whitecrossbarbers-admin",
+      "public": "barber-panel/build",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
+      "site": "whitecrossbarbers-owner",
+      "public": "barber-panel/build",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    }
+  ],
   "functions": [
     {
       "source": "functions",

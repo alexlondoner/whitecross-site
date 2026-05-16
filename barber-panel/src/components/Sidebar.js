@@ -14,7 +14,7 @@ const navItems = [
   { id: 'settings',      icon: '⚙️', label: 'Settings' },
 ];
 
-function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId }) {
+function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
 
@@ -128,7 +128,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '18px 10px 10px' }}>
-        {navItems.map(item => (
+        {[...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])].map(item => (
           <div key={item.id} style={{ position: 'relative', marginBottom: '6px' }}>
             <button
               onClick={() => setActivePage(item.id)}

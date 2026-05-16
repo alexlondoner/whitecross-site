@@ -1,5 +1,7 @@
 *.html
 .firebase/
+.claude/
+functions/get-gmail-token.js
 barber-panel/.firebase/
 .firebaserc
 Site/

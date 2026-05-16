@@ -142,10 +142,10 @@ export default function NotificationBell({ tenantId }) {
           right:          0,
           width:          '320px',
           maxHeight:      '420px',
-          background:     '#111',
-          border:         '1px solid rgba(212,175,55,0.2)',
+          background:     'var(--card)',
+          border:         '1px solid var(--border)',
           borderRadius:   '12px',
-          boxShadow:      '0 8px 32px rgba(0,0,0,0.7)',
+          boxShadow:      '0 8px 32px rgba(0,0,0,0.18)',
           overflow:       'hidden',
           display:        'flex',
           flexDirection:  'column',
@@ -155,7 +155,7 @@ export default function NotificationBell({ tenantId }) {
           {/* Header */}
           <div style={{
             padding:        '12px 16px',
-            borderBottom:   '1px solid #1e1e1e',
+            borderBottom:   '1px solid var(--border)',
             display:        'flex',
             alignItems:     'center',
             justifyContent: 'space-between',
@@ -176,7 +176,7 @@ export default function NotificationBell({ tenantId }) {
                 style={{
                   background:     'none',
                   border:         'none',
-                  color:          '#666',
+                  color:          'var(--muted)',
                   fontSize:       '0.7rem',
                   cursor:         'pointer',
                   textDecoration: 'underline',
@@ -192,7 +192,7 @@ export default function NotificationBell({ tenantId }) {
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {items.length === 0 ? (
               <p style={{
-                color:      '#555',
+                color:      'var(--muted)',
                 fontSize:   '0.8rem',
                 textAlign:  'center',
                 padding:    '28px 16px',
@@ -207,7 +207,7 @@ export default function NotificationBell({ tenantId }) {
                   onClick={() => { if (!n.read) markRead(n.id); }}
                   style={{
                     padding:        '11px 16px',
-                    borderBottom:   '1px solid #1a1a1a',
+                    borderBottom:   '1px solid var(--border)',
                     cursor:         n.read ? 'default' : 'pointer',
                     background:     n.read ? 'transparent' : 'rgba(212,175,55,0.04)',
                     display:        'flex',
@@ -227,7 +227,7 @@ export default function NotificationBell({ tenantId }) {
                       marginBottom:   '2px',
                     }}>
                       <span style={{
-                        color:          n.read ? '#777' : '#fff',
+                        color:          n.read ? 'var(--muted)' : 'var(--text)',
                         fontWeight:     n.read ? 400 : 700,
                         fontSize:       '0.78rem',
                         overflow:       'hidden',
@@ -237,7 +237,7 @@ export default function NotificationBell({ tenantId }) {
                         {n.title}
                       </span>
                       <span style={{
-                        color:      '#444',
+                        color:      'var(--muted)',
                         fontSize:   '0.66rem',
                         flexShrink: 0,
                       }}>
@@ -245,7 +245,7 @@ export default function NotificationBell({ tenantId }) {
                       </span>
                     </div>
                     <p style={{
-                      color:        '#666',
+                      color:        'var(--muted)',
                       fontSize:     '0.72rem',
                       margin:       0,
                       overflow:     'hidden',

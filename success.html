@@ -160,38 +160,87 @@
         #stateDetails.visible { display: block; }
 
         /* ── Loyalty card ─────────────────────────────────────────── */
+        /* ── Loyalty card ─────────────────────────────────────────── */
         #loyaltyCard {
-            margin-top: 16px;
+            margin-top: 14px;
             border-radius: 16px;
-            border: 1px solid rgba(212,175,55,0.25);
-            background: linear-gradient(135deg, #111 0%, #0d0d0d 100%);
+            border: 1px solid rgba(212,175,55,0.2);
+            background: #0d0d0a;
             overflow: hidden;
             display: none;
         }
         #loyaltyCard.visible { display: block; }
 
         .lc-header {
-            padding: 14px 20px;
-            background: rgba(212,175,55,0.06);
-            border-bottom: 1px solid rgba(212,175,55,0.15);
+            padding: 13px 20px;
+            background: rgba(212,175,55,0.05);
+            border-bottom: 1px solid rgba(212,175,55,0.12);
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .lc-crown { font-size: 1.2rem; }
+        .lc-crown { font-size: 1.1rem; }
         .lc-title {
             font-family: 'Cinzel', serif;
-            font-size: 0.72rem;
-            letter-spacing: 2.5px;
+            font-size: 0.68rem;
+            letter-spacing: 3px;
             text-transform: uppercase;
             background: linear-gradient(to right, #b8860b, #d4af37);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .lc-body { padding: 20px; }
+        .lc-body { padding: 18px; }
 
-        /* points display */
+        /* ── New member hero banner ─────────────────────────────── */
+        .lc-welcome-hero {
+            background: linear-gradient(135deg, rgba(212,175,55,0.13) 0%, rgba(184,134,11,0.06) 100%);
+            border: 1px solid rgba(212,175,55,0.35);
+            border-radius: 14px;
+            padding: 22px 18px 18px;
+            text-align: center;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .lc-welcome-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 40%, rgba(212,175,55,0.06) 50%, transparent 60%);
+            animation: lc-shimmer 3s infinite;
+        }
+        @keyframes lc-shimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .lc-hero-pct {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(2.6rem, 12vw, 3.4rem);
+            line-height: 1;
+            background: linear-gradient(135deg, #d4af37, #fff3b0, #b8860b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .lc-hero-label {
+            font-size: 0.6rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #d4af3799;
+            margin-bottom: 10px;
+        }
+        .lc-hero-desc {
+            font-size: 0.82rem;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 0;
+        }
+        .lc-hero-desc strong { color: #d4af37; }
+
+        /* ── Points display (returning) ─────────────────────────── */
         .lc-pts-row {
             display: flex;
             align-items: baseline;
@@ -219,10 +268,8 @@
         }
         .lc-welcome-back strong { color: #d4af37; }
 
-        /* progress bar */
-        .lc-progress-wrap {
-            margin-bottom: 18px;
-        }
+        /* ── Progress bar ───────────────────────────────────────── */
+        .lc-progress-wrap { margin-bottom: 18px; }
         .lc-progress-labels {
             display: flex;
             justify-content: space-between;
@@ -252,19 +299,18 @@
         }
         .lc-next-reward strong { color: #888; }
 
-        /* redemption tiers */
+        /* ── Redemption tiers ───────────────────────────────────── */
         .lc-tiers-label {
-            font-size: 0.6rem;
-            color: #444;
-            letter-spacing: 2px;
+            font-size: 0.58rem;
+            color: #333;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
             margin-bottom: 8px;
         }
         .lc-tiers {
             display: flex;
             flex-direction: column;
-            gap: 0;
-            border: 1px solid #1c1c18;
+            border: 1px solid #1a1a16;
             border-radius: 10px;
             overflow: hidden;
             margin-bottom: 16px;
@@ -273,115 +319,121 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 9px 12px;
-            border-bottom: 1px solid #1c1c18;
-            font-size: 0.78rem;
-            transition: background 0.15s;
+            padding: 8px 12px;
+            border-bottom: 1px solid #1a1a16;
+            font-size: 0.76rem;
         }
         .lc-tier:last-child { border-bottom: none; }
-        .lc-tier.unlocked { background: rgba(212,175,55,0.05); }
+        .lc-tier.unlocked { background: rgba(212,175,55,0.04); }
         .lc-tier-pts {
             min-width: 44px;
             font-family: 'Cinzel', serif;
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             color: #d4af37;
             text-align: right;
         }
-        .lc-tier.locked .lc-tier-pts { color: #333; }
-        .lc-tier-sep { color: #2a2a22; font-size: 0.7rem; }
-        .lc-tier-reward { color: #aaa; flex: 1; }
-        .lc-tier.locked .lc-tier-reward { color: #333; }
+        .lc-tier.locked .lc-tier-pts { color: #2a2a22; }
+        .lc-tier-sep { color: #252520; font-size: 0.7rem; }
+        .lc-tier-reward { color: #999; flex: 1; font-size: 0.74rem; }
+        .lc-tier.locked .lc-tier-reward { color: #2a2a22; }
         .lc-tier-badge {
-            font-size: 0.6rem;
+            font-size: 0.58rem;
             font-weight: 700;
             padding: 2px 6px;
             border-radius: 4px;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
-        .lc-tier.unlocked .lc-tier-badge { background: rgba(212,175,55,0.15); color: #d4af37; }
-        .lc-tier.locked .lc-tier-badge { display: none; }
+        .lc-tier.unlocked .lc-tier-badge { background: rgba(212,175,55,0.12); color: #d4af37; }
+        .lc-tier.locked  .lc-tier-badge  { display: none; }
 
-        /* welcome offer banner */
+        /* ── Offer banner (returning member) ────────────────────── */
         .lc-offer-banner {
-            background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(184,134,11,0.06));
-            border: 1px solid rgba(212,175,55,0.3);
+            background: rgba(212,175,55,0.07);
+            border: 1px solid rgba(212,175,55,0.25);
             border-radius: 10px;
-            padding: 14px 16px;
+            padding: 12px 16px;
             margin-bottom: 16px;
             text-align: center;
         }
         .lc-offer-pct {
             font-family: 'Cinzel', serif;
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             color: #d4af37;
             line-height: 1;
         }
-        .lc-offer-desc {
-            font-size: 0.75rem;
-            color: #aaa;
-            margin-top: 4px;
-            line-height: 1.5;
-        }
-        .lc-offer-exp {
-            font-size: 0.65rem;
-            color: #555;
-            margin-top: 6px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
+        .lc-offer-desc { font-size: 0.74rem; color: #aaa; margin-top: 4px; line-height: 1.5; }
+        .lc-offer-exp  { font-size: 0.63rem; color: #555; margin-top: 5px; letter-spacing: 1px; text-transform: uppercase; }
 
-        /* enroll prompt */
-        .lc-enroll-text {
-            font-size: 0.82rem;
-            color: #777;
-            line-height: 1.7;
-            margin-bottom: 14px;
-            text-align: center;
-        }
-        .lc-enroll-text strong { color: #d4af37; }
-
+        /* ── Enroll CTA ─────────────────────────────────────────── */
         #btnEnroll {
             display: block;
             width: 100%;
-            padding: 13px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 12px;
             border: none;
             background: linear-gradient(135deg, #d4af37, #b8860b);
             color: #000;
             font-family: 'Cinzel', serif;
-            font-size: 0.78rem;
+            font-size: 0.84rem;
             letter-spacing: 2px;
             text-transform: uppercase;
             cursor: pointer;
             font-weight: 700;
-            transition: filter 0.2s;
+            transition: filter 0.2s, transform 0.15s;
+            min-height: 52px;
         }
-        #btnEnroll:hover { filter: brightness(1.1); }
-        #btnEnroll:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+        #btnEnroll:hover  { filter: brightness(1.1); transform: translateY(-1px); }
+        #btnEnroll:active { transform: translateY(0); }
+        #btnEnroll:disabled { opacity: 0.5; cursor: not-allowed; filter: none; transform: none; }
         #btnNoThanks {
             display: block;
             width: 100%;
-            padding: 10px;
-            margin-top: 8px;
+            padding: 11px;
+            margin-top: 10px;
             border-radius: 10px;
-            border: 1px solid #1e1e1a;
+            border: none;
             background: transparent;
             color: #333;
-            font-size: 0.73rem;
+            font-size: 0.72rem;
             letter-spacing: 1px;
             cursor: pointer;
             transition: color 0.2s;
+            text-decoration: underline;
+            text-underline-offset: 3px;
         }
         #btnNoThanks:hover { color: #555; }
+
+        /* ── Enrolled success state ─────────────────────────────── */
         .lc-enrolled-ok {
             text-align: center;
-            font-size: 0.78rem;
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 14px;
+            padding: 20px 0 6px;
         }
-        .lc-enrolled-ok strong { color: #4caf50; font-size: 0.9rem; }
+        .lc-enrolled-ok .lc-enrolled-check {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .lc-enrolled-ok strong { color: #4caf50; font-size: 0.88rem; display: block; margin-bottom: 8px; }
+        .lc-enrolled-ok p { font-size: 0.78rem; color: #666; line-height: 1.6; }
+
+        /* ── Enroll info strip ──────────────────────────────────── */
+        .lc-enroll-strip {
+            display: flex;
+            gap: 0;
+            border: 1px solid #1a1a16;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .lc-enroll-strip-item {
+            flex: 1;
+            text-align: center;
+            padding: 10px 6px;
+            border-right: 1px solid #1a1a16;
+        }
+        .lc-enroll-strip-item:last-child { border-right: none; }
+        .lc-enroll-strip-icon { font-size: 1rem; margin-bottom: 3px; }
+        .lc-enroll-strip-text { font-size: 0.62rem; color: #555; line-height: 1.4; letter-spacing: 0.3px; }
     </style>
 </head>
 <body>
@@ -420,10 +472,7 @@
 
     </div>
 
-</div>
-
-<!-- Loyalty card (injected by JS) -->
-<div class="wrap" style="padding-top:0; padding-bottom:80px;">
+    <!-- Loyalty card — sits right below booking card in same wrap -->
     <div id="loyaltyCard">
         <div class="lc-header">
             <span class="lc-crown">♛</span>
@@ -431,6 +480,7 @@
         </div>
         <div class="lc-body" id="loyaltyBody"></div>
     </div>
+
 </div>
 
 <script type="module">
@@ -453,6 +503,7 @@
     const SERVICE_NAMES = {
         'full-experience': 'The Full Experience',
         'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+        'full-skin-fade-beard-luxury': 'Full Skin Fade & Beard Luxury',
         'i-cut-deluxe': 'I CUT Deluxe',
         'i-cut-royal': 'I CUT Royal',
         'senior-full-experience': 'Senior Full Experience',
@@ -473,6 +524,10 @@
         'shape-up-clean-up': 'Shape Up & Clean Up',
         'wash-hot-towel': 'Wash, Style & Hot Towel'
     };
+    function lookupServiceName(id) {
+        if (!id) return '';
+        return SERVICE_NAMES[id] || SERVICE_NAMES[id.replace(/skin-fade/g, 'skinfade')] || SERVICE_NAMES[id.replace(/skinfade/g, 'skin-fade')] || id;
+    }
 
 
 
@@ -488,18 +543,21 @@
         const price = Number(data.price) || 0;
         const paid = Number(data.paidAmount || data.stripeAmountPaid) || 0;
         const paymentType = (data.paymentType || '').toUpperCase();
+        const isGroupLead = !!(data.groupId && (data.groupLead === true || data.groupIndex === 0));
+        const groupSize = isGroupLead ? (parseInt(data.groupSize) || 2) : 1;
         if (paymentType === 'DEPOSIT' && paid && price && paid < price) {
             const remaining = (price - paid).toFixed(2);
+            const depositLabel = isGroupLead ? `Group Deposit (×${groupSize})` : 'Deposit Paid';
             return [
-                row('Deposit Paid', '£' + paid, true),
+                row(depositLabel, '£' + paid.toFixed(2), true),
                 row('Remaining', `£${remaining} on the day`, false)
             ].join('');
         } else if (paid && price && paid >= price) {
-            return row('Paid in Full', '£' + paid, true);
+            return row('Paid in Full', '£' + paid.toFixed(2), true);
         } else if (paid) {
-            return row('Amount Paid', '£' + paid, true);
+            return row('Amount Paid', '£' + paid.toFixed(2), true);
         } else if (price) {
-            return row('Amount Due', '£' + price, true);
+            return row('Amount Due', '£' + price.toFixed(2), true);
         }
         return '';
     }
@@ -561,7 +619,7 @@
                 row('Name',    data.clientName),
                 row('Date',    formatDate(data.date), true),
                 row('Time',    data.time),
-                row('Service', SERVICE_NAMES[data.service || data.serviceId] || data.service || data.serviceId),
+                row('Service', lookupServiceName(data.service || data.serviceId)),
                 row('Barber',  (data.barberName || data.barber)),
             ];
             let warning = '';
@@ -652,6 +710,8 @@
 
         card.classList.add('visible');
 
+        const ENROLL_URL = 'https://enrollloyalty-nq2q3jgd6a-uc.a.run.app';
+
         if (existingSnap) {
             // ── Returning member ────────────────────────────────────
             const d   = existingSnap.data();
@@ -671,19 +731,31 @@
                 <div class="lc-tiers-label">What you can redeem</div>
                 <div class="lc-tiers">${tiersHTML(pts)}</div>`;
         } else {
-            // ── New customer — show enroll prompt ───────────────────
+            // ── New customer — hero 10% + enroll CTA ───────────────
             body.innerHTML = `
-                <p class="lc-enroll-text">
-                    Earn <strong>1 point for every £1 spent</strong>.<br>
-                    Redeem at the chair — no app, no code needed.
-                </p>
-                <div class="lc-offer-banner" style="margin-bottom:14px;">
-                    <div class="lc-offer-pct">10% OFF</div>
-                    <div class="lc-offer-desc">Join today and get 10% off all services<br>for your first 3 months. Members only.</div>
+                <div class="lc-welcome-hero">
+                    <div class="lc-hero-pct">10% OFF</div>
+                    <div class="lc-hero-label">Welcome Gift — Members Only</div>
+                    <div class="lc-hero-desc">
+                        Join our loyalty programme and get <strong>10% off every service</strong>
+                        for your first 3 months.<br>No app. No code. Just mention it at the chair.
+                    </div>
                 </div>
-                <div class="lc-tiers-label">Redemption rewards</div>
-                <div class="lc-tiers" style="margin-bottom:18px;">${tiersHTML(0)}</div>
-                <button id="btnEnroll">Join Loyalty Programme</button>
+                <div class="lc-enroll-strip">
+                    <div class="lc-enroll-strip-item">
+                        <div class="lc-enroll-strip-icon">✂</div>
+                        <div class="lc-enroll-strip-text">£1 spent<br>= 1 point</div>
+                    </div>
+                    <div class="lc-enroll-strip-item">
+                        <div class="lc-enroll-strip-icon">🎁</div>
+                        <div class="lc-enroll-strip-text">Redeem for<br>free cuts</div>
+                    </div>
+                    <div class="lc-enroll-strip-item">
+                        <div class="lc-enroll-strip-icon">⚡</div>
+                        <div class="lc-enroll-strip-text">No app<br>needed</div>
+                    </div>
+                </div>
+                <button id="btnEnroll">✦ Claim My 10% Welcome Discount</button>
                 <button id="btnNoThanks">No thanks</button>`;
 
             document.getElementById('btnNoThanks').addEventListener('click', () => {
@@ -695,36 +767,28 @@
                 btn.disabled = true;
                 btn.textContent = 'Enrolling…';
                 try {
-                    const now      = new Date();
-                    const expDate  = new Date(now);
-                    expDate.setMonth(expDate.getMonth() + 3);
-
-                    await addDoc(clientsRef, {
-                        name:          clientName,
-                        phone:         clientPhone,
-                        email:         clientEmail,
-                        loyaltyPoints: 0,
-                        enrolledVia:   'website',
-                        createdAt:     Timestamp.fromDate(now),
-                        welcomeOffer:  {
-                            type:      'pct',
-                            value:     10,
-                            expiresAt: Timestamp.fromDate(expDate),
-                        },
+                    const resp = await fetch(ENROLL_URL, {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body:    JSON.stringify({ clientName, clientPhone, clientEmail }),
                     });
+                    const result = await resp.json();
+                    if (!resp.ok) throw new Error(result.error || 'Server error');
 
-                    const expStr = expDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                    const expDate = result.expiresAt ? new Date(result.expiresAt) : (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return d; })();
+                    const expStr  = expDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                     body.innerHTML = `
                         <div class="lc-enrolled-ok">
-                            <strong>✓ You're enrolled!</strong><br>
-                            Your 10% welcome discount is now active until ${expStr}.<br>
-                            Just mention it at the chair — no code needed.
+                            <div class="lc-enrolled-check">🎉</div>
+                            <strong>✓ You're in — welcome to the programme!</strong>
+                            <p>Your <strong style="color:#d4af37;">10% welcome discount</strong> is now active until <strong style="color:#fff;">${expStr}</strong>.<br>
+                            Just mention it at the chair — no code needed.</p>
                         </div>
                         <div class="lc-tiers-label">Your redemption rewards</div>
                         <div class="lc-tiers">${tiersHTML(0)}</div>`;
                 } catch (err) {
                     btn.disabled = false;
-                    btn.textContent = 'Join Loyalty Programme';
+                    btn.textContent = '✦ Claim My 10% Welcome Discount';
                     console.error('Enroll error:', err);
                 }
             });

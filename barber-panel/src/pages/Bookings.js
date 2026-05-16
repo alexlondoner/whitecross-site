@@ -18,6 +18,7 @@ const STATUS_COLORS = {
 const SOURCE_COLORS = {
   Booksy:          { color: '#9c27b0', bg: 'rgba(156,39,176,0.15)' },
   Fresha:          { color: '#2196f3', bg: 'rgba(33,150,243,0.15)' },
+  Treatwell:       { color: '#ff7043', bg: 'rgba(255,112,67,0.15)' },
   Website:         { color: '#4caf50', bg: 'rgba(76,175,80,0.15)'  },
   'Walk-in':       { color: '#ff9800', bg: 'rgba(255,152,0,0.15)'  },
   'Product Sale':  { color: '#03a9f4', bg: 'rgba(3,169,244,0.15)'  },
@@ -27,9 +28,10 @@ function normalizeSource(src) {
   const s = String(src || '').trim().toLowerCase();
   if (!s || s === 'historical' || s === 'walk_in' || s === 'walkin' || s === 'walk-in') return 'Walk-in';
   if (s === 'product sale' || s === 'product_sale' || s === 'productsale') return 'Product Sale';
-  if (s === 'booksy')  return 'Booksy';
-  if (s === 'fresha')  return 'Fresha';
-  if (s === 'website') return 'Website';
+  if (s === 'booksy')     return 'Booksy';
+  if (s === 'fresha')     return 'Fresha';
+  if (s === 'treatwell')  return 'Treatwell';
+  if (s === 'website')    return 'Website';
   return src;
 }
 
@@ -42,7 +44,7 @@ function soldProductsTotal(b) {
 }
 
 function parsePrice(p) {
-  return parseInt(String(p || '0').replace('£', '').trim()) || 0;
+  return parseFloat(String(p || '0').replace(/[^0-9.]/g, '')) || 0;
 }
 
 function periodDateRange(period, anchor) {
@@ -209,15 +211,15 @@ export default function Bookings() {
         const time = startTime ? startTime.toLocaleTimeString('en-GB', {
           hour: 'numeric', minute: '2-digit', hour12: true,
         }).toUpperCase() : '';
-        const rawBarber = String(d.barberId || '').trim();
+        const rawBarber = String(d.barberId || d.barber || '').trim();
         const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
         return {
           ...d,
-          name:       d.clientName || 'Walk-in',
-          email:      d.clientEmail || '',
-          phone:      d.clientPhone || '',
+          name:       d.clientName || d.name || 'Walk-in',
+          email:      d.clientEmail || d.email || '',
+          phone:      d.clientPhone || d.phone || '',
           barber,
-          service:    d.serviceId || '',
+          service:    d.serviceId || d.service || '',
           date,
           time,
           startTime,
@@ -262,7 +264,7 @@ export default function Bookings() {
 
   const filtered = useMemo(() => {
     const STATUS_FILTER_MAP = { confirmed:'CONFIRMED', pending:'PENDING', checkedout:'CHECKED_OUT', cancelled:'CANCELLED', noshow:'NO_SHOW', unpaid:'UNPAID' };
-    const SOURCE_FILTER_MAP = { booksy:'Booksy', fresha:'Fresha', website:'Website', walkin:'Walk-in', productsale:'Product Sale' };
+    const SOURCE_FILTER_MAP = { booksy:'Booksy', fresha:'Fresha', treatwell:'Treatwell', website:'Website', walkin:'Walk-in', productsale:'Product Sale' };
     return baseFiltered
       .filter(b => {
         if (!activeFilter) return true;
@@ -308,6 +310,7 @@ export default function Bookings() {
   const sourcePills = [
     { key: 'booksy',      label: 'Booksy',        value: baseFiltered.filter(b => b.source === 'Booksy').length,         color: '#9c27b0' },
     { key: 'fresha',      label: 'Fresha',         value: baseFiltered.filter(b => b.source === 'Fresha').length,         color: '#2196f3' },
+    { key: 'treatwell',   label: 'Treatwell',      value: baseFiltered.filter(b => b.source === 'Treatwell').length,      color: '#ff7043' },
     { key: 'website',     label: 'Website',        value: baseFiltered.filter(b => b.source === 'Website').length,        color: '#4caf50' },
     { key: 'walkin',      label: 'Walk-in',        value: baseFiltered.filter(b => b.source === 'Walk-in').length,        color: '#ff9800' },
     { key: 'productsale', label: 'Product Sale',   value: baseFiltered.filter(b => b.source === 'Product Sale').length,   color: '#03a9f4' },
@@ -509,7 +512,7 @@ export default function Bookings() {
               const rawPrice = b.groupId && b.servicePrice != null ? b.servicePrice : b.price;
               const displayAmount = isProductSale
                 ? (soldProductsTotal(b) > 0 ? '£' + soldProductsTotal(b).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'))
-                : (rawPrice != null && rawPrice !== '' ? '£' + parseFloat(rawPrice).toFixed(2) : (b.paidAmount ? '£' + b.paidAmount : '—'));
+                : (rawPrice != null && rawPrice !== '' ? '£' + parsePrice(rawPrice).toFixed(2) : (b.paidAmount ? '£' + parsePrice(b.paidAmount).toFixed(2) : '—'));
               const isCancelled = b.status === 'CANCELLED';
               const isConfirming = confirmDeleteId === b.bookingId;
               const isDeleting   = deletingId === b.bookingId;
@@ -561,7 +564,7 @@ export default function Bookings() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: '700', color: isProductSale ? '#03a9f4' : '#d4af37' }}>{displayAmount}</span>
                     {!isProductSale && b.paidAmount && b.paymentType === 'DEPOSIT' && (
-                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Dep: £{parseFloat(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
+                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Dep: £{parsePrice(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
                     )}
                     {b.status === 'CHECKED_OUT' && b.paymentMethod && (
                       <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>{b.paymentMethod}</span>

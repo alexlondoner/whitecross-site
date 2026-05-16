@@ -16,8 +16,10 @@ const config = {
       depositAmount: 0,
     },
   },
-  // Apps Script URL
+  // Apps Script URL (legacy)
   scriptUrl: 'https://script.google.com/macros/s/AKfycbymASCa4MN7LMPoPa6fYwfeu2OCYfxKlLvoIBlauXhe_o7BDMF5DFgrrpBtUIrZAZi_/exec',
+  // Cloud Functions
+  sendReceiptUrl: 'https://us-central1-havuz-44f70.cloudfunctions.net/sendReceipt',
   
   // Admin password (change this!)
   adminPassword: 'icut2026',

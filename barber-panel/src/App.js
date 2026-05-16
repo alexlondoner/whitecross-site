@@ -15,6 +15,7 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Finance = lazy(() => import('./pages/Finance'));
 const OnlineProfile = lazy(() => import('./pages/OnlineProfile'));
 const Products = lazy(() => import('./pages/Products'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
 import config from './config';
 import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import './App.css';
@@ -116,6 +117,7 @@ function App() {
       case 'finance':       return <Finance tenantId={tenantId} isAdmin={isAdmin} />;
       case 'products':      return <Products tenantId={tenantId} isAdmin={isAdmin} />;
       case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} authUser={authUser} />;
+      case 'activity-log':  return isAdmin ? <AuditLog tenantId={tenantId} /> : <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
       default:              return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
     }
   };
@@ -131,6 +133,7 @@ function App() {
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
         tenantId={tenantId}
+        isOwner={isAdmin}
       />
       <div style={{ position: 'fixed', top: '16px', right: '24px', zIndex: 200 }}>
         <NotificationBell tenantId={tenantId} />

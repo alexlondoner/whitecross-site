@@ -49,29 +49,50 @@ function getTransporter() {
 }
 
 const SERVICE_NAMES = {
-    'full-experience': 'The Full Experience',
-    'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
+    'full-experience':             'The Full Experience',
+    'the-full-experience':         'The Full Experience',
+    'full-skinfade-beard-luxury':  'Full Skin Fade & Beard Luxury',
     'full-skin-fade-beard-luxury': 'Full Skin Fade & Beard Luxury',
-    'i-cut-deluxe': 'I CUT Deluxe',
-    'i-cut-royal': 'I CUT Royal',
-    'senior-full-experience': 'Senior Full Experience',
-    'skin-fade': 'Skin Fade Cut',
-    'scissor-cut': 'Scissor Cut',
-    'classic-sbs': 'Classic Short Back & Sides',
-    'hot-towel-shave': 'Hot Towel Shave',
-    'clipper-cut': 'Clipper Cut',
-    'senior-haircut': 'Senior Haircut (65+)',
-    'young-gents': 'Young Gents (0-12)',
-    'young-gents-skin-fade': 'Young Gents Skin Fade',
-    'full-facial': 'Full Facial Treatment',
-    'beard-dyeing': 'Beard Dyeing',
-    'face-mask': 'Face Mask',
-    'face-steam': 'Face Steam',
-    'threading': 'Threading',
-    'waxing': 'Waxing',
-    'shape-up-clean-up': 'Shape Up & Clean Up',
-    'wash-hot-towel': 'Wash, Style & Hot Towel'
+    'i-cut-deluxe':                'I CUT Deluxe',
+    'i-cut-royal':                 'I CUT Royal',
+    'senior-full-experience':      'Senior Full Experience',
+    'skin-fade':                   'Skin Fade Cut',
+    'scissor-cut':                 'Scissor Cut',
+    'classic-sbs':                 'Classic Short Back & Sides',
+    'hot-towel-shave':             'Hot Towel Shave',
+    'clipper-cut':                 'Clipper Cut',
+    'senior-haircut':              'Senior Haircut (65+)',
+    'young-gents':                 'Young Gents (0-12)',
+    'young-gents-skin-fade':       'Young Gents Skin Fade',
+    'full-facial':                 'Full Facial Treatment',
+    'beard-dyeing':                'Beard Dyeing',
+    'face-mask':                   'Face Mask',
+    'face-steam':                  'Face Steam',
+    'threading':                   'Threading',
+    'waxing':                      'Waxing',
+    'shape-up-clean-up':           'Shape Up & Clean Up',
+    'wash-hot-towel':              'Wash, Style & Hot Towel',
 };
+
+function lookupServiceName(id) {
+    if (!id) return 'Service';
+    return SERVICE_NAMES[id]
+        || SERVICE_NAMES[id.replace(/skin-fade/g, 'skinfade')]
+        || SERVICE_NAMES[id.replace(/skinfade/g, 'skin-fade')]
+        || id;
+}
+
+async function lookupBarberName(db, barberId, fallbackName) {
+    if (fallbackName && fallbackName.trim() && fallbackName.trim() !== barberId) {
+        return fallbackName.trim();
+    }
+    if (!barberId) return 'TBC';
+    try {
+        const doc = await db.collection('tenants/whitecross/barbers').doc(barberId).get();
+        if (doc.exists && doc.data().name) return doc.data().name;
+    } catch (_) {}
+    return barberId;
+}
 
 const SERVICE_PRICES = {
     'i-cut-royal': 65,
@@ -106,6 +127,7 @@ const DEPOSIT_AMOUNTS = {
 exports.health = onRequest((req, res) => {
     res.status(200).send('ok');
 });
+
 
 // ── Create dynamic Stripe Checkout Session ────────────────────────────────────
 // Called from the public booking form instead of redirecting to a static Payment Link.
@@ -325,8 +347,13 @@ exports.stripeWebhook = onRequest(
                         const batch = db.batch();
                         groupSnap.docs.forEach(doc => {
                             const existing = doc.data();
+                            const isLead = existing.groupLead === true || existing.groupIndex === 0;
                             const memberPrice = parseFloat(existing.price) || 0;
                             const memberDeposit = isGroupDeposit ? depositPerPerson : memberPrice;
+                            // Lead stores total Stripe charge as paidAmount (matches groupTotalPrice in price field)
+                            const memberPaidAmount = isLead
+                                ? (isGroupDeposit ? amountPaid : memberPrice)
+                                : memberDeposit;
                             batch.update(doc.ref, {
                                 status:              'CONFIRMED',
                                 paymentState:        isGroupDeposit ? 'DEPOSIT_PAID' : 'PAID',
@@ -335,7 +362,7 @@ exports.stripeWebhook = onRequest(
                                 stripeSessionId:     sessionId || null,
                                 stripePaymentIntent: paymentIntent || null,
                                 stripeAmountPaid:    amountPaid,
-                                paidAmount:          isGroupDeposit ? memberDeposit : memberPrice,
+                                paidAmount:          memberPaidAmount,
                                 stripeEventId:       event.id || null,
                                 updatedAt:           admin.firestore.Timestamp.now(),
                             });
@@ -614,8 +641,9 @@ exports.sendBookingConfirmation = onDocumentCreated(
         if (status !== 'CONFIRMED') return;
 
         // Skip walk-ins — they're already there, no confirmation needed
+        // Skip platform bookings — Booksy/Fresha/Treatwell send their own confirmation emails
         const source = String(data.source || '').trim().toLowerCase();
-        if (['walk-in', 'walk_in', 'walkin'].includes(source)) return;
+        if (['walk-in', 'walk_in', 'walkin', 'booksy', 'fresha', 'treatwell'].includes(source)) return;
 
         const email = data.clientEmail;
         if (!email) return;
@@ -635,8 +663,8 @@ exports.sendBookingConfirmation = onDocumentCreated(
         }
 
         const name        = data.clientName || 'Guest';
-        const service     = SERVICE_NAMES[data.serviceId] || data.serviceId || 'Service';
-        const barber      = (data.barberName || data.barberId || 'TBC').toUpperCase();
+        const service     = lookupServiceName(data.serviceId);
+        const barber      = (await lookupBarberName(getAdminDb(), data.barberId, data.barberName)).toUpperCase();
         const bookingId   = data.bookingId || event.params.bookingId;
         const paymentType = data.paymentType || 'FULL';
 
@@ -772,6 +800,10 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
         // For group bookings: only the lead sends the email
         if (after.groupId && after.groupLead === false) return;
 
+        // Skip platform bookings — they send their own emails
+        const source = String(after.source || '').trim().toLowerCase();
+        if (['walk-in', 'walk_in', 'walkin', 'booksy', 'fresha', 'treatwell'].includes(source)) return;
+
         const email = after.clientEmail;
         if (!email) return;
 
@@ -790,8 +822,8 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
 
         const data = after;
         const name        = data.clientName || 'Guest';
-        const service     = SERVICE_NAMES[data.serviceId] || data.serviceId || 'Service';
-        const barber      = (data.barberName || data.barberId || 'TBC').toUpperCase();
+        const service     = lookupServiceName(data.serviceId);
+        const barber      = (await lookupBarberName(getAdminDb(), data.barberId, data.barberName)).toUpperCase();
         const bookingId   = data.bookingId || event.params.bookingId;
         const paymentType = data.paymentType || 'FULL';
 
@@ -922,7 +954,7 @@ exports.notifyNewBooking = onDocumentCreated(
         // Skip non-online entries
         if (status !== 'CONFIRMED' || status === 'BLOCKED') return;
         if (['walk_in', 'walk-in', 'walkin', 'historical', 'manual', ''].includes(source)) return;
-        const ONLINE_SOURCES = ['booksy', 'fresha', 'website'];
+        const ONLINE_SOURCES = ['booksy', 'fresha', 'treatwell', 'website'];
         if (!ONLINE_SOURCES.includes(source)) return;
 
         // For group bookings: only notify once (for the lead)
@@ -935,9 +967,10 @@ exports.notifyNewBooking = onDocumentCreated(
             return;
         }
 
-        const name      = data.clientName || 'Guest';
-        const service   = SERVICE_NAMES[data.serviceId] || data.serviceId || 'Service';
-        const barber    = (data.barberName || data.barberId || 'TBC').toUpperCase();
+        // Support both website schema (clientName/serviceId/barberName) and GAS schema (name/service/barber)
+        const name      = data.clientName || data.name || 'Guest';
+        const service   = SERVICE_NAMES[data.serviceId] || data.serviceId || data.service || 'Service';
+        const barber    = (data.barberName || data.barberId || data.barber || 'TBC').toUpperCase();
         const bookingId = data.bookingId || event.params.bookingId;
         const srcLabel  = source.charAt(0).toUpperCase() + source.slice(1);
 
@@ -946,11 +979,29 @@ exports.notifyNewBooking = onDocumentCreated(
             const d = data.startTime.toDate();
             dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
             timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
+        } else if (data.date && data.time) {
+            dateStr = data.date;
+            timeStr = data.time;
         }
 
-        const phone      = data.clientPhone ? `\n📞 ${data.clientPhone}` : '';
+        const phone      = data.clientPhone || data.phone ? `\n📞 ${data.clientPhone || data.phone}` : '';
         const groupLabel = data.groupId ? `\n👥 Group Booking ×${data.groupSize || '?'}` : '';
-        const msg = `📅 <b>New Booking</b> · ${srcLabel}${groupLabel}\n👤 ${name}${phone}\n✂️ ${service}\n💈 ${barber}\n🕐 ${dateStr} at ${timeStr}\n🆔 <code>${bookingId}</code>`;
+
+        const totalPrice = parseFloat(String(data.price || data.amount || '0').replace('£', '')) || 0;
+        const paid       = parseFloat(String(data.paidAmount || '0').replace('£', '')) || 0;
+        let paymentLine  = '';
+        if (totalPrice > 0) {
+            if (paid >= totalPrice) {
+                paymentLine = `\n💳 Paid in full: £${totalPrice.toFixed(2)}`;
+            } else if (paid > 0) {
+                const remaining = totalPrice - paid;
+                paymentLine = `\n💳 Deposit: £${paid.toFixed(2)} · Remaining: £${remaining.toFixed(2)}`;
+            } else {
+                paymentLine = `\n💳 Total: £${totalPrice.toFixed(2)} (unpaid)`;
+            }
+        }
+
+        const msg = `📅 <b>New Booking</b> · ${srcLabel}${groupLabel}\n👤 ${name}${phone}\n✂️ ${service}\n💈 ${barber}\n🕐 ${dateStr} at ${timeStr}${paymentLine}\n🆔 <code>${bookingId}</code>`;
 
         try {
             await sendTelegramMessage(token, chatIdsRaw, msg);
@@ -1030,7 +1081,7 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         if (after.groupId && after.groupLead === false) return;
 
         const source = String(after.source || '').trim().toLowerCase();
-        const ONLINE_SOURCES = ['booksy', 'fresha', 'website'];
+        const ONLINE_SOURCES = ['booksy', 'fresha', 'treatwell', 'website'];
         if (!ONLINE_SOURCES.includes(source)) return;
 
         const token      = process.env.WC_TELEGRAM_TOKEN;
@@ -1448,6 +1499,60 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
     }
 );
 
+// ── Loyalty enrolment (public, called from success.html) ─────────────────────
+exports.enrollLoyalty = onRequest(
+    { cors: ['https://whitecrossbarbers.com', 'https://www.whitecrossbarbers.com'] },
+    async (req, res) => {
+        if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+        const { clientName, clientPhone, clientEmail } = req.body || {};
+        if (!clientName && !clientPhone && !clientEmail) {
+            res.status(400).json({ error: 'At least one of name/phone/email required.' });
+            return;
+        }
+        try {
+            const db = getAdminDb();
+            const clientsRef = db.collection('tenants/whitecross/clients');
+
+            // Prevent duplicates
+            let existing = null;
+            if (clientPhone) {
+                const s = await clientsRef.where('phone', '==', clientPhone).limit(1).get();
+                if (!s.empty) existing = s.docs[0];
+            }
+            if (!existing && clientEmail) {
+                const s = await clientsRef.where('email', '==', clientEmail).limit(1).get();
+                if (!s.empty) existing = s.docs[0];
+            }
+            if (existing) {
+                res.json({ success: true, alreadyEnrolled: true, data: existing.data() });
+                return;
+            }
+
+            const now     = admin.firestore.Timestamp.now();
+            const expDate = new Date();
+            expDate.setMonth(expDate.getMonth() + 3);
+            const docData = {
+                name:          clientName  || '',
+                phone:         clientPhone || '',
+                email:         clientEmail || '',
+                loyaltyPoints: 0,
+                enrolledVia:   'website',
+                createdAt:     now,
+                welcomeOffer:  {
+                    type:      'pct',
+                    value:     10,
+                    expiresAt: admin.firestore.Timestamp.fromDate(expDate),
+                },
+            };
+            await clientsRef.add(docData);
+            res.json({ success: true, alreadyEnrolled: false, expiresAt: expDate.toISOString() });
+        } catch (err) {
+            console.error('enrollLoyalty error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    }
+);
+
 // ── Staff account creation (callable) ────────────────────────────────────────
 exports.createStaffUser = onCall({ cors: true }, async (request) => {
     try {
@@ -1506,5 +1611,161 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
         throw new HttpsError('internal', err.message || 'Bilinmeyen hata');
     }
 });
+
+// ── Manual receipt send (from admin panel "Send Email" button) ────────────────
+exports.sendReceipt = onRequest(
+    {
+        cors: true,
+        secrets: ['GMAIL_USER', 'GMAIL_PASS'],
+    },
+    async (req, res) => {
+        if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+
+        const {
+            email, name, service, barber,
+            date, time, total, discount, tip,
+            paymentMethod, bookingId,
+            soldProducts, soldAddOns, basePrice,
+        } = req.body || {};
+
+        if (!email) { res.status(400).json({ error: 'email is required' }); return; }
+
+        const totalNum    = parseFloat(total)    || 0;
+        const discountNum = parseFloat(discount) || 0;
+        const tipNum      = parseFloat(tip)      || 0;
+        const basePriceNum = parseFloat(basePrice) || 0;
+        const barberLabel = (barber || 'Your Barber').toUpperCase();
+        const nameLabel   = name || 'Guest';
+        const serviceLabel = service || 'Service';
+
+        const productRows = Array.isArray(soldProducts) && soldProducts.length
+            ? soldProducts.map(p => `
+                <tr>
+                    <td style="padding:5px 0;color:#aaa;font-size:13px;">${p.name}${p.qty > 1 ? ` × ${p.qty}` : ''}</td>
+                    <td style="padding:5px 0;color:#8bc4ff;font-size:13px;font-weight:600;text-align:right;">£${(parseFloat(p.price) * (parseInt(p.qty, 10) || 1)).toFixed(2)}</td>
+                </tr>`).join('')
+            : '';
+
+        const addOnRows = Array.isArray(soldAddOns) && soldAddOns.length
+            ? soldAddOns.map(p => `
+                <tr>
+                    <td style="padding:5px 0;color:#aaa;font-size:13px;">${p.name}${p.qty > 1 ? ` × ${p.qty}` : ''}</td>
+                    <td style="padding:5px 0;color:#ff9800;font-size:13px;font-weight:600;text-align:right;">£${(parseFloat(p.price) * (parseInt(p.qty, 10) || 1)).toFixed(2)}</td>
+                </tr>`).join('')
+            : '';
+
+        const discountRow = discountNum > 0 ? `
+            <tr>
+                <td style="padding:5px 0;color:#4caf50;font-size:13px;">Discount</td>
+                <td style="padding:5px 0;color:#4caf50;font-size:13px;font-weight:600;text-align:right;">-£${discountNum.toFixed(2)}</td>
+            </tr>` : '';
+
+        const tipRow = tipNum > 0 ? `
+            <tr>
+                <td style="padding:5px 0;color:#aaa;font-size:13px;">Tip</td>
+                <td style="padding:5px 0;color:#aaa;font-size:13px;font-weight:600;text-align:right;">£${tipNum.toFixed(2)}</td>
+            </tr>` : '';
+
+        const htmlBody = `<!DOCTYPE html>
+<html>
+<head><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap');</style></head>
+<body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
+    <div style="max-width:520px;margin:0 auto;color:#ffffff;">
+        <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
+            <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+        </div>
+        <div style="background:#111;border:1px solid #1a1a1a;border-top:none;padding:36px 32px;">
+            <p style="color:#d4af37;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px 0;font-weight:700;">Payment Receipt</p>
+            <h2 style="margin:0 0 6px 0;font-size:24px;font-weight:300;color:#fff;">Thanks, <strong>${nameLabel}</strong></h2>
+            <p style="margin:0 0 28px 0;color:#666;font-size:13px;">${serviceLabel} · ${barberLabel} · ${date || ''} ${time ? '· ' + time : ''}</p>
+            <div style="background:#161616;border:1px solid #222;padding:20px 24px;border-radius:3px;margin-bottom:28px;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Service</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#d4af37;font-size:14px;font-weight:700;text-align:right;">${serviceLabel}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Barber</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#fff;font-size:14px;font-weight:700;text-align:right;">${barberLabel}</td>
+                    </tr>
+                    ${basePriceNum > 0 ? `
+                    <tr>
+                        <td style="padding:5px 0;color:#aaa;font-size:13px;">${serviceLabel}</td>
+                        <td style="padding:5px 0;color:#fff;font-size:13px;font-weight:600;text-align:right;">£${basePriceNum.toFixed(2)}</td>
+                    </tr>` : ''}
+                    ${productRows}
+                    ${addOnRows}
+                    ${discountRow}
+                    ${tipRow}
+                    <tr style="border-top:1px solid #333;">
+                        <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:14px;font-weight:700;">Total Paid</td>
+                        <td style="color:#d4af37;font-size:22px;font-weight:800;text-align:right;padding-top:14px;">£${totalNum.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#666;font-size:12px;padding-top:6px;">Payment</td>
+                        <td style="color:#aaa;font-size:12px;font-weight:600;text-align:right;padding-top:6px;">${paymentMethod || 'Cash'}</td>
+                    </tr>
+                </table>
+                ${bookingId ? `<p style="margin:18px 0 0 0;font-size:11px;color:#333;text-align:center;letter-spacing:1px;">ID: ${bookingId}</p>` : ''}
+            </div>
+            <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
+                <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
+                    136 Whitecross Street, London EC1Y 8QJ<br>
+                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
+                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                </p>
+            </div>
+        </div>
+        <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
+            <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        try {
+            await getTransporter().sendMail({
+                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+                to: email,
+                subject: `Receipt – ${serviceLabel} | I CUT Whitecross`,
+                html: htmlBody,
+            });
+            console.log(`sendReceipt: sent to ${email} for booking ${bookingId}`);
+            res.json({ success: true });
+        } catch (err) {
+            console.error('sendReceipt error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    }
+);
+
+// ── Email parsers: Booksy, Fresha, Treatwell → Firestore ─────────────────────
+const {
+    getGmailClient,
+    parseBooksyConfirmations,
+    parseBooksyCancellations,
+    parseFreshaConfirmations,
+    parseTreatwell,
+} = require('./emailParsers');
+
+exports.parseBookingEmails = onSchedule(
+    {
+        schedule: 'every 5 minutes',
+        timeZone: 'Europe/London',
+        secrets: ['GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN'],
+    },
+    async () => {
+        const db     = getAdminDb();
+        const gmail  = getGmailClient();
+        await Promise.all([
+            parseBooksyConfirmations(gmail, db),
+            parseBooksyCancellations(gmail, db),
+            parseFreshaConfirmations(gmail, db),
+            parseTreatwell(gmail, db),
+        ]);
+        console.log('parseBookingEmails: completed');
+    }
+);
 
 // ── ONE-TIME: backfill loyalty points from checkout history ───────────────────

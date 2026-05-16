@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { checkoutBooking, saveUnpaidBooking, getClientLoyaltyPoints } from '../firestoreActions';
+import { logAudit } from '../utils/auditLogger';
 import {
   findServiceByBookingValue,
   getBookingServiceLabel,
@@ -829,10 +830,8 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   );
 
   const WEBSITE_DEPOSITS = { 'i-cut-royal': 10, 'i-cut-deluxe': 10, 'full-skinfade-beard-luxury': 10, 'full-experience': 10 };
-  const depositAmount = booking.source === 'Booksy'
-    ? (booking.platformDepositAmount || 0)
-    : booking.source === 'Fresha'
-    ? (booking.platformDepositAmount || 0)
+  const depositAmount = booking.source === 'Booksy' || booking.source === 'Fresha'
+    ? (booking.platformDepositAmount || parseFloat(String(booking.paidAmount || 0).replace(/[£,]/g, '')) || 0)
     : (booking.paymentType === 'DEPOSIT' ? (WEBSITE_DEPOSITS[booking.service] || 10) : 0);
 
   const alreadyPaid = depositAmount;
@@ -878,6 +877,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
         serviceCharge,
         loyaltyPointsRedeemed: pointsApplied > 0 ? Math.round(pointsApplied * LOYALTY_REDEEM_RATE) : 0,
       });
+      logAudit('CHECKOUT', { bookingId: booking.bookingId, clientName: booking.clientName || booking.name, service: booking.serviceId || booking.service, date: booking.date, time: booking.time, barber: booking.barberId || booking.barber, total, paymentMethod: method });
     } catch (err) {
       console.error('Checkout error:', err);
     } finally {

@@ -369,28 +369,38 @@
     const TENANT = 'whitecross';
 
     const SERVICE_NAMES = {
-        'full-experience': 'The Full Experience',
-        'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
-        'i-cut-deluxe': 'I CUT Deluxe',
-        'i-cut-royal': 'I CUT Royal',
-        'senior-full-experience': 'Senior Full Experience',
-        'skin-fade': 'Skin Fade Cut',
-        'scissor-cut': 'Scissor Cut',
-        'classic-sbs': 'Classic Short Back & Sides',
-        'hot-towel-shave': 'Hot Towel Shave',
-        'clipper-cut': 'Clipper Cut',
-        'senior-haircut': 'Senior Haircut (65+)',
-        'young-gents': 'Young Gents (0-12)',
-        'young-gents-skin-fade': 'Young Gents Skin Fade',
-        'full-facial': 'Full Facial Treatment',
-        'beard-dyeing': 'Beard Dyeing',
-        'face-mask': 'Face Mask',
-        'face-steam': 'Face Steam',
-        'threading': 'Threading',
-        'waxing': 'Waxing',
-        'shape-up-clean-up': 'Shape Up & Clean Up',
-        'wash-hot-towel': 'Wash, Style & Hot Towel'
+        'full-experience':              'The Full Experience',
+        'the-full-experience':          'The Full Experience',
+        'full-skinfade-beard-luxury':   'Full Skin Fade & Beard Luxury',
+        'full-skin-fade-beard-luxury':  'Full Skin Fade & Beard Luxury',
+        'i-cut-deluxe':                 'I CUT Deluxe',
+        'i-cut-royal':                  'I CUT Royal',
+        'senior-full-experience':       'Senior Full Experience',
+        'skin-fade':                    'Skin Fade Cut',
+        'scissor-cut':                  'Scissor Cut',
+        'classic-sbs':                  'Classic Short Back & Sides',
+        'hot-towel-shave':              'Hot Towel Shave',
+        'clipper-cut':                  'Clipper Cut',
+        'senior-haircut':               'Senior Haircut (65+)',
+        'young-gents':                  'Young Gents (0-12)',
+        'young-gents-skin-fade':        'Young Gents Skin Fade',
+        'full-facial':                  'Full Facial Treatment',
+        'beard-dyeing':                 'Beard Dyeing',
+        'face-mask':                    'Face Mask',
+        'face-steam':                   'Face Steam',
+        'threading':                    'Threading',
+        'waxing':                       'Waxing',
+        'shape-up-clean-up':            'Shape Up & Clean Up',
+        'wash-hot-towel':               'Wash, Style & Hot Towel',
     };
+
+    function lookupServiceName(id) {
+        if (!id) return '—';
+        return SERVICE_NAMES[id]
+            || SERVICE_NAMES[id.replace(/skin-fade/g, 'skinfade')]
+            || SERVICE_NAMES[id.replace(/skinfade/g, 'skin-fade')]
+            || id;
+    }
 
     const DURATION_MAP = {
         'i-cut-royal': 60, 'i-cut-deluxe': 50, 'full-skinfade-beard-luxury': 40,
@@ -697,8 +707,8 @@
             <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${data.clientName || '—'}</span></div>
             <div class="detail-row"><span class="detail-label">Current Date</span><span class="detail-value gold">${date}</span></div>
             <div class="detail-row"><span class="detail-label">Current Time</span><span class="detail-value">${time}</span></div>
-            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${SERVICE_NAMES[data.serviceId] || data.serviceId || '—'}</span></div>
-            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberId || 'TBC').toUpperCase()}</span></div>
+            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${lookupServiceName(data.serviceId || data.service)}</span></div>
+            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(activeBarbers.find(b => b.id === data.barberId)?.name || data.barberName || data.barberId || 'TBC')}</span></div>
         `;
     }
 

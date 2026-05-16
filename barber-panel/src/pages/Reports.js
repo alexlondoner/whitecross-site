@@ -272,7 +272,7 @@ export default function Reports() {
   const sourceSegments = useMemo(() => {
     const map = {};
     active.forEach(b => { map[b.source] = (map[b.source] || 0) + 1; });
-    const colors = { Booksy: '#9c27b0', Fresha: '#2196f3', Website: '#4caf50', 'Walk-in': '#ff9800', 'Product Sale': '#03a9f4' };
+    const colors = { Booksy: '#9c27b0', Fresha: '#2196f3', Treatwell: '#ff7043', Website: '#4caf50', 'Walk-in': '#ff9800', 'Product Sale': '#03a9f4' };
     return Object.entries(map).map(([k, v]) => ({ label: k, value: v, color: colors[k] || '#999' }));
   }, [active]);
 

@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "site": "whitecrossbarbers-saas",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firebase.public-site.json",
+      "firebase.saas.json",
+      "firebase.owner.json",
+      "**/.*",
+      "**/node_modules/**",
+      "barber-panel/**",
+      "functions/**",
+      "panel/**",
+      "Site/**",
+      "workspace.code-workspace"
+    ]
+  }
+}

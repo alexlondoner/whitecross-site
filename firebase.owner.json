@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "site": "whitecrossbarbers-owner",
+    "public": "barber-panel/build",
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}
