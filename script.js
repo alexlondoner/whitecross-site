@@ -772,19 +772,34 @@ var todayStr = now.getFullYear() + '-' +
         var mainSvc = svcs.find(function(s) { return s.id === svcId; });
         if (!svcId || !extras.length || (mainSvc && mainSvc.category === 'Extras')) {
             section.style.display = 'none';
+            section.dataset.visible = '0';
             return;
         }
 
-        section.style.display = '';
+        if (section.dataset.visible !== '1') {
+            section.dataset.visible = '1';
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(-6px)';
+            section.style.display = '';
+            requestAnimationFrame(function() {
+                section.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                section.style.opacity = '1';
+                section.style.transform = 'translateY(0)';
+            });
+        } else {
+            section.style.display = '';
+        }
+
         list.innerHTML = extras.map(function(ex) {
             var sel = !!_selectedAddons[ex.id];
-            return '<button type="button" class="addon-btn' + (sel ? ' selected' : '') + '" data-id="' + ex.id + '" data-price="' + ex.price + '">' +
-                '<span>' + ex.name + '</span>' +
-                '<span style="display:flex;align-items:center;gap:10px;">' +
-                '<span class="addon-price">+£' + ex.price + '</span>' +
+            return '<div class="addon-row">' +
+                '<button type="button" class="addon-btn' + (sel ? ' selected' : '') + '" data-id="' + ex.id + '" data-price="' + ex.price + '">' +
                 '<span class="addon-check">' + (sel ? '✓' : '') + '</span>' +
-                '</span>' +
-                '</button>';
+                '<span class="addon-name">' + ex.name + '</span>' +
+                '</button>' +
+                '<span class="addon-price">+£' + ex.price + '</span>' +
+                '<button type="button" class="addon-details-btn" onclick="openServiceStory(\'' + ex.id + '\')">Details</button>' +
+                '</div>';
         }).join('');
 
         list.querySelectorAll('.addon-btn').forEach(function(btn) {
