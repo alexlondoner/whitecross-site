@@ -214,8 +214,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         var _svcs = freshSvcs || window.SERVICES || SERVICES;
         if (!_svcs.length) return;
         var cats = [
-            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
             { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
+            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
             { key: 'Extras',            contentId: 'extras-items',    btnLabel: 'Service Details' }
         ];
         cats.forEach(function(cat) {
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!select || !_svcs.length) return;
         var current = select.value;
         select.innerHTML = '<option value="" disabled selected>Select Service</option>';
-        var catOrder = ['Exclusive Bundles', 'Standard', 'Extras'];
+        var catOrder = ['Standard', 'Exclusive Bundles', 'Extras'];
         var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
         catOrder.forEach(function(cat) {
             var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat; });
@@ -480,6 +480,26 @@ var todayStr = now.getFullYear() + '-' +
     }
 
     /* ── GROUP BOOKING UI ────────────────────────────────────────── */
+    function updateGroupSummary() {
+        var bar = document.getElementById('groupSummaryBar');
+        var txt = document.getElementById('groupSummaryText');
+        if (!bar || !txt) return;
+        var count = _groupExtraMembers.length;
+        if (count === 0) { bar.style.display = 'none'; return; }
+        var extraTotal = _groupExtraMembers.reduce(function(s, m) { return s + (m.price || 0); }, 0);
+        var allHave = _groupExtraMembers.every(function(m) { return m.price > 0; });
+        if (!allHave || extraTotal === 0) { bar.style.display = 'none'; return; }
+        bar.style.display = 'block';
+        var totalPeople = count + 1;
+        var depositTotal = totalPeople * 10;
+        txt.innerHTML =
+            '<span style="color:#d4af37;font-weight:700;">' + totalPeople + ' people</span>' +
+            '<span style="color:#2a2820;margin:0 10px;">|</span>' +
+            'Secure from <span style="color:#d4af37;font-weight:700;">£' + depositTotal + '</span> deposit' +
+            '<span style="color:#2a2820;margin:0 10px;">|</span>' +
+            '<span style="color:#5a5650;">Pay the rest on the day</span>';
+    }
+
     function initGroupBookingUI() {
         var submitBtn = form && form.querySelector('.submit-btn');
         if (!submitBtn) return;
@@ -487,42 +507,87 @@ var todayStr = now.getFullYear() + '-' +
         var wrap = document.createElement('div');
         wrap.id = 'groupBookingWrap';
         wrap.innerHTML = [
-            '<div id="groupToggleRow" style="margin:18px 0 4px;">',
+            '<div id="groupToggleRow" style="margin:20px 0 6px;">',
             '  <button type="button" id="groupToggleBtn" style="',
-            '    width:100%;padding:10px 14px;background:transparent;',
-            '    border:1px dashed #3a3820;border-radius:10px;color:#7a7260;',
-            '    font-size:0.78rem;letter-spacing:1px;cursor:pointer;transition:all 0.2s;',
-            '  ">👥 Group Booking — Add more people</button>',
+            '    width:100%;padding:0;background:#0c0c08;',
+            '    border:1px solid #252318;border-radius:12px;',
+            '    cursor:pointer;transition:all 0.25s;overflow:hidden;text-align:left;',
+            '  ">',
+            '    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;">',
+            '      <div id="groupToggleIcon" style="',
+            '        width:36px;height:36px;border-radius:50%;',
+            '        background:#141410;border:1px solid #252318;',
+            '        display:flex;align-items:center;justify-content:center;',
+            '        font-size:1rem;flex-shrink:0;transition:all 0.25s;',
+            '      ">👥</div>',
+            '      <div style="flex:1;min-width:0;">',
+            '        <div id="groupToggleTitle" style="',
+            '          font-size:0.72rem;letter-spacing:2px;font-weight:700;',
+            '          text-transform:uppercase;color:#6a6458;transition:color 0.25s;',
+            '          font-family:Oswald,sans-serif;',
+            '        ">Book as a Group</div>',
+            '        <div id="groupToggleSubtitle" style="',
+            '          font-size:0.65rem;color:#3a3828;margin-top:3px;letter-spacing:0.3px;',
+            '          transition:color 0.25s;',
+            '        ">Coming with friends? Reserve multiple chairs at once</div>',
+            '      </div>',
+            '      <div id="groupToggleArrow" style="',
+            '        font-size:0.6rem;color:#2a2820;transition:all 0.3s;flex-shrink:0;',
+            '      ">▶</div>',
+            '    </div>',
+            '  </button>',
             '</div>',
             '<div id="groupMembersWrap" style="display:none;margin-bottom:14px;">',
-            '  <div style="font-size:0.6rem;color:#7a7260;letter-spacing:2px;',
-            '    text-transform:uppercase;margin-bottom:10px;padding:0 2px;">Additional guests</div>',
-            '  <div id="groupMemberRows"></div>',
+            '  <div style="display:flex;align-items:center;gap:10px;margin:4px 0 16px;">',
+            '    <div style="flex:1;height:1px;background:linear-gradient(to right,#d4af3730,transparent);"></div>',
+            '    <div style="font-size:0.55rem;color:#d4af3780;letter-spacing:3px;text-transform:uppercase;white-space:nowrap;font-family:Oswald,sans-serif;">Who\'s joining?</div>',
+            '    <div style="flex:1;height:1px;background:linear-gradient(to left,#d4af3730,transparent);"></div>',
+            '  </div>',
+            '  <div id="groupMemberRows" style="display:flex;flex-direction:column;gap:10px;"></div>',
+            '  <div id="groupSummaryBar" style="display:none;margin:14px 0 10px;padding:10px 16px;',
+            '    background:#0c0c08;border:1px solid #1e1e14;border-radius:8px;text-align:center;">',
+            '    <span id="groupSummaryText" style="font-size:0.67rem;letter-spacing:0.5px;"></span>',
+            '  </div>',
             '  <button type="button" id="addGroupMemberBtn" style="',
-            '    width:100%;padding:9px;margin-top:8px;background:transparent;',
-            '    border:1px dashed #2a2820;border-radius:8px;color:#d4af3799;',
-            '    font-size:0.75rem;cursor:pointer;transition:all 0.2s;',
-            '  ">+ Add another person</button>',
+            '    width:100%;padding:11px;margin-top:2px;background:transparent;',
+            '    border:1px dashed #222018;border-radius:10px;color:#d4af3750;',
+            '    font-size:0.7rem;cursor:pointer;transition:all 0.2s;letter-spacing:1.5px;',
+            '    font-family:Oswald,sans-serif;',
+            '  ">＋  ADD ANOTHER PERSON</button>',
             '</div>',
         ].join('');
         form.insertBefore(wrap, submitBtn);
 
         document.getElementById('groupToggleBtn').addEventListener('click', function() {
             _isGroupMode = !_isGroupMode;
-            var btn = document.getElementById('groupToggleBtn');
-            var mw  = document.getElementById('groupMembersWrap');
+            var btn      = document.getElementById('groupToggleBtn');
+            var mw       = document.getElementById('groupMembersWrap');
+            var icon     = document.getElementById('groupToggleIcon');
+            var title    = document.getElementById('groupToggleTitle');
+            var subtitle = document.getElementById('groupToggleSubtitle');
+            var arrow    = document.getElementById('groupToggleArrow');
             if (_isGroupMode) {
-                btn.style.borderColor  = '#d4af37';
-                btn.style.color        = '#d4af37';
-                btn.style.background   = '#d4af3710';
-                btn.textContent        = '👥 Group Booking — ON';
+                btn.style.borderColor      = '#d4af3760';
+                btn.style.background       = '#d4af370a';
+                icon.style.background      = '#d4af3718';
+                icon.style.borderColor     = '#d4af3750';
+                title.style.color          = '#d4af37';
+                arrow.style.color          = '#d4af37';
+                arrow.style.transform      = 'rotate(90deg)';
+                subtitle.style.color       = '#6a6050';
+                subtitle.textContent       = 'Group mode active — add everyone below';
                 mw.style.display = 'block';
                 if (_groupExtraMembers.length === 0) addGroupMemberRow();
             } else {
-                btn.style.borderColor  = '#3a3820';
-                btn.style.color        = '#7a7260';
-                btn.style.background   = 'transparent';
-                btn.textContent        = '👥 Group Booking — Add more people';
+                btn.style.borderColor      = '#252318';
+                btn.style.background       = '#0c0c08';
+                icon.style.background      = '#141410';
+                icon.style.borderColor     = '#252318';
+                title.style.color          = '#6a6458';
+                arrow.style.color          = '#2a2820';
+                arrow.style.transform      = 'rotate(0deg)';
+                subtitle.style.color       = '#3a3828';
+                subtitle.textContent       = 'Coming with friends? Reserve multiple chairs at once';
                 mw.style.display = 'none';
                 _groupExtraMembers = [];
                 _groupAssignments  = [];
@@ -548,34 +613,64 @@ var todayStr = now.getFullYear() + '-' +
             return '<option value="' + s.id + '">' + s.name + (s.price ? ' — £' + s.price : '') + '</option>';
         }).join('');
 
+        var num = idx + 2;
         var row = document.createElement('div');
         row.className = 'group-member-row';
         row.dataset.idx = idx;
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
         row.innerHTML = [
-            '<span style="font-size:0.65rem;color:#7a7260;white-space:nowrap;min-width:56px;">Person ' + (idx + 2) + '</span>',
-            '<select class="gm-svc-select" style="',
-            '  flex:1;padding:8px 10px;background:#1a1a14;border:1px solid #2a2820;',
-            '  border-radius:8px;color:#e8e4d9;font-size:0.78rem;outline:none;',
-            '">',
-            '<option value="">Select service...</option>',
+            '<div style="position:relative;background:#0e0e0a;border:1px solid #222018;border-radius:11px;padding:12px 14px;transition:border-color 0.2s;">',
+            '  <button type="button" class="remove-gm-btn" style="',
+            '    position:absolute;top:9px;right:11px;background:transparent;border:none;',
+            '    color:#2a2820;padding:2px 5px;cursor:pointer;font-size:0.75rem;',
+            '    transition:color 0.2s;line-height:1;',
+            '  ">✕</button>',
+            '  <div style="display:flex;align-items:center;gap:12px;">',
+            '    <div style="',
+            '      width:30px;height:30px;border-radius:50%;flex-shrink:0;',
+            '      background:linear-gradient(135deg,#d4af3718,#d4af3706);',
+            '      border:1px solid #d4af3738;',
+            '      display:flex;align-items:center;justify-content:center;',
+            '      font-size:0.72rem;font-weight:700;color:#d4af3790;',
+            '      font-family:Oswald,sans-serif;',
+            '    " class="gm-avatar">' + num + '</div>',
+            '    <div style="flex:1;min-width:0;">',
+            '      <div class="gm-person-label" style="font-size:0.55rem;letter-spacing:2px;text-transform:uppercase;color:#3a3828;margin-bottom:6px;font-family:Oswald,sans-serif;">Person ' + num + '</div>',
+            '      <select class="gm-svc-select" style="',
+            '        width:100%;padding:7px 10px;background:#141410;border:1px solid #222018;',
+            '        border-radius:7px;color:#e8e4d9;font-size:0.76rem;outline:none;',
+            '      ">',
+            '        <option value="">— select a service —</option>',
             opts,
-            '</select>',
-            '<button type="button" class="remove-gm-btn" style="',
-            '  background:transparent;border:1px solid #3a3820;border-radius:6px;',
-            '  color:#7a7260;padding:6px 9px;cursor:pointer;font-size:0.75rem;flex-shrink:0;',
-            '">✕</button>',
+            '      </select>',
+            '    </div>',
+            '    <div class="gm-price-badge" style="',
+            '      min-width:36px;text-align:right;font-size:0.82rem;font-weight:700;',
+            '      color:#2a2820;font-family:Oswald,sans-serif;flex-shrink:0;',
+            '    ">—</div>',
+            '  </div>',
+            '</div>',
         ].join('');
         document.getElementById('groupMemberRows').appendChild(row);
 
         row.querySelector('.gm-svc-select').addEventListener('change', function() {
-            var svcId = this.value;
+            var svcId  = this.value;
             var svcObj = (window.SERVICES || []).find(function(s) { return s.id === svcId; });
             _groupExtraMembers[idx] = {
                 serviceId: svcId,
                 duration:  svcObj ? (parseInt(svcObj.duration) || 30) : 30,
                 price:     svcObj ? (parseFloat(svcObj.price) || 0) : 0,
             };
+            var badge = row.querySelector('.gm-price-badge');
+            if (badge) {
+                if (svcObj && svcObj.price) {
+                    badge.textContent  = '£' + svcObj.price;
+                    badge.style.color  = '#d4af37';
+                } else {
+                    badge.textContent  = '—';
+                    badge.style.color  = '#2a2820';
+                }
+            }
+            updateGroupSummary();
             var d = document.getElementById('date').value;
             if (d) checkAvailability(d);
         });
@@ -583,11 +678,15 @@ var todayStr = now.getFullYear() + '-' +
         row.querySelector('.remove-gm-btn').addEventListener('click', function() {
             _groupExtraMembers.splice(idx, 1);
             row.remove();
-            // Re-index remaining rows
             document.querySelectorAll('.group-member-row').forEach(function(r, i) {
                 r.dataset.idx = i;
-                r.querySelector('span').textContent = 'Person ' + (i + 2);
+                var n = i + 2;
+                var lbl = r.querySelector('.gm-person-label');
+                if (lbl) lbl.textContent = 'Person ' + n;
+                var avatar = r.querySelector('.gm-avatar');
+                if (avatar) avatar.textContent = n;
             });
+            updateGroupSummary();
             var d = document.getElementById('date').value;
             if (d) checkAvailability(d);
         });
@@ -959,11 +1058,16 @@ var todayStr = now.getFullYear() + '-' +
                 var groupDepositTotal = groupDepositPerPerson * _groupAssignments.length;
 
                 var popup = document.getElementById('paymentChoicePopup');
+                var totalPeople = _groupAssignments.length;
                 popup.querySelector('h2').textContent = 'Secure Your Group Booking';
-                popup.querySelector('p').textContent = 'Choose how you\'d like to secure your group appointment.';
+                var iconWrap = document.getElementById('popupIconWrap');
+                if (iconWrap) iconWrap.textContent = '👥';
+                var subtitleEl = document.getElementById('popupSubtitle');
+                if (subtitleEl) subtitleEl.textContent = totalPeople + ' people · all slots reserved together';
                 document.getElementById('btnFullPayment').textContent = '✅ Pay in Full — £' + groupTotal.toFixed(0);
-                document.getElementById('btnDeposit').textContent = '🔒 Pay Deposit — £10 × ' + _groupAssignments.length + ' = £' + groupDepositTotal;
-                popup.querySelector('p:last-of-type').textContent = 'Deposit secures all ' + _groupAssignments.length + ' slots. Remaining £' + (groupTotal - groupDepositTotal).toFixed(0) + ' paid on the day.';
+                document.getElementById('btnDeposit').textContent = '🔒 Pay Deposit — £10 × ' + totalPeople + ' = £' + groupDepositTotal;
+                var noteEl = document.getElementById('popupNote');
+                if (noteEl) noteEl.textContent = 'Deposit secures all ' + totalPeople + ' slots. Remaining £' + (groupTotal - groupDepositTotal).toFixed(0) + ' due on the day.';
                 popup.style.display = 'flex';
 
                 document.getElementById('btnFullPayment').onclick = function() {
