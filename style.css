@@ -408,7 +408,7 @@ select.input-field optgroup {
 ========================= */
 .barber-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -495,7 +495,7 @@ select.input-field optgroup {
 ========================= */
 .time-slots-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -1404,7 +1404,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   .footer-address { font-size: 0.75rem; }
 
   .time-slots-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
   }
 
@@ -1415,7 +1415,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   }
 
   .barber-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
   }
 
@@ -1487,7 +1487,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   .price { font-size: 0.9rem; }
 
   .time-slots-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
   }
 
@@ -1498,7 +1498,7 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
   }
 
   .barber-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
   }
 
