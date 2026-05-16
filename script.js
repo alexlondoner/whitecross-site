@@ -290,6 +290,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 window.SERVICES = SERVICES;
                 renderServiceCards(SERVICES);
                 renderServiceDropdown(SERVICES);
+                if (window._renderAddons) window._renderAddons();
             }, function(err) {
                 console.warn('Realtime service sync failed:', err);
             });
@@ -759,37 +760,12 @@ var todayStr = now.getFullYear() + '-' +
     /* ADD-ONS */
     var _selectedAddons = {};
 
-    window._renderAddons = function renderAddons() {
-        var svcId = (document.getElementById('service') || {}).value || '';
-        var section = document.getElementById('addonsSection');
-        var list = document.getElementById('addonsList');
-        if (!section || !list) return;
-
+    function renderExtrasCard() {
+        var list = document.getElementById('extrasToggleList');
+        if (!list) return;
         var svcs = window.SERVICES || [];
         var extras = svcs.filter(function(s) { return s.category === 'Extras'; });
-
-        // Hide if no service selected or selected service is itself an Extra
-        var mainSvc = svcs.find(function(s) { return s.id === svcId; });
-        if (!svcId || !extras.length || (mainSvc && mainSvc.category === 'Extras')) {
-            section.style.display = 'none';
-            section.dataset.visible = '0';
-            return;
-        }
-
-        if (section.dataset.visible !== '1') {
-            section.dataset.visible = '1';
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(-6px)';
-            section.style.display = '';
-            requestAnimationFrame(function() {
-                section.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                section.style.opacity = '1';
-                section.style.transform = 'translateY(0)';
-            });
-        } else {
-            section.style.display = '';
-        }
-
+        if (!extras.length) return;
         list.innerHTML = extras.map(function(ex) {
             var sel = !!_selectedAddons[ex.id];
             return '<div class="addon-row">' +
@@ -801,37 +777,32 @@ var todayStr = now.getFullYear() + '-' +
                 '<button type="button" class="addon-details-btn" onclick="openServiceStory(\'' + ex.id + '\')">Details</button>' +
                 '</div>';
         }).join('');
-
         list.querySelectorAll('.addon-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = btn.dataset.id;
                 var price = parseFloat(btn.dataset.price) || 0;
-                if (_selectedAddons[id]) {
-                    delete _selectedAddons[id];
-                } else {
-                    _selectedAddons[id] = price;
-                }
+                if (_selectedAddons[id]) { delete _selectedAddons[id]; }
+                else { _selectedAddons[id] = price; }
                 var addonsField = document.getElementById('addons');
                 if (addonsField) addonsField.value = Object.keys(_selectedAddons).join(',');
-                renderAddons();
+                renderExtrasCard();
             });
         });
+        // If accordion is open, refresh its max-height so newly injected items are visible
+        var extrasContent = document.querySelector('.extras-content');
+        if (extrasContent && extrasContent.classList.contains('open')) {
+            extrasContent.style.maxHeight = extrasContent.scrollHeight + 'px';
+        }
     }
+    window._renderAddons = renderExtrasCard;
 
     var _serviceDropdown = document.getElementById('service');
     if (_serviceDropdown) {
         _serviceDropdown.addEventListener('change', function() {
-            _selectedAddons = {};
-            var addonsField = document.getElementById('addons');
-            if (addonsField) addonsField.value = '';
-            window._renderAddons();
             var d = document.getElementById('date');
             if (d && d.value) checkAvailability(d.value);
         });
     }
-
-    // Render once on load in case service is pre-selected
-    window._renderAddons();
 
     /* EMAIL VALIDATION */
     var emailInput = document.getElementById('email');

@@ -182,6 +182,17 @@
       </div>
     </section>
 
+    <!-- EXTRAS / ADD-ONS CARD -->
+    <section class="card extras-card">
+      <h2 class="section-title bundle-title accordion-toggle" data-target="extras" style="margin-bottom:0;">
+        Add-ons &amp; Extras
+        <span class="arrow arrow-extras">▼</span>
+      </h2>
+      <div class="accordion-content extras-content" id="extras-items" style="max-height:0px;">
+        <p style="font-size:0.72rem;color:#666;margin:14px 0 12px;letter-spacing:0.3px;">Select extras to add to your booking. You can pick more than one.</p>
+        <div id="extrasToggleList" class="extras-toggle-list"></div>
+      </div>
+    </section>
 
     <h2 class="form-header" id="booking">Fast & Secure Booking</h2>
 
@@ -214,16 +225,7 @@
             </optgroup>
         </select>
 
-        <!-- ADD-ONS -->
-        <div id="addonsSection" style="display:none;">
-          <div class="barber-section-header" style="margin-top:18px;">
-            <div class="barber-header-line"></div>
-            <span class="barber-header-text">Add-ons</span>
-            <div class="barber-header-line"></div>
-          </div>
-          <div id="addonsList" class="addons-list"></div>
-          <input type="hidden" id="addons" name="addons" value="">
-        </div>
+        <input type="hidden" id="addons" name="addons" value="">
 
         <div class="barber-section-header">
           <div class="barber-header-line"></div>
