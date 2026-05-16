@@ -216,8 +216,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!_svcs.length) return;
         var cats = [
             { key: 'Standard',          contentId: 'standard-items',  btnLabel: 'Service Details' },
-            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' },
-            { key: 'Extras',            contentId: 'extras-items',    btnLabel: 'Service Details' }
+            { key: 'Exclusive Bundles', contentId: 'exclusive-items', btnLabel: 'Journey Details' }
         ];
         cats.forEach(function(cat) {
             var content = document.getElementById(cat.contentId);
@@ -247,8 +246,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!select || !_svcs.length) return;
         var current = select.value;
         select.innerHTML = '<option value="" disabled selected>Select Service</option>';
-        var catOrder = ['Standard', 'Exclusive Bundles', 'Extras'];
-        var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
+        var catOrder = ['Standard', 'Exclusive Bundles'];
+        var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages' };
         catOrder.forEach(function(cat) {
             var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat; });
             if (!catSvcs.length) return;
