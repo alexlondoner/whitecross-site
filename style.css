@@ -406,10 +406,38 @@ select.input-field optgroup {
 /* =========================
    BARBER GRID
 ========================= */
+.barber-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+
+.barber-header-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212,175,55,0.5), transparent);
+}
+
+.barber-header-text {
+  font-family: 'Oswald', sans-serif;
+  color: #d4af37;
+  font-size: 0.65rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  border: 1px solid rgba(212,175,55,0.4);
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: rgba(212,175,55,0.06);
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(212,175,55,0.3);
+}
+
 .barber-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  justify-content: center;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
@@ -419,6 +447,7 @@ select.input-field optgroup {
   color: #aaa;
   padding: 18px 8px;
   border-radius: 12px;
+  width: 100px;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
