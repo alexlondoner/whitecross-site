@@ -72,7 +72,7 @@ export default function Dashboard({ isAdmin = true }) {
   const [showPillSettings, setShowPillSettings] = useState(false);
   const [pillsCollapsed, setPillsCollapsed] = useState(false);
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
-  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','needscheckout','revenue','discount','tips','booksy','fresha','treatwell','website','walkin','productsale','addonsale'];
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','revenue','discount','tips','booksy','fresha','treatwell','website','walkin','productsale','addonsale'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
   const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
@@ -350,49 +350,49 @@ const activeBarbers = barberFilter === 'all'
   const handleBookingClick = (b) => { setShowForm(false); setShowWalkIn(false); setShowBlockTime(false); setShowProductSale(false); setSelectedBooking(selectedBooking?.bookingId === b.bookingId ? null : b); if (selectedBooking?.bookingId === b.bookingId) setShowBookingProducts(false); };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:'14px', height:'calc(100vh - 64px)' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
-        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:'8px', height:'calc(100vh - 64px)' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'6px', overflow:'hidden' }}>
           {['day','week','month','custom'].map(v=>(
             <button key={v} onClick={()=>{setView(v);setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}
-              style={{ padding:'8px 16px', border:'none', cursor:'pointer', background:view===v?'#d4af37':'transparent', color:view===v?'#000':'var(--muted)', fontWeight:view===v?'700':'400', fontSize:'0.82rem', textTransform:'capitalize', transition:'all 0.2s' }}>{v}</button>
+              style={{ padding:'5px 11px', border:'none', cursor:'pointer', background:view===v?'#d4af37':'transparent', color:view===v?'#000':'var(--muted)', fontWeight:view===v?'700':'400', fontSize:'0.75rem', textTransform:'capitalize', transition:'all 0.2s' }}>{v}</button>
           ))}
         </div>
         {view !== 'custom' && <>
-          <button onClick={navPrev} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
-          <span style={{ fontSize:'0.9rem', fontWeight:'600', color:'var(--text)', minWidth:'180px', textAlign:'center' }}>{periodLabel}</span>
-          <button onClick={navNext} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'#d4af37', width:'30px', height:'30px', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
+          <button onClick={navPrev} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'5px', color:'#d4af37', width:'24px', height:'24px', cursor:'pointer', fontSize:'0.9rem' }}>&#8249;</button>
+          <span style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--text)', minWidth:'150px', textAlign:'center' }}>{periodLabel}</span>
+          <button onClick={navNext} style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:'5px', color:'#d4af37', width:'24px', height:'24px', cursor:'pointer', fontSize:'0.9rem' }}>&#8250;</button>
         </>}
         {view === 'custom' && (
-          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
             <input type="date" value={customRange.start ? customRange.start.toISOString().slice(0,10) : ''} onChange={e=>{ const d=e.target.value?new Date(e.target.value):null; setCustomRange(r=>({...r,start:d})); }}
-              style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.82rem', cursor:'pointer' }} />
-            <span style={{ color:'var(--muted)', fontSize:'0.82rem' }}>→</span>
+              style={{ padding:'4px 8px', borderRadius:'5px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.75rem', cursor:'pointer' }} />
+            <span style={{ color:'var(--muted)', fontSize:'0.75rem' }}>→</span>
             <input type="date" value={customRange.end ? customRange.end.toISOString().slice(0,10) : ''} onChange={e=>{ const d=e.target.value?new Date(e.target.value):null; setCustomRange(r=>({...r,end:d})); }}
-              style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.82rem', cursor:'pointer' }} />
-            {customRange.start && customRange.end && <span style={{ fontSize:'0.78rem', color:'var(--muted)' }}>{periodLabel}</span>}
+              style={{ padding:'4px 8px', borderRadius:'5px', border:'1px solid var(--border)', background:'var(--card)', color:'var(--text)', fontSize:'0.75rem', cursor:'pointer' }} />
+            {customRange.start && customRange.end && <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{periodLabel}</span>}
           </div>
         )}
         <button onClick={()=>{setSelectedDate(new Date());setCurrentMonth(new Date());setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}
-          style={{ padding:'7px 14px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'6px', color:'#d4af37', fontSize:'0.78rem', cursor:'pointer' }}>Today</button>
+          style={{ padding:'4px 10px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'5px', color:'#d4af37', fontSize:'0.72rem', cursor:'pointer' }}>Today</button>
         <div style={{ flex:1 }} />
-        <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', padding:'4px 8px' }}>
-          <button onClick={()=>setSlotHeight(h=>Math.max(8,h-2))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1.1rem', width:'24px', height:'24px' }}>-</button>
-          <span style={{ fontSize:'0.68rem', color:'var(--muted)', minWidth:'30px', textAlign:'center' }}>{slotHeight}px</span>
-          <button onClick={()=>setSlotHeight(h=>Math.min(36,h+2))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1.1rem', width:'24px', height:'24px' }}>+</button>
+        <div style={{ display:'flex', alignItems:'center', gap:'4px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'6px', padding:'3px 6px' }}>
+          <button onClick={()=>setSlotHeight(h=>Math.max(8,h-2))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem', width:'20px', height:'20px' }}>-</button>
+          <span style={{ fontSize:'0.62rem', color:'var(--muted)', minWidth:'26px', textAlign:'center' }}>{slotHeight}px</span>
+          <button onClick={()=>setSlotHeight(h=>Math.min(36,h+2))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem', width:'20px', height:'20px' }}>+</button>
         </div>
-        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden' }}>
-          <button onClick={()=>setBarberFilter('all')} style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter==='all'?'rgba(212,175,55,0.2)':'transparent', color:barberFilter==='all'?'#d4af37':'var(--muted)', fontSize:'0.78rem', fontWeight:'600' }}>All</button>
+        <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'6px', overflow:'hidden' }}>
+          <button onClick={()=>setBarberFilter('all')} style={{ padding:'5px 10px', border:'none', cursor:'pointer', background:barberFilter==='all'?'rgba(212,175,55,0.2)':'transparent', color:barberFilter==='all'?'#d4af37':'var(--muted)', fontSize:'0.72rem', fontWeight:'600' }}>All</button>
           {activeBarbersForDay.map(b=>(
             <button key={b.id} onClick={()=>setBarberFilter(b.id)}
-              style={{ padding:'8px 12px', border:'none', cursor:'pointer', background:barberFilter===b.id?b.color+'20':'transparent', color:barberFilter===b.id?b.color:'var(--muted)', fontSize:'0.78rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'5px', opacity:isBarberBookingDisabled(b)?0.6:1 }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:b.color }} />{b.name}
+              style={{ padding:'5px 10px', border:'none', cursor:'pointer', background:barberFilter===b.id?b.color+'20':'transparent', color:barberFilter===b.id?b.color:'var(--muted)', fontSize:'0.72rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'4px', opacity:isBarberBookingDisabled(b)?0.6:1 }}>
+              <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:b.color }} />{b.name}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', alignItems:'center' }}>
+      <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', alignItems:'center' }}>
         <button onClick={()=>setPillsCollapsed(v=>!v)}
           style={{ padding:'4px 8px', background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--muted)', cursor:'pointer', fontSize:'0.7rem', flexShrink:0, transition:'all 0.15s' }}
           title={pillsCollapsed ? 'Show stats' : 'Hide stats'}>
@@ -403,11 +403,10 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('pending') && <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
         {!pillsCollapsed && visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
         {!pillsCollapsed && visiblePills.has('unpaid') && <StatPill label="Unpaid" value={statsBookings.filter(b=>b.status==='UNPAID').length} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
-        {!pillsCollapsed && visiblePills.has('needscheckout') && <StatPill label="Needs Checkout" value={needsCheckoutCount} color="#ff5252" active={pillFilter==='needscheckout'} onClick={()=>setPillFilter(pillFilter==='needscheckout'?null:'needscheckout')} />}
         {!pillsCollapsed && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
         {!pillsCollapsed && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
         {!pillsCollapsed && visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
-        {!pillsCollapsed && (visiblePills.has('booksy')||visiblePills.has('fresha')||visiblePills.has('treatwell')||visiblePills.has('website')||visiblePills.has('walkin')||visiblePills.has('productsale')) && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('needscheckout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
+        {!pillsCollapsed && (visiblePills.has('booksy')||visiblePills.has('fresha')||visiblePills.has('treatwell')||visiblePills.has('website')||visiblePills.has('walkin')||visiblePills.has('productsale')) && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
         {!pillsCollapsed && visiblePills.has('booksy') && <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />}
         {!pillsCollapsed && visiblePills.has('fresha') && <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />}
         {!pillsCollapsed && visiblePills.has('treatwell') && <StatPill label="Treatwell" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='treatwell').length} color="#ff7043" active={pillFilter==='treatwell'} onClick={()=>setPillFilter(pillFilter==='treatwell'?null:'treatwell')} />}
@@ -431,7 +430,6 @@ const activeBarbers = barberFilter === 'all'
                 {key:'pending',     label:'Pending',        color:'#ff9800'},
                 {key:'checkedout',  label:'Checked Out',    color:'#2196f3'},
                 {key:'unpaid',      label:'Unpaid',         color:'#ff5252'},
-                {key:'needscheckout',label:'Needs Checkout',color:'#ff5252'},
                 {key:'revenue',     label:'Revenue',        color:'#d4af37'},
                 {key:'discount',    label:'Discount Given', color:'#4caf50'},
                 {key:'tips',        label:'Tips',           color:'#ff9800'},
@@ -642,7 +640,6 @@ const activeBarbers = barberFilter === 'all'
               {key:'confirmed',    label:'Confirmed',     color:'#4caf50', val: statsBookings.filter(b=>b.status==='CONFIRMED').length},
               {key:'pending',      label:'Pending',       color:'#ff9800', val: statsBookings.filter(b=>b.status==='PENDING').length},
               {key:'checkedout',   label:'Checked Out',   color:'#2196f3', val: checkedOutCount},
-              {key:'needscheckout',label:'Needs Checkout',color:'#ff5252', val: needsCheckoutCount},
               {key:'revenue',      label:'Revenue',       color:'#d4af37', val: '£'+revenue},
               {key:'discount',     label:'Discount',      color:'#4caf50', val: '£'+discountGiven.toFixed(2)},
               {key:'tips',         label:'Tips',          color:'#ff9800', val: '£'+tipsGiven.toFixed(2)},

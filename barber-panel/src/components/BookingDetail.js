@@ -233,21 +233,45 @@ export default function BookingDetail({
   const isReturning = clientVisits > 0;
   const busy = deleting || cancelling || noShowing || editing;
 
+  const fmtTimestamp = (ts) => {
+    if (!ts) return null;
+    const d = ts?.toDate ? ts.toDate() : (ts instanceof Date ? ts : null);
+    if (!d) return null;
+    return d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' }).toUpperCase();
+  };
+
   const infoRows = [
     { label: 'Service', value: serviceLabel },
     { label: 'Date', value: booking.date },
-    { label: 'Time', value: booking.time },
+    { label: 'Arrived', value: booking.time },
+    ...(status === 'CHECKED_OUT' && booking.checkedOutAt
+      ? [{ label: 'Checked out', value: fmtTimestamp(booking.checkedOutAt), color: T.green }]
+      : []
+    ),
     { label: 'Barber', value: (booking.barber || '').toUpperCase() },
     { label: 'Phone', value: booking.phone },
     { label: 'Email', value: booking.email },
-    ...(booking.paymentType === 'DEPOSIT' && booking.paidAmount && status !== 'CHECKED_OUT'
-      ? [
+    ...(() => {
+      const depAmt = safePrice(booking.platformDepositAmount);
+      const hasManualDeposit = depAmt > 0 && status !== 'CHECKED_OUT';
+      const hasWebDeposit = booking.paymentType === 'DEPOSIT' && booking.paidAmount && status !== 'CHECKED_OUT';
+      if (hasManualDeposit) {
+        const depLabel = `£${depAmt.toFixed(2)}${booking.depositPaymentMethod ? ' · ' + booking.depositPaymentMethod : ''}`;
+        return [
+          { label: 'Deposit paid', value: depLabel, color: T.green },
+          { label: 'Remaining',    value: `£${Math.max(0, safePrice(booking.price) - depAmt).toFixed(2)}`, color: T.orange },
+          { label: 'Total',        value: `£${safePrice(booking.price).toFixed(2)}` },
+        ];
+      }
+      if (hasWebDeposit) {
+        return [
           { label: 'Deposit paid', value: `£${safePrice(booking.paidAmount).toFixed(2)}`, color: T.green },
           { label: 'Remaining',    value: `£${Math.max(0, safePrice(booking.price) - safePrice(booking.paidAmount)).toFixed(2)}`, color: T.orange },
           { label: 'Total',        value: `£${safePrice(booking.price).toFixed(2)}` },
-        ]
-      : [{ label: 'Amount', value: getDisplayedAmount(booking), color: T.green }]
-    ),
+        ];
+      }
+      return [{ label: 'Amount', value: getDisplayedAmount(booking), color: T.green }];
+    })(),
     {
       label: 'Source', value: booking.source || 'Website',
       color: (SOURCE_COLORS[booking.source] || {}).dot,
@@ -353,6 +377,16 @@ export default function BookingDetail({
                   border: `1px solid ${T.goldDim}`, borderRadius: '6px',
                   color: T.gold, fontSize: '0.58rem', fontWeight: '600', cursor: 'pointer',
                 }}>Receipt</button>
+              )}
+              {status === 'CHECKED_OUT' && booking.clientEmail && (
+                <span style={{
+                  padding: '2px 8px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700',
+                  color: booking.loyaltyEmailSent ? '#4caf50' : '#9e9e9e',
+                  background: booking.loyaltyEmailSent ? '#4caf5018' : 'transparent',
+                  border: `1px solid ${booking.loyaltyEmailSent ? '#4caf5040' : 'transparent'}`,
+                }} title={booking.loyaltyEmailSent ? 'Loyalty card email was sent to this client' : 'No loyalty email sent'}>
+                  {booking.loyaltyEmailSent ? '📧 Email sent' : '📧 No email'}
+                </span>
               )}
 
               {booking.groupId && (

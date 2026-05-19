@@ -18,3 +18,5 @@ barber-panel/.copilot-worklog.txt
 barber-panel/memory/
 .vscode/
 *.code-workspace
+autoresechule.js
+*.gs

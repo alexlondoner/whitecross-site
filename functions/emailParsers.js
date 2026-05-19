@@ -9,6 +9,10 @@ const MONTH_MAP = {
     jan:1, feb:2, mar:3, apr:4, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12,
 };
 
+function addMins(ts, mins) {
+    return admin.firestore.Timestamp.fromMillis(ts.toMillis() + mins * 60000);
+}
+
 // "15 May 2026" + "14:30" → Firestore Timestamp (Europe/London midnight offset)
 function toStartTime(dateStr, timeStr) {
     const parts = dateStr.trim().split(/\s+/);
@@ -150,13 +154,15 @@ async function parseBooksyConfirmations(gmail, db) {
             }
 
             const bookingId = `BOOKSY-${Date.now()}`;
+            const booksyStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, serviceId: service, price,
                 paidAmount: 10, platformDepositAmount: 10, paymentType: 'DEPOSIT', status: 'CONFIRMED', source: 'Booksy',
                 date: bookingDate, time: bookingTime,
-                startTime: toStartTime(bookingDate, bookingTime),
+                startTime: booksyStart,
+                endTime: addMins(booksyStart, duration),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             console.log(`Booksy confirmation: ${bookingId} ${name}`);
@@ -258,10 +264,13 @@ async function parseFreshaConfirmations(gmail, db) {
             const bookingTime = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
 
             let price = '£0';
+            let freshaDuration = 30;
             const cleanService = service.toLowerCase().replace(/\s+/g, '-');
             for (const key of Object.keys(FRESHA_PRICE_MAP)) {
                 if (cleanService.includes(key) || key.includes(cleanService)) {
-                    price = FRESHA_PRICE_MAP[key].p; break;
+                    price = FRESHA_PRICE_MAP[key].p;
+                    freshaDuration = FRESHA_PRICE_MAP[key].d || 30;
+                    break;
                 }
             }
 
@@ -276,13 +285,16 @@ async function parseFreshaConfirmations(gmail, db) {
 
             const bookingId = `FRESHA-${Date.now()}`;
             const priceNum = parseFloat(String(price).replace(/[£,]/g, '')) || 0;
+            const freshaStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
                 clientName: name, clientEmail: email, clientPhone: phone,
-                barberId: barber, serviceId: service, price,
-                paidAmount: priceNum, paymentType: 'FULL', status: 'CONFIRMED', source: 'Fresha',
+                barberId: barber, barberName: barber,
+                serviceId: service, serviceName: service, price,
+                status: 'CONFIRMED', source: 'Fresha',
                 date: bookingDate, time: bookingTime,
-                startTime: toStartTime(bookingDate, bookingTime),
+                startTime: freshaStart,
+                endTime: addMins(freshaStart, freshaDuration),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             console.log(`Fresha confirmation: ${bookingId} ${name}`);
@@ -357,14 +369,22 @@ async function parseTreatwell(gmail, db) {
                 await markRead(gmail, msg.id); continue;
             }
 
+            let twDuration = 30;
+            const twServiceLower = service.toLowerCase();
+            for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
+                if (twServiceLower.includes(key)) { twDuration = BOOKSY_DURATION_MAP[key]; break; }
+            }
+
             const priceNumTW = parseFloat(String(price).replace(/[£,]/g, '')) || 0;
+            const treatwellStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, serviceId: service, price,
                 paidAmount: priceNumTW, paymentType: 'FULL', status: 'CONFIRMED', source: 'Treatwell',
                 date: bookingDate, time: bookingTime,
-                startTime: toStartTime(bookingDate, bookingTime),
+                startTime: treatwellStart,
+                endTime: addMins(treatwellStart, twDuration),
                 treatwellRef: orderRef,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });

@@ -563,8 +563,8 @@ export default function Bookings() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: '700', color: isProductSale ? '#03a9f4' : '#d4af37' }}>{displayAmount}</span>
-                    {!isProductSale && b.paidAmount && b.paymentType === 'DEPOSIT' && (
-                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Dep: £{parsePrice(b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
+                    {!isProductSale && b.status !== 'CHECKED_OUT' && (b.platformDepositAmount > 0 || (b.paymentType === 'DEPOSIT' && b.paidAmount)) && (
+                      <span style={{ fontSize: '0.62rem', color: '#4caf50' }}>Dep: £{parsePrice(b.platformDepositAmount || b.paidAmount).toFixed(2).replace(/\.00$/, '')}</span>
                     )}
                     {b.status === 'CHECKED_OUT' && b.paymentMethod && (
                       <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>{b.paymentMethod}</span>

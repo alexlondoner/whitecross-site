@@ -207,7 +207,6 @@ export default function Finance() {
   const [payLoading, setPayLoading] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ date: '', cashExpense: '', bankExpense: '', notes: '' });
   const [expenseFormSaving, setExpenseFormSaving] = useState(false);
-  const [paymentMonthMode, setPaymentMonthMode] = useState('all');
   const [paymentBarberFilter, setPaymentBarberFilter] = useState('all');
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseDraft, setExpenseDraft] = useState({ cashExpense: '', bankExpense: '', notes: '' });
@@ -590,10 +589,10 @@ export default function Finance() {
     payments
       .map(p => ({ ...p, __date: paymentToDate(p.date) }))
       .filter(p => p.__date)
-      .filter(p => paymentMonthMode === 'all' ? true : monthKey(p.__date) === selectedMonth)
+      .filter(p => monthMode === 'all' ? true : monthKey(p.__date) === selectedMonth)
       .filter(p => paymentBarberFilter === 'all' ? true : normalizeName(p.barberName) === normalizeName(paymentBarberFilter))
       .sort((a, b) => b.__date.getTime() - a.__date.getTime()),
-  [payments, selectedMonth, paymentMonthMode, paymentBarberFilter]);
+  [payments, selectedMonth, monthMode, paymentBarberFilter]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const saveExpense = async dk => {
@@ -741,17 +740,27 @@ export default function Finance() {
             {MONTH_NAMES[month]} {year} · Revenue / Expenses / Partnership
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-            style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 12px', opacity: monthMode === 'all' ? 0.5 : 1 }}
-            disabled={monthMode === 'all'} />
-          <select value={monthMode} onChange={e => setMonthMode(e.target.value)}
-            style={{ ...inp, width: 'auto', minWidth: '130px', padding: '7px 10px' }}>
-            <option value="selected">This Month</option>
-            <option value="all">All Months</option>
-          </select>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Month navigator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '3px 6px', opacity: monthMode === 'all' ? 0.45 : 1 }}>
+            <button onClick={() => { if (monthMode === 'all') return; const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m-2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
+              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: monthMode==='all'?'default':'pointer', fontSize: '1rem', width: '24px', height: '24px', display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
+            <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text)', minWidth: '90px', textAlign: 'center', letterSpacing: '0.5px' }}>
+              {MONTH_NAMES[month]} {year}
+            </span>
+            <button onClick={() => { if (monthMode === 'all') return; const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
+              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: monthMode==='all'?'default':'pointer', fontSize: '1rem', width: '24px', height: '24px', display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
+          </div>
+          <button onClick={() => setMonthMode(v => v === 'all' ? 'selected' : 'all')}
+            style={{ padding: '5px 12px', background: monthMode==='all' ? 'rgba(212,175,55,0.15)' : 'var(--card)', border: `1px solid ${monthMode==='all' ? 'rgba(212,175,55,0.5)' : 'var(--border)'}`, borderRadius: '8px', color: monthMode==='all' ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.5px' }}>
+            All Time
+          </button>
+          <button onClick={fetchAll}
+            style={{ padding: '5px 12px', background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
+            ↺ Refresh
+          </button>
           <button onClick={openSettings}
-            style={{ padding: '8px 14px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
+            style={{ padding: '5px 12px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
             ⚙ Settings
           </button>
         </div>
@@ -1096,11 +1105,11 @@ export default function Finance() {
             <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>
               PAYMENTS & ADVANCES
             </div>
-            <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-              <select value={paymentMonthMode} onChange={e => setPaymentMonthMode(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '6px 10px' }}>
-                <option value="selected">This Month</option>
-                <option value="all">All Time</option>
-              </select>
+            <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1px' }}>
+                {monthMode === 'all' ? 'All Time' : `${MONTH_NAMES[month]} ${year}`}
+              </span>
+              <div style={{ flex: 1 }} />
               <select value={paymentBarberFilter} onChange={e => setPaymentBarberFilter(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '6px 10px' }}>
                 <option value="all">All Barbers</option>
                 {barbers.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
@@ -1581,10 +1590,7 @@ function TipsTab({ bookings, selectedDay, setSelectedDay }) {
     return bookings.filter(function(b) {
       const tip = parseFloat(b.tip) || 0;
       if (tip <= 0) return false;
-      const d = b.startTime?.toDate ? b.startTime.toDate() : (b.date ? new Date(b.date) : null);
-      if (!d) return false;
-      const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      return k === dayKey;
+      return b.dateKey === dayKey;
     });
   }, [bookings, dayKey]);
 

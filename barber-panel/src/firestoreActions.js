@@ -4,18 +4,51 @@ import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, dele
 const TENANT = 'tenants/whitecross';
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────
-export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, note, splitSecond, splitAmount, soldProducts, soldAddOns, serviceCharge, loyaltyPointsRedeemed }) {
+export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, tipPaymentMethod, note, splitSecond, splitAmount, soldProducts, soldAddOns, serviceCharge, loyaltyPointsRedeemed, sendLoyaltyEmail }) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
   const ref = snap.docs[0].ref;
   const bookingData = snap.docs[0].data();
+
+  const phone = bookingData.clientPhone || '';
+  const email = bookingData.clientEmail || '';
+  const hasDiscount = discount && discount > 0;
+  const fullPrice = bookingData.price
+    ? parseFloat(String(bookingData.price).replace('£', '')) || total
+    : total;
+  const redeemed = loyaltyPointsRedeemed || 0;
+  const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
+
+  // Look up client BEFORE writing so loyaltyPointsEarned is correct when CF fires
+  let clientDoc = null;
+  let isMember = false;
+  let pointsEarned = 0;
+  try {
+    if (phone || email) {
+      const clientsRef = collection(db, `${TENANT}/clients`);
+      if (phone) {
+        const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
+        if (!s.empty) clientDoc = s.docs[0];
+      }
+      if (!clientDoc && email) {
+        const s = await getDocs(query(clientsRef, where('email', '==', email)));
+        if (!s.empty) clientDoc = s.docs[0];
+      }
+    }
+    isMember = clientDoc?.data()?.isMember || false;
+    pointsEarned = (isMember || hasDiscount) ? 0 : Math.floor(fullPrice);
+  } catch (err) {
+    console.warn('Loyalty pre-fetch failed (non-critical):', err.message);
+  }
+
   await updateDoc(ref, {
     status: 'CHECKED_OUT',
     paymentMethod,
     paidAmount: total,
     discount: discount || 0,
     tip: tip || 0,
+    tipPaymentMethod: tip > 0 ? (tipPaymentMethod || paymentMethod) : '',
     serviceCharge: serviceCharge || 0,
     soldProducts: Array.isArray(soldProducts)
       ? soldProducts
@@ -41,43 +74,14 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     splitSecond: splitSecond || '',
     splitAmount: splitAmount || 0,
     checkedOutAt: Timestamp.fromDate(new Date()),
-    loyaltyPointsEarned: 0, // placeholder — overwritten below after member check
-    loyaltyPointsRedeemed: loyaltyPointsRedeemed || 0,
+    sendLoyaltyEmail: sendLoyaltyEmail === true,
+    loyaltyPointsEarned: pointsEarned,
+    loyaltyPointsRedeemed: redeemed,
   });
 
-  // Award loyalty points to client — non-critical, never blocks checkout
+  // Update client loyalty balance — non-critical, never blocks checkout
   try {
-    const phone = bookingData.clientPhone || '';
-    const email = bookingData.clientEmail || '';
-    const hasDiscount = discount && discount > 0;
-    const fullPrice = bookingData.price
-      ? parseFloat(String(bookingData.price).replace('£', '')) || total
-      : total;
-    const redeemed = loyaltyPointsRedeemed || 0;
-
-    // Look up client to check membership before deciding points
-    let clientDoc = null;
-    if (phone || email) {
-      const clientsRef = collection(db, `${TENANT}/clients`);
-      if (phone) {
-        const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
-        if (!s.empty) clientDoc = s.docs[0];
-      }
-      if (!clientDoc && email) {
-        const s = await getDocs(query(clientsRef, where('email', '==', email)));
-        if (!s.empty) clientDoc = s.docs[0];
-      }
-    }
-
-    const isMember = clientDoc?.data()?.isMember || false;
-    // Members (including students) earn 0 points; discount also blocks points
-    const pointsEarned = (isMember || hasDiscount) ? 0 : Math.floor(fullPrice);
-
-    // Write the correct loyaltyPointsEarned back to the booking
-    await updateDoc(ref, { loyaltyPointsEarned: pointsEarned });
-
     if (!isMember && (phone || email)) {
-      const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
       const prevEarned   = wasCheckedOut ? (bookingData.loyaltyPointsEarned   || 0) : 0;
       const prevRedeemed = wasCheckedOut ? (bookingData.loyaltyPointsRedeemed || 0) : 0;
       const netDelta = (pointsEarned - redeemed) - (prevEarned - prevRedeemed);
@@ -88,8 +92,7 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
         } else if (!wasCheckedOut) {
           await addDoc(clientsRef, {
             name: bookingData.clientName || '',
-            phone,
-            email,
+            phone, email,
             loyaltyPoints: Math.max(0, pointsEarned - redeemed),
             createdAt: Timestamp.fromDate(new Date()),
           });

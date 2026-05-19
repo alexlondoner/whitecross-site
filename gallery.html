@@ -17,8 +17,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Work – Gallery | I CUT Whitecross Barbers EC1Y London</title>
-    <meta name="description" content="See our work at I CUT Whitecross Barbers – skin fades, scissor cuts, beard trims, hot towel shaves and full grooming at 136 Whitecross Street EC1Y 8QJ London.">
-    <meta name="keywords" content="barber gallery London, skin fade photos, haircut gallery EC1, beard trim photos, Whitecross Barbers work, barbershop portfolio London">
+    <meta name="description" content="See our work at I CUT Whitecross Barbers – skin fades, scissor cuts, beard trims, hot towel shaves and full grooming. Near Old Street, Liverpool Street, Chancery Lane & Holborn. 136 Whitecross Street EC1Y 8QJ London.">
+    <meta name="keywords" content="barber gallery London, skin fade photos, haircut gallery EC1, beard trim photos, Whitecross Barbers work, barbershop portfolio London, barbers Liverpool Street, barbers Chancery Lane, barbers Holborn, barbers Old Street">
 
     <meta property="og:title" content="Our Work – Gallery | I CUT Whitecross Barbers EC1Y London">
     <meta property="og:description" content="Skin fades, scissor cuts, beard trims and full grooming experiences. See our work at I CUT Whitecross Barbers, EC1Y London.">
@@ -423,7 +423,15 @@
             }
             var items = snap.docs
                 .map(function(d) { return d.data(); })
-                .sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
+                .filter(function(d) { return !d.deleted; })
+                .sort(function(a, b) {
+                    if (a.order != null && b.order != null) return a.order - b.order;
+                    if (a.order != null) return -1;
+                    if (b.order != null) return 1;
+                    var ta = a.createdAt ? a.createdAt.seconds : 0;
+                    var tb = b.createdAt ? b.createdAt.seconds : 0;
+                    return tb - ta;
+                });
             grid.innerHTML = '';
             items.forEach(function(data) {
                 var card = document.createElement('div');

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { logAudit } from '../utils/auditLogger';
 
 const TENANT = 'whitecross';
 
@@ -57,6 +58,11 @@ export default function Clients({ isAdmin = true }) {
   const [memberSaving, setMemberSaving] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustSaving, setAdjustSaving] = useState(false);
+  const [pointsLog, setPointsLog] = useState([]);
+  const [pointsLogLoading, setPointsLogLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -298,6 +304,57 @@ export default function Clients({ isAdmin = true }) {
     if (found) return found;
     const ref = await addDoc(clientsRef, { name: client.name, phone: client.phone, email: client.email, createdAt: serverTimestamp() });
     return ref.id;
+  };
+
+  // ── POINTS LOG ────────────────────────────────────────────────────────────
+  const loadPointsLog = async (clientId) => {
+    setPointsLogLoading(true);
+    try {
+      const snap = await getDocs(query(
+        collection(db, `tenants/${TENANT}/auditLogs`),
+        where('clientId', '==', clientId),
+        where('action', '==', 'manual_points_adjustment')
+      ));
+      const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      entries.sort((a, b) => (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0));
+      setPointsLog(entries);
+    } catch (e) { console.error('loadPointsLog', e); }
+    finally { setPointsLogLoading(false); }
+  };
+
+  useEffect(() => {
+    if (detailTab === 'loyalty' && selectedClient?.manualId) {
+      setPointsLog([]);
+      loadPointsLog(selectedClient.manualId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailTab, selectedClient?.manualId]);
+
+  const adjustPoints = async () => {
+    const amount = parseInt(adjustAmount);
+    if (!amount || isNaN(amount)) return;
+    if (!adjustReason.trim()) return;
+    const clientId = selectedClient?.manualId;
+    if (!clientId) return;
+    setAdjustSaving(true);
+    try {
+      await updateDoc(doc(db, `tenants/${TENANT}/clients`, clientId), {
+        loyaltyPoints: increment(amount),
+      });
+      await logAudit('manual_points_adjustment', {
+        clientId,
+        clientName: selectedClient.name,
+        points: amount,
+        reason: adjustReason.trim(),
+      });
+      const newPts = Math.max(0, (selectedClient.loyaltyPoints || 0) + amount);
+      setSelectedClient(prev => ({ ...prev, loyaltyPoints: newPts }));
+      setManualClients(prev => prev.map(m => m.id === clientId ? { ...m, loyaltyPoints: newPts } : m));
+      setAdjustAmount('');
+      setAdjustReason('');
+      await loadPointsLog(clientId);
+    } catch (e) { console.error('adjustPoints', e); }
+    finally { setAdjustSaving(false); }
   };
 
   const promoteMember = async (client, tier) => {
@@ -904,6 +961,61 @@ export default function Clients({ isAdmin = true }) {
                     </div>
 
                     <div style={{ fontSize: '0.62rem', color: 'var(--muted)', textAlign: 'center' }}>20 pts = £1 · Earn 1pt per £1 spent · Min 20pts to redeem</div>
+
+                    {/* ── MANUAL ADJUST ── */}
+                    {selectedClient.manualId && (
+                      <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: '600' }}>Adjust Points</div>
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                          {['Birthday bonus +50', 'Goodwill +20', 'Correction'].map(preset => (
+                            <button key={preset} onClick={() => {
+                              if (preset.startsWith('Birthday')) { setAdjustAmount('50'); setAdjustReason('Birthday bonus'); }
+                              else if (preset.startsWith('Goodwill')) { setAdjustAmount('20'); setAdjustReason('Goodwill gesture'); }
+                              else { setAdjustReason('Correction'); }
+                            }} style={{ padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                          <input type="number" placeholder="pts (use − to deduct)" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)}
+                            style={{ flex: 1, padding: '9px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', minWidth: 0 }} />
+                        </div>
+                        <input placeholder="Reason (required)" value={adjustReason} onChange={e => setAdjustReason(e.target.value)}
+                          style={{ width: '100%', padding: '9px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', marginBottom: '8px', boxSizing: 'border-box' }} />
+                        <button onClick={adjustPoints} disabled={adjustSaving || !adjustAmount || !adjustReason.trim()}
+                          style={{ width: '100%', padding: '9px', background: (!adjustAmount || !adjustReason.trim()) ? 'transparent' : 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '8px', color: (!adjustAmount || !adjustReason.trim()) ? 'var(--muted)' : '#d4af37', cursor: (!adjustAmount || !adjustReason.trim() || adjustSaving) ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: '700', opacity: (!adjustAmount || !adjustReason.trim()) ? 0.5 : 1 }}>
+                          {adjustSaving ? 'Saving…' : parseInt(adjustAmount) < 0 ? `Deduct ${Math.abs(parseInt(adjustAmount)||0)} pts` : `Add ${parseInt(adjustAmount)||0} pts`}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── POINTS LOG ── */}
+                    {selectedClient.manualId && (
+                      <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', fontWeight: '600' }}>Points Log</div>
+                        {pointsLogLoading
+                          ? <div style={{ color: 'var(--muted)', fontSize: '0.75rem', textAlign: 'center', padding: '12px 0' }}>Loading…</div>
+                          : pointsLog.length === 0
+                          ? <div style={{ color: 'var(--muted)', fontSize: '0.72rem', textAlign: 'center', padding: '8px 0' }}>No manual adjustments yet</div>
+                          : pointsLog.map(entry => {
+                              const isPos = entry.points >= 0;
+                              const ts = entry.timestamp?.toDate ? entry.timestamp.toDate() : null;
+                              return (
+                                <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                                  <div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: '600' }}>{entry.reason}</div>
+                                    {ts && <div style={{ fontSize: '0.58rem', color: 'var(--muted)', marginTop: '2px' }}>{ts.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · {ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>}
+                                  </div>
+                                  <span style={{ fontSize: '0.82rem', fontWeight: '700', color: isPos ? '#4caf50' : '#ff5252', flexShrink: 0, marginLeft: '12px' }}>
+                                    {isPos ? '+' : ''}{entry.points} pts
+                                  </span>
+                                </div>
+                              );
+                            })
+                        }
+                      </div>
+                    )}
                   </>)}
 
                 </div>

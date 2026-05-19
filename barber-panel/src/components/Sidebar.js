@@ -6,7 +6,7 @@ const navItems = [
   { id: 'bookings',      icon: '📅', label: 'Bookings' },
   { id: 'calendar',      icon: '🗓️', label: 'Calendar' },
   { id: 'clients',       icon: '👥', label: 'Clients' },
-  { id: 'barbers',       icon: '✂️', label: 'Team Members' },
+  { id: 'barbers',       icon: '🎨', label: 'Team Members' },
   { id: 'products',      icon: '🛒', label: 'Products' },
   { id: 'reports',       icon: '📈', label: 'Reports' },
   { id: 'finance',       icon: '💰', label: 'Finance' },
@@ -206,52 +206,30 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
 
       {/* Shop info & Footer */}
       <div style={{
-        padding: isCollapsed ? '16px 10px' : '18px 24px',
+        padding: isCollapsed ? '10px 8px' : '10px 16px',
         borderTop: 'none',
         background: isCollapsed ? 'transparent' : 'inherit',
-        borderTopLeftRadius: '16px',
-        borderTopRightRadius: '16px',
         marginTop: 'auto',
       }}>
-        {!isCollapsed && (
-          <div style={{ fontSize: '0.72rem', color: isLight ? '#9a8a70' : '#7a7260', marginBottom: '12px' }}>
-            {config.shopAddress}
-          </div>
-        )}
-
-        {/* Theme toggle - Icon only when collapsed */}
-        <div
+        {/* Address + theme toggle on one row */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent: isCollapsed ? 'center' : 'space-between', marginBottom:'8px', gap:'6px' }}>
+          {!isCollapsed && (
+            <div style={{ fontSize: '0.62rem', color: isLight ? '#9a8a70' : '#7a7260', lineHeight:1.3, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {config.shopAddress}
+            </div>
+          )}
+          {/* Theme toggle */}
+          <div
             onClick={onToggleTheme}
-            title={isCollapsed ? (isLight ? 'Switch to Dark' : 'Switch to Light') : ''}
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: isCollapsed ? 'center' : 'space-between',
-                marginBottom: '12px',
-                cursor: 'pointer'
-            }}
-        >
-          {!isCollapsed && <span style={{ fontSize: '0.72rem', color: isLight ? '#9a8a70' : '#7a7260' }}>
-            {isLight ? 'Light' : 'Dark'}
-          </span>}
-          <div style={{ 
-              width: isCollapsed ? '30px' : '44px', 
-              height: isCollapsed ? '16px' : '24px', 
-              borderRadius: '12px', 
-              background: isLight ? '#d4af37' : '#333', 
-              position: 'relative',
-              flexShrink: 0 
-          }}>
-            <div style={{ 
-                position: 'absolute', 
-                top: isCollapsed ? '2px' : '3px', 
-                left: isLight ? (isCollapsed ? '16px' : '23px') : '3px', 
-                width: isCollapsed ? '12px' : '18px', 
-                height: isCollapsed ? '12px' : '18px', 
-                borderRadius: '50%', 
-                background: '#fff', 
-                transition: 'left 0.2s' 
-            }} />
+            title={isLight ? 'Switch to Dark' : 'Switch to Light'}
+            style={{ display:'flex', alignItems:'center', gap:'4px', cursor:'pointer', flexShrink:0 }}
+          >
+            {!isCollapsed && <span style={{ fontSize: '0.6rem', color: isLight ? '#9a8a70' : '#7a7260' }}>
+              {isLight ? 'Light' : 'Dark'}
+            </span>}
+            <div style={{ width:'32px', height:'17px', borderRadius:'9px', background: isLight ? '#d4af37' : '#333', position:'relative', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:'2px', left: isLight ? '17px' : '3px', width:'13px', height:'13px', borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+            </div>
           </div>
         </div>
 

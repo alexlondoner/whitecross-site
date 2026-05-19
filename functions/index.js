@@ -335,6 +335,81 @@ exports.stripeWebhook = onRequest(
             }) => {
                 const meta = metadata || {};
 
+                // ── Mobile app checkout: flip booking to CHECKED_OUT ────────
+                if (meta.paymentType === 'MOBILE_CHECKOUT') {
+                    const mobileBookingId = String(meta.bookingId || '').trim();
+                    if (!mobileBookingId) {
+                        console.warn('stripeWebhook: MOBILE_CHECKOUT missing bookingId');
+                        return;
+                    }
+                    const mobileSnap = await db
+                        .collection('tenants/whitecross/bookings')
+                        .where('bookingId', '==', mobileBookingId)
+                        .limit(1)
+                        .get();
+                    if (mobileSnap.empty) {
+                        console.warn('stripeWebhook: MOBILE_CHECKOUT booking not found', mobileBookingId);
+                        return;
+                    }
+                    const bookingData = mobileSnap.docs[0].data();
+                    const tipAmt      = parseFloat(meta.tip || '0');
+                    const pointsEarned = parseInt(meta.loyaltyPointsEarned || '0', 10);
+                    await mobileSnap.docs[0].ref.set({
+                        status:                'CHECKED_OUT',
+                        paymentMethod:         'CARD',
+                        paidAmount:            amountPaid || parseFloat(meta.amount || '0'),
+                        tip:                   tipAmt,
+                        tipPaymentMethod:      tipAmt > 0 ? (meta.tipPaymentMethod || 'CARD') : '',
+                        note:                  meta.note || '',
+                        checkedOutAt:          admin.firestore.Timestamp.now(),
+                        loyaltyPointsEarned:   pointsEarned,
+                        loyaltyPointsRedeemed: 0,
+                        sendLoyaltyEmail:      meta.sendLoyaltyEmail === 'true',
+                        stripeSessionId:       sessionId || null,
+                        stripePaymentIntent:   paymentIntent || null,
+                        stripeAmountPaid:      amountPaid,
+                        stripeEventId:         event.id || null,
+                        updatedAt:             admin.firestore.Timestamp.now(),
+                    }, { merge: true });
+                    // Update client loyalty balance so sendLoyaltyCardEmail reads correct total
+                    if (pointsEarned > 0) {
+                        const clientPhone = bookingData.clientPhone || '';
+                        const clientEmail = bookingData.clientEmail || '';
+                        try {
+                            const clientsRef = db.collection('tenants/whitecross/clients');
+                            let clientRef = null;
+                            if (clientPhone) {
+                                const cs = await clientsRef.where('phone', '==', clientPhone).limit(1).get();
+                                if (!cs.empty) clientRef = cs.docs[0].ref;
+                            }
+                            if (!clientRef && clientEmail) {
+                                const cs = await clientsRef.where('email', '==', clientEmail).limit(1).get();
+                                if (!cs.empty) clientRef = cs.docs[0].ref;
+                            }
+                            if (clientRef) {
+                                await clientRef.update({
+                                    loyaltyPoints: admin.firestore.FieldValue.increment(pointsEarned),
+                                    lastVisit:     admin.firestore.Timestamp.now(),
+                                    lastBarber:    bookingData.barberName  || '',
+                                    lastService:   bookingData.serviceId   || bookingData.service || '',
+                                });
+                            } else if (clientPhone || clientEmail) {
+                                await clientsRef.add({
+                                    name:          bookingData.clientName || '',
+                                    phone:         clientPhone,
+                                    email:         clientEmail,
+                                    loyaltyPoints: pointsEarned,
+                                    createdAt:     admin.firestore.Timestamp.now(),
+                                });
+                            }
+                        } catch (e) {
+                            console.warn('stripeWebhook: MOBILE_CHECKOUT client loyalty update failed', e.message);
+                        }
+                    }
+                    console.log('stripeWebhook: mobile checkout complete', mobileBookingId, { pointsEarned });
+                    return;
+                }
+
                 // ── Group booking: confirm all members at once ──────────────
                 if (meta.isGroup === 'true' && meta.groupId) {
                     const groupSnap = await db
@@ -794,15 +869,100 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
         const prevStatus = String(before.status || '').trim().toUpperCase();
         const newStatus  = String(after.status  || '').trim().toUpperCase();
 
-        // Only fire when transitioning to CONFIRMED (e.g. PENDING → CONFIRMED via Stripe)
-        if (prevStatus === 'CONFIRMED' || newStatus !== 'CONFIRMED') return;
+        // Skip platform bookings — they send their own emails
+        const source = String(after.source || '').trim().toLowerCase();
+        if (['walk-in', 'walk_in', 'walkin', 'booksy', 'fresha', 'treatwell'].includes(source)) return;
 
         // For group bookings: only the lead sends the email
         if (after.groupId && after.groupLead === false) return;
 
-        // Skip platform bookings — they send their own emails
-        const source = String(after.source || '').trim().toLowerCase();
-        if (['walk-in', 'walk_in', 'walkin', 'booksy', 'fresha', 'treatwell'].includes(source)) return;
+        // ── Reschedule email: CONFIRMED→CONFIRMED with date or time change ──
+        const isReschedule = prevStatus === 'CONFIRMED' && newStatus === 'CONFIRMED' &&
+            (before.date !== after.date || before.time !== after.time);
+
+        if (isReschedule) {
+            const email = after.clientEmail || after.email;
+            if (!email) return;
+
+            const nameR      = after.clientName || after.name || 'Guest';
+            const serviceR   = lookupServiceName(after.serviceId || after.service);
+            const newBarber  = (await lookupBarberName(getAdminDb(), after.barberId || after.barber, after.barberName)).toUpperCase();
+            const bookingId  = after.bookingId || event.params.bookingId;
+            const priceR     = after.price ? `£${parseFloat(String(after.price).replace(/[^0-9.]/g,'') || 0).toFixed(2)}` : '';
+
+            const oldDate = before.date || 'Previous date';
+            const oldTime = before.time || '';
+
+            let newDateFormatted = after.date || 'TBC';
+            let newTime = after.time || 'TBC';
+            if (after.startTime) {
+                const d = after.startTime.toDate();
+                newDateFormatted = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' });
+                newTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
+            }
+
+            const baseUrl       = 'https://whitecrossbarbers.com';
+            const cancelUrl     = `${baseUrl}/cancel.html?id=${bookingId}&email=${encodeURIComponent(email)}`;
+            const rescheduleUrl = `${baseUrl}/Reschedule.html?id=${bookingId}&email=${encodeURIComponent(email)}`;
+
+            const rescheduleHtml = `<!DOCTYPE html><html><head><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');</style></head>
+<body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
+<div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+<div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
+<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+<h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+</div>
+<div style="padding:45px 40px;text-align:center;">
+<p style="color:#4caf50;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-bottom:15px;font-weight:700;">Booking Rescheduled ✓</p>
+<h2 style="margin:0 0 30px 0;font-size:26px;font-weight:300;color:#fff;line-height:1.2;">Your update is confirmed,<br><span style="font-weight:700;">${nameR}</span></h2>
+<div style="background:#161616;border:1px solid #222;padding:30px;border-radius:2px;margin-bottom:35px;text-align:left;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:8px 0;color:#666;font-size:11px;text-transform:uppercase;text-decoration:line-through;">Previous</td><td style="padding:8px 0;color:#666;font-size:13px;text-align:right;text-decoration:line-through;">${oldDate} @ ${oldTime}</td></tr>
+<tr><td style="padding:15px 0 8px 0;border-top:1px solid #222;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">New Date</td><td style="padding:15px 0 8px 0;border-top:1px solid #222;color:#fff;font-size:15px;text-align:right;font-weight:700;">${newDateFormatted}</td></tr>
+<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">New Time</td><td style="padding:8px 0;color:#fff;font-size:15px;text-align:right;font-weight:700;">${newTime}</td></tr>
+<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Service</td><td style="padding:8px 0;color:#d4af37;font-size:15px;text-align:right;font-weight:700;">${serviceR}</td></tr>
+<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Barber</td><td style="padding:8px 0;color:#fff;font-size:15px;text-align:right;font-weight:700;">${newBarber}</td></tr>
+<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Total Price</td><td style="padding:8px 0;color:#4caf50;font-size:15px;text-align:right;font-weight:700;">${priceR}</td></tr>
+</table>
+<p style="margin:20px 0 0 0;font-size:11px;color:#444;text-align:center;letter-spacing:1px;">ID: ${bookingId}</p>
+</div>
+<p style="color:#aaa;font-size:13px;line-height:1.8;margin-bottom:35px;">
+<strong style="color:#fff;">136 Whitecross Street, London EC1Y 8QJ</strong><br>
+Old Street · Barbican · Moorgate<br>
+<span style="color:#666;">Please arrive 5 minutes before your new scheduled time.</span>
+</p>
+<div style="margin-bottom:40px;">
+<a href="${rescheduleUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:#d4af37;color:#000;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Reschedule</a>
+<a href="${cancelUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:transparent;border:1px solid #444;color:#666;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Cancel</a>
+</div>
+<div style="border-top:1px solid #222;padding-top:30px;">
+<p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
+CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a> | <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WHATSAPP</a><br>
+<a href="https://whitecrossbarbers.com/terms.html" style="color:#444;text-decoration:underline;">Cancellation Policy</a>
+</p>
+</div>
+</div>
+<div style="padding:30px;text-align:center;">
+<p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+</div>
+</div></body></html>`;
+
+            try {
+                await getTransporter().sendMail({
+                    from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+                    to: email,
+                    subject: `🔄 Booking Rescheduled — ${newDateFormatted} | I CUT Whitecross`,
+                    html: rescheduleHtml,
+                });
+                console.log(`Reschedule email sent to ${email}`);
+            } catch (err) {
+                console.error('Reschedule email error:', err);
+            }
+            return;
+        }
+
+        // Only fire when transitioning to CONFIRMED (e.g. PENDING → CONFIRMED via Stripe)
+        if (prevStatus === 'CONFIRMED' || newStatus !== 'CONFIRMED') return;
 
         const email = after.clientEmail;
         if (!email) return;
@@ -990,7 +1150,7 @@ exports.notifyNewBooking = onDocumentCreated(
         const totalPrice = parseFloat(String(data.price || data.amount || '0').replace('£', '')) || 0;
         const paid       = parseFloat(String(data.paidAmount || '0').replace('£', '')) || 0;
         let paymentLine  = '';
-        if (totalPrice > 0) {
+        if (source !== 'fresha' && totalPrice > 0) {
             if (paid >= totalPrice) {
                 paymentLine = `\n💳 Paid in full: £${totalPrice.toFixed(2)}`;
             } else if (paid > 0) {
@@ -1210,6 +1370,13 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const newStatus  = String(after.status  || '').trim().toUpperCase();
         if (newStatus !== 'CHECKED_OUT' || prevStatus === 'CHECKED_OUT') return;
 
+        // Platform bookings only get loyalty email if explicitly opted-in at checkout
+        const platformSources = ['Booksy', 'Fresha', 'Treatwell'];
+        if (platformSources.includes(after.source) && after.sendLoyaltyEmail !== true) {
+            console.log(`Platform booking (${after.source}) — loyalty email not opted-in, skipping.`);
+            return;
+        }
+
         const email = after.clientEmail;
         if (!email) return;
 
@@ -1258,12 +1425,17 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const name        = after.clientName || 'Guest';
         const service     = SERVICE_NAMES[after.serviceId] || after.serviceId || 'Service';
         const barber      = (after.barberName || after.barberId || 'TBC').toUpperCase();
+        const isWalkIn    = ['Walk-in', 'walk-in', 'walkin', 'Walk_in'].includes(after.source || '');
         const todayPaid   = parseFloat(String(after.paidAmount || '0').replace('£', '')) || 0;
         const fullPrice   = parseFloat(String(after.price || '0').replace('£', '')) || todayPaid;
         const isDeposit   = after.paymentType === 'DEPOSIT' && fullPrice > todayPaid;
         const depositPaid = isDeposit ? (DEPOSIT_AMOUNTS[after.serviceId] || DEPOSIT_AMOUNTS[after.service] || 10) : 0;
         const paidAmount  = isDeposit ? fullPrice : todayPaid;  // show full service value as total
-        const pointsEarned = after.loyaltyPointsEarned || 0;
+        let pointsEarned = after.loyaltyPointsEarned || 0;
+        // Safety net: if not pre-calculated (old mobile code / race condition), derive from paid amount
+        if (!pointsEarned && !isMember && !after.discount) {
+            pointsEarned = Math.floor(todayPaid || fullPrice);
+        }
         const redeemed    = after.loyaltyPointsRedeemed || 0;
         const discount    = parseFloat(String(after.discount || '0').replace('£', '')) || 0;
 
@@ -1474,6 +1646,13 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
             </div>
         </div>
 
+        ${isWalkIn ? `
+        <!-- Double points promo for walk-ins -->
+        <div style="background:#0e0c07;border:1px solid #d4af3740;border-radius:10px;padding:18px 22px;margin:0 0 16px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;color:#d4af37;letter-spacing:2px;text-transform:uppercase;font-weight:700;">💡 Book Online Next Time</p>
+            <p style="margin:0;font-size:14px;color:#f0e6c8;font-weight:600;line-height:1.5">Earn <span style="color:#d4af37;font-weight:800">DOUBLE POINTS</span> when you book at<br><a href="https://whitecrossbarbers.com" style="color:#d4af37;text-decoration:none;">whitecrossbarbers.com</a></p>
+        </div>` : ''}
+
         <!-- Footer -->
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
@@ -1493,6 +1672,13 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                 html: htmlBody,
             });
             console.log(`Loyalty card email sent to ${email} · ${loyaltyPoints} pts`);
+            // Mark booking so the panel can show email-sent indicator
+            try {
+                await event.data.after.ref.update({
+                    loyaltyEmailSent: true,
+                    loyaltyEmailSentAt: admin.firestore.Timestamp.now(),
+                });
+            } catch (_) {}
         } catch (err) {
             console.error('sendLoyaltyCardEmail error:', err);
         }
@@ -1768,4 +1954,245 @@ exports.parseBookingEmails = onSchedule(
     }
 );
 
+// ── Mobile checkout: create Stripe session for in-person card payment ─────────
+exports.createMobileCheckout = onCall(
+    { secrets: ['STRIPE_SECRET_KEY'] },
+    async (request) => {
+        if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in');
+
+        const {
+            bookingId, amount, clientEmail, clientName,
+            serviceName, barberName,
+            tip, tipPaymentMethod, note,
+            loyaltyPointsEarned, sendLoyaltyEmail,
+        } = request.data || {};
+
+        if (!bookingId || !amount) throw new HttpsError('invalid-argument', 'Missing bookingId or amount');
+
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        if (!stripeKey) throw new HttpsError('internal', 'Stripe not configured');
+
+        const chargeGBP = parseFloat(amount);
+        if (!(chargeGBP > 0)) throw new HttpsError('invalid-argument', 'Invalid amount');
+
+        const stripe = new Stripe(stripeKey);
+        const appUrl = 'https://whitecrossbarbers-app.web.app';
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'gbp',
+                    product_data: {
+                        name: serviceName || 'Haircut',
+                        description: barberName ? `with ${barberName} · Whitecross Barbers` : 'Whitecross Barbers',
+                    },
+                    unit_amount: Math.round(chargeGBP * 100),
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            customer_email: clientEmail || undefined,
+            metadata: {
+                bookingId:           String(bookingId),
+                paymentType:         'MOBILE_CHECKOUT',
+                amount:              String(chargeGBP),
+                tip:                 String(parseFloat(tip) || 0),
+                tipPaymentMethod:    String(tipPaymentMethod || ''),
+                note:                String(note || '').substring(0, 490),
+                loyaltyPointsEarned: String(parseInt(loyaltyPointsEarned) || 0),
+                sendLoyaltyEmail:    String(sendLoyaltyEmail === true || sendLoyaltyEmail === 'true'),
+            },
+            success_url: `${appUrl}/?stripe_success=${encodeURIComponent(bookingId)}`,
+            cancel_url:  `${appUrl}/?stripe_cancel=${encodeURIComponent(bookingId)}`,
+        });
+
+        return { url: session.url, sessionId: session.id };
+    }
+);
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+async function sendBookingPush(booking, bookingId) {
+    const db = getAdminDb();
+    const tokensSnap = await db.collection('tenants/whitecross/fcmTokens').get();
+    const tokens = tokensSnap.docs.map(d => d.data().token).filter(Boolean);
+    if (!tokens.length) return;
+
+    const client  = booking.clientName || booking.client || 'New client';
+    const time    = booking.time || '';
+    const service = booking.service || booking.serviceName || '';
+    const source  = (booking.source || '').toLowerCase();
+
+    const title =
+        source.includes('fresha')                            ? 'New Fresha Booking'    :
+        source.includes('treatwell')                         ? 'New Treatwell Booking' :
+        source.includes('booksy')                            ? 'New Booksy Booking'    :
+        source.includes('website') || source.includes('web') ? 'New Web Booking'       :
+        source.includes('walk')                              ? 'New Walk-in'           :
+                                                               'New Booking';
+
+    const body = [client, time, service].filter(Boolean).join(' · ');
+
+    const response = await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: { title, body },
+        webpush: {
+            notification: {
+                icon:     'https://whitecrossbarbers-app.web.app/icon-192.png',
+                badge:    'https://whitecrossbarbers-app.web.app/icon-192.png',
+                tag:      'new-booking',
+                renotify: true,
+            },
+            data: { bookingId, clientName: client, time, service },
+        },
+    });
+
+    const expired = response.responses
+        .map((r, i) => (!r.success && r.error?.code === 'messaging/registration-token-not-registered') ? tokens[i] : null)
+        .filter(Boolean);
+    await Promise.all(expired.map(t => db.collection('tenants/whitecross/fcmTokens').doc(t).delete()));
+}
+
+// Created directly as CONFIRMED (walk-ins, Booksy, Fresha, Treatwell)
+exports.onNewBookingPush = onDocumentCreated(
+    'tenants/whitecross/bookings/{bookingId}',
+    async event => {
+        const booking = event.data?.data();
+        if (!booking) return;
+        if ((booking.status || '').toUpperCase() !== 'CONFIRMED') return;
+        await sendBookingPush(booking, event.params.bookingId);
+    }
+);
+
+// Created as PENDING, then payment confirmed → status flips to CONFIRMED
+exports.onBookingConfirmedPush = onDocumentUpdated(
+    'tenants/whitecross/bookings/{bookingId}',
+    async event => {
+        const before = event.data?.before?.data();
+        const after  = event.data?.after?.data();
+        if (!before || !after) return;
+        const wasPending = (before.status || '').toUpperCase() !== 'CONFIRMED';
+        const nowConfirmed = (after.status || '').toUpperCase() === 'CONFIRMED';
+        if (!wasPending || !nowConfirmed) return;
+        await sendBookingPush(after, event.params.bookingId);
+    }
+);
+
+// ── iCalendar feed ────────────────────────────────────────────────────────────
+// URL: /icalFeed?barber=Alex          → Alex's calendar
+// URL: /icalFeed                      → all barbers
+// URL: /icalFeed?barber=Alex&key=KEY  → with secret key (optional)
+//
+// Treatwell / Google Cal / Apple Cal subscribe to this URL.
+// They pull every 15–30 min automatically — no manual work needed.
+
+function escIcal(str) {
+    return (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+}
+
+function toIcalDate(date) {
+    // Returns YYYYMMDDTHHMMSSZ in UTC
+    const pad = n => String(n).padStart(2, '0');
+    return date.getUTCFullYear()
+        + pad(date.getUTCMonth() + 1)
+        + pad(date.getUTCDate())
+        + 'T' + pad(date.getUTCHours())
+        + pad(date.getUTCMinutes())
+        + pad(date.getUTCSeconds()) + 'Z';
+}
+
+exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
+    const db = getAdminDb();
+    const TENANT = 'whitecross';
+
+    // Optional secret key check — set ICAL_KEY in Firebase secrets if you want protection
+    // For now open (Treatwell needs a public URL)
+    const barberFilter = (req.query.barber || '').trim().toLowerCase();
+
+    // Fetch bookings: past 14 days → next 90 days
+    const from = new Date(); from.setDate(from.getDate() - 14); from.setHours(0, 0, 0, 0);
+    const to   = new Date(); to.setDate(to.getDate() + 90);     to.setHours(23, 59, 59, 999);
+
+    let snap;
+    try {
+        snap = await db.collection(`tenants/${TENANT}/bookings`)
+            .where('startTime', '>=', admin.firestore.Timestamp.fromDate(from))
+            .where('startTime', '<=', admin.firestore.Timestamp.fromDate(to))
+            .get();
+    } catch (e) {
+        res.status(500).send('Error fetching bookings');
+        return;
+    }
+
+    const SKIP_STATUSES = ['CANCELLED', 'BLOCKED'];
+    const now = new Date();
+
+    let events = '';
+    snap.docs.forEach(doc => {
+        const b = doc.data();
+        const status = (b.status || '').toUpperCase();
+        if (SKIP_STATUSES.includes(status)) return;
+
+        // Barber filter
+        const bName = (b.barberName || b.barber || b.barberId || '').toLowerCase();
+        if (barberFilter && bName !== barberFilter) return;
+
+        // Resolve start/end times
+        let start, end;
+        if (b.startTime?.toDate) {
+            start = b.startTime.toDate();
+        } else {
+            return; // skip if no startTime
+        }
+        if (b.endTime?.toDate) {
+            end = b.endTime.toDate();
+        } else {
+            end = new Date(start.getTime() + 30 * 60 * 1000); // default 30min
+        }
+
+        const uid = `${doc.id}@whitecrossbarbers.com`;
+        const clientName = escIcal(b.clientName || 'Client');
+        const barberName = escIcal(b.barberName || b.barber || '');
+        const service    = escIcal(b.service || b.serviceId || '');
+        const summary    = barberName ? `${clientName} – ${barberName}` : clientName;
+        const desc       = [service, b.source, b.note].filter(Boolean).map(escIcal).join(' | ');
+        const created    = b.createdAt?.toDate ? b.createdAt.toDate() : now;
+
+        events += [
+            'BEGIN:VEVENT',
+            `UID:${uid}`,
+            `DTSTAMP:${toIcalDate(now)}`,
+            `DTSTART:${toIcalDate(start)}`,
+            `DTEND:${toIcalDate(end)}`,
+            `SUMMARY:${summary}`,
+            desc ? `DESCRIPTION:${desc}` : '',
+            `CREATED:${toIcalDate(created)}`,
+            'STATUS:CONFIRMED',
+            'END:VEVENT',
+        ].filter(Boolean).join('\r\n') + '\r\n';
+    });
+
+    const calName = barberFilter
+        ? `Whitecross – ${barberFilter.charAt(0).toUpperCase() + barberFilter.slice(1)}`
+        : 'Whitecross Barbers';
+
+    const ical = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Whitecross Barbers//Booking Feed//EN',
+        `X-WR-CALNAME:${calName}`,
+        'X-WR-TIMEZONE:Europe/London',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        events.trimEnd(),
+        'END:VCALENDAR',
+    ].join('\r\n');
+
+    res.set('Content-Type', 'text/calendar; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${barberFilter || 'whitecross'}.ics"`);
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(ical);
+});
+
 // ── ONE-TIME: backfill loyalty points from checkout history ───────────────────
+

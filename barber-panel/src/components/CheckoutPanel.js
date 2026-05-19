@@ -666,7 +666,7 @@ function CartStep({
 }
 
 // ─── STEP 2: Tip ──────────────────────────────────────────────────────────────
-function TipStep({ booking, subtotal, tip, setTip, customTip, setCustomTip, onBack, onContinue }) {
+function TipStep({ booking, subtotal, tip, setTip, customTip, setCustomTip, tipPaymentMethod, setTipPaymentMethod, onBack, onContinue }) {
   const presets = [
     { label: 'No tip', value: 0 },
     { label: '10%', value: Math.round(subtotal * 0.10 * 100) / 100 },
@@ -717,6 +717,25 @@ function TipStep({ booking, subtotal, tip, setTip, customTip, setCustomTip, onBa
         {tip > 0 && <span style={{ fontSize: '0.85rem', color: T.green, fontWeight: '700', marginLeft: 'auto' }}>+£{tip.toFixed(2)}</span>}
       </div>
 
+      {tip > 0 && (
+        <div style={{ padding: '14px 16px', background: T.bg3, borderRadius: '12px', border: `1px solid ${T.border}` }}>
+          <div style={{ fontSize: '0.62rem', color: T.faint, letterSpacing: '1.8px', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>
+            Tip paid by
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[['', 'Same as payment'], ['CASH', '💷 Cash'], ['CARD', '💳 Card']].map(([val, label]) => (
+              <button key={val} onClick={() => setTipPaymentMethod(val)} style={{
+                flex: 1, padding: '10px 6px', borderRadius: '10px',
+                border: `1.5px solid ${tipPaymentMethod === val ? T.gold : T.border}`,
+                background: tipPaymentMethod === val ? `${T.gold}14` : T.bg,
+                color: tipPaymentMethod === val ? T.gold : T.muted,
+                fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s',
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '8px' }}>
         <GhostButton onClick={onBack} style={{ flex: 1 }}>← Back</GhostButton>
         <GoldButton onClick={onContinue} style={{ flex: 2 }}>Continue to payment →</GoldButton>
@@ -726,7 +745,7 @@ function TipStep({ booking, subtotal, tip, setTip, customTip, setCustomTip, onBa
 }
 
 // ─── STEP 3: Payment ──────────────────────────────────────────────────────────
-function PaymentStep({ paymentMethod, setPaymentMethod, splitSecond, setSplitSecond, splitAmount, setSplitAmount, total, saving, onBack, onSaveUnpaid, onCheckout }) {
+function PaymentStep({ paymentMethod, setPaymentMethod, splitSecond, setSplitSecond, splitAmount, setSplitAmount, total, saving, onBack, onSaveUnpaid, onCheckout, isPlatformBooking, isEditCheckoutMode, sendLoyaltyEmail, setSendLoyaltyEmail }) {
   const methods = [
     { id: 'CASH', label: 'Cash', icon: '💷' },
     { id: 'CARD', label: 'Card terminal', icon: '💳' },
@@ -777,6 +796,21 @@ function PaymentStep({ paymentMethod, setPaymentMethod, splitSecond, setSplitSec
         </div>
       )}
 
+      {isPlatformBooking && !isEditCheckoutMode && (
+        <div
+          onClick={() => setSendLoyaltyEmail(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: T.bg3, borderRadius: '10px', border: `1px solid ${sendLoyaltyEmail ? T.gold + '55' : T.border}`, cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: `2px solid ${sendLoyaltyEmail ? T.gold : T.muted}`, background: sendLoyaltyEmail ? T.gold : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+            {sendLoyaltyEmail && <span style={{ color: '#000', fontSize: '11px', fontWeight: '900', lineHeight: 1 }}>✓</span>}
+          </div>
+          <div>
+            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: sendLoyaltyEmail ? T.gold : T.text }}>Send loyalty card email</div>
+            <div style={{ fontSize: '0.68rem', color: T.muted, marginTop: '1px' }}>Send receipt + loyalty card to client after checkout</div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
         <GhostButton onClick={onBack} disabled={saving} style={{ flex: 1 }}>← Back</GhostButton>
         <GhostButton onClick={onSaveUnpaid} disabled={saving} color={T.orange} style={{ flex: 1 }}>
@@ -798,12 +832,14 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   const [discountApplied, setDiscountApplied] = useState(0);
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState('');
+  const [tipPaymentMethod, setTipPaymentMethod] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [splitSecond, setSplitSecond] = useState('');
   const [splitAmount, setSplitAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
   const [serviceCharge, setServiceCharge] = useState(0);
+  const [sendLoyaltyEmail, setSendLoyaltyEmail] = useState(false);
   const [clientPoints, setClientPoints] = useState(0);
   const [clientIsMember, setClientIsMember] = useState(false);
   const [clientMemberTier, setClientMemberTier] = useState('');
@@ -813,6 +849,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   const [welcomeOffer, setWelcomeOffer] = useState(null);
 
   const LOYALTY_REDEEM_RATE = 20;
+  const isPlatformBooking = ['Booksy', 'Fresha', 'Treatwell'].includes(booking.source);
 
   const svc = findServiceByBookingValue(booking.service);
   const serviceLabel = getBookingServiceLabel(booking);
@@ -830,9 +867,13 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   );
 
   const WEBSITE_DEPOSITS = { 'i-cut-royal': 10, 'i-cut-deluxe': 10, 'full-skinfade-beard-luxury': 10, 'full-experience': 10 };
-  const depositAmount = booking.source === 'Booksy' || booking.source === 'Fresha'
+  // Booksy stores a real deposit in platformDepositAmount — use it directly.
+  // Fresha/Treatwell store the service price in paidAmount, NOT a pre-paid deposit — never subtract it.
+  const depositAmount = booking.source === 'Booksy'
     ? (booking.platformDepositAmount || parseFloat(String(booking.paidAmount || 0).replace(/[£,]/g, '')) || 0)
-    : (booking.paymentType === 'DEPOSIT' ? (WEBSITE_DEPOSITS[booking.service] || 10) : 0);
+    : ['Fresha', 'Treatwell'].includes(booking.source)
+      ? (booking.platformDepositAmount || 0)
+      : (booking.paymentType === 'DEPOSIT' ? (WEBSITE_DEPOSITS[booking.service] || 10) : 0);
 
   const alreadyPaid = depositAmount;
   const productsTotal = getProductsTotal(localProducts);
@@ -869,6 +910,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
         total,
         discount: discountAmt,
         tip,
+        tipPaymentMethod: tip > 0 ? (tipPaymentMethod || method) : '',
         note,
         splitSecond,
         splitAmount,
@@ -876,6 +918,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
         soldAddOns: localExtras,
         serviceCharge,
         loyaltyPointsRedeemed: pointsApplied > 0 ? Math.round(pointsApplied * LOYALTY_REDEEM_RATE) : 0,
+        sendLoyaltyEmail: isPlatformBooking ? sendLoyaltyEmail : true,
       });
       logAudit('CHECKOUT', { bookingId: booking.bookingId, clientName: booking.clientName || booking.name, service: booking.serviceId || booking.service, date: booking.date, time: booking.time, barber: booking.barberId || booking.barber, total, paymentMethod: method });
     } catch (err) {
@@ -997,6 +1040,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
                 subtotal={subtotal}
                 tip={tip} setTip={setTip}
                 customTip={customTip} setCustomTip={setCustomTip}
+                tipPaymentMethod={tipPaymentMethod} setTipPaymentMethod={setTipPaymentMethod}
                 onBack={() => setStep('cart')}
                 onContinue={() => setStep('payment')}
               />
@@ -1011,6 +1055,10 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
                 onBack={() => setStep('tip')}
                 onSaveUnpaid={handleSaveUnpaid}
                 onCheckout={handleCheckout}
+                isPlatformBooking={isPlatformBooking}
+                isEditCheckoutMode={isEditCheckoutMode}
+                sendLoyaltyEmail={sendLoyaltyEmail}
+                setSendLoyaltyEmail={setSendLoyaltyEmail}
               />
             )}
           </div>
