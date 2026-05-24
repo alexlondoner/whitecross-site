@@ -509,10 +509,10 @@
         grid.innerHTML = '';
         activeBarbers.forEach(b => {
             const btn = document.createElement('button');
-            btn.className = 'barber-btn' + (b.id === selectedBarber ? ' selected' : '');
+            btn.className = 'barber-btn' + (b.name === selectedBarber ? ' selected' : '');
             btn.textContent = '✂ ' + (b.name || b.id);
             btn.onclick = () => {
-                selectedBarber = b.id;
+                selectedBarber = b.name;
                 selectedTime = '';
                 document.getElementById('btnConfirm').disabled = true;
                 document.querySelectorAll('.barber-btn').forEach(x => x.classList.remove('selected'));
@@ -537,7 +537,7 @@
             if (d.status === 'CANCELLED') return;
             if (docSnap.ref.id === currentDocRef?.id) return;
             if (!d.startTime || !d.endTime) return;
-            busy.push({ barberId: d.barberId, start: d.startTime.toMillis(), end: d.endTime.toMillis() });
+            busy.push({ barberName: (d.barberName || d.barberId || '').toLowerCase(), start: d.startTime.toMillis(), end: d.endTime.toMillis() });
         });
         return busy;
     }
@@ -658,7 +658,7 @@
             const slotStart = getLocalDate(dateStr, slot.h, slot.m).getTime();
             const slotEnd   = slotStart + duration * 60 * 1000;
             const isBusy = busy
-                .filter(b => b.barberId === selectedBarber)
+                .filter(b => b.barberName === selectedBarber.toLowerCase())
                 .some(b => slotStart < b.end && slotEnd > b.start);
 
             const btn = document.createElement('button');
@@ -720,7 +720,7 @@
             if (!result) { showState('stateNotFound'); return; }
             currentDocRef      = result.ref;
             currentBookingData = result.data;
-            selectedBarber = result.data.barberId || (activeBarbers[0]?.id ?? '');
+            selectedBarber = result.data.barberName || result.data.barberId || activeBarbers[0]?.name || '';
             renderCurrentBooking(result.data);
             renderBarberGrid();
 
@@ -784,7 +784,7 @@
         let busy = [];
         try { busy = await getBusySlotsForDate(selectedDate); } catch(e) {}
         const hasOverlap = busy
-            .filter(b => b.barberId === selectedBarber)
+            .filter(b => b.barberName === selectedBarber.toLowerCase())
             .some(b => newStart.getTime() < b.end && newEnd.getTime() > b.start);
         if (hasOverlap) {
             alert('Sorry, that slot was just taken. Please pick another time.');
@@ -801,13 +801,17 @@
                 return;
             }
 
+            const barberDoc = activeBarbers.find(b => b.name === selectedBarber);
             await updateDoc(currentDocRef, {
-                barberId:  selectedBarber,
-                startTime: Timestamp.fromDate(newStart),
-                endTime:   Timestamp.fromDate(newEnd),
-                status:    'CONFIRMED',
+                barberName:  selectedBarber,
+                barberId:    barberDoc?.id || selectedBarber,
+                startTime:   Timestamp.fromDate(newStart),
+                endTime:     Timestamp.fromDate(newEnd),
+                status:      'CONFIRMED',
+                clientEmail: currentBookingData.clientEmail || '',
+                bookingId:   currentBookingData.bookingId || currentBookingId,
                 rescheduledAt: Timestamp.fromDate(new Date()),
-                updatedAt: Timestamp.fromDate(new Date()),
+                updatedAt:   Timestamp.fromDate(new Date()),
             });
 
             const newDateFmt = newStart.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

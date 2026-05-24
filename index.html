@@ -529,6 +529,20 @@
     window._db = db;
     window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
 
+    /* Shop link — show/hide based on settings */
+    function applyShopLink(enabled) {
+        var el = document.getElementById('shopFooterLink');
+        if (el) el.style.display = enabled ? 'inline' : 'none';
+    }
+    getDoc(doc(db, 'tenants/whitecross/settings/settings')).then(function(snap) {
+        var d = snap.data() || {};
+        applyShopLink(!!(d.products && d.products.enabled));
+    }).catch(function(e) { console.warn('shop getDoc failed', e); });
+    onSnapshot(doc(db, 'tenants/whitecross/settings/settings'), function(snap) {
+        var d = snap.data() || {};
+        applyShopLink(!!(d.products && d.products.enabled));
+    }, function(e) { console.warn('shop onSnapshot failed', e); });
+
     /* Services realtime sync */
     onSnapshot(
         collection(db, 'tenants/whitecross/services'),
@@ -648,6 +662,7 @@
         <a href="gallery.html" class="footer-link-btn">Our Work</a>
         <span class="footer-dot">•</span>
         <a href="announcements.html" class="footer-link-btn">Announcements</a>
+        <span id="shopFooterLink" style="display:none;"><span class="footer-dot">•</span><a href="products.html" class="footer-link-btn">Shop</a></span>
         <span class="footer-dot">•</span>
         <a href="terms.html" class="footer-link-btn">Cancellation Policy</a>
     </div>

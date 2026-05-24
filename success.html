@@ -182,7 +182,7 @@
         .lc-crown { font-size: 1.1rem; }
         .lc-title {
             font-family: 'Cinzel', serif;
-            font-size: 0.68rem;
+            font-size: 0.95rem;
             letter-spacing: 3px;
             text-transform: uppercase;
             background: linear-gradient(to right, #b8860b, #d4af37);
@@ -404,6 +404,88 @@
         }
         #btnNoThanks:hover { color: #555; }
 
+        /* ── Terms & Conditions ────────────────────────────────── */
+        .lc-terms-wrap {
+            margin-bottom: 14px;
+        }
+        .lc-terms-toggle {
+            background: none;
+            border: none;
+            color: #444;
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            display: block;
+            margin: 0 auto 10px;
+            transition: color 0.2s;
+        }
+        .lc-terms-toggle:hover { color: #777; }
+        .lc-terms-box {
+            display: none;
+            background: #0a0a08;
+            border: 1px solid #1e1e18;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a20 transparent;
+        }
+        .lc-terms-box::-webkit-scrollbar { width: 4px; }
+        .lc-terms-box::-webkit-scrollbar-track { background: transparent; }
+        .lc-terms-box::-webkit-scrollbar-thumb { background: #2a2a20; border-radius: 4px; }
+        .lc-terms-box.open { display: block; }
+        .lc-terms-box h4 {
+            font-family: 'Cinzel', serif;
+            font-size: 0.62rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: #d4af3766;
+            margin: 0 0 10px 0;
+        }
+        .lc-terms-box ol {
+            margin: 0;
+            padding-left: 16px;
+        }
+        .lc-terms-box li {
+            font-size: 0.66rem;
+            color: #444;
+            line-height: 1.65;
+            margin-bottom: 7px;
+        }
+        .lc-terms-box li strong { color: #666; }
+        .lc-terms-agree {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            margin-bottom: 14px;
+            cursor: pointer;
+        }
+        .lc-terms-agree input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            min-width: 15px;
+            accent-color: #d4af37;
+            cursor: pointer;
+            margin-top: 1px;
+        }
+        .lc-terms-agree-label {
+            font-size: 0.7rem;
+            color: #555;
+            line-height: 1.5;
+            cursor: pointer;
+        }
+        .lc-terms-agree-label a {
+            color: #d4af3799;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
         /* ── Enrolled success state ─────────────────────────────── */
         .lc-enrolled-ok {
             text-align: center;
@@ -413,7 +495,7 @@
             font-size: 2rem;
             margin-bottom: 10px;
         }
-        .lc-enrolled-ok strong { color: #4caf50; font-size: 0.88rem; display: block; margin-bottom: 8px; }
+        .lc-enrolled-ok > strong { color: #4caf50; font-size: 0.88rem; display: block; margin-bottom: 8px; }
         .lc-enrolled-ok p { font-size: 0.78rem; color: #666; line-height: 1.6; }
 
         /* ── Enroll info strip ──────────────────────────────────── */
@@ -485,7 +567,7 @@
 
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, addDoc, Timestamp }
+    import { getFirestore, collection, query, where, getDocs, addDoc, getDoc, doc, Timestamp }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -630,12 +712,25 @@
             const html = warning + rows.join('') + paymentRow(data);
             document.getElementById('detailRows').innerHTML = html;
 
+            // ── Double points campaign banner ──────────────────────
+            try {
+                const settingsSnap = await getDoc(doc(db, 'tenants/whitecross/settings/settings'));
+                const camp = settingsSnap.data()?.doublePointsCampaign;
+                const today = new Date().toISOString().slice(0, 10);
+                if (camp?.active && camp.startDate && camp.endDate && today >= camp.startDate && today <= camp.endDate) {
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'margin:16px 0 0;padding:14px 18px;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(184,134,11,0.08));border:1px solid rgba(212,175,55,0.4);border-radius:12px;text-align:center;';
+                    banner.innerHTML = '<div style="font-size:1.4rem;margin-bottom:4px;">⚡</div><div style="font-family:\'Cinzel\',serif;font-size:0.8rem;letter-spacing:3px;text-transform:uppercase;color:#d4af37;margin-bottom:4px;">Double Points Active</div><div style="font-size:0.76rem;color:#aaa;line-height:1.5;">This booking earns <strong style="color:#d4af37;">2× loyalty points</strong>.<br>Campaign runs until ' + new Date(camp.endDate + 'T23:59:59').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) + '.</div>';
+                    document.querySelector('.card').appendChild(banner);
+                }
+            } catch (_) {}
+
             // ── Loyalty check ──────────────────────────────────────
             const clientPhone = data.clientPhone || data.phone || '';
             const clientEmail = data.clientEmail || data.email || '';
             const clientName  = data.clientName  || data.name  || '';
             if (clientPhone || clientEmail) {
-                await renderLoyaltyCard({ clientPhone, clientEmail, clientName });
+                await renderLoyaltyCard({ clientPhone, clientEmail, clientName, bookingData: data });
             }
         }
         show('stateDetails');
@@ -691,10 +786,36 @@
     }
 
     // ── Loyalty card renderer ──────────────────────────────────────────────────
-    async function renderLoyaltyCard({ clientPhone, clientEmail, clientName }) {
+    async function renderLoyaltyCard({ clientPhone, clientEmail, clientName, bookingData }) {
         const card = document.getElementById('loyaltyCard');
         const body = document.getElementById('loyaltyBody');
         const clientsRef = collection(db, 'tenants/whitecross/clients');
+
+        // Deposit / upcoming points preview
+        const isDeposit = (bookingData?.paymentType || '').toUpperCase() === 'DEPOSIT';
+        const depositPts = isDeposit ? Math.floor(Number(bookingData?.paidAmount || bookingData?.stripeAmountPaid || 0)) : 0;
+        const servicePrice = Number(bookingData?.price || 0);
+        const remainingPts = isDeposit && servicePrice > depositPts ? Math.floor(servicePrice - depositPts) : 0;
+        const totalExpectedPts = isDeposit ? Math.floor(servicePrice) : Math.floor(servicePrice);
+
+        function depositBannerHTML() {
+            if (!isDeposit) return '';
+            const REDEEM_RATE = 20;
+            const cashValue = (totalExpectedPts / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
+            return `<div style="background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+                <div style="font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#d4af3788;margin-bottom:6px;font-weight:700;">This Visit</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <div style="font-size:0.74rem;color:#888;line-height:1.6;">
+                        ${depositPts > 0 ? `<span style="color:#d4af37;font-weight:700;">⭐ +${depositPts} pts</span> from deposit<br>` : ''}
+                        ${remainingPts > 0 ? `<span style="color:#aaa;">+${remainingPts} more pts</span> after checkout` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:1rem;font-weight:800;color:#d4af37;">⭐ ${totalExpectedPts} pts</div>
+                        <div style="font-size:0.6rem;color:#555;">≈ £${cashValue} cashback</div>
+                    </div>
+                </div>
+            </div>`;
+        }
 
         let existingSnap = null;
         try {
@@ -720,13 +841,18 @@
             const offer = d.welcomeOffer || null;
             const offerActive = offer && offer.expiresAt && (offer.expiresAt?.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt)) > new Date();
 
+            const visitNote = isDeposit
+                ? (depositPts > 0 ? `⭐ +${depositPts} pts from your deposit — +${remainingPts} more after checkout.` : `You'll earn ${totalExpectedPts} pts after checkout.`)
+                : `Points from today will be added after your appointment.`;
+
             body.innerHTML = `
                 <div class="lc-pts-row">
                     <span class="lc-pts-num">${pts}</span>
                     <span class="lc-pts-label">points</span>
                 </div>
-                <div class="lc-welcome-back">Welcome back${firstName ? ', <strong>' + firstName + '</strong>' : ''}! Points from today will be added after your appointment.</div>
+                <div class="lc-welcome-back">Welcome back${firstName ? ', <strong>' + firstName + '</strong>' : ''}! ${visitNote}</div>
                 ${offerActive ? offerBannerHTML(offer) : ''}
+                ${depositBannerHTML()}
                 ${progressHTML(pts)}
                 <div class="lc-tiers-label">What you can redeem</div>
                 <div class="lc-tiers">${tiersHTML(pts)}</div>`;
@@ -755,8 +881,53 @@
                         <div class="lc-enroll-strip-text">Earn points<br>every visit</div>
                     </div>
                 </div>
-                <button id="btnEnroll">✦ Claim My 10% Welcome Discount</button>
+                ${depositBannerHTML()}
+                <div class="lc-terms-wrap">
+                    <button class="lc-terms-toggle" id="btnTermsToggle">View Terms &amp; Conditions</button>
+                    <div class="lc-terms-box" id="lcTermsBox">
+                        <h4>Loyalty Programme — Terms &amp; Conditions</h4>
+                        <ol>
+                            <li><strong>Eligibility.</strong> The programme is open to all customers aged 16 and over who visit or book at I CUT Whitecross Barbers, 136 Whitecross Street, London EC1Y 8QJ.</li>
+                            <li><strong>Earning Points.</strong> Members earn 1 point for every £1 spent on services. Points are credited after checkout is completed by staff. Points are not earned on visits where a loyalty redemption is applied in the same transaction, or on MemberZone membership services.</li>
+                            <li><strong>Double Points.</strong> During active double-points campaigns, online bookings earn 2× points. Walk-in visits do not qualify for double-points promotions.</li>
+                            <li><strong>Redeeming Points.</strong> Points redeem at 20 pts = £1 off. A minimum of 20 points is required to redeem. Redemption must be requested before payment — it cannot be applied retroactively. Points have no cash value.</li>
+                            <li><strong>Welcome Discount.</strong> New members receive 10% off all services for 3 months from enrolment. The discount must be mentioned at the chair before payment. It cannot be combined with other discounts or a loyalty redemption in the same visit.</li>
+                            <li><strong>Points Expiry.</strong> Points expire if your account has no activity (visits or bookings) for 12 consecutive months.</li>
+                            <li><strong>Your Account.</strong> Points are linked to your phone number and/or email address. Only one account per person is permitted — duplicate accounts may be merged or cancelled without notice. It is your responsibility to keep your contact details accurate.</li>
+                            <li><strong>Adjustments.</strong> I CUT Whitecross Barbers reserves the right to add, deduct, or adjust points at its discretion (e.g. to correct errors or as a goodwill gesture). You will be notified by email of any manual adjustment.</li>
+                            <li><strong>Programme Changes.</strong> We reserve the right to modify, suspend, or terminate the programme at any time. Where possible, reasonable notice will be given. Accumulated points will be honoured for 90 days following a termination notice.</li>
+                            <li><strong>Privacy.</strong> Your personal data (name, phone number, email address) is collected solely to operate the Loyalty Programme and will not be sold or shared with third parties for marketing purposes.</li>
+                            <li><strong>Fraud &amp; Abuse.</strong> Any attempt to fraudulently earn or redeem points will result in immediate cancellation of all points and membership without notice.</li>
+                            <li><strong>Contact.</strong> For queries about your balance or the programme: 020 3621 5929 or WhatsApp +44 7470 108578.</li>
+                        </ol>
+                    </div>
+                    <label class="lc-terms-agree">
+                        <input type="checkbox" id="chkTerms">
+                        <span class="lc-terms-agree-label">I have read and agree to the <a id="lcTermsLink" href="#">Loyalty Programme Terms &amp; Conditions</a></span>
+                    </label>
+                </div>
+                <button id="btnEnroll" disabled>✦ Claim My 10% Welcome Discount</button>
                 <button id="btnNoThanks">No thanks</button>`;
+
+            document.getElementById('btnTermsToggle').addEventListener('click', () => {
+                const box = document.getElementById('lcTermsBox');
+                const btn = document.getElementById('btnTermsToggle');
+                box.classList.toggle('open');
+                btn.textContent = box.classList.contains('open') ? 'Hide Terms & Conditions' : 'View Terms & Conditions';
+            });
+
+            document.getElementById('lcTermsLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const box = document.getElementById('lcTermsBox');
+                const btn = document.getElementById('btnTermsToggle');
+                box.classList.add('open');
+                btn.textContent = 'Hide Terms & Conditions';
+                box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+
+            document.getElementById('chkTerms').addEventListener('change', (e) => {
+                document.getElementById('btnEnroll').disabled = !e.target.checked;
+            });
 
             document.getElementById('btnNoThanks').addEventListener('click', () => {
                 card.classList.remove('visible');
