@@ -264,7 +264,7 @@ body{
         <div class="brand">WHITECROSS</div>
         <div class="brand-sub">BARBERS · LOYALTY</div>
       </div>
-      <div class="notif-btn">✂️</div>
+      <div class="notif-btn"><img src="favicon.png" style="width:16px;height:16px;border-radius:3px;object-fit:contain;" alt=""/></div>
     </div>
   </div>
 
@@ -402,15 +402,30 @@ body{
     <button class="nb on" id="btnHome" onclick="switchTab('home')">
       <span class="nb-icon">🏠</span><span class="nb-lbl">Home</span>
     </button>
-    <a href="https://whitecrossbarbers.com" target="_blank" rel="noreferrer"
-      style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;text-decoration:none;">
-      <span class="nb-icon">📅</span>
-      <span class="nb-lbl" style="font-size:.5rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Book</span>
-    </a>
+    <button class="nb" id="btnBook" onclick="openBooking()">
+      <span class="nb-icon">📅</span><span class="nb-lbl">Book</span>
+    </button>
     <button class="nb" id="btnRewards" onclick="switchTab('rewards')">
       <span class="nb-icon">🎁</span><span class="nb-lbl">Rewards</span>
     </button>
   </div>
+
+</div>
+
+<!-- ── Booking Drawer ── -->
+<div id="bookingDrawer" style="display:none;position:fixed;inset:0;z-index:999;display:none;flex-direction:column;">
+  <div id="bookingOverlay" onclick="closeBooking()" style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);"></div>
+  <div id="bookingSheet" style="position:absolute;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);display:flex;flex-direction:column;height:90dvh;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem;font-weight:700;color:var(--gold);letter-spacing:2px;">BOOK APPOINTMENT</div>
+        <div style="font-size:.55rem;color:var(--muted);letter-spacing:1.5px;margin-top:2px;">WHITECROSS BARBERS</div>
+      </div>
+      <button onclick="closeBooking()" style="width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--border2);color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <iframe id="bookingFrame" src="" style="flex:1;border:none;background:var(--bg);border-radius:0 0 22px 22px;" loading="lazy"></iframe>
+  </div>
+</div>
 
 </div>
 
@@ -432,6 +447,24 @@ body{
       const btn=document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
       if(btn)btn.classList.toggle('on',t===name);
     });
+  }
+
+  // Booking drawer
+  function openBooking(){
+    const drawer=document.getElementById('bookingDrawer');
+    const sheet=document.getElementById('bookingSheet');
+    const frame=document.getElementById('bookingFrame');
+    if(!frame.src||frame.src==='about:blank'||frame.src==='')
+      frame.src='https://whitecrossbarbers.com/#booking';
+    drawer.style.display='flex';
+    requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
+    document.body.style.overflow='hidden';
+  }
+  function closeBooking(){
+    const sheet=document.getElementById('bookingSheet');
+    const drawer=document.getElementById('bookingDrawer');
+    sheet.style.transform='translateY(100%)';
+    setTimeout(()=>{ drawer.style.display='none'; document.body.style.overflow=''; },350);
   }
 </script>
 
