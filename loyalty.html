@@ -551,22 +551,28 @@ body{
         svSnap.docs.forEach(d=>{svcMap[d.id]=d.data().name||d.id;});
       }catch(_){}
 
-      // Bookings
+      // Bookings — no orderBy to avoid composite index requirement, sort client-side
       let bookings=[];
       const phone=(c.phone||'').trim();
       const email=(c.email||'').toLowerCase().trim();
       if(phone){
         try{
-          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),orderBy('startTime','desc'),limit(30)));
+          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),limit(50)));
           bookings=bs.docs.map(d=>d.data());
-        }catch(_){}
+        }catch(e){ console.warn('phone query failed',e); }
       }
       if(!bookings.length&&email){
         try{
-          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),orderBy('startTime','desc'),limit(30)));
+          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),limit(50)));
           bookings=bs.docs.map(d=>d.data());
-        }catch(_){}
+        }catch(e){ console.warn('email query failed',e); }
       }
+      // Sort by startTime descending client-side
+      bookings.sort((a,b)=>{
+        const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
+        const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+        return tb-ta;
+      });
 
       // Compute stats
       const visits=bookings.length;
@@ -615,7 +621,7 @@ body{
       document.getElementById('tierVisits').textContent=visits+' visit'+(visits!==1?'s':'');
 
       // Stats
-      document.getElementById('statVisits').textContent=visits||'—';
+      document.getElementById('statVisits').textContent=visits>0?visits:'—';
       document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
 
       // Favourites
