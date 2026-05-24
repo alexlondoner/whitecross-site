@@ -737,24 +737,34 @@
     })();
 
     // ── Redemption tiers (1 point = £1 spent, 1 point = £1 off) ──────────────
+    const REDEEM_RATE = 20; // 20 pts = £1 (5% cashback)
     const TIERS = [
-        { pts: 20,  reward: 'Shape Up & Clean Up — free'         },
-        { pts: 28,  reward: 'Classic Short Back & Sides — free'  },
-        { pts: 32,  reward: 'Skin Fade Cut — free'               },
-        { pts: 40,  reward: 'The Full Experience — free'         },
-        { pts: 65,  reward: 'I CUT Royal — free'                 },
+        { pts: 20,  reward: '£1 off any service'   },
+        { pts: 100, reward: '£5 off any service'   },
+        { pts: 200, reward: '£10 off any service'  },
+        { pts: 400, reward: '£20 off any service'  },
+        { pts: 600, reward: '£30 off any service'  },
     ];
 
     function tiersHTML(currentPts) {
-        return TIERS.map(t => {
-            const unlocked = currentPts >= t.pts;
-            return `<div class="lc-tier ${unlocked ? 'unlocked' : 'locked'}">
+        const redeemable = (currentPts / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
+        let html = '';
+        if (currentPts >= 20) {
+            html += `<div class="lc-tier unlocked">
+                <span class="lc-tier-pts" style="min-width:60px;">£${redeemable}</span>
+                <span class="lc-tier-sep">→</span>
+                <span class="lc-tier-reward">available to redeem now</span>
+                <span class="lc-tier-badge">Ready</span>
+            </div>`;
+        }
+        TIERS.filter(t => t.pts > currentPts).slice(0, 3).forEach(t => {
+            html += `<div class="lc-tier locked">
                 <span class="lc-tier-pts">${t.pts} pts</span>
                 <span class="lc-tier-sep">→</span>
                 <span class="lc-tier-reward">${t.reward}</span>
-                ${unlocked ? '<span class="lc-tier-badge">Ready</span>' : ''}
             </div>`;
-        }).join('');
+        });
+        return html;
     }
 
     function progressHTML(pts) {
@@ -763,6 +773,7 @@
         const prev = [...TIERS].reverse().find(t => t.pts <= pts);
         const base = prev ? prev.pts : 0;
         const pct  = Math.min(100, Math.round(((pts - base) / (next.pts - base)) * 100));
+        const nextVal = (next.pts / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
         return `<div class="lc-progress-wrap">
             <div class="lc-progress-labels">
                 <span>${pts} pts</span><span>${next.pts} pts</span>
@@ -770,7 +781,7 @@
             <div class="lc-progress-bar-bg">
                 <div class="lc-progress-bar-fill" style="width:${pct}%"></div>
             </div>
-            <div class="lc-next-reward">${next.pts - pts} more points until <strong>${next.reward.split('—')[0].trim()}</strong></div>
+            <div class="lc-next-reward">${next.pts - pts} more points until <strong>£${nextVal} off</strong></div>
         </div>`;
     }
 
@@ -888,9 +899,9 @@
                         <h4>Loyalty Programme — Terms &amp; Conditions</h4>
                         <ol>
                             <li><strong>Eligibility.</strong> The programme is open to all customers aged 16 and over who visit or book at I CUT Whitecross Barbers, 136 Whitecross Street, London EC1Y 8QJ.</li>
-                            <li><strong>Earning Points.</strong> Members earn 1 point for every £1 spent on services. Points are credited after checkout is completed by staff. Points are not earned on visits where a loyalty redemption is applied in the same transaction, or on MemberZone membership services.</li>
-                            <li><strong>Double Points.</strong> During active double-points campaigns, online bookings earn 2× points. Walk-in visits do not qualify for double-points promotions.</li>
-                            <li><strong>Redeeming Points.</strong> Points redeem at 20 pts = £1 off. A minimum of 20 points is required to redeem. Redemption must be requested before payment — it cannot be applied retroactively. Points have no cash value.</li>
+                            <li><strong>Earning Points.</strong> Members earn 1 point for every £1 spent on services (5% cashback). Points are credited after checkout is completed by staff. Points are not earned on visits where a loyalty redemption is applied in the same transaction, or on MemberZone membership services.</li>
+                            <li><strong>Double Points.</strong> During active double-points campaigns, online bookings earn 2× points (10% cashback). Walk-in visits do not qualify for double-points promotions.</li>
+                            <li><strong>Redeeming Points.</strong> Points redeem at 20 pts = £1 off (5% cashback rate). A minimum of 20 points is required to redeem. Redemption must be requested before payment — it cannot be applied retroactively. Points have no cash value and are redeemable from your second visit onwards.</li>
                             <li><strong>Welcome Discount.</strong> New members receive 10% off all services for 3 months from enrolment. The discount is valid from your <strong>second visit onwards</strong> — it cannot be applied to the first service. It must be mentioned at the chair before payment and cannot be combined with other discounts or a loyalty point redemption in the same visit.</li>
                             <li><strong>Points Expiry.</strong> Points expire if your account has no activity (visits or bookings) for 12 consecutive months.</li>
                             <li><strong>Your Account.</strong> Points are linked to your phone number and/or email address. Only one account per person is permitted — duplicate accounts may be merged or cancelled without notice. It is your responsibility to keep your contact details accurate.</li>

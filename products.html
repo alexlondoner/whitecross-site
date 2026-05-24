@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TN2JGH5JLY"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-TN2JGH5JLY');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop – Grooming Products | I CUT Whitecross Barbers EC1Y London</title>
+    <meta name="description" content="Shop premium grooming products at I CUT Whitecross Barbers. Hair care, beard care and accessories. 136 Whitecross Street EC1Y 8QJ London.">
+    <link rel="canonical" href="https://www.whitecrossbarbers.com/products.html">
+
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        .page-wrap {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 36px;
+        }
+        .back-link {
+            color: #d4af37;
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .back-link:hover { color: #fff; }
+        .page-logo { width: 50px; height: auto; }
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .page-header h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: goldShine 3s linear infinite;
+            margin-bottom: 8px;
+        }
+        .page-header p {
+            color: #888;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Category filter */
+        .cat-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 22px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .cat-filters::-webkit-scrollbar { display: none; }
+        .cat-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #222;
+            background: transparent;
+            color: #666;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .cat-btn:hover { border-color: #d4af37; color: #d4af37; }
+        .cat-btn.active { background: rgba(212,175,55,0.12); border-color: #d4af37; color: #d4af37; }
+
+        /* Product grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .product-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .product-card:hover { border-color: rgba(212,175,55,0.35); transform: translateY(-2px); }
+        .product-img-wrap {
+            aspect-ratio: 1;
+            background: #0a0a0a;
+            overflow: hidden;
+            position: relative;
+        }
+        .product-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.35s ease;
+        }
+        .product-card:hover .product-img-wrap img { transform: scale(1.05); }
+        .product-img-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: #222;
+        }
+        .out-of-stock-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.85);
+            color: #ff5252;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,82,82,0.4);
+        }
+        .product-info {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .product-cat-tag {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .product-name {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.3;
+        }
+        .product-desc {
+            font-size: 0.68rem;
+            color: #555;
+            line-height: 1.5;
+            flex: 1;
+            margin-top: 2px;
+        }
+        .product-price {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.1rem;
+            color: #d4af37;
+            letter-spacing: 1px;
+            margin-top: 6px;
+        }
+
+        /* Coming soon */
+        .coming-soon {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .coming-soon-icon { font-size: 3rem; margin-bottom: 16px; }
+        .coming-soon h2 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #d4af37;
+            margin-bottom: 10px;
+        }
+        .coming-soon p { color: #555; font-size: 0.82rem; line-height: 1.6; }
+
+        .book-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 16px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #d4af37, #b8860b);
+            color: #000;
+            font-weight: 800;
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-decoration: none;
+            font-family: 'Inter', sans-serif;
+            animation: goldPulse 2s infinite;
+        }
+
+        @media (max-width: 400px) {
+            .products-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <!-- NAV -->
+    <nav class="page-nav">
+        <a href="index.html" class="back-link">← Back to Home</a>
+        <img src="whitecross-logo.png" alt="I CUT Whitecross Barbers" class="page-logo">
+        <a href="index.html#booking" class="back-link">Book Now →</a>
+    </nav>
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <h1>The Shop</h1>
+        <p>Premium grooming products</p>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="shopContent">
+        <div style="text-align:center;padding:40px 20px;color:#555;font-size:0.85rem;letter-spacing:1px;">
+            Loading products…
+        </div>
+    </div>
+
+    <!-- BOOK CTA -->
+    <a href="index.html#booking" class="book-cta" style="margin-top:12px;">✂ Book Your Appointment</a>
+
+</div>
+
+<!-- MANAGE BOOKING FLOATER -->
+<div id="manageFloater" style="position:fixed; bottom:90px; right:18px; z-index:99998; display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+    <div id="managePanel" style="display:none; flex-direction:column; gap:8px; align-items:flex-end;">
+        <a href="cancel.html" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(255,82,82,0.5); color:#ff5252; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <span>✕</span> Cancel My Booking
+        </a>
+        <a href="Reschedule.html" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(76,175,80,0.5); color:#4caf50; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <span>🔄</span> Reschedule My Booking
+        </a>
+        <a href="tel:+442036215929" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(212,175,55,0.5); color:#d4af37; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <span>📞</span> Call Us
+        </a>
+        <a href="index.html#booking" style="display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; color:#000; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(212,175,55,0.3); font-weight:700;">
+            <span>✂</span> Book Now
+        </a>
+    </div>
+    <button onclick="toggleManagePanel()" id="manageBtn" style="width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(212,175,55,0.4); transition:transform 0.2s ease;" title="Manage My Booking">
+        <span id="manageBtnIcon" style="font-size:1.3rem;">📋</span>
+    </button>
+</div>
+<script>
+    function toggleManagePanel() {
+        var panel = document.getElementById('managePanel');
+        var icon = document.getElementById('manageBtnIcon');
+        var isOpen = panel.style.display === 'flex';
+        panel.style.display = isOpen ? 'none' : 'flex';
+        icon.textContent = isOpen ? '📋' : '✕';
+    }
+    document.addEventListener('click', function(e) {
+        var floater = document.getElementById('manageFloater');
+        if (!floater.contains(e.target)) {
+            document.getElementById('managePanel').style.display = 'none';
+            document.getElementById('manageBtnIcon').textContent = '📋';
+        }
+    });
+</script>
+
+<!-- WHATSAPP FLOAT -->
+<a href="https://wa.me/447470108578" class="whatsapp-float" target="_blank">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp I CUT Whitecross Barbers">
+</a>
+
+<footer class="footer">
+    <div class="footer-top">
+        <div class="footer-line"></div>
+        <span class="footer-logo-text">WHITE CROSS BARBERS • I CUT</span>
+        <div class="footer-line"></div>
+    </div>
+    <p class="footer-address">136 Whitecross Street • EC1Y 8QJ • London</p>
+    <div class="footer-links">
+        <a href="about.html" class="footer-link-btn">About Us</a>
+        <span class="footer-dot">•</span>
+        <a href="gallery.html" class="footer-link-btn">Our Work</a>
+        <span class="footer-dot">•</span>
+        <a href="announcements.html" class="footer-link-btn">Announcements</a>
+        <span class="footer-dot">•</span>
+        <a href="terms.html" class="footer-link-btn">Cancellation Policy</a>
+    </div>
+    <p class="footer-copy">© 2026 I CUT Whitecross Barbers. All rights reserved.</p>
+    <p class="footer-powered"><em>Powered by Alex</em></p>
+    <div style="display:flex; gap:10px; margin:20px 0 10px; padding: 0 20px;">
+        <a href="index.html" style="flex:1; display:flex; align-items:center; justify-content:center; padding:14px; border-radius:10px; border:1px solid #d4af37; color:#d4af37; text-decoration:none; font-family:'Oswald',sans-serif; font-size:0.8rem; letter-spacing:2px; text-transform:uppercase;">← Back</a>
+        <a href="index.html#booking" style="flex:1; display:flex; align-items:center; justify-content:center; padding:14px; border-radius:10px; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; text-decoration:none; font-family:'Oswald',sans-serif; font-size:0.8rem; letter-spacing:2px; text-transform:uppercase; font-weight:800;">✂ Book Now</a>
+    </div>
+</footer>
+
+<!-- GDPR COOKIE BANNER -->
+<div id="cookieBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999999; background:#111; border-top:1px solid rgba(212,175,55,0.4); padding:16px 20px; font-family:Inter,sans-serif;">
+    <div style="max-width:600px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <p style="color:#aaa; font-size:0.78rem; line-height:1.6; margin:0; flex:1; min-width:200px;">
+            We use cookies to improve your experience and analyse site traffic. By clicking <strong style="color:#fff;">Accept</strong>, you agree to our use of cookies.
+            <a href="terms.html" style="color:#d4af37; text-decoration:none; margin-left:4px;">Learn more</a>
+        </p>
+        <div style="display:flex; gap:10px; flex-shrink:0;">
+            <button onclick="setCookieConsent('declined')" style="background:transparent; color:#888; border:1px solid #444; padding:8px 16px; border-radius:6px; font-size:0.75rem; cursor:pointer;">Decline</button>
+            <button onclick="setCookieConsent('accepted')" style="background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;">Accept</button>
+        </div>
+    </div>
+</div>
+<script>
+    function setCookieConsent(val) {
+        localStorage.setItem("cookieConsent", val);
+        document.getElementById("cookieBanner").style.display = "none";
+    }
+    (function() {
+        if (!localStorage.getItem("cookieConsent")) {
+            document.getElementById("cookieBanner").style.display = "block";
+        }
+    })();
+</script>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const app = initializeApp({
+        apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+        authDomain: "havuz-44f70.firebaseapp.com",
+        projectId: "havuz-44f70",
+        storageBucket: "havuz-44f70.firebasestorage.app",
+        messagingSenderId: "1050766582653",
+        appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    });
+    const db = getFirestore(app);
+
+    const CAT_EMOJI  = { 'Hair Care': '💇', 'Beard Care': '🧔', 'Accessories': '✂️', 'Other': '📦' };
+    const CAT_COLOR  = { 'Hair Care': '#d4af37', 'Beard Care': '#4caf50', 'Accessories': '#2196f3', 'Other': '#9c27b0' };
+    const CATEGORIES = ['Hair Care', 'Beard Care', 'Accessories', 'Other'];
+
+    const content = document.getElementById('shopContent');
+    let allProducts = [];
+    let activeCat = 'All';
+    let shopEnabled = false;
+
+    function renderProducts() {
+        if (!shopEnabled) {
+            content.innerHTML = `
+                <div class="coming-soon">
+                    <div class="coming-soon-icon">🛒</div>
+                    <h2>Coming Soon</h2>
+                    <p>Our online shop is being set up.<br>Check back soon for premium grooming products.</p>
+                </div>`;
+            return;
+        }
+
+        var visible = allProducts.filter(function(p) {
+            return p.active !== false && (activeCat === 'All' || p.category === activeCat);
+        });
+
+        if (allProducts.filter(function(p) { return p.active !== false; }).length === 0) {
+            content.innerHTML = `
+                <div class="coming-soon">
+                    <div class="coming-soon-icon">🛒</div>
+                    <h2>Coming Soon</h2>
+                    <p>Products are being added. Check back soon.</p>
+                </div>`;
+            return;
+        }
+
+        var catsWithProducts = CATEGORIES.filter(function(cat) {
+            return allProducts.some(function(p) { return p.active !== false && p.category === cat; });
+        });
+
+        var filterHTML = '<div class="cat-filters"><button class="cat-btn' + (activeCat === 'All' ? ' active' : '') + '" data-cat="All">All</button>';
+        catsWithProducts.forEach(function(cat) {
+            filterHTML += '<button class="cat-btn' + (activeCat === cat ? ' active' : '') + '" data-cat="' + cat + '">' + (CAT_EMOJI[cat] || '') + ' ' + cat + '</button>';
+        });
+        filterHTML += '</div>';
+
+        var gridHTML = '<div class="products-grid">';
+        if (visible.length === 0) {
+            gridHTML += '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#555;font-size:0.82rem;">No products in this category yet.</div>';
+        } else {
+            visible.forEach(function(p) {
+                var color = CAT_COLOR[p.category] || '#d4af37';
+                var emoji = CAT_EMOJI[p.category] || '📦';
+                var imgHTML = p.imageUrl
+                    ? '<img src="' + p.imageUrl + '" alt="' + p.name + ' — I CUT Whitecross Barbers" loading="lazy" onerror="this.parentNode.innerHTML=\'<div class=&quot;product-img-placeholder&quot;>' + emoji + '</div>\'">'
+                    : '<div class="product-img-placeholder">' + emoji + '</div>';
+                var outHTML = p.inStock === false ? '<div class="out-of-stock-badge">Out of stock</div>' : '';
+                var price = parseFloat(p.price) || 0;
+                gridHTML += '<div class="product-card">'
+                    + '<div class="product-img-wrap">' + imgHTML + outHTML + '</div>'
+                    + '<div class="product-info">'
+                    + '<div class="product-cat-tag" style="color:' + color + ';">' + emoji + ' ' + (p.category || 'Other') + '</div>'
+                    + '<div class="product-name">' + p.name + '</div>'
+                    + (p.description ? '<div class="product-desc">' + p.description + '</div>' : '')
+                    + '<div class="product-price">£' + price.toFixed(2) + '</div>'
+                    + '</div></div>';
+            });
+        }
+        gridHTML += '</div>';
+
+        content.innerHTML = filterHTML + gridHTML;
+
+        content.querySelectorAll('.cat-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                activeCat = btn.dataset.cat;
+                renderProducts();
+            });
+        });
+    }
+
+    // Watch settings for live enable/disable
+    onSnapshot(doc(db, 'tenants/whitecross/settings/settings'), function(snap) {
+        var data = snap.data() || {};
+        shopEnabled = !!(data.products && data.products.enabled);
+        renderProducts();
+    }, function(err) {
+        console.error('Settings load error:', err);
+        renderProducts();
+    });
+
+    // Watch products collection live
+    onSnapshot(collection(db, 'tenants/whitecross/products'), function(snap) {
+        allProducts = snap.docs
+            .map(function(d) { return Object.assign({ id: d.id }, d.data()); })
+            .sort(function(a, b) {
+                if (a.order != null && b.order != null) return a.order - b.order;
+                if (a.order != null) return -1;
+                if (b.order != null) return 1;
+                return 0;
+            });
+        renderProducts();
+    }, function(err) {
+        console.error('Products load error:', err);
+        content.innerHTML = '<div style="text-align:center;padding:40px;color:#555;font-size:0.85rem;">Unable to load products right now.</div>';
+    });
+</script>
+
+</body>
+</html>
