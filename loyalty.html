@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#c9a84c"/>
 <title>Whitecross Barbers — Member</title>
 <link rel="icon" href="favicon.png"/>
+<link rel="manifest" href="loyalty-manifest.json"/>
+<link rel="apple-touch-icon" href="loyalty-icon-192.png"/>
+<meta name="apple-mobile-web-app-title" content="Whitecross"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -518,6 +521,11 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
 </div>
 
 <div class="toast-el" id="toast"></div>
+<script>
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/loyalty-sw.js');
+  }
+</script>
 
 <script>
 // Clock
