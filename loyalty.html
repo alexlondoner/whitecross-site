@@ -269,6 +269,7 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
       <label class="auth-lbl">Phone number</label>
       <input class="auth-inp" id="authPhoneInp" type="tel" placeholder="+44 7700 000000" autocomplete="tel" inputmode="tel"/>
     </div>
+    <div id="recaptcha-container" style="margin-top:4px;"></div>
     <div class="auth-err" id="authPhoneErr"></div>
     <button class="auth-btn" id="authPhoneBtn" onclick="sendOTP()">SEND CODE →</button>
     <div class="auth-or">— or —</div>
@@ -516,7 +517,6 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
   </div>
 </div>
 
-<div id="recaptcha-container"></div>
 <div class="toast-el" id="toast"></div>
 
 <script>
@@ -622,10 +622,15 @@ window._confirmationResult = null;
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 
-// reCAPTCHA (invisible)
+// reCAPTCHA (normal visible widget — renders inside the form)
 function ensureRecaptcha(){
   if(!window._recaptchaVerifier){
-    window._recaptchaVerifier = new RecaptchaVerifier(auth,'recaptcha-container',{size:'invisible'});
+    window._recaptchaVerifier = new RecaptchaVerifier(auth,'recaptcha-container',{
+      size:'normal',
+      theme:'dark',
+      callback:()=>{ /* reCAPTCHA solved, sendOTP will proceed */ }
+    });
+    window._recaptchaVerifier.render();
   }
   return window._recaptchaVerifier;
 }
@@ -738,7 +743,12 @@ onAuthStateChanged(auth, async(user)=>{
     if(token){
       loadLegacyToken(token);
     } else {
-      setTimeout(()=>{ showState('stateAuth'); showAuthStep('phone'); }, 2400);
+      setTimeout(()=>{
+        showState('stateAuth');
+        showAuthStep('phone');
+        // Pre-render reCAPTCHA widget so it's ready
+        setTimeout(ensureRecaptcha, 300);
+      }, 2400);
     }
   }
 });
