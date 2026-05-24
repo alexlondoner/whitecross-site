@@ -1,537 +1,674 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>My Loyalty Card — Whitecross Barbers</title>
-  <link rel="icon" href="favicon.png"/>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --gold: #d4af37;
-      --gold2: #f0d060;
-      --bg: #080808;
-      --card: #111111;
-      --card2: #161616;
-      --text: #f0f0f0;
-      --muted: #777;
-      --border: rgba(255,255,255,0.07);
-      --green: #4caf50;
-    }
-    html { background: var(--bg); }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-bottom: 48px;
-    }
-    .page { width: 100%; max-width: 430px; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>My Loyalty Card — Whitecross Barbers</title>
+<link rel="icon" href="favicon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080705;--bg2:#0f0d09;--card:#1a1610;--card2:#1f1b12;
+  --border:#2a2218;--border2:#332a1a;
+  --gold:#c9a84c;--gold2:#a07828;--gold-dim:#c9a84c18;
+  --txt:#ede0c4;--muted:#6b5f43;--muted2:#3a3224;
+  --green:#3d8b5e;--red:#9b3a3a;
+}
+html,body{height:100%;background:var(--bg);}
+body{
+  font-family:'DM Sans',sans-serif;
+  display:flex;flex-direction:column;
+  min-height:100dvh;max-width:430px;margin:0 auto;
+  background:var(--bg2);
+}
 
-    /* ── States ── */
-    #stateLoading {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 100dvh; gap: 18px;
-    }
-    #stateError {
-      display: none; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 100dvh; gap: 14px;
-      text-align: center; padding: 40px;
-    }
-    #stateMain { display: none; width: 100%; max-width: 430px; }
+/* ── States ── */
+#stateLoading{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;flex:1;gap:18px;min-height:100dvh;
+}
+#stateError{
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;flex:1;gap:14px;min-height:100dvh;
+  text-align:center;padding:40px;
+}
+#stateMain{display:none;flex-direction:column;flex:1;}
 
-    /* ── Spinner ── */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner {
-      width: 34px; height: 34px;
-      border: 2px solid rgba(212,175,55,0.12);
-      border-top-color: #d4af37;
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-    }
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{
+  width:32px;height:32px;
+  border:1.5px solid rgba(201,168,76,0.12);
+  border-top-color:var(--gold);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+.load-lbl{font-size:.6rem;color:rgba(201,168,76,.4);letter-spacing:2.5px;text-transform:uppercase;}
 
-    /* ── Top bar ── */
-    .top-bar {
-      padding: 22px 22px 0;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .wc-logo {
-      font-family: 'Cinzel', serif;
-      font-size: 0.72rem; letter-spacing: 3px;
-      color: var(--gold); text-transform: uppercase;
-    }
-    .top-label { font-size: 0.58rem; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+/* ── Status bar ── */
+.status{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 18px 6px;background:var(--bg);flex-shrink:0;
+}
+.st-time{font-size:12px;font-weight:600;color:var(--txt);}
+.st-icons{font-size:11px;color:var(--muted);}
 
-    /* ── Card ── */
-    .loyalty-card {
-      margin: 18px 18px 0;
-      background: linear-gradient(135deg, #1c1500 0%, #0d0c0a 45%, #181200 100%);
-      border: 1px solid rgba(212,175,55,0.3);
-      border-radius: 22px;
-      padding: 26px 26px 22px;
-      position: relative; overflow: hidden;
-      box-shadow: 0 12px 50px rgba(212,175,55,0.1), 0 2px 12px rgba(0,0,0,0.7);
-    }
-    .loyalty-card::before {
-      content: '';
-      position: absolute; top: -80px; right: -80px;
-      width: 240px; height: 240px;
-      background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 65%);
-      pointer-events: none;
-    }
-    .loyalty-card::after {
-      content: '';
-      position: absolute; bottom: -50px; left: -30px;
-      width: 180px; height: 180px;
-      background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .loyalty-card.is-member {
-      background: linear-gradient(135deg, #120820 0%, #0c0c14 45%, #160a1e 100%);
-      border-color: rgba(180,100,255,0.35);
-      box-shadow: 0 12px 50px rgba(150,80,220,0.12), 0 2px 12px rgba(0,0,0,0.7);
-    }
-    .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
-    .card-chip {
-      width: 38px; height: 29px;
-      background: linear-gradient(135deg, #d4af37 0%, #a07820 60%, #c9a227 100%);
-      border-radius: 6px; opacity: 0.92;
-    }
-    .loyalty-card.is-member .card-chip { background: linear-gradient(135deg, #ce93d8, #7b1fa2); }
-    .card-member-badge {
-      font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase;
-      color: rgba(206,147,216,0.8); font-weight: 600;
-      padding: 3px 8px; border: 1px solid rgba(206,147,216,0.3);
-      border-radius: 20px; background: rgba(206,147,216,0.06);
-    }
-    .card-name {
-      font-family: 'Cinzel', serif; font-size: 1.1rem;
-      font-weight: 600; color: #fff; letter-spacing: 0.5px; margin-bottom: 3px;
-    }
-    .card-sub { font-size: 0.58rem; color: rgba(212,175,55,0.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 22px; }
-    .loyalty-card.is-member .card-sub { color: rgba(206,147,216,0.5); }
-    .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
-    .card-pts-num {
-      font-family: 'Cinzel', serif; font-size: 2.8rem;
-      font-weight: 700; color: var(--gold); line-height: 1;
-    }
-    .loyalty-card.is-member .card-pts-num { color: #ce93d8; }
-    .card-pts-label { font-size: 0.58rem; color: rgba(212,175,55,0.55); letter-spacing: 2px; text-transform: uppercase; margin-top: 5px; }
-    .loyalty-card.is-member .card-pts-label { color: rgba(206,147,216,0.5); }
-    .card-right { text-align: right; }
-    .card-redeem-val { font-size: 1.5rem; font-weight: 700; color: var(--green); }
-    .card-redeem-label { font-size: 0.58rem; color: rgba(76,175,80,0.65); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; }
+/* ── Header ── */
+.header{
+  background:var(--bg);padding:10px 18px 14px;
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold2),transparent);
+  opacity:.4;
+}
+.header-row{display:flex;align-items:center;justify-content:space-between;}
+.brand{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:700;color:var(--gold);letter-spacing:3px;}
+.brand-sub{font-size:.52rem;color:var(--muted);letter-spacing:2.5px;}
+.notif-btn{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--card);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
 
-    /* ── Progress ── */
-    .progress-wrap { margin: 14px 18px 0; }
-    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
-    .progress-lbl { font-size: 0.6rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
-    .progress-next { font-size: 0.6rem; color: var(--gold); font-weight: 600; }
-    .progress-track {
-      height: 5px; background: rgba(255,255,255,0.05);
-      border-radius: 10px; overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #a07820, #d4af37, #f0d060);
-      border-radius: 10px;
-      transition: width 1.2s cubic-bezier(.4,0,.2,1);
-    }
+/* ── Campaign banner ── */
+.campaign-banner{
+  margin:12px 14px 0;padding:12px 14px;
+  background:linear-gradient(135deg,rgba(201,168,76,.12),rgba(160,120,40,.06));
+  border:1px solid rgba(201,168,76,.3);border-radius:14px;
+  display:flex;align-items:center;gap:10px;
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.campaign-banner::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.6;
+}
 
-    /* ── Stats grid ── */
-    .stats-grid { margin: 18px 18px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .stat-box {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 16px 14px;
-    }
-    .stat-icon { font-size: 1.15rem; margin-bottom: 9px; }
-    .stat-val { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.2; }
-    .stat-label { font-size: 0.57rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+/* ── Scroll body ── */
+.scroll-body{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
 
-    /* ── Section card ── */
-    .section-card {
-      margin: 14px 18px 0;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 18px;
-    }
-    .section-title {
-      font-size: 0.57rem; color: var(--muted);
-      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; font-weight: 600;
-    }
+/* ── Loyalty card ── */
+.lc-wrap{margin-bottom:14px;}
+.loyalty-card{
+  background:linear-gradient(135deg,#1a1610 0%,#0f0d09 40%,#1a1408 100%);
+  border:1px solid var(--border2);border-radius:18px;
+  padding:18px;position:relative;overflow:hidden;
+}
+.loyalty-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
+  background:linear-gradient(90deg,transparent,var(--gold),#ffe580,var(--gold),transparent);
+}
+.lc-glow1{position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.06) 0%,transparent 70%);}
+.lc-glow2{position:absolute;bottom:-30px;left:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.04) 0%,transparent 70%);}
+.lc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;position:relative;z-index:1;}
+.lc-name{font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:700;color:var(--txt);line-height:1;}
+.lc-since{font-size:.55rem;color:var(--muted);letter-spacing:1.5px;margin-top:3px;}
+.lc-tier-col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.tier-badge{padding:4px 10px;border-radius:99px;font-size:.6rem;font-weight:700;letter-spacing:1px;}
+.tier-bronze{background:rgba(180,100,40,.15);border:1px solid rgba(180,100,40,.4);color:#c87840;}
+.tier-silver{background:rgba(180,180,180,.12);border:1px solid rgba(180,180,180,.35);color:#b0b8c0;}
+.tier-gold{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.4);color:var(--gold);}
+.tier-platinum{background:rgba(200,220,255,.1);border:1px solid rgba(200,220,255,.3);color:#a0c8f0;}
+.tier-visits{font-size:.55rem;color:var(--muted);}
+.double-badge{font-size:.55rem;color:var(--gold);font-weight:700;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);padding:2px 7px;border-radius:99px;}
+.lc-pts{position:relative;z-index:1;margin-bottom:14px;}
+.pts-val{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:700;color:var(--gold);line-height:1;letter-spacing:-1px;}
+.pts-lbl{font-size:.58rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.prog-track{height:5px;background:var(--border2);border-radius:99px;overflow:hidden;margin-bottom:5px;}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold),#ffe580);transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.prog-meta{display:flex;justify-content:space-between;font-size:.55rem;color:var(--muted);}
+.prog-meta span:last-child{color:var(--gold);font-weight:600;}
 
-    /* ── Tiers ── */
-    .tier-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .tier-row:last-child { border-bottom: none; }
-    .tier-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); flex-shrink: 0; }
-    .tier-dot.reached { background: var(--gold); box-shadow: 0 0 7px rgba(212,175,55,0.45); }
-    .tier-pts { font-size: 0.72rem; color: var(--muted); width: 54px; flex-shrink: 0; }
-    .tier-reward { font-size: 0.74rem; flex: 1; }
-    .tier-badge { font-size: 0.58rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; flex-shrink: 0; }
-    .tier-badge.done { background: rgba(212,175,55,0.15); color: var(--gold); }
-    .tier-badge.next { background: rgba(255,255,255,0.05); color: var(--muted); }
+/* ── Section title ── */
+.sec{margin-bottom:16px;}
+.sec-title{font-size:.54rem;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;padding-left:2px;}
 
-    /* ── Timeline ── */
-    .timeline-item {
-      display: flex; gap: 12px; padding: 13px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .timeline-item:last-child { border-bottom: none; }
-    .tl-icon {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: rgba(212,175,55,0.07); border: 1px solid rgba(212,175,55,0.18);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.88rem; flex-shrink: 0;
-    }
-    .tl-icon.redeem { background: rgba(76,175,80,0.07); border-color: rgba(76,175,80,0.2); }
-    .tl-body { flex: 1; min-width: 0; }
-    .tl-service { font-size: 0.78rem; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tl-meta { font-size: 0.62rem; color: var(--muted); }
-    .tl-right { text-align: right; flex-shrink: 0; }
-    .tl-pts { font-size: 0.78rem; font-weight: 700; }
-    .tl-pts.earn { color: var(--gold); }
-    .tl-pts.redeem { color: var(--green); }
-    .tl-pts-sub { font-size: 0.57rem; color: var(--muted); margin-top: 1px; }
+/* ── Stats ── */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,.15),transparent);
+}
+.stat-icon{font-size:1.1rem;margin-bottom:6px;}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--txt);line-height:1;}
+.stat-lbl{font-size:.55rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
 
-    /* ── How to redeem ── */
-    .how-card {
-      margin: 14px 18px 0;
-      background: rgba(212,175,55,0.03);
-      border: 1px solid rgba(212,175,55,0.12);
-      border-radius: 16px; padding: 18px;
-    }
-    .how-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
-    .how-step:last-child { margin-bottom: 0; }
-    .how-num {
-      width: 22px; height: 22px; border-radius: 50%;
-      background: rgba(212,175,55,0.12); color: var(--gold);
-      font-size: 0.62rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
-    }
-    .how-text { font-size: 0.72rem; color: var(--muted); line-height: 1.55; }
-    .how-text strong { color: var(--text); }
+/* ── Favourites ── */
+.fav-row{display:flex;gap:8px;margin-bottom:16px;}
+.fav-card{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:11px 13px;position:relative;overflow:hidden;
+}
+.fav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.12),transparent);}
+.fav-icon{font-size:1rem;margin-bottom:5px;}
+.fav-val{font-size:.8rem;font-weight:700;color:var(--txt);}
+.fav-lbl{font-size:.52rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
 
-    /* ── Member notice ── */
-    .member-notice {
-      margin: 14px 18px 0;
-      padding: 14px 16px;
-      border-radius: 14px; font-size: 0.72rem; line-height: 1.6;
-    }
+/* ── Redeem options ── */
+.redeem-card{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:14px;padding:14px 16px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.redeem-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:.5;}
+.redeem-options{display:flex;gap:7px;flex-wrap:wrap;}
+.redeem-opt{
+  flex:1;min-width:70px;padding:9px 6px;
+  background:var(--card2);border:1.5px solid var(--border2);
+  border-radius:10px;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;
+}
+.redeem-opt.available{border-color:var(--gold2);background:var(--gold-dim);}
+.redeem-opt.locked{opacity:.35;pointer-events:none;}
+.ro-pts{font-size:.72rem;font-weight:700;color:var(--gold);}
+.ro-lbl{font-size:.55rem;color:var(--muted);margin-top:2px;}
+.redeem-opt.available .ro-lbl{color:var(--gold2);}
 
-    /* ── Footer ── */
-    .page-footer {
-      margin: 32px 18px 0; text-align: center;
-      font-size: 0.55rem; color: rgba(255,255,255,0.15);
-      letter-spacing: 1.5px; text-transform: uppercase;
-    }
+/* ── Visit history ── */
+.visit-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.visit-row:last-child{border-bottom:none;}
+.visit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.visit-info{flex:1;min-width:0;}
+.visit-svc{font-size:.78rem;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.visit-meta{font-size:.6rem;color:var(--muted);margin-top:2px;}
+.visit-pts{font-size:.68rem;font-weight:700;color:var(--gold);flex-shrink:0;}
+.visit-pts.redeem-pts{color:var(--green);}
 
-    /* ── Animations ── */
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-    .fade-up { animation: fadeUp 0.45s ease both; }
-    .fade-up:nth-child(2) { animation-delay: 0.06s; }
-    .fade-up:nth-child(3) { animation-delay: 0.1s; }
-    .fade-up:nth-child(4) { animation-delay: 0.14s; }
-    .fade-up:nth-child(5) { animation-delay: 0.18s; }
-    .fade-up:nth-child(6) { animation-delay: 0.22s; }
-    .fade-up:nth-child(7) { animation-delay: 0.26s; }
-    .fade-up:nth-child(8) { animation-delay: 0.3s; }
-  </style>
+/* ── Redeem tab ── */
+.redeem-active-card{
+  background:var(--card);border:1px solid var(--gold2);
+  border-radius:18px;padding:20px;text-align:center;
+  margin-bottom:16px;position:relative;overflow:hidden;
+}
+.redeem-active-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+/* Redeem history */
+.rh-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.rh-row:last-child{border-bottom:none;}
+.rh-badge{padding:3px 8px;border-radius:6px;font-size:.6rem;font-weight:700;background:rgba(61,139,94,.1);color:var(--green);border:1px solid rgba(61,139,94,.2);white-space:nowrap;}
+.rh-info{flex:1;min-width:0;}
+.rh-what{font-size:.72rem;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rh-when{font-size:.58rem;color:var(--muted);margin-top:1px;}
+.rh-pts{font-size:.68rem;font-weight:700;color:var(--muted);flex-shrink:0;}
+
+/* ── How-to ── */
+.how-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+.how-row:last-child{margin-bottom:0;}
+.how-num{
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(201,168,76,.12);color:var(--gold);
+  font-size:.6rem;font-weight:700;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.how-txt{font-size:.7rem;color:var(--muted);line-height:1.55;}
+.how-txt strong{color:var(--txt);}
+
+/* ── Bottom nav ── */
+.bottomnav{
+  display:flex;background:var(--bg);
+  border-top:1px solid var(--border);
+  padding:8px 0 max(14px,env(safe-area-inset-bottom));
+  flex-shrink:0;
+}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;border:none;background:transparent;}
+.nb-icon{font-size:18px;}
+.nb-lbl{font-size:.5rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.nb.on .nb-lbl{color:var(--gold);}
+
+/* ── Tab panels ── */
+.tab-panel{display:none;}
+.tab-panel.active{display:flex;flex-direction:column;flex:1;}
+
+/* ── No-data ── */
+.empty-msg{font-size:.7rem;color:var(--muted);padding:8px 0;line-height:1.6;}
+
+/* ── Animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.fade{animation:fadeUp .35s ease both;}
+</style>
 </head>
 <body>
 
 <!-- Loading -->
 <div id="stateLoading">
   <div class="spinner"></div>
-  <div style="font-size:0.65rem;color:rgba(212,175,55,0.45);letter-spacing:2.5px;text-transform:uppercase;">Loading your card</div>
+  <div class="load-lbl">Loading your card</div>
 </div>
 
 <!-- Error -->
 <div id="stateError">
-  <div style="font-size:2.4rem">✂️</div>
-  <div style="font-family:'Cinzel',serif;font-size:0.95rem;color:var(--gold);letter-spacing:1px;">Card Not Found</div>
-  <div style="font-size:0.74rem;color:var(--muted);line-height:1.7;max-width:280px;">This loyalty card link is invalid or has expired.<br>Ask your barber to regenerate your QR code.</div>
+  <div style="font-size:2.2rem">✂️</div>
+  <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold);letter-spacing:1px;">Card Not Found</div>
+  <div style="font-size:.72rem;color:var(--muted);line-height:1.7;max-width:260px;">This loyalty card link is invalid or has expired.<br>Ask your barber to regenerate your QR code.</div>
 </div>
 
-<!-- Main -->
-<div id="stateMain"></div>
+<!-- Main app -->
+<div id="stateMain">
+
+  <!-- Status bar -->
+  <div class="status">
+    <span class="st-time" id="clock">09:41</span>
+    <div class="st-icons">▲▲▲ ●</div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="brand">WHITECROSS</div>
+        <div class="brand-sub">BARBERS · LOYALTY</div>
+      </div>
+      <div class="notif-btn">✂️</div>
+    </div>
+  </div>
+
+  <!-- Campaign banner (shown when double pts active) -->
+  <div id="campaignBanner" style="display:none;" class="campaign-banner">
+    <div style="font-size:1.5rem;flex-shrink:0;">⚡</div>
+    <div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--gold);letter-spacing:.5px;">Double Points — Active Now!</div>
+      <div id="campaignDesc" style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.4;"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ HOME TAB ═══════════ -->
+  <div id="tabHome" class="tab-panel active">
+    <div class="scroll-body">
+
+      <!-- Loyalty card -->
+      <div class="lc-wrap fade">
+        <div class="loyalty-card">
+          <div class="lc-glow1"></div><div class="lc-glow2"></div>
+          <div class="lc-top">
+            <div>
+              <div class="lc-name" id="cardName">—</div>
+              <div class="lc-since" id="cardSince"></div>
+            </div>
+            <div class="lc-tier-col">
+              <div class="tier-badge" id="tierBadge" style="display:none;"></div>
+              <div id="doubleBadge" class="double-badge" style="display:none;">⚡ 2× pts active</div>
+              <div class="tier-visits" id="tierVisits"></div>
+            </div>
+          </div>
+          <div class="lc-pts">
+            <div class="pts-val" id="ptsVal">0</div>
+            <div class="pts-lbl">Loyalty Points</div>
+          </div>
+          <div>
+            <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+            <div class="prog-meta">
+              <span id="progLeft"></span>
+              <span id="progRight"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row fade">
+        <div class="stat-card">
+          <div class="stat-icon">✂️</div>
+          <div class="stat-val" id="statVisits">—</div>
+          <div class="stat-lbl">Total Visits</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-val" id="statLastVisit">—</div>
+          <div class="stat-lbl">Last Visit</div>
+        </div>
+      </div>
+
+      <!-- Favourites -->
+      <div class="fav-row fade" id="favsRow" style="display:none;">
+        <div class="fav-card" id="favSvcCard" style="display:none;">
+          <div class="fav-icon">⭐</div>
+          <div class="fav-val" id="favSvc">—</div>
+          <div class="fav-lbl">Fav Service</div>
+        </div>
+        <div class="fav-card" id="favBarberCard" style="display:none;">
+          <div class="fav-icon">✂️</div>
+          <div class="fav-val" id="favBarber">—</div>
+          <div class="fav-lbl">Fav Barber</div>
+        </div>
+      </div>
+
+      <!-- Redeem options -->
+      <div class="sec fade">
+        <div class="sec-title">Redeem Points</div>
+        <div class="redeem-card">
+          <div style="font-size:.78rem;font-weight:700;color:var(--txt);margin-bottom:3px;">Use your points for a reward</div>
+          <div style="font-size:.63rem;color:var(--muted);line-height:1.5;margin-bottom:12px;">Tell your barber you'd like to use your points at checkout.</div>
+          <div class="redeem-options" id="redeemOptions"></div>
+        </div>
+      </div>
+
+      <!-- Visit history -->
+      <div class="sec fade">
+        <div class="sec-title">Visit History</div>
+        <div id="visitHistory"><div class="empty-msg">Your visits will appear here.</div></div>
+      </div>
+
+      <!-- How to earn -->
+      <div class="sec fade">
+        <div class="sec-title">How It Works</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+          <div class="how-row"><div class="how-num">1</div><div class="how-txt">Earn <strong>1 point for every £1</strong> spent on any service</div></div>
+          <div class="how-row"><div class="how-num">2</div><div class="how-txt">Reach <strong>20 points</strong> (= £1 off) to start redeeming</div></div>
+          <div class="how-row"><div class="how-num">3</div><div class="how-txt">Tell your barber <strong>"I'd like to use my points"</strong> at checkout</div></div>
+          <div class="how-row"><div class="how-num">4</div><div class="how-txt">Points redeemable from your <strong>second visit</strong> onwards</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ REWARDS TAB ═══════════ -->
+  <div id="tabRewards" class="tab-panel">
+    <div class="scroll-body">
+
+      <!-- Available balance -->
+      <div class="redeem-active-card fade" id="redeemBalCard">
+        <div style="font-size:2rem;margin-bottom:8px;">🎁</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:var(--gold);margin-bottom:4px;" id="redeemBalVal">—</div>
+        <div style="font-size:.65rem;color:var(--muted);letter-spacing:1px;margin-bottom:14px;">Available to redeem</div>
+        <div style="padding:9px 12px;background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:8px;font-size:.62rem;color:var(--gold2);line-height:1.5;" id="redeemBalDesc"></div>
+      </div>
+
+      <!-- Redeem history -->
+      <div class="sec fade">
+        <div class="sec-title">Redeem History</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+          <div id="redeemHistory"><div class="empty-msg">No redemptions yet.</div></div>
+        </div>
+      </div>
+
+      <!-- Milestones -->
+      <div class="sec fade">
+        <div class="sec-title">Reward Milestones</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;" id="milestonesBlock"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottomnav">
+    <button class="nb on" id="btnHome" onclick="switchTab('home')">
+      <span class="nb-icon">🏠</span><span class="nb-lbl">Home</span>
+    </button>
+    <a href="https://whitecrossbarbers.com" target="_blank" rel="noreferrer"
+      style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;text-decoration:none;">
+      <span class="nb-icon">📅</span>
+      <span class="nb-lbl" style="font-size:.5rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Book</span>
+    </a>
+    <button class="nb" id="btnRewards" onclick="switchTab('rewards')">
+      <span class="nb-icon">🎁</span><span class="nb-lbl">Rewards</span>
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // Clock
+  function updateClock(){
+    const n=new Date();
+    const h=String(n.getHours()).padStart(2,'0');
+    const m=String(n.getMinutes()).padStart(2,'0');
+    const el=document.getElementById('clock');
+    if(el)el.textContent=h+':'+m;
+  }
+  updateClock();setInterval(updateClock,10000);
+
+  // Tab switching
+  function switchTab(name){
+    ['home','rewards'].forEach(t=>{
+      document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===name);
+      const btn=document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
+      if(btn)btn.classList.toggle('on',t===name);
+    });
+  }
+</script>
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
   import { getFirestore, collection, query, where, getDocs, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
   const app = initializeApp({
-    apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
-    authDomain: "havuz-44f70.firebaseapp.com",
-    projectId: "havuz-44f70",
-    storageBucket: "havuz-44f70.firebasestorage.app",
-    messagingSenderId: "1050766582653",
-    appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+    apiKey:"AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+    authDomain:"havuz-44f70.firebaseapp.com",
+    projectId:"havuz-44f70",
+    storageBucket:"havuz-44f70.firebasestorage.app",
+    messagingSenderId:"1050766582653",
+    appId:"1:1050766582653:web:7ddaa5acb3bec5ef122214"
   });
+  const db=getFirestore(app);
+  const T='tenants/whitecross';
+  const REDEEM_RATE=20;
 
-  const db  = getFirestore(app);
-  const T   = 'tenants/whitecross';
-  const REDEEM_RATE = 20; // 20 pts = £1 (5%)
-
-  const TIERS = [
-    { pts: 20,  label: '£1 off any service'  },
-    { pts: 100, label: '£5 off any service'  },
-    { pts: 200, label: '£10 off any service' },
-    { pts: 400, label: '£20 off any service' },
-    { pts: 600, label: '£30 off any service' },
+  const TIERS_LIST=[
+    {pts:20,  label:'£1 off',  full:'£1 off any service'},
+    {pts:100, label:'£5 off',  full:'£5 off any service'},
+    {pts:200, label:'£10 off', full:'£10 off any service'},
+    {pts:400, label:'£20 off', full:'£20 off any service'},
+    {pts:600, label:'£30 off', full:'£30 off any service'},
   ];
 
-  function show(id) {
-    document.getElementById('stateLoading').style.display = 'none';
-    document.getElementById('stateError').style.display   = 'none';
-    document.getElementById('stateMain').style.display    = 'none';
-    const el = document.getElementById(id);
-    el.style.display = id === 'stateMain' ? 'block' : 'flex';
+  // Tier badge by visits
+  function tierInfo(visits){
+    if(visits>=20)return{label:'✦ PLATINUM',cls:'tier-platinum'};
+    if(visits>=10)return{label:'✦ GOLD',cls:'tier-gold'};
+    if(visits>=5) return{label:'✦ SILVER',cls:'tier-silver'};
+    if(visits>=2) return{label:'✦ BRONZE',cls:'tier-bronze'};
+    return null;
   }
 
-  function fmt(ts) {
-    if (!ts) return '';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  function show(id){
+    document.getElementById('stateLoading').style.display='none';
+    document.getElementById('stateError').style.display='none';
+    document.getElementById('stateMain').style.display='none';
+    const el=document.getElementById(id);
+    el.style.display=id==='stateMain'?'flex':'flex';
   }
 
-  function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function fmt(ts){
+    if(!ts)return'';
+    const d=ts.toDate?ts.toDate():new Date(ts);
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   }
 
-  async function main() {
-    const token = new URLSearchParams(location.search).get('t');
-    if (!token) { show('stateError'); return; }
+  function daysSince(ts){
+    if(!ts)return null;
+    const d=ts.toDate?ts.toDate():new Date(ts);
+    const diff=Math.floor((Date.now()-d.getTime())/86400000);
+    if(diff===0)return'Today';
+    if(diff===1)return'Yesterday';
+    return diff+'d ago';
+  }
 
-    try {
-      /* 1. Client by token */
-      const clientSnap = await getDocs(query(
-        collection(db, `${T}/clients`),
-        where('loyaltyToken', '==', token),
+  async function main(){
+    const token=new URLSearchParams(location.search).get('t');
+    if(!token){show('stateError');return;}
+
+    try{
+      // Client by token
+      const cSnap=await getDocs(query(
+        collection(db,`${T}/clients`),
+        where('loyaltyToken','==',token),
         limit(1)
       ));
-      if (clientSnap.empty) { show('stateError'); return; }
+      if(cSnap.empty){show('stateError');return;}
+      const c=cSnap.docs[0].data();
+      const pts=c.loyaltyPoints||0;
 
-      const c       = clientSnap.docs[0].data();
-      const pts     = c.loyaltyPoints || 0;
-      const isMember = !!c.isMember;
-      const tier    = c.membershipTier || '';
+      // Settings (campaign + services)
+      let doubleActive=false,campEndDate='',svcMap={};
+      try{
+        const sSnap=await getDocs(collection(db,`${T}/settings`));
+        sSnap.docs.forEach(d=>{
+          if(d.id==='settings'){
+            const camp=d.data()?.doublePointsCampaign;
+            const today=new Date().toISOString().slice(0,10);
+            if(camp?.active&&camp.startDate&&camp.endDate&&today>=camp.startDate&&today<=camp.endDate){
+              doubleActive=true;
+              campEndDate=new Date(camp.endDate+'T23:59:59').toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+            }
+          }
+        });
+        const svSnap=await getDocs(collection(db,`${T}/services`));
+        svSnap.docs.forEach(d=>{svcMap[d.id]=d.data().name||d.id;});
+      }catch(_){}
 
-      /* 2. Load services map for display names */
-      const svcMap = {};
-      try {
-        const svcSnap = await getDocs(collection(db, `${T}/services`));
-        svcSnap.docs.forEach(d => { svcMap[d.id] = d.data().name || d.id; });
-      } catch (_) {}
-
-      /* 3. Bookings */
-      let bookings = [];
-      const phone = (c.phone || '').trim();
-      const email = (c.email || '').toLowerCase().trim();
-
-      if (phone) {
-        try {
-          const s = await getDocs(query(
-            collection(db, `${T}/bookings`),
-            where('clientPhone', '==', phone),
-            where('status', '==', 'CHECKED_OUT'),
-            orderBy('startTime', 'desc'),
-            limit(25)
-          ));
-          bookings = s.docs.map(d => d.data());
-        } catch (_) {}
+      // Bookings
+      let bookings=[];
+      const phone=(c.phone||'').trim();
+      const email=(c.email||'').toLowerCase().trim();
+      if(phone){
+        try{
+          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),orderBy('startTime','desc'),limit(30)));
+          bookings=bs.docs.map(d=>d.data());
+        }catch(_){}
       }
-      if (bookings.length === 0 && email) {
-        try {
-          const s = await getDocs(query(
-            collection(db, `${T}/bookings`),
-            where('clientEmail', '==', email),
-            where('status', '==', 'CHECKED_OUT'),
-            orderBy('startTime', 'desc'),
-            limit(25)
-          ));
-          bookings = s.docs.map(d => d.data());
-        } catch (_) {}
+      if(!bookings.length&&email){
+        try{
+          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),orderBy('startTime','desc'),limit(30)));
+          bookings=bs.docs.map(d=>d.data());
+        }catch(_){}
       }
 
-      /* 4. Stats */
-      const visits = bookings.length;
-      const svcCount = {}, barberCount = {};
-      let lastVisit = null;
-
-      bookings.forEach(b => {
-        const sId = b.serviceId || b.service || '';
-        if (sId) svcCount[sId] = (svcCount[sId] || 0) + 1;
-        const bar = b.barberName || b.barberId || '';
-        if (bar) barberCount[bar] = (barberCount[bar] || 0) + 1;
-        if (!lastVisit && b.startTime) lastVisit = b.startTime;
+      // Compute stats
+      const visits=bookings.length;
+      const svcCount={},barberCount={};
+      let lastVisitTs=null;
+      bookings.forEach(b=>{
+        const s=b.serviceId||b.service||'';if(s)svcCount[s]=(svcCount[s]||0)+1;
+        const bar=b.barberName||b.barberId||'';if(bar)barberCount[bar]=(barberCount[bar]||0)+1;
+        if(!lastVisitTs&&b.startTime)lastVisitTs=b.startTime;
       });
+      const favSvcId=Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+      const favSvcName=svcMap[favSvcId]||favSvcId;
+      const favBarber=Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
 
-      const favServiceId  = Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
-      const favServiceName = svcMap[favServiceId] || favServiceId;
-      const favBarber     = Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+      // Progress
+      const nextTier=TIERS_LIST.find(t=>pts<t.pts)||TIERS_LIST[TIERS_LIST.length-1];
+      const prevPts=TIERS_LIST[TIERS_LIST.indexOf(nextTier)-1]?.pts||0;
+      const ptsToNext=Math.max(0,nextTier.pts-pts);
+      const progPct=pts>=nextTier.pts?100:Math.round(((pts-prevPts)/(nextTier.pts-prevPts))*100);
+      const redeemable=pts>=REDEEM_RATE?(pts/REDEEM_RATE).toFixed(2):'0.00';
 
-      /* 5. Progress */
-      const redeemable    = pts >= REDEEM_RATE ? (pts / REDEEM_RATE).toFixed(2) : '0.00';
-      const nextTier      = TIERS.find(t => pts < t.pts) || TIERS[TIERS.length - 1];
-      const prevTierPts   = TIERS[TIERS.indexOf(nextTier) - 1]?.pts || 0;
-      const ptsToNext     = Math.max(0, nextTier.pts - pts);
-      const progressPct   = pts >= nextTier.pts ? 100 : Math.round(((pts - prevTierPts) / (nextTier.pts - prevTierPts)) * 100);
+      // ── RENDER ──
 
-      /* 6. Timeline */
-      const timeline = bookings
-        .filter(b => b.loyaltyPointsEarned > 0 || b.loyaltyPointsRedeemed > 0)
-        .slice(0, 10);
+      // Campaign banner
+      if(doubleActive){
+        document.getElementById('campaignBanner').style.display='flex';
+        document.getElementById('campaignDesc').innerHTML=`Book online before <strong style="color:var(--gold);">${campEndDate}</strong> and earn <strong style="color:var(--gold);">2× points</strong> on your visit.`;
+        document.getElementById('doubleBadge').style.display='inline-block';
+      }
 
-      /* 7. Render */
-      const memberColors = {
-        standard: { bg: 'rgba(123,31,162,0.08)', border: 'rgba(123,31,162,0.3)', text: '#ce93d8' },
-        student:  { bg: 'rgba(33,150,243,0.08)', border: 'rgba(33,150,243,0.3)', text: '#64b5f6' },
-      };
-      const mc = memberColors[tier] || memberColors.standard;
+      // Card
+      document.getElementById('cardName').textContent=c.name||'';
+      const memberSince=c.memberSince?.toDate?c.memberSince.toDate():(c.memberSince?new Date(c.memberSince):null);
+      document.getElementById('cardSince').textContent=memberSince?'Member since '+memberSince.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Loyalty Member';
+      document.getElementById('ptsVal').textContent=pts;
+      document.getElementById('progFill').style.width=progPct+'%';
+      document.getElementById('progLeft').textContent=pts+' pts';
+      document.getElementById('progRight').textContent=ptsToNext>0?ptsToNext+' pts to '+nextTier.label:'All milestones reached 🎉';
 
-      const tiersHTML = TIERS.map(t => {
-        const reached  = pts >= t.pts;
-        const isNext   = !reached && (TIERS.indexOf(t) === 0 || pts >= (TIERS[TIERS.indexOf(t)-1]?.pts || 0));
-        return `<div class="tier-row">
-          <div class="tier-dot ${reached?'reached':''}"></div>
-          <div class="tier-pts">${t.pts} pts</div>
-          <div class="tier-reward" style="color:${reached?'var(--text)':'var(--muted)'}">${t.label}</div>
-          ${reached ? '<div class="tier-badge done">✓</div>' : ''}
-          ${isNext && pts > 0 && !reached ? '<div class="tier-badge next">Next</div>' : ''}
+      // Tier badge
+      const tInfo=tierInfo(visits);
+      if(tInfo){
+        const tb=document.getElementById('tierBadge');
+        tb.textContent=tInfo.label;tb.className='tier-badge '+tInfo.cls;tb.style.display='inline-block';
+      }
+      document.getElementById('tierVisits').textContent=visits+' visit'+(visits!==1?'s':'');
+
+      // Stats
+      document.getElementById('statVisits').textContent=visits||'—';
+      document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
+
+      // Favourites
+      if(favSvcName||favBarber){
+        document.getElementById('favsRow').style.display='flex';
+        if(favSvcName){document.getElementById('favSvcCard').style.display='block';document.getElementById('favSvc').textContent=favSvcName;}
+        if(favBarber){document.getElementById('favBarberCard').style.display='block';document.getElementById('favBarber').textContent=favBarber.split(' ')[0];}
+      }
+
+      // Redeem options
+      const redeemOpts=document.getElementById('redeemOptions');
+      redeemOpts.innerHTML=TIERS_LIST.slice(0,4).map(t=>{
+        const avail=pts>=t.pts;
+        return`<div class="redeem-opt ${avail?'available':'locked'}">
+          <div class="ro-pts">${t.pts} pts</div>
+          <div class="ro-lbl">${t.label}</div>
         </div>`;
       }).join('');
 
-      const timelineHTML = timeline.length ? timeline.map(b => {
-        const isRedeem  = (b.loyaltyPointsRedeemed || 0) > 0;
-        const sName     = svcMap[b.serviceId || b.service || ''] || b.serviceId || b.service || 'Visit';
-        const barStr    = b.barberName ? ` · ${b.barberName.split(' ')[0]}` : '';
-        const tipStr    = parseFloat(b.tip||0) > 0 ? ` · 🙏 tip` : '';
-        return `<div class="timeline-item">
-          <div class="tl-icon ${isRedeem?'redeem':''}">${isRedeem?'🎁':'✂️'}</div>
-          <div class="tl-body">
-            <div class="tl-service">${esc(sName)}</div>
-            <div class="tl-meta">${fmt(b.startTime)}${barStr}${tipStr}</div>
+      // Visit history
+      const histItems=bookings.filter(b=>b.loyaltyPointsEarned>0||b.loyaltyPointsRedeemed>0).slice(0,8);
+      const DOT_COLORS=['#c9a84c','#4a8fbf','#8b6fc9','#3d8b5e','#c87840'];
+      document.getElementById('visitHistory').innerHTML=histItems.length?histItems.map((b,i)=>{
+        const isRedeem=b.loyaltyPointsRedeemed>0;
+        const sName=svcMap[b.serviceId||b.service||'']||b.serviceId||b.service||'Visit';
+        const bar=b.barberName?b.barberName.split(' ')[0]:'';
+        const tip=parseFloat(b.tip||0)>0?' · tip 🙏':'';
+        const doubleMarker=b.loyaltyPointsEarned>=(b.price?(parseFloat(String(b.price).replace('£',''))||0)*2-1:999)&&!isRedeem?' ⚡×2':'';
+        const dotColor=isRedeem?'#3d8b5e':DOT_COLORS[i%DOT_COLORS.length];
+        return`<div class="visit-row">
+          <div class="visit-dot" style="background:${dotColor}"></div>
+          <div class="visit-info">
+            <div class="visit-svc">${esc(sName)}</div>
+            <div class="visit-meta">${fmt(b.startTime)}${bar?' · '+bar:''}${tip}</div>
           </div>
-          <div class="tl-right">
-            ${b.loyaltyPointsEarned > 0 ? `<div class="tl-pts earn">+${b.loyaltyPointsEarned}</div><div class="tl-pts-sub">pts earned</div>` : ''}
-            ${isRedeem ? `<div class="tl-pts redeem">−${b.loyaltyPointsRedeemed}</div><div class="tl-pts-sub">pts used</div>` : ''}
+          <div class="visit-pts ${isRedeem?'redeem-pts':''}">
+            ${isRedeem?'−'+b.loyaltyPointsRedeemed+' pts used':'+'+b.loyaltyPointsEarned+' pts'+doubleMarker}
           </div>
         </div>`;
-      }).join('')
-      : `<div style="font-size:0.72rem;color:var(--muted);padding:6px 0;line-height:1.6;">Your visit history will appear here after your first checkout.</div>`;
+      }).join(''):`<div class="empty-msg">Your visit history will appear here after your first checkout.</div>`;
 
-      document.getElementById('stateMain').innerHTML = `
-        <div class="page">
+      // ── REWARDS TAB ──
+      document.getElementById('redeemBalVal').textContent=pts>=REDEEM_RATE?'£'+redeemable+' off':'Not yet available';
+      document.getElementById('redeemBalDesc').innerHTML=pts>=REDEEM_RATE
+        ?`You have <strong>${pts} pts</strong> — worth <strong>£${redeemable}</strong> off any service.<br>Tell your barber at checkout to apply your points.`
+        :`You need <strong>${REDEEM_RATE-pts} more points</strong> to start redeeming.<br>Earn 1 point for every £1 spent.`;
 
-          <div class="top-bar fade-up">
-            <div class="wc-logo">Whitecross</div>
-            <div class="top-label">Loyalty Card</div>
+      // Redeem history
+      const redeems=bookings.filter(b=>b.loyaltyPointsRedeemed>0).slice(0,6);
+      document.getElementById('redeemHistory').innerHTML=redeems.length?redeems.map(b=>{
+        const sName=svcMap[b.serviceId||b.service||'']||b.service||'Visit';
+        const bar=b.barberName?b.barberName.split(' ')[0]:'';
+        const val='£'+(b.loyaltyPointsRedeemed/REDEEM_RATE).toFixed(2)+' off';
+        return`<div class="rh-row">
+          <div class="rh-badge">Used</div>
+          <div class="rh-info">
+            <div class="rh-what">${val} — ${esc(sName)}</div>
+            <div class="rh-when">${fmt(b.startTime)}${bar?' · '+bar:''}</div>
           </div>
+          <div class="rh-pts">−${b.loyaltyPointsRedeemed} pts</div>
+        </div>`;
+      }).join(''):`<div class="empty-msg">No redemptions yet.</div>`;
 
-          <div class="loyalty-card ${isMember?'is-member':''} fade-up">
-            <div class="card-top-row">
-              <div class="card-chip"></div>
-              ${isMember ? `<div class="card-member-badge">◆ ${tier==='student'?'Student':'Member'}</div>` : ''}
-            </div>
-            <div class="card-name">${esc(c.name)}</div>
-            <div class="card-sub">Loyalty Member</div>
-            <div class="card-bottom">
-              <div>
-                <div class="card-pts-num">${pts}</div>
-                <div class="card-pts-label">Points</div>
-              </div>
-              <div class="card-right">
-                <div class="card-redeem-val">£${redeemable}</div>
-                <div class="card-redeem-label">Redeemable</div>
-              </div>
-            </div>
-          </div>
-
-          ${ptsToNext > 0 ? `
-          <div class="progress-wrap fade-up">
-            <div class="progress-row">
-              <div class="progress-lbl">Progress</div>
-              <div class="progress-next">${ptsToNext} pts until ${nextTier.label}</div>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" style="width:${progressPct}%"></div>
-            </div>
-          </div>` : ''}
-
-          <div class="stats-grid fade-up">
-            <div class="stat-box">
-              <div class="stat-icon">✂️</div>
-              <div class="stat-val">${visits}</div>
-              <div class="stat-label">Visits</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-icon">📅</div>
-              <div class="stat-val" style="font-size:${lastVisit?'0.82rem':'1.05rem'}">${lastVisit ? fmt(lastVisit) : '—'}</div>
-              <div class="stat-label">Last Visit</div>
-            </div>
-            ${favServiceName ? `
-            <div class="stat-box">
-              <div class="stat-icon">⭐</div>
-              <div class="stat-val" style="font-size:0.75rem;line-height:1.3">${esc(favServiceName)}</div>
-              <div class="stat-label">Fav Service</div>
-            </div>` : ''}
-            ${favBarber ? `
-            <div class="stat-box">
-              <div class="stat-icon">💇</div>
-              <div class="stat-val" style="font-size:0.88rem">${esc(favBarber.split(' ')[0])}</div>
-              <div class="stat-label">Fav Barber</div>
-            </div>` : ''}
-          </div>
-
-          ${isMember ? `
-          <div class="member-notice fade-up" style="background:${mc.bg};border:1px solid ${mc.border};color:${mc.text}">
-            <strong>◆ MemberZone Active</strong><br>
-            <span style="font-size:0.68rem;opacity:0.8;">Loyalty points are paused while your membership is active.
-            ${pts > 0 ? ` You have <strong>${pts} pts (£${redeemable})</strong> accumulated — redeem at any visit.` : ''}</span>
-          </div>` : ''}
-
-          <div class="section-card fade-up">
-            <div class="section-title">Reward Milestones</div>
-            ${tiersHTML}
-          </div>
-
-          <div class="section-card fade-up">
-            <div class="section-title">Visit History</div>
-            ${timelineHTML}
-          </div>
-
-          <div class="how-card fade-up">
-            <div class="section-title" style="color:rgba(212,175,55,0.5)">How to Redeem</div>
-            <div class="how-step">
-              <div class="how-num">1</div>
-              <div class="how-text">Earn <strong>1 point for every £1</strong> spent on any service</div>
-            </div>
-            <div class="how-step">
-              <div class="how-num">2</div>
-              <div class="how-text">Once you have <strong>20+ points</strong>, you can redeem at checkout</div>
-            </div>
-            <div class="how-step">
-              <div class="how-num">3</div>
-              <div class="how-text">Tell your barber <strong>"I'd like to use my points"</strong> — instant discount applied</div>
-            </div>
-            <div class="how-step">
-              <div class="how-num">4</div>
-              <div class="how-text"><strong>20 pts = £1 off</strong> · Points redeemable from your second visit onwards</div>
-            </div>
-          </div>
-
-          <div class="page-footer fade-up">Whitecross Barbers · Loyalty Programme</div>
-
-        </div>
-      `;
+      // Milestones
+      document.getElementById('milestonesBlock').innerHTML=TIERS_LIST.map(t=>{
+        const reached=pts>=t.pts;
+        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+          <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${reached?'var(--gold)':'rgba(255,255,255,0.08)'};${reached?'box-shadow:0 0 6px rgba(201,168,76,.4)':''}"></div>
+          <div style="font-size:.7rem;color:var(--muted);width:52px;flex-shrink:0;">${t.pts} pts</div>
+          <div style="font-size:.74rem;flex:1;color:${reached?'var(--txt)':'var(--muted)'};">${t.full}</div>
+          ${reached?'<div style="font-size:.6rem;background:rgba(201,168,76,.12);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:600;">✓</div>':''}
+        </div>`;
+      }).join('')+`<div style="padding-top:2px;"></div>`;
 
       show('stateMain');
 
-    } catch (err) {
-      console.error('Loyalty load error:', err);
+    }catch(err){
+      console.error('Loyalty error:',err);
       show('stateError');
     }
   }
