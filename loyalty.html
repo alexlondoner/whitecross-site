@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>My Loyalty Card — Whitecross Barbers</title>
+  <link rel="icon" href="favicon.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #d4af37;
+      --gold2: #f0d060;
+      --bg: #080808;
+      --card: #111111;
+      --card2: #161616;
+      --text: #f0f0f0;
+      --muted: #777;
+      --border: rgba(255,255,255,0.07);
+      --green: #4caf50;
+    }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 48px;
+    }
+    .page { width: 100%; max-width: 430px; }
+
+    /* ── States ── */
+    #stateLoading {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100dvh; gap: 18px;
+    }
+    #stateError {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100dvh; gap: 14px;
+      text-align: center; padding: 40px;
+    }
+    #stateMain { display: none; width: 100%; max-width: 430px; }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 2px solid rgba(212,175,55,0.12);
+      border-top-color: #d4af37;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      padding: 22px 22px 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .wc-logo {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem; letter-spacing: 3px;
+      color: var(--gold); text-transform: uppercase;
+    }
+    .top-label { font-size: 0.58rem; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+
+    /* ── Card ── */
+    .loyalty-card {
+      margin: 18px 18px 0;
+      background: linear-gradient(135deg, #1c1500 0%, #0d0c0a 45%, #181200 100%);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 22px;
+      padding: 26px 26px 22px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 12px 50px rgba(212,175,55,0.1), 0 2px 12px rgba(0,0,0,0.7);
+    }
+    .loyalty-card::before {
+      content: '';
+      position: absolute; top: -80px; right: -80px;
+      width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .loyalty-card::after {
+      content: '';
+      position: absolute; bottom: -50px; left: -30px;
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .loyalty-card.is-member {
+      background: linear-gradient(135deg, #120820 0%, #0c0c14 45%, #160a1e 100%);
+      border-color: rgba(180,100,255,0.35);
+      box-shadow: 0 12px 50px rgba(150,80,220,0.12), 0 2px 12px rgba(0,0,0,0.7);
+    }
+    .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+    .card-chip {
+      width: 38px; height: 29px;
+      background: linear-gradient(135deg, #d4af37 0%, #a07820 60%, #c9a227 100%);
+      border-radius: 6px; opacity: 0.92;
+    }
+    .loyalty-card.is-member .card-chip { background: linear-gradient(135deg, #ce93d8, #7b1fa2); }
+    .card-member-badge {
+      font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(206,147,216,0.8); font-weight: 600;
+      padding: 3px 8px; border: 1px solid rgba(206,147,216,0.3);
+      border-radius: 20px; background: rgba(206,147,216,0.06);
+    }
+    .card-name {
+      font-family: 'Cinzel', serif; font-size: 1.1rem;
+      font-weight: 600; color: #fff; letter-spacing: 0.5px; margin-bottom: 3px;
+    }
+    .card-sub { font-size: 0.58rem; color: rgba(212,175,55,0.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 22px; }
+    .loyalty-card.is-member .card-sub { color: rgba(206,147,216,0.5); }
+    .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+    .card-pts-num {
+      font-family: 'Cinzel', serif; font-size: 2.8rem;
+      font-weight: 700; color: var(--gold); line-height: 1;
+    }
+    .loyalty-card.is-member .card-pts-num { color: #ce93d8; }
+    .card-pts-label { font-size: 0.58rem; color: rgba(212,175,55,0.55); letter-spacing: 2px; text-transform: uppercase; margin-top: 5px; }
+    .loyalty-card.is-member .card-pts-label { color: rgba(206,147,216,0.5); }
+    .card-right { text-align: right; }
+    .card-redeem-val { font-size: 1.5rem; font-weight: 700; color: var(--green); }
+    .card-redeem-label { font-size: 0.58rem; color: rgba(76,175,80,0.65); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; }
+
+    /* ── Progress ── */
+    .progress-wrap { margin: 14px 18px 0; }
+    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+    .progress-lbl { font-size: 0.6rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+    .progress-next { font-size: 0.6rem; color: var(--gold); font-weight: 600; }
+    .progress-track {
+      height: 5px; background: rgba(255,255,255,0.05);
+      border-radius: 10px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #a07820, #d4af37, #f0d060);
+      border-radius: 10px;
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid { margin: 18px 18px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 14px;
+    }
+    .stat-icon { font-size: 1.15rem; margin-bottom: 9px; }
+    .stat-val { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.2; }
+    .stat-label { font-size: 0.57rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    /* ── Section card ── */
+    .section-card {
+      margin: 14px 18px 0;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 18px;
+    }
+    .section-title {
+      font-size: 0.57rem; color: var(--muted);
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; font-weight: 600;
+    }
+
+    /* ── Tiers ── */
+    .tier-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .tier-row:last-child { border-bottom: none; }
+    .tier-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+    .tier-dot.reached { background: var(--gold); box-shadow: 0 0 7px rgba(212,175,55,0.45); }
+    .tier-pts { font-size: 0.72rem; color: var(--muted); width: 54px; flex-shrink: 0; }
+    .tier-reward { font-size: 0.74rem; flex: 1; }
+    .tier-badge { font-size: 0.58rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; flex-shrink: 0; }
+    .tier-badge.done { background: rgba(212,175,55,0.15); color: var(--gold); }
+    .tier-badge.next { background: rgba(255,255,255,0.05); color: var(--muted); }
+
+    /* ── Timeline ── */
+    .timeline-item {
+      display: flex; gap: 12px; padding: 13px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .timeline-item:last-child { border-bottom: none; }
+    .tl-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(212,175,55,0.07); border: 1px solid rgba(212,175,55,0.18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.88rem; flex-shrink: 0;
+    }
+    .tl-icon.redeem { background: rgba(76,175,80,0.07); border-color: rgba(76,175,80,0.2); }
+    .tl-body { flex: 1; min-width: 0; }
+    .tl-service { font-size: 0.78rem; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tl-meta { font-size: 0.62rem; color: var(--muted); }
+    .tl-right { text-align: right; flex-shrink: 0; }
+    .tl-pts { font-size: 0.78rem; font-weight: 700; }
+    .tl-pts.earn { color: var(--gold); }
+    .tl-pts.redeem { color: var(--green); }
+    .tl-pts-sub { font-size: 0.57rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── How to redeem ── */
+    .how-card {
+      margin: 14px 18px 0;
+      background: rgba(212,175,55,0.03);
+      border: 1px solid rgba(212,175,55,0.12);
+      border-radius: 16px; padding: 18px;
+    }
+    .how-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+    .how-step:last-child { margin-bottom: 0; }
+    .how-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(212,175,55,0.12); color: var(--gold);
+      font-size: 0.62rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .how-text { font-size: 0.72rem; color: var(--muted); line-height: 1.55; }
+    .how-text strong { color: var(--text); }
+
+    /* ── Member notice ── */
+    .member-notice {
+      margin: 14px 18px 0;
+      padding: 14px 16px;
+      border-radius: 14px; font-size: 0.72rem; line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      margin: 32px 18px 0; text-align: center;
+      font-size: 0.55rem; color: rgba(255,255,255,0.15);
+      letter-spacing: 1.5px; text-transform: uppercase;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .fade-up { animation: fadeUp 0.45s ease both; }
+    .fade-up:nth-child(2) { animation-delay: 0.06s; }
+    .fade-up:nth-child(3) { animation-delay: 0.1s; }
+    .fade-up:nth-child(4) { animation-delay: 0.14s; }
+    .fade-up:nth-child(5) { animation-delay: 0.18s; }
+    .fade-up:nth-child(6) { animation-delay: 0.22s; }
+    .fade-up:nth-child(7) { animation-delay: 0.26s; }
+    .fade-up:nth-child(8) { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="stateLoading">
+  <div class="spinner"></div>
+  <div style="font-size:0.65rem;color:rgba(212,175,55,0.45);letter-spacing:2.5px;text-transform:uppercase;">Loading your card</div>
+</div>
+
+<!-- Error -->
+<div id="stateError">
+  <div style="font-size:2.4rem">✂️</div>
+  <div style="font-family:'Cinzel',serif;font-size:0.95rem;color:var(--gold);letter-spacing:1px;">Card Not Found</div>
+  <div style="font-size:0.74rem;color:var(--muted);line-height:1.7;max-width:280px;">This loyalty card link is invalid or has expired.<br>Ask your barber to regenerate your QR code.</div>
+</div>
+
+<!-- Main -->
+<div id="stateMain"></div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getFirestore, collection, query, where, getDocs, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const app = initializeApp({
+    apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+    authDomain: "havuz-44f70.firebaseapp.com",
+    projectId: "havuz-44f70",
+    storageBucket: "havuz-44f70.firebasestorage.app",
+    messagingSenderId: "1050766582653",
+    appId: "1:1050766582653:web:7ddaa5acb3bec5ef122214"
+  });
+
+  const db  = getFirestore(app);
+  const T   = 'tenants/whitecross';
+  const REDEEM_RATE = 20; // 20 pts = £1 (5%)
+
+  const TIERS = [
+    { pts: 20,  label: '£1 off any service'  },
+    { pts: 100, label: '£5 off any service'  },
+    { pts: 200, label: '£10 off any service' },
+    { pts: 400, label: '£20 off any service' },
+    { pts: 600, label: '£30 off any service' },
+  ];
+
+  function show(id) {
+    document.getElementById('stateLoading').style.display = 'none';
+    document.getElementById('stateError').style.display   = 'none';
+    document.getElementById('stateMain').style.display    = 'none';
+    const el = document.getElementById(id);
+    el.style.display = id === 'stateMain' ? 'block' : 'flex';
+  }
+
+  function fmt(ts) {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function main() {
+    const token = new URLSearchParams(location.search).get('t');
+    if (!token) { show('stateError'); return; }
+
+    try {
+      /* 1. Client by token */
+      const clientSnap = await getDocs(query(
+        collection(db, `${T}/clients`),
+        where('loyaltyToken', '==', token),
+        limit(1)
+      ));
+      if (clientSnap.empty) { show('stateError'); return; }
+
+      const c       = clientSnap.docs[0].data();
+      const pts     = c.loyaltyPoints || 0;
+      const isMember = !!c.isMember;
+      const tier    = c.membershipTier || '';
+
+      /* 2. Load services map for display names */
+      const svcMap = {};
+      try {
+        const svcSnap = await getDocs(collection(db, `${T}/services`));
+        svcSnap.docs.forEach(d => { svcMap[d.id] = d.data().name || d.id; });
+      } catch (_) {}
+
+      /* 3. Bookings */
+      let bookings = [];
+      const phone = (c.phone || '').trim();
+      const email = (c.email || '').toLowerCase().trim();
+
+      if (phone) {
+        try {
+          const s = await getDocs(query(
+            collection(db, `${T}/bookings`),
+            where('clientPhone', '==', phone),
+            where('status', '==', 'CHECKED_OUT'),
+            orderBy('startTime', 'desc'),
+            limit(25)
+          ));
+          bookings = s.docs.map(d => d.data());
+        } catch (_) {}
+      }
+      if (bookings.length === 0 && email) {
+        try {
+          const s = await getDocs(query(
+            collection(db, `${T}/bookings`),
+            where('clientEmail', '==', email),
+            where('status', '==', 'CHECKED_OUT'),
+            orderBy('startTime', 'desc'),
+            limit(25)
+          ));
+          bookings = s.docs.map(d => d.data());
+        } catch (_) {}
+      }
+
+      /* 4. Stats */
+      const visits = bookings.length;
+      const svcCount = {}, barberCount = {};
+      let lastVisit = null;
+
+      bookings.forEach(b => {
+        const sId = b.serviceId || b.service || '';
+        if (sId) svcCount[sId] = (svcCount[sId] || 0) + 1;
+        const bar = b.barberName || b.barberId || '';
+        if (bar) barberCount[bar] = (barberCount[bar] || 0) + 1;
+        if (!lastVisit && b.startTime) lastVisit = b.startTime;
+      });
+
+      const favServiceId  = Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+      const favServiceName = svcMap[favServiceId] || favServiceId;
+      const favBarber     = Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+
+      /* 5. Progress */
+      const redeemable    = pts >= REDEEM_RATE ? (pts / REDEEM_RATE).toFixed(2) : '0.00';
+      const nextTier      = TIERS.find(t => pts < t.pts) || TIERS[TIERS.length - 1];
+      const prevTierPts   = TIERS[TIERS.indexOf(nextTier) - 1]?.pts || 0;
+      const ptsToNext     = Math.max(0, nextTier.pts - pts);
+      const progressPct   = pts >= nextTier.pts ? 100 : Math.round(((pts - prevTierPts) / (nextTier.pts - prevTierPts)) * 100);
+
+      /* 6. Timeline */
+      const timeline = bookings
+        .filter(b => b.loyaltyPointsEarned > 0 || b.loyaltyPointsRedeemed > 0)
+        .slice(0, 10);
+
+      /* 7. Render */
+      const memberColors = {
+        standard: { bg: 'rgba(123,31,162,0.08)', border: 'rgba(123,31,162,0.3)', text: '#ce93d8' },
+        student:  { bg: 'rgba(33,150,243,0.08)', border: 'rgba(33,150,243,0.3)', text: '#64b5f6' },
+      };
+      const mc = memberColors[tier] || memberColors.standard;
+
+      const tiersHTML = TIERS.map(t => {
+        const reached  = pts >= t.pts;
+        const isNext   = !reached && (TIERS.indexOf(t) === 0 || pts >= (TIERS[TIERS.indexOf(t)-1]?.pts || 0));
+        return `<div class="tier-row">
+          <div class="tier-dot ${reached?'reached':''}"></div>
+          <div class="tier-pts">${t.pts} pts</div>
+          <div class="tier-reward" style="color:${reached?'var(--text)':'var(--muted)'}">${t.label}</div>
+          ${reached ? '<div class="tier-badge done">✓</div>' : ''}
+          ${isNext && pts > 0 && !reached ? '<div class="tier-badge next">Next</div>' : ''}
+        </div>`;
+      }).join('');
+
+      const timelineHTML = timeline.length ? timeline.map(b => {
+        const isRedeem  = (b.loyaltyPointsRedeemed || 0) > 0;
+        const sName     = svcMap[b.serviceId || b.service || ''] || b.serviceId || b.service || 'Visit';
+        const barStr    = b.barberName ? ` · ${b.barberName.split(' ')[0]}` : '';
+        const tipStr    = parseFloat(b.tip||0) > 0 ? ` · 🙏 tip` : '';
+        return `<div class="timeline-item">
+          <div class="tl-icon ${isRedeem?'redeem':''}">${isRedeem?'🎁':'✂️'}</div>
+          <div class="tl-body">
+            <div class="tl-service">${esc(sName)}</div>
+            <div class="tl-meta">${fmt(b.startTime)}${barStr}${tipStr}</div>
+          </div>
+          <div class="tl-right">
+            ${b.loyaltyPointsEarned > 0 ? `<div class="tl-pts earn">+${b.loyaltyPointsEarned}</div><div class="tl-pts-sub">pts earned</div>` : ''}
+            ${isRedeem ? `<div class="tl-pts redeem">−${b.loyaltyPointsRedeemed}</div><div class="tl-pts-sub">pts used</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')
+      : `<div style="font-size:0.72rem;color:var(--muted);padding:6px 0;line-height:1.6;">Your visit history will appear here after your first checkout.</div>`;
+
+      document.getElementById('stateMain').innerHTML = `
+        <div class="page">
+
+          <div class="top-bar fade-up">
+            <div class="wc-logo">Whitecross</div>
+            <div class="top-label">Loyalty Card</div>
+          </div>
+
+          <div class="loyalty-card ${isMember?'is-member':''} fade-up">
+            <div class="card-top-row">
+              <div class="card-chip"></div>
+              ${isMember ? `<div class="card-member-badge">◆ ${tier==='student'?'Student':'Member'}</div>` : ''}
+            </div>
+            <div class="card-name">${esc(c.name)}</div>
+            <div class="card-sub">Loyalty Member</div>
+            <div class="card-bottom">
+              <div>
+                <div class="card-pts-num">${pts}</div>
+                <div class="card-pts-label">Points</div>
+              </div>
+              <div class="card-right">
+                <div class="card-redeem-val">£${redeemable}</div>
+                <div class="card-redeem-label">Redeemable</div>
+              </div>
+            </div>
+          </div>
+
+          ${ptsToNext > 0 ? `
+          <div class="progress-wrap fade-up">
+            <div class="progress-row">
+              <div class="progress-lbl">Progress</div>
+              <div class="progress-next">${ptsToNext} pts until ${nextTier.label}</div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${progressPct}%"></div>
+            </div>
+          </div>` : ''}
+
+          <div class="stats-grid fade-up">
+            <div class="stat-box">
+              <div class="stat-icon">✂️</div>
+              <div class="stat-val">${visits}</div>
+              <div class="stat-label">Visits</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-icon">📅</div>
+              <div class="stat-val" style="font-size:${lastVisit?'0.82rem':'1.05rem'}">${lastVisit ? fmt(lastVisit) : '—'}</div>
+              <div class="stat-label">Last Visit</div>
+            </div>
+            ${favServiceName ? `
+            <div class="stat-box">
+              <div class="stat-icon">⭐</div>
+              <div class="stat-val" style="font-size:0.75rem;line-height:1.3">${esc(favServiceName)}</div>
+              <div class="stat-label">Fav Service</div>
+            </div>` : ''}
+            ${favBarber ? `
+            <div class="stat-box">
+              <div class="stat-icon">💇</div>
+              <div class="stat-val" style="font-size:0.88rem">${esc(favBarber.split(' ')[0])}</div>
+              <div class="stat-label">Fav Barber</div>
+            </div>` : ''}
+          </div>
+
+          ${isMember ? `
+          <div class="member-notice fade-up" style="background:${mc.bg};border:1px solid ${mc.border};color:${mc.text}">
+            <strong>◆ MemberZone Active</strong><br>
+            <span style="font-size:0.68rem;opacity:0.8;">Loyalty points are paused while your membership is active.
+            ${pts > 0 ? ` You have <strong>${pts} pts (£${redeemable})</strong> accumulated — redeem at any visit.` : ''}</span>
+          </div>` : ''}
+
+          <div class="section-card fade-up">
+            <div class="section-title">Reward Milestones</div>
+            ${tiersHTML}
+          </div>
+
+          <div class="section-card fade-up">
+            <div class="section-title">Visit History</div>
+            ${timelineHTML}
+          </div>
+
+          <div class="how-card fade-up">
+            <div class="section-title" style="color:rgba(212,175,55,0.5)">How to Redeem</div>
+            <div class="how-step">
+              <div class="how-num">1</div>
+              <div class="how-text">Earn <strong>1 point for every £1</strong> spent on any service</div>
+            </div>
+            <div class="how-step">
+              <div class="how-num">2</div>
+              <div class="how-text">Once you have <strong>20+ points</strong>, you can redeem at checkout</div>
+            </div>
+            <div class="how-step">
+              <div class="how-num">3</div>
+              <div class="how-text">Tell your barber <strong>"I'd like to use my points"</strong> — instant discount applied</div>
+            </div>
+            <div class="how-step">
+              <div class="how-num">4</div>
+              <div class="how-text"><strong>20 pts = £1 off</strong> · Points redeemable from your second visit onwards</div>
+            </div>
+          </div>
+
+          <div class="page-footer fade-up">Whitecross Barbers · Loyalty Programme</div>
+
+        </div>
+      `;
+
+      show('stateMain');
+
+    } catch (err) {
+      console.error('Loyalty load error:', err);
+      show('stateError');
+    }
+  }
+
+  main();
+</script>
+</body>
+</html>

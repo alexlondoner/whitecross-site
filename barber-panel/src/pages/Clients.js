@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { logAudit } from '../utils/auditLogger';
 
 const TENANT = 'whitecross';
@@ -23,7 +24,7 @@ const MEMBERSHIP_TIERS = [
 const SEGMENT_DEFS = [
   { key: 'members',      label: 'MemberZone',            color: '#7b1fa2', desc: 'Active MemberZone subscribers' },
   { key: 'students',     label: 'Students',              color: '#0288d1', desc: 'Student discount clients' },
-  { key: 'new',          label: 'New clients',            color: '#4caf50', desc: 'Clients added in the last 30 days' },
+  { key: 'new',          label: 'New clients',            color: '#4caf50', desc: 'Clients with ≤2 completed visits, or first visit in the last 90 days' },
   { key: 'recent',       label: 'Recent clients',         color: '#2196f3', desc: 'Clients with appointments in the last 30 days' },
   { key: 'firstVisit',   label: 'First visit',            color: '#ff9800', desc: 'Clients with no past appointments, but with appointments in the future' },
   { key: 'loyal',        label: 'Loyal clients',          color: '#d4af37', desc: 'Clients with 2 or more visits in the last 5 months' },
@@ -61,8 +62,10 @@ export default function Clients({ isAdmin = true }) {
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
   const [adjustSaving, setAdjustSaving] = useState(false);
+  const [adjustNotify, setAdjustNotify] = useState(true);
   const [pointsLog, setPointsLog] = useState([]);
   const [pointsLogLoading, setPointsLogLoading] = useState(false);
+  const [qrGenerating, setQrGenerating] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -113,7 +116,13 @@ export default function Clients({ isAdmin = true }) {
       if (b.status !== 'CANCELLED') {
         c.visits++;
         const booksyDeposit = b.source === 'Booksy' && config.platforms?.booksy?.depositEnabled ? (config.platforms.booksy.depositAmount || 0) : 0;
-        const rawAmount = parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0;
+        const isDepositBooking = b.source !== 'Booksy' && b.paymentType === 'DEPOSIT' && b.status === 'CHECKED_OUT';
+        const platformDeposit = parseFloat(b.platformDepositAmount || 0) || 0;
+        const fullServicePrice = parseFloat(String(b.price || '0').replace('£', '')) || 0;
+        const paidAtCheckout = parseFloat(String(b.paidAmount || '0').replace('£', '')) || 0;
+        const rawAmount = isDepositBooking
+          ? (platformDeposit > 0 ? paidAtCheckout + platformDeposit : fullServicePrice || paidAtCheckout)
+          : (parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0);
         const price = b.source === 'Booksy'
           ? (b.status === 'CHECKED_OUT' ? rawAmount + booksyDeposit : booksyDeposit)
           : rawAmount;
@@ -140,15 +149,29 @@ export default function Clients({ isAdmin = true }) {
   const allClients = useMemo(() => {
     const hiddenKeys = new Set(
       manualClients.filter(m => m.hidden)
-        .flatMap(m => [m.phone, m.email, m.name?.toLowerCase()].filter(Boolean))
+        .flatMap(m => [m.phone, m.email, m.name?.toLowerCase(), m._origName?.toLowerCase()].filter(Boolean))
     );
+    // Build a map from manualId → manual doc for fast lookup in bookings
+    const manualById = {};
+    manualClients.forEach(m => { if (m.id) manualById[m.id] = m; });
+
+    const matchManual = (c) => manualClients.find(m =>
+      !m.hidden && (
+        (m.phone && m.phone === c.phone) ||
+        (m.email && m.email === c.email) ||
+        m.name?.toLowerCase() === c.name?.toLowerCase() ||
+        (m._origName && m._origName.toLowerCase() === c.name?.toLowerCase())
+      )
+    );
+
     const merged = bookingClients
       .filter(c => !hiddenKeys.has(c.phone) && !hiddenKeys.has(c.email) && !hiddenKeys.has(c.name?.toLowerCase()))
       .map(c => {
-        const manual = manualClients.find(m => !m.hidden && ((m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name.toLowerCase()));
+        const manual = matchManual(c);
         const manualAddedAt = manual?.createdAt?.toDate ? manual.createdAt.toDate() : (manual?.createdAt ? new Date(manual.createdAt) : null);
         return {
           ...c,
+          name: manual?.name || c.name,
           phone: manual?.phone || c.phone,
           email: manual?.email || c.email,
           birthday: manual?.birthday || '',
@@ -162,7 +185,12 @@ export default function Clients({ isAdmin = true }) {
         };
       });
     manualClients.filter(m => !m.hidden).forEach(m => {
-      const exists = bookingClients.some(c => (m.phone && m.phone === c.phone) || (m.email && m.email === c.email) || m.name?.toLowerCase() === c.name?.toLowerCase());
+      const exists = bookingClients.some(c =>
+        (m.phone && m.phone === c.phone) ||
+        (m.email && m.email === c.email) ||
+        m.name?.toLowerCase() === c.name?.toLowerCase() ||
+        (m._origName && m._origName.toLowerCase() === c.name?.toLowerCase())
+      );
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
         merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, registeredAt: addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
@@ -177,7 +205,7 @@ export default function Clients({ isAdmin = true }) {
     return {
       members: allClients.filter(c => c.isMember),
       students: allClients.filter(c => c.isMember && c.membershipTier === 'student'),
-      new: allClients.filter(c => c.isManualOnly ? (c.addedAt && c.addedAt >= ago(30)) : (c.firstVisitRaw && c.firstVisitRaw >= ago(30))),
+      new: allClients.filter(c => c.isManualOnly ? (c.addedAt && c.addedAt >= ago(90)) : (c.checkedOut <= 2 || (c.firstVisitRaw && c.firstVisitRaw >= ago(90)))),
       recent: allClients.filter(c => c.lastVisitRaw && c.lastVisitRaw >= ago(30)),
       firstVisit: allClients.filter(c => {
         const past = c.bookings.filter(b => b.startTimeRaw && b.startTimeRaw < now && b.status !== 'CANCELLED');
@@ -350,6 +378,18 @@ export default function Clients({ isAdmin = true }) {
       const newPts = Math.max(0, (selectedClient.loyaltyPoints || 0) + amount);
       setSelectedClient(prev => ({ ...prev, loyaltyPoints: newPts }));
       setManualClients(prev => prev.map(m => m.id === clientId ? { ...m, loyaltyPoints: newPts } : m));
+      if (adjustNotify && selectedClient.email) {
+        try {
+          const fn = httpsCallable(getFunctions(), 'sendManualLoyaltyAdjustmentEmail');
+          await fn({
+            clientEmail: selectedClient.email,
+            clientName: selectedClient.name,
+            points: amount,
+            reason: adjustReason.trim(),
+            newTotal: newPts,
+          });
+        } catch (e) { console.error('loyalty adjustment email failed', e); }
+      }
       setAdjustAmount('');
       setAdjustReason('');
       await loadPointsLog(clientId);
@@ -385,6 +425,20 @@ export default function Clients({ isAdmin = true }) {
     finally { setMemberSaving(false); }
   };
 
+  const generateLoyaltyToken = async (client) => {
+    if (!client.manualId) return null;
+    if (client.loyaltyToken) return client.loyaltyToken;
+    setQrGenerating(true);
+    try {
+      const token = crypto.randomUUID();
+      await updateDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId), { loyaltyToken: token });
+      setManualClients(prev => prev.map(m => m.id === client.manualId ? { ...m, loyaltyToken: token } : m));
+      setSelectedClient(prev => prev ? { ...prev, loyaltyToken: token } : null);
+      return token;
+    } catch (e) { console.error('generateLoyaltyToken error:', e); return null; }
+    finally { setQrGenerating(false); }
+  };
+
   // Store original identifying fields for edit lookup
   const openEditClient = (client) => {
     setEditingClient({
@@ -401,7 +455,17 @@ export default function Clients({ isAdmin = true }) {
     if (!editForm.name.trim()) return;
     setEditSaving(true);
     try {
-      const data = { name: editForm.name.trim(), phone: editForm.phone.trim(), email: editForm.email.trim(), birthday: editForm.birthday, notes: editForm.notes.trim() };
+      const newName = editForm.name.trim();
+      const origName = (editingClient._origName || '').trim();
+      // Preserve _origName so future merges can still link to bookings with the old name
+      const data = {
+        name: newName,
+        phone: (editForm.phone || '').trim(),
+        email: (editForm.email || '').trim(),
+        birthday: editForm.birthday || '',
+        notes: (editForm.notes || '').trim(),
+        ...(origName && origName.toLowerCase() !== newName.toLowerCase() ? { _origName: origName } : {}),
+      };
       const clientsRef = collection(db, `tenants/${TENANT}/clients`);
 
       if (editingClient.manualId) {
@@ -437,7 +501,7 @@ export default function Clients({ isAdmin = true }) {
       setSelectedClient(prev => prev ? { ...prev, ...data } : null);
       setShowEditForm(false);
       setEditingClient(null);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert('Save failed: ' + e.message); }
     finally { setEditSaving(false); }
   };
 
@@ -712,7 +776,7 @@ export default function Clients({ isAdmin = true }) {
                           {!selectedClient.isMember && selectedClient.visits >= 10 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.25)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700', letterSpacing: '0.5px' }}>VIP</span>}
                           {selectedClient.isManualOnly && <span style={{ fontSize: '0.55rem', background: 'rgba(33,150,243,0.15)', color: '#2196f3', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>ADDED</span>}
                           {!selectedClient.isManualOnly && selectedClient.visits === 1 && <span style={{ fontSize: '0.55rem', background: 'rgba(76,175,80,0.15)', color: '#4caf50', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>NEW</span>}
-                          {!selectedClient.isMember && pts > 0 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>⭐ {pts} pts</span>}
+                          {pts > 0 && <span style={{ fontSize: '0.55rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '2px 7px', borderRadius: '20px', fontWeight: '700' }}>⭐ {pts} pts</span>}
                         </div>
                         {selectedClient.phone && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '5px' }}>{selectedClient.phone}</div>}
                         {selectedClient.email && <div style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{selectedClient.email}</div>}
@@ -809,6 +873,12 @@ export default function Clients({ isAdmin = true }) {
                             <div style={{ marginTop: '10px', padding: '8px', background: activeTier.color + '12', borderRadius: '6px', fontSize: '0.62rem', color: activeTier.color }}>
                               {activeTier.key === 'student' ? 'Student discount applied at checkout — loyalty points paused' : 'Loyalty points paused — member benefits apply'}
                             </div>
+                            {pts > 0 && (
+                              <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(212,175,55,0.08)', borderRadius: '6px', fontSize: '0.62rem', color: '#d4af37', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>⭐ Accumulated points</span>
+                                <strong>{pts} pts (£{(pts / 20).toFixed(2)} redeemable)</strong>
+                              </div>
+                            )}
                           </div>
                         );
                       }
@@ -983,12 +1053,59 @@ export default function Clients({ isAdmin = true }) {
                         </div>
                         <input placeholder="Reason (required)" value={adjustReason} onChange={e => setAdjustReason(e.target.value)}
                           style={{ width: '100%', padding: '9px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', marginBottom: '8px', boxSizing: 'border-box' }} />
+                        {selectedClient.email && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={adjustNotify} onChange={e => setAdjustNotify(e.target.checked)}
+                              style={{ accentColor: '#d4af37', width: '13px', height: '13px', cursor: 'pointer' }} />
+                            <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Notify client by email</span>
+                          </label>
+                        )}
                         <button onClick={adjustPoints} disabled={adjustSaving || !adjustAmount || !adjustReason.trim()}
                           style={{ width: '100%', padding: '9px', background: (!adjustAmount || !adjustReason.trim()) ? 'transparent' : 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '8px', color: (!adjustAmount || !adjustReason.trim()) ? 'var(--muted)' : '#d4af37', cursor: (!adjustAmount || !adjustReason.trim() || adjustSaving) ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: '700', opacity: (!adjustAmount || !adjustReason.trim()) ? 0.5 : 1 }}>
                           {adjustSaving ? 'Saving…' : parseInt(adjustAmount) < 0 ? `Deduct ${Math.abs(parseInt(adjustAmount)||0)} pts` : `Add ${parseInt(adjustAmount)||0} pts`}
                         </button>
                       </div>
                     )}
+
+                    {/* ── LOYALTY QR CARD ── */}
+                    {selectedClient.manualId && (() => {
+                      const token = selectedClient.loyaltyToken;
+                      const loyaltyUrl = token ? `https://whitecrossbarbers.com/loyalty.html?t=${token}` : null;
+                      const qrSrc = loyaltyUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&bgcolor=0d0d0d&color=d4af37&data=${encodeURIComponent(loyaltyUrl)}` : null;
+                      return (
+                        <div style={{ padding: '14px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px', fontWeight: '600' }}>Digital Loyalty Card</div>
+                          {token ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                              <img src={qrSrc} alt="Loyalty QR" style={{ width: '160px', height: '160px', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.2)' }} />
+                              <div style={{ fontSize: '0.62rem', color: 'var(--muted)', textAlign: 'center', lineHeight: 1.5 }}>
+                                Show this QR to the customer — they scan it to open their loyalty card
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                <button onClick={() => navigator.clipboard.writeText(loyaltyUrl)}
+                                  style={{ flex: 1, padding: '7px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '7px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600' }}>
+                                  Copy Link
+                                </button>
+                                <a href={loyaltyUrl} target="_blank" rel="noreferrer"
+                                  style={{ flex: 1, padding: '7px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '7px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600', textDecoration: 'none', textAlign: 'center' }}>
+                                  Preview ↗
+                                </a>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginBottom: '12px', lineHeight: 1.5 }}>
+                                Generate a unique loyalty card link for this customer
+                              </div>
+                              <button onClick={() => generateLoyaltyToken(selectedClient)} disabled={qrGenerating}
+                                style={{ padding: '9px 20px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '8px', color: '#d4af37', cursor: qrGenerating ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: '700' }}>
+                                {qrGenerating ? 'Generating…' : '⭐ Generate QR Card'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* ── POINTS LOG ── */}
                     {selectedClient.manualId && (
@@ -1069,8 +1186,8 @@ export default function Clients({ isAdmin = true }) {
                     </div>
                   )}
 
-                  <button onClick={() => viewSegment(seg.key)}
-                    style={{ padding: '8px 0', background: count > 0 ? seg.color + '15' : 'transparent', border: '1px solid ' + seg.color + (count > 0 ? '35' : '20'), borderRadius: '8px', color: count > 0 ? seg.color : 'var(--muted)', fontSize: '0.75rem', fontWeight: '600', cursor: count > 0 ? 'pointer' : 'default', marginTop: 'auto' }}>
+                  <button onClick={() => count > 0 && viewSegment(seg.key)} disabled={count === 0}
+                    style={{ padding: '8px 0', background: count > 0 ? seg.color + '15' : 'transparent', border: '1px solid ' + seg.color + (count > 0 ? '35' : '20'), borderRadius: '8px', color: count > 0 ? seg.color : 'var(--muted)', fontSize: '0.75rem', fontWeight: '600', cursor: count > 0 ? 'pointer' : 'default', opacity: count === 0 ? 0.5 : 1, marginTop: 'auto' }}>
                     {count > 0 ? 'View Clients →' : 'No clients'}
                   </button>
                 </div>
