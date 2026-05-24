@@ -799,19 +799,19 @@
         const totalExpectedPts = isDeposit ? Math.floor(servicePrice) : Math.floor(servicePrice);
 
         function depositBannerHTML() {
-            if (!isDeposit) return '';
+            if (!isDeposit || totalExpectedPts <= 0) return '';
             const REDEEM_RATE = 20;
             const cashValue = (totalExpectedPts / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
             return `<div style="background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
-                <div style="font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#d4af3788;margin-bottom:6px;font-weight:700;">This Visit</div>
+                <div style="font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#d4af3788;margin-bottom:6px;font-weight:700;">Points Preview</div>
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <div style="font-size:0.74rem;color:#888;line-height:1.6;">
-                        ${depositPts > 0 ? `<span style="color:#d4af37;font-weight:700;">⭐ +${depositPts} pts</span> from deposit<br>` : ''}
-                        ${remainingPts > 0 ? `<span style="color:#aaa;">+${remainingPts} more pts</span> after checkout` : ''}
+                    <div style="font-size:0.74rem;color:#888;line-height:1.7;">
+                        You'll earn <span style="color:#d4af37;font-weight:700;">⭐ ${totalExpectedPts} pts</span> after checkout.<br>
+                        <span style="font-size:0.65rem;color:#555;">Redeemable from your next visit.</span>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:1rem;font-weight:800;color:#d4af37;">⭐ ${totalExpectedPts} pts</div>
-                        <div style="font-size:0.6rem;color:#555;">≈ £${cashValue} cashback</div>
+                        <div style="font-size:0.95rem;font-weight:800;color:#d4af37;">≈ £${cashValue}</div>
+                        <div style="font-size:0.6rem;color:#555;">cashback value</div>
                     </div>
                 </div>
             </div>`;
@@ -842,7 +842,7 @@
             const offerActive = offer && offer.expiresAt && (offer.expiresAt?.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt)) > new Date();
 
             const visitNote = isDeposit
-                ? (depositPts > 0 ? `⭐ +${depositPts} pts from your deposit — +${remainingPts} more after checkout.` : `You'll earn ${totalExpectedPts} pts after checkout.`)
+                ? `You'll earn <strong style="color:#d4af37;">⭐ ${totalExpectedPts} pts</strong> after checkout — redeemable from your next visit.`
                 : `Points from today will be added after your appointment.`;
 
             body.innerHTML = `
