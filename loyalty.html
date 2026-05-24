@@ -649,10 +649,14 @@ window.sendOTP = async function(){
     showAuthStep('OTP');
     setTimeout(()=>document.getElementById('otp0').focus(),200);
   }catch(e){
+    console.error('sendOTP error:', e.code, e.message);
     errEl.textContent = e.code==='auth/invalid-phone-number'?'Invalid phone number.'
-      :e.code==='auth/too-many-requests'?'Too many attempts, please wait.'
-      :'Failed to send code. Try email link.';
-    // Reset recaptcha on error
+      :e.code==='auth/too-many-requests'?'Too many attempts — wait a few minutes and retry.'
+      :e.code==='auth/operation-not-allowed'?'Phone sign-in is not enabled. Use email link below.'
+      :e.code==='auth/captcha-check-failed'?'reCAPTCHA failed — please refresh the page and try again.'
+      :e.code==='auth/quota-exceeded'?'SMS quota reached — try email link instead.'
+      :'SMS failed ('+( e.code||'unknown')+') — try email link.';
+    // Reset recaptcha on error so next attempt gets a fresh one
     if(window._recaptchaVerifier){ try{window._recaptchaVerifier.clear();}catch(_){} window._recaptchaVerifier=null; }
   }finally{
     btn.disabled=false; btn.textContent='SEND CODE →';
@@ -686,7 +690,7 @@ window.sendEmailLink = async function(){
   const btn=document.getElementById('authEmailBtn');
   btn.disabled=true; btn.textContent='Sending…';
   const actionSettings = {
-    url: window.location.href.split('?')[0],
+    url: 'https://whitecrossbarbers.com/loyalty.html',
     handleCodeInApp: true
   };
   try{
