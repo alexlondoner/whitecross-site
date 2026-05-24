@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>My Loyalty Card — Whitecross Barbers</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#c9a84c"/>
+<title>Whitecross Barbers — Member</title>
 <link rel="icon" href="favicon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -16,90 +19,75 @@
   --green:#3d8b5e;--red:#9b3a3a;
 }
 html,body{height:100%;background:var(--bg);}
-body{
-  font-family:'DM Sans',sans-serif;
-  display:flex;flex-direction:column;
-  min-height:100dvh;max-width:430px;margin:0 auto;
-  background:var(--bg2);
-}
+body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-height:100dvh;max-width:430px;margin:0 auto;background:var(--bg2);}
 
-/* ── States ── */
-#stateLoading{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;flex:1;gap:18px;min-height:100dvh;
-}
-#stateError{
-  display:none;flex-direction:column;align-items:center;
-  justify-content:center;flex:1;gap:14px;min-height:100dvh;
-  text-align:center;padding:40px;
-}
-#stateMain{display:none;flex-direction:column;flex:1;}
+/* ── SPLASH ── */
+#stateLoading{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:0;min-height:100dvh;background:var(--bg);padding:40px 24px;}
+.splash-logo{width:76px;height:76px;border-radius:20px;background:var(--card);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:24px;}
+.splash-logo::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.splash-letter{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:700;color:var(--gold);}
+.splash-name{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:700;color:var(--gold);letter-spacing:5px;text-align:center;}
+.splash-divider{display:flex;align-items:center;gap:8px;margin:8px 0 6px;width:120px;}
+.splash-line{flex:1;height:1px;background:var(--border2);}
+.splash-dot{width:4px;height:4px;border-radius:50%;background:var(--gold2);}
+.splash-sub{font-size:.55rem;color:var(--muted);letter-spacing:3px;text-align:center;}
+.splash-bar{width:110px;height:1.5px;background:var(--border2);border-radius:99px;overflow:hidden;margin-top:40px;}
+.splash-fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold2),var(--gold));animation:splashLoad 2.2s ease forwards;}
+@keyframes splashLoad{0%{width:0}60%{width:75%}90%{width:92%}100%{width:100%}}
+.splash-lbl{font-size:.52rem;color:rgba(201,168,76,.35);letter-spacing:2px;margin-top:10px;text-transform:uppercase;}
 
-@keyframes spin{to{transform:rotate(360deg);}}
-.spinner{
-  width:32px;height:32px;
-  border:1.5px solid rgba(201,168,76,0.12);
-  border-top-color:var(--gold);border-radius:50%;
-  animation:spin .7s linear infinite;
-}
-.load-lbl{font-size:.6rem;color:rgba(201,168,76,.4);letter-spacing:2.5px;text-transform:uppercase;}
+/* ── AUTH SCREEN ── */
+#stateAuth{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:100dvh;background:var(--bg);padding:28px 24px;}
+.auth-logo{width:62px;height:62px;border-radius:16px;background:var(--card);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:20px;flex-shrink:0;}
+.auth-logo::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.auth-letter{font-family:'Cormorant Garamond',serif;font-size:1.7rem;font-weight:700;color:var(--gold);}
+.auth-title{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:700;color:var(--gold);letter-spacing:4px;margin-bottom:4px;}
+.auth-sub{font-size:.54rem;color:var(--muted);letter-spacing:2px;margin-bottom:28px;}
+.auth-form{width:100%;display:flex;flex-direction:column;gap:10px;}
+.auth-lbl{font-size:.52rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:5px;display:block;}
+.auth-inp{width:100%;padding:11px 14px;background:var(--card);border:1px solid var(--border2);border-radius:11px;color:var(--txt);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
+.auth-inp:focus{border-color:var(--gold2);}
+.auth-inp::placeholder{color:var(--muted2);}
+.auth-btn{width:100%;padding:13px;background:var(--gold);border:none;border-radius:11px;color:#080705;font-size:.78rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:2px;transition:opacity .2s;}
+.auth-btn:disabled{opacity:.45;cursor:not-allowed;}
+.auth-or{text-align:center;font-size:.58rem;color:var(--muted2);margin:10px 0;}
+.auth-link-btn{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:11px;color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;transition:border-color .2s,color .2s;}
+.auth-link-btn:hover{border-color:var(--gold2);color:var(--gold2);}
+.auth-back{font-size:.62rem;color:var(--muted);cursor:pointer;text-align:center;margin-top:14px;text-decoration:underline;}
+.auth-err{font-size:.65rem;color:var(--red);text-align:center;min-height:18px;margin-top:2px;}
+.auth-hint{font-size:.62rem;color:var(--muted);text-align:center;line-height:1.5;margin-top:4px;}
+/* OTP inputs */
+.otp-row{display:flex;gap:8px;justify-content:center;margin:4px 0;}
+.otp-inp{width:40px;height:48px;background:var(--card);border:1px solid var(--border2);border-radius:10px;color:var(--txt);font-size:1.3rem;font-weight:700;text-align:center;font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;transition:border-color .2s;}
+.otp-inp:focus{border-color:var(--gold);}
 
-/* ── Status bar ── */
-.status{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:10px 18px 6px;background:var(--bg);flex-shrink:0;
-}
+/* ── ERROR STATE ── */
+#stateError{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;min-height:100dvh;text-align:center;padding:40px;}
+
+/* ── STATUS BAR ── */
+.status{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 6px;background:var(--bg);flex-shrink:0;}
 .st-time{font-size:12px;font-weight:600;color:var(--txt);}
 .st-icons{font-size:11px;color:var(--muted);}
 
-/* ── Header ── */
-.header{
-  background:var(--bg);padding:10px 18px 14px;
-  border-bottom:1px solid var(--border);
-  position:relative;overflow:hidden;flex-shrink:0;
-}
-.header::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--gold2),transparent);
-  opacity:.4;
-}
+/* ── HEADER ── */
+.header{background:var(--bg);padding:10px 18px 14px;border-bottom:1px solid var(--border);position:relative;overflow:hidden;flex-shrink:0;}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:.4;}
 .header-row{display:flex;align-items:center;justify-content:space-between;}
 .brand{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:700;color:var(--gold);letter-spacing:3px;}
 .brand-sub{font-size:.52rem;color:var(--muted);letter-spacing:2.5px;}
-.notif-btn{
-  width:28px;height:28px;border-radius:50%;
-  background:var(--card);border:1px solid var(--border2);
-  display:flex;align-items:center;justify-content:center;font-size:13px;
-}
+.notif-btn{width:28px;height:28px;border-radius:50%;background:var(--card);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:13px;}
 
-/* ── Campaign banner ── */
-.campaign-banner{
-  margin:12px 14px 0;padding:12px 14px;
-  background:linear-gradient(135deg,rgba(201,168,76,.12),rgba(160,120,40,.06));
-  border:1px solid rgba(201,168,76,.3);border-radius:14px;
-  display:flex;align-items:center;gap:10px;
-  position:relative;overflow:hidden;flex-shrink:0;
-}
-.campaign-banner::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.6;
-}
+/* ── CAMPAIGN BANNER ── */
+.campaign-banner{margin:12px 14px 0;padding:12px 14px;background:linear-gradient(135deg,rgba(201,168,76,.12),rgba(160,120,40,.06));border:1px solid rgba(201,168,76,.3);border-radius:14px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;flex-shrink:0;}
+.campaign-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.6;}
 
-/* ── Scroll body ── */
+/* ── SCROLL BODY ── */
 .scroll-body{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch;}
 .scroll-body::-webkit-scrollbar{display:none;}
 
-/* ── Loyalty card ── */
-.lc-wrap{margin-bottom:14px;}
-.loyalty-card{
-  background:linear-gradient(135deg,#1a1610 0%,#0f0d09 40%,#1a1408 100%);
-  border:1px solid var(--border2);border-radius:18px;
-  padding:18px;position:relative;overflow:hidden;
-}
-.loyalty-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
-  background:linear-gradient(90deg,transparent,var(--gold),#ffe580,var(--gold),transparent);
-}
+/* ── LOYALTY CARD ── */
+.loyalty-card{background:linear-gradient(135deg,#1a1610 0%,#0f0d09 40%,#1a1408 100%);border:1px solid var(--border2);border-radius:18px;padding:18px;position:relative;overflow:hidden;margin-bottom:14px;}
+.loyalty-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),#ffe580,var(--gold),transparent);}
 .lc-glow1{position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.06) 0%,transparent 70%);}
 .lc-glow2{position:absolute;bottom:-30px;left:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.04) 0%,transparent 70%);}
 .lc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;position:relative;z-index:1;}
@@ -121,56 +109,38 @@ body{
 .prog-meta{display:flex;justify-content:space-between;font-size:.55rem;color:var(--muted);}
 .prog-meta span:last-child{color:var(--gold);font-weight:600;}
 
-/* ── Section title ── */
+/* ── SECTION TITLE ── */
 .sec{margin-bottom:16px;}
 .sec-title{font-size:.54rem;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;padding-left:2px;}
 
-/* ── Stats ── */
+/* ── STATS ── */
 .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
-.stat-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:12px 14px;position:relative;overflow:hidden;
-}
-.stat-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(201,168,76,.15),transparent);
-}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.15),transparent);}
 .stat-icon{font-size:1.1rem;margin-bottom:6px;}
 .stat-val{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--txt);line-height:1;}
 .stat-lbl{font-size:.55rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
 
-/* ── Favourites ── */
+/* ── FAVOURITES ── */
 .fav-row{display:flex;gap:8px;margin-bottom:16px;}
-.fav-card{
-  flex:1;background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:11px 13px;position:relative;overflow:hidden;
-}
+.fav-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;position:relative;overflow:hidden;}
 .fav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.12),transparent);}
 .fav-icon{font-size:1rem;margin-bottom:5px;}
 .fav-val{font-size:.8rem;font-weight:700;color:var(--txt);}
 .fav-lbl{font-size:.52rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
 
-/* ── Redeem options ── */
-.redeem-card{
-  background:var(--card);border:1px solid var(--border2);
-  border-radius:14px;padding:14px 16px;margin-bottom:16px;
-  position:relative;overflow:hidden;
-}
+/* ── REDEEM ── */
+.redeem-card{background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:14px 16px;margin-bottom:16px;position:relative;overflow:hidden;}
 .redeem-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:.5;}
 .redeem-options{display:flex;gap:7px;flex-wrap:wrap;}
-.redeem-opt{
-  flex:1;min-width:70px;padding:9px 6px;
-  background:var(--card2);border:1.5px solid var(--border2);
-  border-radius:10px;text-align:center;cursor:pointer;
-  transition:border-color .2s,background .2s;
-}
+.redeem-opt{flex:1;min-width:70px;padding:9px 6px;background:var(--card2);border:1.5px solid var(--border2);border-radius:10px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
 .redeem-opt.available{border-color:var(--gold2);background:var(--gold-dim);}
 .redeem-opt.locked{opacity:.35;pointer-events:none;}
 .ro-pts{font-size:.72rem;font-weight:700;color:var(--gold);}
 .ro-lbl{font-size:.55rem;color:var(--muted);margin-top:2px;}
 .redeem-opt.available .ro-lbl{color:var(--gold2);}
 
-/* ── Visit history ── */
+/* ── VISIT HISTORY ── */
 .visit-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
 .visit-row:last-child{border-bottom:none;}
 .visit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -180,15 +150,9 @@ body{
 .visit-pts{font-size:.68rem;font-weight:700;color:var(--gold);flex-shrink:0;}
 .visit-pts.redeem-pts{color:var(--green);}
 
-/* ── Redeem tab ── */
-.redeem-active-card{
-  background:var(--card);border:1px solid var(--gold2);
-  border-radius:18px;padding:20px;text-align:center;
-  margin-bottom:16px;position:relative;overflow:hidden;
-}
+/* ── REWARDS TAB ── */
+.redeem-active-card{background:var(--card);border:1px solid var(--gold2);border-radius:18px;padding:20px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden;}
 .redeem-active-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-
-/* Redeem history */
 .rh-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
 .rh-row:last-child{border-bottom:none;}
 .rh-badge{padding:3px 8px;border-radius:6px;font-size:.6rem;font-weight:700;background:rgba(61,139,94,.1);color:var(--green);border:1px solid rgba(61,139,94,.2);white-space:nowrap;}
@@ -196,149 +160,217 @@ body{
 .rh-what{font-size:.72rem;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rh-when{font-size:.58rem;color:var(--muted);margin-top:1px;}
 .rh-pts{font-size:.68rem;font-weight:700;color:var(--muted);flex-shrink:0;}
-
-/* ── How-to ── */
 .how-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
 .how-row:last-child{margin-bottom:0;}
-.how-num{
-  width:20px;height:20px;border-radius:50%;
-  background:rgba(201,168,76,.12);color:var(--gold);
-  font-size:.6rem;font-weight:700;display:flex;align-items:center;
-  justify-content:center;flex-shrink:0;margin-top:1px;
-}
+.how-num{width:20px;height:20px;border-radius:50%;background:rgba(201,168,76,.12);color:var(--gold);font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 .how-txt{font-size:.7rem;color:var(--muted);line-height:1.55;}
 .how-txt strong{color:var(--txt);}
 
-/* ── Bottom nav ── */
-.bottomnav{
-  display:flex;background:var(--bg);
-  border-top:1px solid var(--border);
-  padding:8px 0 max(14px,env(safe-area-inset-bottom));
-  flex-shrink:0;
-}
+/* ── BOOK TAB ── */
+.bk-intro{padding:13px 15px;background:var(--card);border:1px solid var(--border2);border-radius:13px;margin-bottom:14px;position:relative;overflow:hidden;}
+.bk-intro::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:.4;}
+.bk-intro-title{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:700;color:var(--txt);margin-bottom:3px;}
+.bk-intro-sub{font-size:.6rem;color:var(--muted);line-height:1.5;}
+/* Date pills */
+.date-pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;}
+.date-pills::-webkit-scrollbar{display:none;}
+.date-pill{flex-shrink:0;padding:7px 11px;border-radius:10px;border:1px solid var(--border2);background:var(--card);cursor:pointer;text-align:center;min-width:48px;}
+.date-pill.sel{border-color:var(--gold);background:var(--gold-dim);}
+.date-pill-day{font-size:.5rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.date-pill.sel .date-pill-day{color:var(--gold2);}
+.date-pill-num{font-size:.88rem;font-weight:700;color:var(--txt);margin-top:1px;}
+.date-pill.sel .date-pill-num{color:var(--gold);}
+/* Barber select */
+.barber-list{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.barber-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:11px;cursor:pointer;transition:border-color .2s,background .2s;}
+.barber-item.sel{border-color:var(--gold);background:var(--gold-dim);}
+.bav{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#0a0705;flex-shrink:0;}
+.bav-info{flex:1;}
+.bav-name{font-size:.8rem;font-weight:700;color:var(--txt);}
+.bav-role{font-size:.55rem;color:var(--muted);}
+.bav-check{font-size:14px;color:var(--gold);}
+/* Service list */
+.svc-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.svc-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .2s,background .2s;}
+.svc-item.sel{border-color:var(--gold);background:var(--gold-dim);}
+.svc-name{font-size:.78rem;font-weight:600;color:var(--txt);}
+.svc-dur{font-size:.56rem;color:var(--muted);margin-top:2px;}
+.svc-price{font-size:.82rem;font-weight:700;color:var(--gold);}
+/* Slot grid */
+.slot-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.slot-btn{padding:7px 10px;border-radius:8px;font-size:.68rem;font-weight:600;border:1px solid var(--border2);background:var(--card);color:var(--txt);cursor:pointer;min-width:48px;text-align:center;transition:border-color .2s,background .2s,color .2s;}
+.slot-btn.sel{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);}
+.slot-btn.busy{opacity:.22;text-decoration:line-through;cursor:not-allowed;}
+.slot-btn.past{opacity:.18;cursor:not-allowed;}
+.bk-confirm-btn{width:100%;padding:13px;background:var(--gold);border:none;border-radius:11px;color:#080705;font-size:.78rem;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s;}
+.bk-confirm-btn:disabled{opacity:.4;cursor:not-allowed;}
+/* Confirmation card */
+.bk-done{background:var(--card);border:1px solid var(--gold2);border-radius:16px;padding:20px;text-align:center;position:relative;overflow:hidden;}
+.bk-done::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+/* ── PROFILE TAB ── */
+.prof-hero{display:flex;align-items:center;gap:14px;padding:14px 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.prof-av{width:54px;height:54px;border-radius:50%;background:var(--gold2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:#0a0705;border:2px solid rgba(201,168,76,.4);flex-shrink:0;}
+.prof-name{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:700;color:var(--txt);line-height:1;}
+.prof-email{font-size:.6rem;color:var(--muted);margin-top:3px;}
+.prof-tier-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);font-size:.52rem;font-weight:700;color:var(--gold);margin-top:6px;}
+.prof-section{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:12px;}
+.prof-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
+.prof-row:last-child{border-bottom:none;}
+.prof-row-icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0;}
+.prof-row-txt{flex:1;font-size:.76rem;font-weight:600;color:var(--txt);}
+.prof-row-val{font-size:.66rem;color:var(--muted);}
+.prof-row-arr{font-size:.7rem;color:var(--muted2);}
+.prof-logout{width:100%;padding:12px;background:transparent;border:1px solid var(--red);border-radius:11px;color:var(--red);font-size:.74rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;margin-top:4px;}
+
+/* ── BOTTOM NAV ── */
+.bottomnav{display:flex;background:var(--bg);border-top:1px solid var(--border);padding:8px 0 max(14px,env(safe-area-inset-bottom));flex-shrink:0;}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;border:none;background:transparent;}
 .nb-icon{font-size:18px;}
-.nb-lbl{font-size:.5rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.nb-lbl{font-size:.48rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
 .nb.on .nb-lbl{color:var(--gold);}
 
-/* ── Tab panels ── */
-.tab-panel{display:none;}
-.tab-panel.active{display:flex;flex-direction:column;flex:1;}
+/* ── MAIN WRAPPER ── */
+#stateMain{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tab-panel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tab-panel.active{display:flex;}
 
-/* ── No-data ── */
+/* ── MISC ── */
 .empty-msg{font-size:.7rem;color:var(--muted);padding:8px 0;line-height:1.6;}
-
-/* ── Animations ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 .fade{animation:fadeUp .35s ease both;}
+.spinner{width:28px;height:28px;border:1.5px solid rgba(201,168,76,.12);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast-el{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--border2);color:var(--txt);font-size:.72rem;padding:9px 16px;border-radius:10px;white-space:nowrap;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;}
+.toast-el.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
+<!-- ── SPLASH ── -->
 <div id="stateLoading">
-  <div class="spinner"></div>
-  <div class="load-lbl">Loading your card</div>
+  <div class="splash-logo"><div class="splash-letter">W</div></div>
+  <div class="splash-name">WHITECROSS</div>
+  <div class="splash-divider"><div class="splash-line"></div><div class="splash-dot"></div><div class="splash-line"></div></div>
+  <div class="splash-sub">BARBERS</div>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+  <div class="splash-lbl">Member Club</div>
 </div>
 
-<!-- Error -->
-<div id="stateError">
-  <div style="font-size:2.2rem">✂️</div>
-  <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold);letter-spacing:1px;">Card Not Found</div>
-  <div style="font-size:.72rem;color:var(--muted);line-height:1.7;max-width:260px;">This loyalty card link is invalid or has expired.<br>Ask your barber to regenerate your QR code.</div>
-</div>
+<!-- ── AUTH ── -->
+<div id="stateAuth">
+  <div class="auth-logo"><div class="auth-letter">W</div></div>
+  <div class="auth-title">WHITECROSS</div>
+  <div class="auth-sub">BARBERS · MEMBER ACCESS</div>
 
-<!-- Main app -->
-<div id="stateMain">
-
-  <!-- Status bar -->
-  <div class="status">
-    <span class="st-time" id="clock">09:41</span>
-    <div class="st-icons">▲▲▲ ●</div>
+  <!-- Phone step -->
+  <div id="authPhone" class="auth-form">
+    <div>
+      <label class="auth-lbl">Phone number</label>
+      <input class="auth-inp" id="authPhoneInp" type="tel" placeholder="+44 7700 000000" autocomplete="tel" inputmode="tel"/>
+    </div>
+    <div class="auth-err" id="authPhoneErr"></div>
+    <button class="auth-btn" id="authPhoneBtn" onclick="sendOTP()">SEND CODE →</button>
+    <div class="auth-or">— or —</div>
+    <button class="auth-link-btn" onclick="showAuthStep('email')">✉️ Continue with email link</button>
   </div>
 
-  <!-- Header -->
+  <!-- OTP step -->
+  <div id="authOTP" style="display:none;" class="auth-form">
+    <div class="auth-hint" id="authOTPHint" style="margin-bottom:12px;"></div>
+    <div class="otp-row">
+      <input class="otp-inp" id="otp0" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(0,this)"/>
+      <input class="otp-inp" id="otp1" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(1,this)"/>
+      <input class="otp-inp" id="otp2" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(2,this)"/>
+      <input class="otp-inp" id="otp3" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(3,this)"/>
+      <input class="otp-inp" id="otp4" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(4,this)"/>
+      <input class="otp-inp" id="otp5" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(5,this)"/>
+    </div>
+    <div class="auth-err" id="authOTPErr"></div>
+    <button class="auth-btn" id="authOTPBtn" onclick="verifyOTP()">VERIFY →</button>
+    <div class="auth-back" onclick="showAuthStep('phone')">← Back</div>
+  </div>
+
+  <!-- Email step -->
+  <div id="authEmail" style="display:none;" class="auth-form">
+    <div>
+      <label class="auth-lbl">Email address</label>
+      <input class="auth-inp" id="authEmailInp" type="email" placeholder="you@example.com" autocomplete="email"/>
+    </div>
+    <div class="auth-err" id="authEmailErr"></div>
+    <button class="auth-btn" id="authEmailBtn" onclick="sendEmailLink()">SEND MAGIC LINK →</button>
+    <div class="auth-back" onclick="showAuthStep('phone')">← Back</div>
+  </div>
+
+  <!-- Email sent -->
+  <div id="authEmailSent" style="display:none;text-align:center;">
+    <div style="font-size:2rem;margin-bottom:12px;">✉️</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--gold);margin-bottom:8px;">Check your inbox</div>
+    <div class="auth-hint">We sent a sign-in link to<br><strong id="authEmailSentTo" style="color:var(--txt);"></strong><br><br>Tap the link in your email to sign in.</div>
+    <div class="auth-back" style="margin-top:20px;" onclick="showAuthStep('phone')">← Use phone instead</div>
+  </div>
+</div>
+
+<!-- ── ERROR ── -->
+<div id="stateError">
+  <div style="font-size:2.2rem">✂️</div>
+  <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold);letter-spacing:1px;">Something went wrong</div>
+  <div style="font-size:.72rem;color:var(--muted);line-height:1.7;max-width:260px;" id="errMsg">Please try again or ask your barber for help.</div>
+  <button onclick="showAuthStep('phone');showState('stateAuth');" style="margin-top:8px;padding:10px 20px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--muted);font-size:.72rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="stateMain">
+  <div class="status"><span class="st-time" id="clock">09:41</span><div class="st-icons">▲▲▲ ●</div></div>
+
   <div class="header">
     <div class="header-row">
-      <div>
-        <div class="brand">WHITECROSS</div>
-        <div class="brand-sub">BARBERS · LOYALTY</div>
-      </div>
+      <div><div class="brand">WHITECROSS</div><div class="brand-sub" id="headerSub">BARBERS · LOYALTY</div></div>
       <div class="notif-btn"><img src="favicon.png" style="width:16px;height:16px;border-radius:3px;object-fit:contain;" alt=""/></div>
     </div>
   </div>
 
-  <!-- Campaign banner (shown when double pts active) -->
   <div id="campaignBanner" style="display:none;" class="campaign-banner">
     <div style="font-size:1.5rem;flex-shrink:0;">⚡</div>
     <div>
-      <div style="font-size:.72rem;font-weight:700;color:var(--gold);letter-spacing:.5px;">Double Points — Active Now!</div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--gold);">Double Points — Active Now!</div>
       <div id="campaignDesc" style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.4;"></div>
     </div>
   </div>
 
-  <!-- ═══════════ HOME TAB ═══════════ -->
+  <!-- ═══ HOME TAB ═══ -->
   <div id="tabHome" class="tab-panel active">
     <div class="scroll-body">
-
-      <!-- Loyalty card -->
-      <div class="lc-wrap fade">
-        <div class="loyalty-card">
-          <div class="lc-glow1"></div><div class="lc-glow2"></div>
-          <div class="lc-top">
-            <div>
-              <div class="lc-name" id="cardName">—</div>
-              <div class="lc-since" id="cardSince"></div>
-            </div>
-            <div class="lc-tier-col">
-              <div class="tier-badge" id="tierBadge" style="display:none;"></div>
-              <div id="doubleBadge" class="double-badge" style="display:none;">⚡ 2× pts active</div>
-              <div class="tier-visits" id="tierVisits"></div>
-            </div>
+      <div class="loyalty-card fade">
+        <div class="lc-glow1"></div><div class="lc-glow2"></div>
+        <div class="lc-top">
+          <div><div class="lc-name" id="cardName">—</div><div class="lc-since" id="cardSince"></div></div>
+          <div class="lc-tier-col">
+            <div class="tier-badge" id="tierBadge" style="display:none;"></div>
+            <div id="doubleBadge" class="double-badge" style="display:none;">⚡ 2× pts active</div>
+            <div class="tier-visits" id="tierVisits"></div>
           </div>
-          <div class="lc-pts">
-            <div class="pts-val" id="ptsVal">0</div>
-            <div class="pts-lbl">Loyalty Points</div>
-          </div>
-          <div>
-            <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-            <div class="prog-meta">
-              <span id="progLeft"></span>
-              <span id="progRight"></span>
-            </div>
-          </div>
+        </div>
+        <div class="lc-pts">
+          <div class="pts-val" id="ptsVal">0</div>
+          <div class="pts-lbl">Loyalty Points</div>
+        </div>
+        <div>
+          <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+          <div class="prog-meta"><span id="progLeft"></span><span id="progRight"></span></div>
         </div>
       </div>
 
-      <!-- Stats -->
       <div class="stats-row fade">
-        <div class="stat-card">
-          <div class="stat-icon">✂️</div>
-          <div class="stat-val" id="statVisits">—</div>
-          <div class="stat-lbl">Total Visits</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📅</div>
-          <div class="stat-val" id="statLastVisit">—</div>
-          <div class="stat-lbl">Last Visit</div>
-        </div>
+        <div class="stat-card"><div class="stat-icon">✂️</div><div class="stat-val" id="statVisits">—</div><div class="stat-lbl">Total Visits</div></div>
+        <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="statLastVisit">—</div><div class="stat-lbl">Last Visit</div></div>
       </div>
 
-      <!-- Favourites -->
       <div class="fav-row fade" id="favsRow" style="display:none;">
-        <div class="fav-card" id="favSvcCard" style="display:none;">
-          <div class="fav-icon">⭐</div>
-          <div class="fav-val" id="favSvc">—</div>
-          <div class="fav-lbl">Fav Service</div>
-        </div>
-        <div class="fav-card" id="favBarberCard" style="display:none;">
-          <div class="fav-icon">✂️</div>
-          <div class="fav-val" id="favBarber">—</div>
-          <div class="fav-lbl">Fav Barber</div>
-        </div>
+        <div class="fav-card" id="favSvcCard" style="display:none;"><div class="fav-icon">⭐</div><div class="fav-val" id="favSvc">—</div><div class="fav-lbl">Fav Service</div></div>
+        <div class="fav-card" id="favBarberCard" style="display:none;"><div class="fav-icon">✂️</div><div class="fav-val" id="favBarber">—</div><div class="fav-lbl">Fav Barber</div></div>
       </div>
 
-      <!-- Redeem options -->
       <div class="sec fade">
         <div class="sec-title">Redeem Points</div>
         <div class="redeem-card">
@@ -348,13 +380,11 @@ body{
         </div>
       </div>
 
-      <!-- Visit history -->
       <div class="sec fade">
         <div class="sec-title">Visit History</div>
         <div id="visitHistory"><div class="empty-msg">Your visits will appear here.</div></div>
       </div>
 
-      <!-- How to earn -->
       <div class="sec fade">
         <div class="sec-title">How It Works</div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
@@ -364,15 +394,53 @@ body{
           <div class="how-row"><div class="how-num">4</div><div class="how-txt">Points redeemable from your <strong>second visit</strong> onwards</div></div>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- ═══════════ REWARDS TAB ═══════════ -->
+  <!-- ═══ BOOK TAB ═══ -->
+  <div id="tabBook" class="tab-panel">
+    <div class="scroll-body" id="bookScroll">
+      <div class="bk-intro">
+        <div class="bk-intro-title">Book Your Next Visit</div>
+        <div class="bk-intro-sub">136 Whitecross St · Mon–Sat 9:00–19:00</div>
+      </div>
+
+      <!-- Date -->
+      <div class="sec-title">Choose Date</div>
+      <div class="date-pills" id="datePills"></div>
+
+      <!-- Barber -->
+      <div class="sec-title">Choose Barber</div>
+      <div class="barber-list" id="barberList"><div class="empty-msg"><div class="spinner" style="margin:10px auto;"></div></div></div>
+
+      <!-- Service -->
+      <div class="sec-title">Choose Service</div>
+      <div class="svc-list" id="svcList"><div class="empty-msg">Select a barber first.</div></div>
+
+      <!-- Slots -->
+      <div class="sec-title" id="slotTitle">Available Times</div>
+      <div id="slotWrap">
+        <div class="slot-grid" id="slotGrid"><div class="empty-msg">Select barber, service and date first.</div></div>
+      </div>
+
+      <!-- Confirm -->
+      <button class="bk-confirm-btn" id="bkConfirmBtn" disabled onclick="confirmBooking()">Select a time to book</button>
+
+      <!-- Done card (shown after booking) -->
+      <div id="bkDoneCard" style="display:none;" class="bk-done fade">
+        <div style="font-size:2rem;margin-bottom:10px;">✅</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:700;color:var(--gold);margin-bottom:6px;">Booking Confirmed!</div>
+        <div style="font-size:.72rem;color:var(--muted);line-height:1.6;" id="bkDoneDesc"></div>
+        <button onclick="resetBooking()" style="margin-top:14px;padding:10px 20px;background:var(--gold);border:none;border-radius:10px;color:#080705;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Book Another →</button>
+      </div>
+
+      <div style="height:16px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ REWARDS TAB ═══ -->
   <div id="tabRewards" class="tab-panel">
     <div class="scroll-body">
-
-      <!-- Available balance -->
       <div class="redeem-active-card fade" id="redeemBalCard">
         <div style="font-size:2rem;margin-bottom:8px;">🎁</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:var(--gold);margin-bottom:4px;" id="redeemBalVal">—</div>
@@ -380,7 +448,6 @@ body{
         <div style="padding:9px 12px;background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:8px;font-size:.62rem;color:var(--gold2);line-height:1.5;" id="redeemBalDesc"></div>
       </div>
 
-      <!-- Redeem history -->
       <div class="sec fade">
         <div class="sec-title">Redeem History</div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
@@ -388,323 +455,737 @@ body{
         </div>
       </div>
 
-      <!-- Milestones -->
       <div class="sec fade">
         <div class="sec-title">Reward Milestones</div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;" id="milestonesBlock"></div>
       </div>
+    </div>
+  </div>
 
+  <!-- ═══ PROFILE TAB ═══ -->
+  <div id="tabProfile" class="tab-panel">
+    <div class="scroll-body">
+      <div class="prof-hero fade">
+        <div class="prof-av" id="profAv">?</div>
+        <div>
+          <div class="prof-name" id="profName">—</div>
+          <div class="prof-email" id="profContact">—</div>
+          <div class="prof-tier-pill" id="profTier" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="sec-title">Loyalty</div>
+      <div class="loyalty-card fade" style="margin-bottom:14px;">
+        <div class="lc-glow1"></div>
+        <div class="lc-top">
+          <div><div class="lc-name" id="profCardName">—</div><div class="lc-since" id="profCardSince"></div></div>
+          <div class="tier-badge" id="profCardTier" style="display:none;"></div>
+        </div>
+        <div class="lc-pts"><div class="pts-val" id="profPts">0</div><div class="pts-lbl">Loyalty Points</div></div>
+        <div>
+          <div class="prog-track"><div class="prog-fill" id="profProgFill" style="width:0%"></div></div>
+          <div class="prog-meta"><span id="profProgLeft"></span><span id="profProgRight"></span></div>
+        </div>
+      </div>
+
+      <div class="sec-title">Account</div>
+      <div class="prof-section">
+        <div class="prof-row"><div class="prof-row-icon">📞</div><div class="prof-row-txt">Phone</div><div class="prof-row-val" id="profPhone">—</div><div class="prof-row-arr">›</div></div>
+        <div class="prof-row"><div class="prof-row-icon">✉️</div><div class="prof-row-txt">Email</div><div class="prof-row-val" id="profEmail">—</div><div class="prof-row-arr">›</div></div>
+      </div>
+
+      <div id="prefSection" style="display:none;">
+        <div class="sec-title">Preferences</div>
+        <div class="prof-section">
+          <div class="prof-row"><div class="prof-row-icon">✂️</div><div class="prof-row-txt">Preferred Barber</div><div class="prof-row-val" id="prefBarber" style="color:var(--gold);">—</div></div>
+          <div class="prof-row"><div class="prof-row-icon">⭐</div><div class="prof-row-txt">Favourite Service</div><div class="prof-row-val" id="prefSvc">—</div></div>
+        </div>
+      </div>
+
+      <button class="prof-logout" onclick="doSignOut()">Sign Out</button>
+      <div style="height:14px;"></div>
     </div>
   </div>
 
   <!-- Bottom nav -->
   <div class="bottomnav">
-    <button class="nb on" id="btnHome" onclick="switchTab('home')">
-      <span class="nb-icon">🏠</span><span class="nb-lbl">Home</span>
-    </button>
-    <button class="nb" id="btnBook" onclick="openBooking()">
-      <span class="nb-icon">📅</span><span class="nb-lbl">Book</span>
-    </button>
-    <button class="nb" id="btnRewards" onclick="switchTab('rewards')">
-      <span class="nb-icon">🎁</span><span class="nb-lbl">Rewards</span>
-    </button>
-  </div>
-
-</div>
-
-<!-- ── Booking Drawer ── -->
-<div id="bookingDrawer" style="display:none;position:fixed;inset:0;z-index:999;display:none;flex-direction:column;">
-  <div id="bookingOverlay" onclick="closeBooking()" style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);"></div>
-  <div id="bookingSheet" style="position:absolute;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);display:flex;flex-direction:column;height:90dvh;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem;font-weight:700;color:var(--gold);letter-spacing:2px;">BOOK APPOINTMENT</div>
-        <div style="font-size:.55rem;color:var(--muted);letter-spacing:1.5px;margin-top:2px;">WHITECROSS BARBERS</div>
-      </div>
-      <button onclick="closeBooking()" style="width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--border2);color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-    </div>
-    <iframe id="bookingFrame" src="" style="flex:1;border:none;background:var(--bg);border-radius:0 0 22px 22px;" loading="lazy"></iframe>
+    <button class="nb on" id="btnHome" onclick="switchTab('home')"><span class="nb-icon">🏠</span><span class="nb-lbl">Home</span></button>
+    <button class="nb" id="btnBook" onclick="switchTab('book')"><span class="nb-icon">📅</span><span class="nb-lbl">Book</span></button>
+    <button class="nb" id="btnRewards" onclick="switchTab('rewards')"><span class="nb-icon">🎁</span><span class="nb-lbl">Rewards</span></button>
+    <button class="nb" id="btnProfile" onclick="switchTab('profile')"><span class="nb-icon">👤</span><span class="nb-lbl">Profile</span></button>
   </div>
 </div>
 
-</div>
+<div id="recaptcha-container"></div>
+<div class="toast-el" id="toast"></div>
 
 <script>
-  // Clock
-  function updateClock(){
-    const n=new Date();
-    const h=String(n.getHours()).padStart(2,'0');
-    const m=String(n.getMinutes()).padStart(2,'0');
-    const el=document.getElementById('clock');
-    if(el)el.textContent=h+':'+m;
-  }
-  updateClock();setInterval(updateClock,10000);
+// Clock
+function updateClock(){const n=new Date();const h=String(n.getHours()).padStart(2,'0');const m=String(n.getMinutes()).padStart(2,'0');const el=document.getElementById('clock');if(el)el.textContent=h+':'+m;}
+updateClock();setInterval(updateClock,10000);
 
-  // Tab switching
-  function switchTab(name){
-    ['home','rewards'].forEach(t=>{
-      document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===name);
-      const btn=document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
-      if(btn)btn.classList.toggle('on',t===name);
-    });
-  }
+// State display
+function showState(id){
+  ['stateLoading','stateAuth','stateError','stateMain'].forEach(s=>{
+    const el=document.getElementById(s);
+    if(el) el.style.display=s===id?(s==='stateMain'?'flex':'flex'):'none';
+  });
+}
 
-  function openBooking(){
-    window.open('https://whitecrossbarbers.com/#booking','_blank');
-  }
-  function closeBooking(){
-    const sheet=document.getElementById('bookingSheet');
-    const drawer=document.getElementById('bookingDrawer');
-    sheet.style.transform='translateY(100%)';
-    setTimeout(()=>{ drawer.style.display='none'; document.body.style.overflow=''; },350);
-  }
+// Auth step visibility
+function showAuthStep(step){
+  ['phone','OTP','email','emailSent'].forEach(s=>{ const el=document.getElementById('auth'+s.charAt(0).toUpperCase()+s.slice(1)); if(el) el.style.display=s===step?'':'none'; });
+  // Capitalise first letter for div IDs: authPhone, authOTP, authEmail, authEmailSent
+  const ids={phone:'authPhone',OTP:'authOTP',email:'authEmail',emailSent:'authEmailSent'};
+  Object.entries(ids).forEach(([k,v])=>{ const el=document.getElementById(v); if(el) el.style.display=k===step?'':'none'; });
+}
+
+// Tab switching
+const TABS=['home','book','rewards','profile'];
+const HEADERS={home:'BARBERS · LOYALTY',book:'BOOK APPOINTMENT',rewards:'BARBERS · REWARDS',profile:'MY PROFILE'};
+function switchTab(name){
+  TABS.forEach(t=>{
+    const panel=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const btn=document.getElementById('btn'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(panel) panel.classList.toggle('active',t===name);
+    if(btn) btn.classList.toggle('on',t===name);
+  });
+  const sub=document.getElementById('headerSub');
+  if(sub) sub.textContent=HEADERS[name]||'BARBERS';
+  if(name==='book'&&!window._bookLoaded) initBookTab();
+}
+
+// Toast
+function toast(msg,dur=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// OTP field navigation
+function otpInput(idx,el){
+  el.value=el.value.replace(/\D/g,'').slice(-1);
+  if(el.value&&idx<5) document.getElementById('otp'+(idx+1)).focus();
+  // Auto-verify if all 6 filled
+  const code=[...Array(6)].map((_,i)=>document.getElementById('otp'+i)?.value||'').join('');
+  if(code.length===6) verifyOTP();
+}
+
+// Esc(html)
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Booking state
+window._bk={date:null,barber:null,svc:null,slot:null,slotsLoaded:false};
 </script>
 
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getFirestore, collection, query, where, getDocs, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, query, where, getDocs, addDoc, doc, setDoc, updateDoc, getDoc, orderBy, limit, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut as fbSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-  const app = initializeApp({
-    apiKey:"AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
-    authDomain:"havuz-44f70.firebaseapp.com",
-    projectId:"havuz-44f70",
-    storageBucket:"havuz-44f70.firebasestorage.app",
-    messagingSenderId:"1050766582653",
-    appId:"1:1050766582653:web:7ddaa5acb3bec5ef122214"
-  });
-  const db=getFirestore(app);
-  const T='tenants/whitecross';
-  const REDEEM_RATE=20;
+const app = initializeApp({
+  apiKey:"AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
+  authDomain:"havuz-44f70.firebaseapp.com",
+  projectId:"havuz-44f70",
+  storageBucket:"havuz-44f70.firebasestorage.app",
+  messagingSenderId:"1050766582653",
+  appId:"1:1050766582653:web:7ddaa5acb3bec5ef122214"
+});
+const db  = getFirestore(app);
+const auth = getAuth(app);
+const T = 'tenants/whitecross';
+const REDEEM_RATE = 20;
+const TIERS_LIST = [
+  {pts:20,  label:'£1 off',  full:'£1 off any service'},
+  {pts:100, label:'£5 off',  full:'£5 off any service'},
+  {pts:200, label:'£10 off', full:'£10 off any service'},
+  {pts:400, label:'£20 off', full:'£20 off any service'},
+  {pts:600, label:'£30 off', full:'£30 off any service'},
+];
+const BAV_COLORS = ['#c9a84c','#4a8fbf','#8b6fc9','#3d8b5e','#c87840','#9b5a3a'];
 
-  const TIERS_LIST=[
-    {pts:20,  label:'£1 off',  full:'£1 off any service'},
-    {pts:100, label:'£5 off',  full:'£5 off any service'},
-    {pts:200, label:'£10 off', full:'£10 off any service'},
-    {pts:400, label:'£20 off', full:'£20 off any service'},
-    {pts:600, label:'£30 off', full:'£30 off any service'},
-  ];
+// ── helpers ──────────────────────────────────────────────────────────────────
+function t2m(t){ if(!t)return 0; const [h,m]=(t||'').split(':'); return parseInt(h||0)*60+parseInt(m||0); }
+function m2t(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function fmt(ts){ if(!ts)return''; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function daysSince(ts){ if(!ts)return null; const d=ts.toDate?ts.toDate():new Date(ts); const diff=Math.floor((Date.now()-d.getTime())/86400000); if(diff===0)return'Today'; if(diff===1)return'Yesterday'; return diff+'d ago'; }
+function tierInfo(visits){ if(visits>=20)return{label:'✦ PLATINUM',cls:'tier-platinum'}; if(visits>=10)return{label:'✦ GOLD',cls:'tier-gold'}; if(visits>=5)return{label:'✦ SILVER',cls:'tier-silver'}; if(visits>=2)return{label:'✦ BRONZE',cls:'tier-bronze'}; return null; }
+function initials(name){ if(!name)return'?'; const p=name.trim().split(/\s+/); return(p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 
-  // Tier badge by visits
-  function tierInfo(visits){
-    if(visits>=20)return{label:'✦ PLATINUM',cls:'tier-platinum'};
-    if(visits>=10)return{label:'✦ GOLD',cls:'tier-gold'};
-    if(visits>=5) return{label:'✦ SILVER',cls:'tier-silver'};
-    if(visits>=2) return{label:'✦ BRONZE',cls:'tier-bronze'};
-    return null;
+// Global shared data
+window._allBarbers = [];
+window._allServices = [];
+window._shopSettings = null;
+window._clientData = null;
+window._svcMap = {};
+window._confirmationResult = null;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+
+// reCAPTCHA (invisible)
+function ensureRecaptcha(){
+  if(!window._recaptchaVerifier){
+    window._recaptchaVerifier = new RecaptchaVerifier(auth,'recaptcha-container',{size:'invisible'});
   }
+  return window._recaptchaVerifier;
+}
 
-  function show(id){
-    document.getElementById('stateLoading').style.display='none';
-    document.getElementById('stateError').style.display='none';
-    document.getElementById('stateMain').style.display='none';
-    const el=document.getElementById(id);
-    el.style.display=id==='stateMain'?'flex':'flex';
+window.sendOTP = async function(){
+  const inp = document.getElementById('authPhoneInp');
+  const errEl = document.getElementById('authPhoneErr');
+  let phone = (inp.value||'').trim().replace(/\s+/g,'');
+  // Auto-prefix UK numbers
+  if(phone.startsWith('07')) phone='+44'+phone.slice(1);
+  if(phone.startsWith('7')&&phone.length===10) phone='+44'+phone;
+  if(!/^\+\d{7,15}$/.test(phone)){ errEl.textContent='Enter a valid phone number (e.g. +44 7700 000000)'; return; }
+  errEl.textContent='';
+  const btn=document.getElementById('authPhoneBtn');
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const rcv = ensureRecaptcha();
+    const result = await signInWithPhoneNumber(auth,phone,rcv);
+    window._confirmationResult = result;
+    document.getElementById('authOTPHint').innerHTML=`Enter the 6-digit code sent to <strong style="color:var(--txt)">${phone}</strong>`;
+    showAuthStep('OTP');
+    setTimeout(()=>document.getElementById('otp0').focus(),200);
+  }catch(e){
+    errEl.textContent = e.code==='auth/invalid-phone-number'?'Invalid phone number.'
+      :e.code==='auth/too-many-requests'?'Too many attempts, please wait.'
+      :'Failed to send code. Try email link.';
+    // Reset recaptcha on error
+    if(window._recaptchaVerifier){ try{window._recaptchaVerifier.clear();}catch(_){} window._recaptchaVerifier=null; }
+  }finally{
+    btn.disabled=false; btn.textContent='SEND CODE →';
   }
+};
 
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-  function fmt(ts){
-    if(!ts)return'';
-    const d=ts.toDate?ts.toDate():new Date(ts);
-    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+window.verifyOTP = async function(){
+  const code=[...Array(6)].map((_,i)=>document.getElementById('otp'+i)?.value||'').join('');
+  if(code.length<6) return;
+  const errEl=document.getElementById('authOTPErr');
+  errEl.textContent='';
+  const btn=document.getElementById('authOTPBtn');
+  btn.disabled=true; btn.textContent='Verifying…';
+  try{
+    await window._confirmationResult.confirm(code);
+    // onAuthStateChanged will handle the rest
+  }catch(e){
+    errEl.textContent = e.code==='auth/invalid-verification-code'?'Wrong code, please try again.'
+      :e.code==='auth/code-expired'?'Code expired. Go back and resend.'
+      :'Verification failed. Try again.';
+    btn.disabled=false; btn.textContent='VERIFY →';
   }
+};
 
-  function daysSince(ts){
-    if(!ts)return null;
-    const d=ts.toDate?ts.toDate():new Date(ts);
-    const diff=Math.floor((Date.now()-d.getTime())/86400000);
-    if(diff===0)return'Today';
-    if(diff===1)return'Yesterday';
-    return diff+'d ago';
+window.sendEmailLink = async function(){
+  const inp=document.getElementById('authEmailInp');
+  const errEl=document.getElementById('authEmailErr');
+  const email=(inp.value||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent='Enter a valid email address.'; return; }
+  errEl.textContent='';
+  const btn=document.getElementById('authEmailBtn');
+  btn.disabled=true; btn.textContent='Sending…';
+  const actionSettings = {
+    url: window.location.href.split('?')[0],
+    handleCodeInApp: true
+  };
+  try{
+    await sendSignInLinkToEmail(auth, email, actionSettings);
+    localStorage.setItem('emailForSignIn', email);
+    document.getElementById('authEmailSentTo').textContent=email;
+    showAuthStep('emailSent');
+  }catch(e){
+    errEl.textContent='Could not send link. Please try again.';
+  }finally{
+    btn.disabled=false; btn.textContent='SEND MAGIC LINK →';
   }
+};
 
-  async function main(){
-    const token=new URLSearchParams(location.search).get('t');
-    if(!token){show('stateError');return;}
+window.doSignOut = async function(){
+  await fbSignOut(auth);
+  showState('stateAuth');
+  showAuthStep('phone');
+};
 
+// ── Check email link on page load ─────────────────────────────────────────────
+if(isSignInWithEmailLink(auth, window.location.href)){
+  let email = localStorage.getItem('emailForSignIn');
+  if(!email) email = window.prompt('Please enter your email to confirm sign-in:');
+  if(email){
+    signInWithEmailLink(auth, email, window.location.href)
+      .then(()=>{ localStorage.removeItem('emailForSignIn'); history.replaceState(null,'',window.location.pathname); })
+      .catch(e=>{ console.error('Email link sign-in failed',e); showState('stateAuth'); showAuthStep('phone'); });
+  }
+}
+
+// ── Auth state observer ───────────────────────────────────────────────────────
+onAuthStateChanged(auth, async(user)=>{
+  if(user){
     try{
-      // Client by token
-      const cSnap=await getDocs(query(
-        collection(db,`${T}/clients`),
-        where('loyaltyToken','==',token),
-        limit(1)
-      ));
-      if(cSnap.empty){show('stateError');return;}
-      const c=cSnap.docs[0].data();
-      const pts=c.loyaltyPoints||0;
-
-      // Settings (campaign + services)
-      let doubleActive=false,campEndDate='',svcMap={};
-      try{
-        const sSnap=await getDocs(collection(db,`${T}/settings`));
-        sSnap.docs.forEach(d=>{
-          if(d.id==='settings'){
-            const camp=d.data()?.doublePointsCampaign;
-            const today=new Date().toISOString().slice(0,10);
-            if(camp?.active&&camp.startDate&&camp.endDate&&today>=camp.startDate&&today<=camp.endDate){
-              doubleActive=true;
-              campEndDate=new Date(camp.endDate+'T23:59:59').toLocaleDateString('en-GB',{day:'numeric',month:'long'});
-            }
-          }
-        });
-        const svSnap=await getDocs(collection(db,`${T}/services`));
-        svSnap.docs.forEach(d=>{svcMap[d.id]=d.data().name||d.id;});
-      }catch(_){}
-
-      // Bookings — no orderBy to avoid composite index requirement, sort client-side
-      let bookings=[];
-      const phone=(c.phone||'').trim();
-      const email=(c.email||'').toLowerCase().trim();
-      if(phone){
-        try{
-          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),limit(50)));
-          bookings=bs.docs.map(d=>d.data());
-        }catch(e){ console.warn('phone query failed',e); }
-      }
-      if(!bookings.length&&email){
-        try{
-          const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),limit(50)));
-          bookings=bs.docs.map(d=>d.data());
-        }catch(e){ console.warn('email query failed',e); }
-      }
-      // Sort by startTime descending client-side
-      bookings.sort((a,b)=>{
-        const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
-        const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
-        return tb-ta;
-      });
-
-      // Compute stats
-      const visits=bookings.length;
-      const svcCount={},barberCount={};
-      let lastVisitTs=null;
-      bookings.forEach(b=>{
-        const s=b.serviceId||b.service||'';if(s)svcCount[s]=(svcCount[s]||0)+1;
-        const bar=b.barberName||b.barberId||'';if(bar)barberCount[bar]=(barberCount[bar]||0)+1;
-        if(!lastVisitTs&&b.startTime)lastVisitTs=b.startTime;
-      });
-      const favSvcId=Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
-      const favSvcName=svcMap[favSvcId]||favSvcId;
-      const favBarber=Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
-
-      // Progress
-      const nextTier=TIERS_LIST.find(t=>pts<t.pts)||TIERS_LIST[TIERS_LIST.length-1];
-      const prevPts=TIERS_LIST[TIERS_LIST.indexOf(nextTier)-1]?.pts||0;
-      const ptsToNext=Math.max(0,nextTier.pts-pts);
-      const progPct=pts>=nextTier.pts?100:Math.round(((pts-prevPts)/(nextTier.pts-prevPts))*100);
-      const redeemable=pts>=REDEEM_RATE?(pts/REDEEM_RATE).toFixed(2):'0.00';
-
-      // ── RENDER ──
-
-      // Campaign banner
-      if(doubleActive){
-        document.getElementById('campaignBanner').style.display='flex';
-        document.getElementById('campaignDesc').innerHTML=`Book online before <strong style="color:var(--gold);">${campEndDate}</strong> and earn <strong style="color:var(--gold);">2× points</strong> on your visit.`;
-        document.getElementById('doubleBadge').style.display='inline-block';
-      }
-
-      // Card
-      document.getElementById('cardName').textContent=c.name||'';
-      const memberSince=c.memberSince?.toDate?c.memberSince.toDate():(c.memberSince?new Date(c.memberSince):null);
-      document.getElementById('cardSince').textContent=memberSince?'Member since '+memberSince.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Loyalty Member';
-      document.getElementById('ptsVal').textContent=pts;
-      document.getElementById('progFill').style.width=progPct+'%';
-      document.getElementById('progLeft').textContent=pts+' pts';
-      document.getElementById('progRight').textContent=ptsToNext>0?ptsToNext+' pts to '+nextTier.label:'All milestones reached 🎉';
-
-      // Tier badge
-      const tInfo=tierInfo(visits);
-      if(tInfo){
-        const tb=document.getElementById('tierBadge');
-        tb.textContent=tInfo.label;tb.className='tier-badge '+tInfo.cls;tb.style.display='inline-block';
-      }
-      document.getElementById('tierVisits').textContent=visits+' visit'+(visits!==1?'s':'');
-
-      // Stats
-      document.getElementById('statVisits').textContent=visits>0?visits:'—';
-      document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
-
-      // Favourites
-      if(favSvcName||favBarber){
-        document.getElementById('favsRow').style.display='flex';
-        if(favSvcName){document.getElementById('favSvcCard').style.display='block';document.getElementById('favSvc').textContent=favSvcName;}
-        if(favBarber){document.getElementById('favBarberCard').style.display='block';document.getElementById('favBarber').textContent=favBarber.split(' ')[0];}
-      }
-
-      // Redeem options
-      const redeemOpts=document.getElementById('redeemOptions');
-      redeemOpts.innerHTML=TIERS_LIST.slice(0,4).map(t=>{
-        const avail=pts>=t.pts;
-        return`<div class="redeem-opt ${avail?'available':'locked'}">
-          <div class="ro-pts">${t.pts} pts</div>
-          <div class="ro-lbl">${t.label}</div>
-        </div>`;
-      }).join('');
-
-      // Visit history
-      const histItems=bookings.filter(b=>b.loyaltyPointsEarned>0||b.loyaltyPointsRedeemed>0).slice(0,8);
-      const DOT_COLORS=['#c9a84c','#4a8fbf','#8b6fc9','#3d8b5e','#c87840'];
-      document.getElementById('visitHistory').innerHTML=histItems.length?histItems.map((b,i)=>{
-        const isRedeem=b.loyaltyPointsRedeemed>0;
-        const sName=svcMap[b.serviceId||b.service||'']||b.serviceId||b.service||'Visit';
-        const bar=b.barberName?b.barberName.split(' ')[0]:'';
-        const tip=parseFloat(b.tip||0)>0?' · tip 🙏':'';
-        const doubleMarker=b.loyaltyPointsEarned>=(b.price?(parseFloat(String(b.price).replace('£',''))||0)*2-1:999)&&!isRedeem?' ⚡×2':'';
-        const dotColor=isRedeem?'#3d8b5e':DOT_COLORS[i%DOT_COLORS.length];
-        return`<div class="visit-row">
-          <div class="visit-dot" style="background:${dotColor}"></div>
-          <div class="visit-info">
-            <div class="visit-svc">${esc(sName)}</div>
-            <div class="visit-meta">${fmt(b.startTime)}${bar?' · '+bar:''}${tip}</div>
-          </div>
-          <div class="visit-pts ${isRedeem?'redeem-pts':''}">
-            ${isRedeem?'−'+b.loyaltyPointsRedeemed+' pts used':'+'+b.loyaltyPointsEarned+' pts'+doubleMarker}
-          </div>
-        </div>`;
-      }).join(''):`<div class="empty-msg">Your visit history will appear here after your first checkout.</div>`;
-
-      // ── REWARDS TAB ──
-      document.getElementById('redeemBalVal').textContent=pts>=REDEEM_RATE?'£'+redeemable+' off':'Not yet available';
-      document.getElementById('redeemBalDesc').innerHTML=pts>=REDEEM_RATE
-        ?`You have <strong>${pts} pts</strong> — worth <strong>£${redeemable}</strong> off any service.<br>Tell your barber at checkout to apply your points.`
-        :`You need <strong>${REDEEM_RATE-pts} more points</strong> to start redeeming.<br>Earn 1 point for every £1 spent.`;
-
-      // Redeem history
-      const redeems=bookings.filter(b=>b.loyaltyPointsRedeemed>0).slice(0,6);
-      document.getElementById('redeemHistory').innerHTML=redeems.length?redeems.map(b=>{
-        const sName=svcMap[b.serviceId||b.service||'']||b.service||'Visit';
-        const bar=b.barberName?b.barberName.split(' ')[0]:'';
-        const val='£'+(b.loyaltyPointsRedeemed/REDEEM_RATE).toFixed(2)+' off';
-        return`<div class="rh-row">
-          <div class="rh-badge">Used</div>
-          <div class="rh-info">
-            <div class="rh-what">${val} — ${esc(sName)}</div>
-            <div class="rh-when">${fmt(b.startTime)}${bar?' · '+bar:''}</div>
-          </div>
-          <div class="rh-pts">−${b.loyaltyPointsRedeemed} pts</div>
-        </div>`;
-      }).join(''):`<div class="empty-msg">No redemptions yet.</div>`;
-
-      // Milestones
-      document.getElementById('milestonesBlock').innerHTML=TIERS_LIST.map(t=>{
-        const reached=pts>=t.pts;
-        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
-          <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${reached?'var(--gold)':'rgba(255,255,255,0.08)'};${reached?'box-shadow:0 0 6px rgba(201,168,76,.4)':''}"></div>
-          <div style="font-size:.7rem;color:var(--muted);width:52px;flex-shrink:0;">${t.pts} pts</div>
-          <div style="font-size:.74rem;flex:1;color:${reached?'var(--txt)':'var(--muted)'};">${t.full}</div>
-          ${reached?'<div style="font-size:.6rem;background:rgba(201,168,76,.12);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:600;">✓</div>':''}
-        </div>`;
-      }).join('')+`<div style="padding-top:2px;"></div>`;
-
-      show('stateMain');
-
-    }catch(err){
-      console.error('Loyalty error:',err);
-      show('stateError');
+      await loadClientAndShowApp(user);
+    }catch(e){
+      console.error('App load error',e);
+      document.getElementById('errMsg').textContent = 'Could not load your account. Please try again.';
+      showState('stateError');
+    }
+  } else {
+    // Check for legacy ?t= token (backward compat)
+    const token = new URLSearchParams(location.search).get('t');
+    if(token){
+      loadLegacyToken(token);
+    } else {
+      setTimeout(()=>{ showState('stateAuth'); showAuthStep('phone'); }, 2400);
     }
   }
+});
 
-  main();
+// ── Load client by Auth user ──────────────────────────────────────────────────
+async function loadClientAndShowApp(user){
+  const phone  = (user.phoneNumber||'').trim();
+  const email  = (user.email||'').toLowerCase().trim();
+
+  // Try find existing client
+  let clientDoc = null, clientRef = null;
+
+  if(phone){
+    const snap = await getDocs(query(collection(db,`${T}/clients`),where('phone','==',phone),limit(1)));
+    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
+  }
+  if(!clientRef && email){
+    const snap = await getDocs(query(collection(db,`${T}/clients`),where('email','==',email),limit(1)));
+    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
+  }
+  if(!clientRef && user.uid){
+    const snap = await getDocs(query(collection(db,`${T}/clients`),where('authUid','==',user.uid),limit(1)));
+    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
+  }
+
+  if(!clientRef){
+    // Create new client
+    const newClient = {
+      name: user.displayName||'',
+      phone: phone||'',
+      email: email||'',
+      authUid: user.uid,
+      loyaltyPoints: 0,
+      memberSince: Timestamp.now(),
+      createdAt: Timestamp.now()
+    };
+    clientRef = await addDoc(collection(db,`${T}/clients`), newClient);
+    clientDoc = newClient;
+  } else if(!clientDoc.authUid){
+    // Link auth UID to existing client
+    await updateDoc(clientRef, { authUid: user.uid });
+  }
+
+  window._clientData = clientDoc;
+  await loadApp(clientDoc, phone, email);
+}
+
+// ── Legacy token flow (QR codes) ─────────────────────────────────────────────
+async function loadLegacyToken(token){
+  try{
+    const snap = await getDocs(query(collection(db,`${T}/clients`),where('loyaltyToken','==',token),limit(1)));
+    if(snap.empty){ showState('stateError'); return; }
+    const c = snap.docs[0].data();
+    window._clientData = c;
+    await loadApp(c, c.phone||'', (c.email||'').toLowerCase());
+  }catch(e){ showState('stateError'); }
+}
+
+// ── Main app load ─────────────────────────────────────────────────────────────
+async function loadApp(c, phone, email){
+  const pts = c.loyaltyPoints||0;
+
+  // Load settings, services, barbers in parallel
+  let doubleActive=false, campEndDate='';
+  const [sSnap, svSnap, bSnap] = await Promise.all([
+    getDocs(collection(db,`${T}/settings`)),
+    getDocs(collection(db,`${T}/services`)),
+    getDocs(collection(db,`${T}/barbers`))
+  ]);
+
+  sSnap.docs.forEach(d=>{
+    if(d.id==='settings'){
+      window._shopSettings = d.data();
+      const camp = d.data()?.doublePointsCampaign;
+      const today = new Date().toISOString().slice(0,10);
+      if(camp?.active&&camp.startDate&&camp.endDate&&today>=camp.startDate&&today<=camp.endDate){
+        doubleActive=true;
+        campEndDate=new Date(camp.endDate+'T23:59:59').toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+      }
+    }
+  });
+
+  window._allServices = svSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||99)-(b.order||99));
+  window._allServices.forEach(s=>{ window._svcMap[s.id]=s.name||s.id; });
+  window._allBarbers = bSnap.docs.map(d=>({id:d.id,...d.data()})).filter(b=>!b.hidden).sort((a,b)=>(a.order||99)-(b.order||99));
+
+  // Load bookings
+  let bookings=[];
+  if(phone){
+    try{
+      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),limit(50)));
+      bookings=bs.docs.map(d=>d.data());
+    }catch(_){}
+  }
+  if(!bookings.length&&email){
+    try{
+      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),limit(50)));
+      bookings=bs.docs.map(d=>d.data());
+    }catch(_){}
+  }
+  bookings.sort((a,b)=>{
+    const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
+    const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+    return tb-ta;
+  });
+
+  const visits=bookings.length;
+  const svcCount={},barberCount={};
+  let lastVisitTs=null;
+  bookings.forEach(b=>{
+    const s=b.serviceId||b.service||''; if(s) svcCount[s]=(svcCount[s]||0)+1;
+    const bar=b.barberName||b.barberId||''; if(bar) barberCount[bar]=(barberCount[bar]||0)+1;
+    if(!lastVisitTs&&b.startTime) lastVisitTs=b.startTime;
+  });
+  const favSvcId=Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+  const favSvcName=window._svcMap[favSvcId]||favSvcId;
+  const favBarber=Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+
+  // Progress
+  const nextTier=TIERS_LIST.find(t=>pts<t.pts)||TIERS_LIST[TIERS_LIST.length-1];
+  const prevPts=TIERS_LIST[TIERS_LIST.indexOf(nextTier)-1]?.pts||0;
+  const ptsToNext=Math.max(0,nextTier.pts-pts);
+  const progPct=pts>=nextTier.pts?100:Math.round(((pts-prevPts)/(nextTier.pts-prevPts))*100);
+  const redeemable=pts>=REDEEM_RATE?(pts/REDEEM_RATE).toFixed(2):'0.00';
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+
+  // Campaign
+  if(doubleActive){
+    document.getElementById('campaignBanner').style.display='flex';
+    document.getElementById('campaignDesc').innerHTML=`Book before <strong style="color:var(--gold)">${campEndDate}</strong> · earn <strong style="color:var(--gold)">2× points</strong>`;
+    document.getElementById('doubleBadge').style.display='inline-block';
+  }
+
+  // Loyalty card
+  const name=c.name||'';
+  document.getElementById('cardName').textContent=name;
+  const memberSince=c.memberSince?.toDate?c.memberSince.toDate():(c.memberSince?new Date(c.memberSince):null);
+  document.getElementById('cardSince').textContent=memberSince?'Member since '+memberSince.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Loyalty Member';
+  document.getElementById('ptsVal').textContent=pts;
+  document.getElementById('progFill').style.width=progPct+'%';
+  document.getElementById('progLeft').textContent=pts+' pts';
+  document.getElementById('progRight').textContent=ptsToNext>0?ptsToNext+' pts to '+nextTier.label:'All milestones reached 🎉';
+
+  const tInfo=tierInfo(visits);
+  if(tInfo){
+    const tb=document.getElementById('tierBadge');
+    tb.textContent=tInfo.label; tb.className='tier-badge '+tInfo.cls; tb.style.display='inline-block';
+  }
+  document.getElementById('tierVisits').textContent=visits+' visit'+(visits!==1?'s':'');
+  document.getElementById('statVisits').textContent=visits>0?visits:'—';
+  document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
+
+  if(favSvcName||favBarber){
+    document.getElementById('favsRow').style.display='flex';
+    if(favSvcName){document.getElementById('favSvcCard').style.display='block';document.getElementById('favSvc').textContent=favSvcName;}
+    if(favBarber){document.getElementById('favBarberCard').style.display='block';document.getElementById('favBarber').textContent=favBarber.split(' ')[0];}
+  }
+
+  // Redeem options
+  document.getElementById('redeemOptions').innerHTML=TIERS_LIST.slice(0,4).map(t=>{
+    const av=pts>=t.pts;
+    return`<div class="redeem-opt ${av?'available':'locked'}"><div class="ro-pts">${t.pts} pts</div><div class="ro-lbl">${t.label}</div></div>`;
+  }).join('');
+
+  // Visit history
+  const histItems=bookings.filter(b=>b.loyaltyPointsEarned>0||b.loyaltyPointsRedeemed>0).slice(0,8);
+  const DOT_COLORS=['#c9a84c','#4a8fbf','#8b6fc9','#3d8b5e','#c87840'];
+  document.getElementById('visitHistory').innerHTML=histItems.length?histItems.map((b,i)=>{
+    const isRedeem=b.loyaltyPointsRedeemed>0;
+    const sName=window._svcMap[b.serviceId||b.service||'']||b.serviceId||b.service||'Visit';
+    const bar=b.barberName?b.barberName.split(' ')[0]:'';
+    return`<div class="visit-row">
+      <div class="visit-dot" style="background:${isRedeem?'#3d8b5e':DOT_COLORS[i%DOT_COLORS.length]}"></div>
+      <div class="visit-info"><div class="visit-svc">${esc(sName)}</div><div class="visit-meta">${fmt(b.startTime)}${bar?' · '+bar:''}</div></div>
+      <div class="visit-pts ${isRedeem?'redeem-pts':''}">${isRedeem?'−'+b.loyaltyPointsRedeemed+' pts used':'+'+b.loyaltyPointsEarned+' pts'}</div>
+    </div>`;
+  }).join(''):`<div class="empty-msg">Your visit history will appear here after your first checkout.</div>`;
+
+  // Rewards tab
+  document.getElementById('redeemBalVal').textContent=pts>=REDEEM_RATE?'£'+redeemable+' off':'Not yet available';
+  document.getElementById('redeemBalDesc').innerHTML=pts>=REDEEM_RATE
+    ?`You have <strong>${pts} pts</strong> — worth <strong>£${redeemable}</strong> off any service.<br>Tell your barber at checkout.`
+    :`You need <strong>${REDEEM_RATE-pts} more points</strong> to start redeeming.<br>Earn 1 point for every £1 spent.`;
+
+  const redeems=bookings.filter(b=>b.loyaltyPointsRedeemed>0).slice(0,6);
+  document.getElementById('redeemHistory').innerHTML=redeems.length?redeems.map(b=>{
+    const sName=window._svcMap[b.serviceId||b.service||'']||b.service||'Visit';
+    const val='£'+(b.loyaltyPointsRedeemed/REDEEM_RATE).toFixed(2)+' off';
+    return`<div class="rh-row"><div class="rh-badge">Used</div><div class="rh-info"><div class="rh-what">${val} — ${esc(sName)}</div><div class="rh-when">${fmt(b.startTime)}</div></div><div class="rh-pts">−${b.loyaltyPointsRedeemed} pts</div></div>`;
+  }).join(''):`<div class="empty-msg">No redemptions yet.</div>`;
+
+  document.getElementById('milestonesBlock').innerHTML=TIERS_LIST.map(t=>{
+    const reached=pts>=t.pts;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${reached?'var(--gold)':'rgba(255,255,255,0.08)'};${reached?'box-shadow:0 0 6px rgba(201,168,76,.4)':''}"></div>
+      <div style="font-size:.7rem;color:var(--muted);width:52px;flex-shrink:0;">${t.pts} pts</div>
+      <div style="font-size:.74rem;flex:1;color:${reached?'var(--txt)':'var(--muted)'};">${t.full}</div>
+      ${reached?'<div style="font-size:.6rem;background:rgba(201,168,76,.12);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:600;">✓</div>':''}
+    </div>`;
+  }).join('');
+
+  // Profile tab
+  const profInits = initials(name);
+  document.getElementById('profAv').textContent=profInits;
+  document.getElementById('profName').textContent=name||'Member';
+  document.getElementById('profContact').textContent=phone||email||'';
+  if(tInfo){
+    const pt=document.getElementById('profTier');
+    pt.textContent=tInfo.label; pt.className='prof-tier-pill '+tInfo.cls; pt.style.display='inline-flex';
+  }
+  document.getElementById('profCardName').textContent=name;
+  document.getElementById('profCardSince').textContent=memberSince?'Member since '+memberSince.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Loyalty Member';
+  document.getElementById('profPts').textContent=pts;
+  document.getElementById('profProgFill').style.width=progPct+'%';
+  document.getElementById('profProgLeft').textContent=pts+' pts';
+  document.getElementById('profProgRight').textContent=ptsToNext>0?ptsToNext+' pts to '+nextTier.label:'All milestones reached 🎉';
+  if(tInfo){const pt=document.getElementById('profCardTier');pt.textContent=tInfo.label;pt.className='tier-badge '+tInfo.cls;pt.style.display='inline-block';}
+  document.getElementById('profPhone').textContent=phone?phone.replace(/(\+\d{2})(\d{4})(\d+)/,'$1 $2 ••••'):'—';
+  document.getElementById('profEmail').textContent=email?email.replace(/(.{2}).+(@.+)/,'$1•••$2'):'—';
+  if(favBarber||favSvcName){
+    document.getElementById('prefSection').style.display='block';
+    document.getElementById('prefBarber').textContent=favBarber?favBarber.split(' ')[0]:'—';
+    document.getElementById('prefSvc').textContent=favSvcName||'—';
+  }
+
+  showState('stateMain');
+}
+
+// ── BOOKING TAB ──────────────────────────────────────────────────────────────
+
+window.initBookTab = function(){
+  window._bookLoaded = true;
+  buildDatePills();
+  buildBarberList();
+  buildSvcList();
+};
+
+function buildDatePills(){
+  const pills = document.getElementById('datePills');
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  pills.innerHTML = '';
+  const today = new Date();
+  for(let i=0;i<14;i++){
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    const dayName = days[d.getDay()];
+    // Skip Sundays (shop closed)
+    if(d.getDay()===0) continue;
+    const iso = d.toISOString().slice(0,10);
+    const pill = document.createElement('div');
+    pill.className='date-pill'+(i===0?' sel':'');
+    pill.innerHTML=`<div class="date-pill-day">${i===0?'TODAY':dayName}</div><div class="date-pill-num">${d.getDate()}</div>`;
+    pill.onclick=()=>{ document.querySelectorAll('.date-pill').forEach(p=>p.classList.remove('sel')); pill.classList.add('sel'); window._bk.date=iso; window._bk.slot=null; updateConfirmBtn(); if(window._bk.barber&&window._bk.svc) loadSlots(); };
+    if(i===0){ window._bk.date=iso; }
+    pills.appendChild(pill);
+  }
+}
+
+function buildBarberList(){
+  const list = document.getElementById('barberList');
+  const barbers = window._allBarbers;
+  if(!barbers.length){ list.innerHTML='<div class="empty-msg">No barbers found.</div>'; return; }
+
+  // "No preference" option first
+  const anyDiv = document.createElement('div');
+  anyDiv.className='barber-item';
+  anyDiv.innerHTML=`<div class="bav" style="background:#4caf50;font-size:.58rem;">ANY</div><div class="bav-info"><div class="bav-name">No preference</div><div class="bav-role">First available</div></div><div style="font-size:10px;color:var(--muted)">›</div>`;
+  anyDiv.onclick=()=>selectBarber('any','No preference',anyDiv);
+  list.innerHTML='';
+  list.appendChild(anyDiv);
+
+  barbers.forEach((b,i)=>{
+    const inits=initials(b.name||b.id);
+    const color=BAV_COLORS[i%BAV_COLORS.length];
+    const div=document.createElement('div');
+    div.className='barber-item';
+    div.innerHTML=`<div class="bav" style="background:${color}">${inits}</div><div class="bav-info"><div class="bav-name">${esc(b.name||b.id)}</div><div class="bav-role">${esc(b.role||'Barber')}</div></div><div style="font-size:10px;color:var(--muted)">›</div>`;
+    div.onclick=()=>selectBarber(b.name||b.id, b.name||b.id, div);
+    list.appendChild(div);
+  });
+}
+
+function selectBarber(id, name, el){
+  document.querySelectorAll('.barber-item').forEach(e=>{ e.classList.remove('sel'); e.querySelector('.bav-check')?.remove(); });
+  el.classList.add('sel');
+  const check=document.createElement('div'); check.className='bav-check'; check.textContent='✓'; el.appendChild(check);
+  window._bk.barber=id; window._bk.slot=null; updateConfirmBtn();
+  if(window._bk.date&&window._bk.svc) loadSlots();
+}
+
+function buildSvcList(){
+  const list=document.getElementById('svcList');
+  const svcs=window._allServices.filter(s=>!s.hidden&&s.price>0);
+  if(!svcs.length){ list.innerHTML='<div class="empty-msg">No services found.</div>'; return; }
+  list.innerHTML='';
+  svcs.forEach(s=>{
+    const div=document.createElement('div'); div.className='svc-item';
+    div.innerHTML=`<div><div class="svc-name">${esc(s.name)}</div><div class="svc-dur">${s.duration||30} min</div></div><div class="svc-price">£${s.price}</div>`;
+    div.onclick=()=>{
+      document.querySelectorAll('.svc-item').forEach(e=>e.classList.remove('sel'));
+      div.classList.add('sel');
+      window._bk.svc=s; window._bk.slot=null; updateConfirmBtn();
+      if(window._bk.date&&window._bk.barber) loadSlots();
+    };
+    list.appendChild(div);
+  });
+}
+
+async function loadSlots(){
+  const {date,barber,svc}=window._bk;
+  if(!date||!barber||!svc) return;
+  const grid=document.getElementById('slotGrid');
+  const titleEl=document.getElementById('slotTitle');
+  grid.innerHTML='<div class="spinner" style="margin:12px auto;"></div>';
+
+  const d=new Date(date+'T12:00:00');
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dayName=dayNames[d.getDay()];
+  const shopHours=window._shopSettings?.hours||{};
+  const dayH=shopHours[dayName]||{open:'09:00',close:'19:00',closed:false};
+  if(dayH.closed){ grid.innerHTML='<div class="empty-msg">Shop is closed on this day.</div>'; return; }
+
+  const openMins=t2m(dayH.open||'09:00');
+  const closeMins=t2m(dayH.close||'19:00');
+  const duration=svc.duration||30;
+
+  // Load busy slots for this date + barber
+  const dateStr=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}); // "22/05/2025"
+  const dayStart=new Date(date+'T00:00:00'); dayStart.setHours(0,0,0,0);
+  const dayEnd=new Date(date+'T23:59:59'); dayEnd.setHours(23,59,59,999);
+  let busy=[];
+  try{
+    const snap=await getDocs(query(
+      collection(db,`${T}/bookings`),
+      where('startTime','>=',Timestamp.fromDate(dayStart)),
+      where('startTime','<=',Timestamp.fromDate(dayEnd))
+    ));
+    snap.docs.forEach(doc=>{
+      const b=doc.data();
+      if(['CANCELLED','NO_SHOW'].includes((b.status||'').toUpperCase())) return;
+      if(barber!=='any'&&(b.barberName||'').toLowerCase()!==(barber||'').toLowerCase()) return;
+      let sm;
+      if(b.startTime?.toDate){const t=b.startTime.toDate();sm=t.getHours()*60+t.getMinutes();}
+      else if(b.time){sm=t2m(b.time);} else return;
+      const bSvc=window._allServices.find(s=>s.id===(b.serviceId||b.service));
+      const bDur=(bSvc?.duration)||30;
+      busy.push([sm,sm+bDur]);
+    });
+  }catch(_){}
+
+  const isToday=date===new Date().toISOString().slice(0,10);
+  const now=new Date();
+  const nowMins=now.getHours()*60+now.getMinutes();
+
+  const slots=[];
+  for(let m=openMins;m+duration<=closeMins;m+=15){
+    const isPast=isToday&&m<nowMins+5;
+    const isBusy=busy.some(([bs,be])=>m<be&&(m+duration)>bs);
+    slots.push({mins:m,label:m2t(m),past:isPast,busy:isBusy});
+  }
+  const avail=slots.filter(s=>!s.past&&!s.busy).length;
+  titleEl.textContent=`Available Times — ${duration}min · ${avail} free`;
+
+  if(!slots.length){ grid.innerHTML='<div class="empty-msg">No time slots available.</div>'; return; }
+
+  grid.innerHTML='';
+  slots.forEach(s=>{
+    const btn=document.createElement('button');
+    btn.className='slot-btn'+(s.past?' past':s.busy?' busy':'');
+    btn.textContent=s.label;
+    btn.disabled=s.past||s.busy;
+    btn.onclick=()=>{
+      document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+      window._bk.slot={mins:s.mins,label:s.label};
+      updateConfirmBtn();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function updateConfirmBtn(){
+  const btn=document.getElementById('bkConfirmBtn');
+  const {date,barber,svc,slot}=window._bk;
+  if(date&&barber&&svc&&slot){
+    btn.disabled=false;
+    btn.textContent=`Book ${slot.label} with ${barber==='any'?'next available barber':barber.split(' ')[0]} →`;
+  } else {
+    btn.disabled=true;
+    btn.textContent=!barber?'Select a barber first':!svc?'Select a service first':!slot?'Select a time to book':'Book Now';
+  }
+}
+
+window.confirmBooking = async function(){
+  const {date,barber,svc,slot}=window._bk;
+  if(!date||!barber||!svc||!slot) return;
+  const btn=document.getElementById('bkConfirmBtn');
+  btn.disabled=true; btn.textContent='Booking…';
+
+  const user=auth.currentUser;
+  const c=window._clientData||{};
+  const clientName=c.name||user?.displayName||'Member';
+  const clientPhone=c.phone||user?.phoneNumber||'';
+  const clientEmail=c.email||user?.email||'';
+
+  const start=new Date(date+'T00:00:00');
+  start.setHours(Math.floor(slot.mins/60), slot.mins%60, 0, 0);
+  const end=new Date(start.getTime()+svc.duration*60000);
+
+  const barberName=barber==='any'?(window._allBarbers[0]?.name||'Any'):barber;
+
+  const bookingId='app-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  try{
+    await addDoc(collection(db,`${T}/bookings`),{
+      bookingId,
+      clientName, clientPhone, clientEmail,
+      barberName,
+      serviceId: svc.id, service: svc.id,
+      price: svc.price||0,
+      time: slot.label,
+      date: start.toLocaleDateString('en-GB'),
+      startTime: Timestamp.fromDate(start),
+      endTime: Timestamp.fromDate(end),
+      status: 'CONFIRMED',
+      source: 'App',
+      createdAt: Timestamp.now()
+    });
+
+    // Show confirmation
+    document.getElementById('bkDoneCard').style.display='block';
+    document.getElementById('bkDoneCard').scrollIntoView({behavior:'smooth',block:'center'});
+    const prettyDate=start.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('bkDoneDesc').innerHTML=`<strong style="color:var(--txt)">${svc.name}</strong><br>${prettyDate} at <strong style="color:var(--gold)">${slot.label}</strong><br>with ${esc(barberName)}<br><br>See you then! ✂️`;
+    btn.style.display='none';
+    document.getElementById('slotWrap').style.display='none';
+    toast('Booking confirmed! ✅');
+  }catch(e){
+    btn.disabled=false; btn.textContent=`Book ${slot.label} →`;
+    toast('Booking failed. Please try again.');
+  }
+};
+
+window.resetBooking = function(){
+  window._bk={date:null,barber:null,svc:null,slot:null,slotsLoaded:false};
+  window._bookLoaded=false;
+  document.getElementById('bkDoneCard').style.display='none';
+  document.getElementById('bkConfirmBtn').style.display='';
+  document.getElementById('slotWrap').style.display='';
+  initBookTab();
+  document.getElementById('bookScroll').scrollTop=0;
+};
 </script>
 </body>
 </html>
