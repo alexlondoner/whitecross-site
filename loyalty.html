@@ -449,16 +449,8 @@ body{
     });
   }
 
-  // Booking drawer
   function openBooking(){
-    const drawer=document.getElementById('bookingDrawer');
-    const sheet=document.getElementById('bookingSheet');
-    const frame=document.getElementById('bookingFrame');
-    if(!frame.src||frame.src==='about:blank'||frame.src==='')
-      frame.src='https://whitecrossbarbers.com/#booking';
-    drawer.style.display='flex';
-    requestAnimationFrame(()=>{ sheet.style.transform='translateY(0)'; });
-    document.body.style.overflow='hidden';
+    window.open('https://whitecrossbarbers.com/#booking','_blank');
   }
   function closeBooking(){
     const sheet=document.getElementById('bookingSheet');
