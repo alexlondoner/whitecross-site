@@ -18,6 +18,7 @@ const navItems = [
 function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [tooltipY, setTooltipY] = useState(0);
 
   // Dynamic values based on state
   const sidebarWidth = isCollapsed ? '72px' : '220px';
@@ -128,12 +129,12 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '18px 10px 10px', overflowY: 'auto', overflowX: 'visible' }}>
+      <nav style={{ flex: 1, padding: '18px 10px 10px', overflowY: 'auto', overflowX: 'visible', overflowClipMargin: 'unset' }}>
         {[...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])].map(item => (
           <div key={item.id} style={{ position: 'relative', marginBottom: '6px' }}>
             <button
               onClick={() => setActivePage(item.id)}
-              onMouseEnter={() => setHoveredItem(item.id)}
+              onMouseEnter={(e) => { setHoveredItem(item.id); const r=e.currentTarget.getBoundingClientRect(); setTooltipY(r.top + r.height/2); }}
               onMouseLeave={() => setHoveredItem(null)}
               title={isCollapsed ? item.label : ""}
               style={{
@@ -181,21 +182,21 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
             </button>
             {isCollapsed && hoveredItem === item.id && (
               <div style={{
-                position: 'absolute',
-                left: 'calc(100% + 10px)',
-                top: '50%',
+                position: 'fixed',
+                left: '82px',
+                top: tooltipY,
                 transform: 'translateY(-50%)',
                 background: isLight ? '#fffbe7' : '#23201a',
                 color: isLight ? '#3b3324' : '#e4c46a',
                 border: '1.5px solid #d4af37',
                 borderRadius: '8px',
-                padding: '8px 14px',
-                fontSize: '0.92rem',
+                padding: '7px 14px',
+                fontSize: '0.88rem',
                 fontWeight: 700,
                 letterSpacing: '0.2px',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 10px 24px rgba(212,175,55,0.18)',
-                zIndex: 200,
+                boxShadow: '0 8px 24px rgba(212,175,55,0.22)',
+                zIndex: 9999,
                 pointerEvents: 'none',
               }}>
                 {item.label}
