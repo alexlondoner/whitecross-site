@@ -113,7 +113,13 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
 .tier-platinum{background:rgba(200,220,255,.1);border:1px solid rgba(200,220,255,.3);color:#a0c8f0;}
 .tier-visits{font-size:.55rem;color:var(--muted);}
 .double-badge{font-size:.55rem;color:var(--gold);font-weight:700;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);padding:2px 7px;border-radius:99px;}
-.lc-pts{position:relative;z-index:1;margin-bottom:14px;}
+.lc-middle{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;position:relative;z-index:1;}
+.lc-pts{}
+.lc-upcoming{background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:10px;padding:8px 10px;flex:1;min-width:0;max-width:52%;}
+.lc-up-lbl{font-size:.46rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:5px;}
+.lc-up-svc{font-size:.74rem;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lc-up-meta{font-size:.56rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lc-up-time{font-size:.62rem;font-weight:700;color:var(--gold);margin-top:4px;}
 .pts-val{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:700;color:var(--gold);line-height:1;letter-spacing:-1px;}
 .pts-lbl{font-size:.58rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
 .prog-track{height:5px;background:var(--border2);border-radius:99px;overflow:hidden;margin-bottom:5px;}
@@ -366,9 +372,12 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
             <div class="tier-visits" id="tierVisits"></div>
           </div>
         </div>
-        <div class="lc-pts">
-          <div class="pts-val" id="ptsVal">0</div>
-          <div class="pts-lbl">Loyalty Points</div>
+        <div class="lc-middle">
+          <div class="lc-pts">
+            <div class="pts-val" id="ptsVal">0</div>
+            <div class="pts-lbl">Loyalty Points</div>
+          </div>
+          <div class="lc-upcoming" id="lcUpcoming" style="display:none;"></div>
         </div>
         <div>
           <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
@@ -892,6 +901,19 @@ async function loadApp(c, phone, email){
     tb.textContent=tInfo.label; tb.className='tier-badge '+tInfo.cls; tb.style.display='inline-block';
   }
   document.getElementById('tierVisits').textContent=visits+' visit'+(visits!==1?'s':'');
+
+  // Upcoming booking inside loyalty card
+  const lcUp=document.getElementById('lcUpcoming');
+  if(lcUp&&upcomingBookings.length){
+    const next=upcomingBookings[0];
+    const ts=next.startTime?.toDate?next.startTime.toDate():new Date(next.startTime||0);
+    const sName=window._svcMap[next.serviceId||next.service||'']||next.service||'Visit';
+    const barber=(next.barberName||'').split(' ')[0];
+    const dateStr=ts.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    const timeStr=ts.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+    lcUp.style.display='block';
+    lcUp.innerHTML=`<div class="lc-up-lbl">📅 Next Visit</div><div class="lc-up-svc">${esc(sName)}</div><div class="lc-up-meta">${barber?esc(barber)+' · ':''}${dateStr}</div><div class="lc-up-time">${timeStr}</div>`;
+  }
   document.getElementById('statVisits').textContent=visits>0?visits:'—';
   document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
 
