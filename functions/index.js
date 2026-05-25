@@ -832,9 +832,16 @@ exports.sendBookingConfirmation = onDocumentCreated(
                 <a href="${cancelUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:transparent;border:1px solid #444;color:#666;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Cancel</a>
             </div>
 
+            <!-- Review CTA -->
+            <div style="text-align:center;margin:20px 0;padding:16px;background:rgba(212,175,55,0.04);border:1px solid rgba(212,175,55,0.12);border-radius:10px;">
+                <p style="margin:0 0 8px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
+            </div>
+
             <div style="border-top:1px solid #222;padding-top:30px;">
                 <p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
-                    CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a> | <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WHATSAPP</a><br>
+                    CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a><br>
                     <a href="https://whitecrossbarbers.com/terms.html" style="color:#444;text-decoration:underline;">Cancellation Policy</a>
                 </p>
             </div>
@@ -842,6 +849,7 @@ exports.sendBookingConfirmation = onDocumentCreated(
 
         <div style="padding:30px;text-align:center;">
             <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
 </body>
@@ -939,7 +947,7 @@ Old Street · Barbican · Moorgate<br>
 </div>
 <div style="border-top:1px solid #222;padding-top:30px;">
 <p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
-CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a> | <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WHATSAPP</a><br>
+CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a><br>
 <a href="https://whitecrossbarbers.com/terms.html" style="color:#444;text-decoration:underline;">Cancellation Policy</a>
 </p>
 </div>
@@ -1069,15 +1077,23 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
                 <a href="${rescheduleUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:#d4af37;color:#000;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Reschedule</a>
                 <a href="${cancelUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:transparent;border:1px solid #444;color:#666;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Cancel</a>
             </div>
+            <!-- Review CTA -->
+            <div style="text-align:center;margin:20px 0;padding:16px;background:rgba(212,175,55,0.04);border:1px solid rgba(212,175,55,0.12);border-radius:10px;">
+                <p style="margin:0 0 8px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
+            </div>
+
             <div style="border-top:1px solid #222;padding-top:30px;">
                 <p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
-                    CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a> | <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WHATSAPP</a><br>
+                    CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a><br>
                     <a href="https://whitecrossbarbers.com/terms.html" style="color:#444;text-decoration:underline;">Cancellation Policy</a>
                 </p>
             </div>
         </div>
         <div style="padding:30px;text-align:center;">
             <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
 </body>
@@ -1667,12 +1683,18 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
             ${memberSection}
             ${pointsSection}
 
+            <!-- Review CTA -->
+            <div style="text-align:center;margin:16px 0;padding:16px;background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.15);border-radius:10px;">
+                <p style="margin:0 0 10px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
+            </div>
+
             <!-- Footer contact -->
             <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;margin-top:8px;">
                 <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
                     136 Whitecross Street, London EC1Y 8QJ<br>
-                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
-                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">Call us: 020 3621 5929</a>
                 </p>
             </div>
         </div>
@@ -1687,6 +1709,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         <!-- Footer -->
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
 </body>
@@ -1862,7 +1885,6 @@ exports.sendReceipt = onRequest(
             name:    'I CUT Whitecross Barbers',
             address: '136 Whitecross Street, London EC1Y 8QJ',
             phone:   '020 3621 5929',
-            wa:      '447470108578',
             website: 'whitecrossbarbers.com',
             logo:    'https://whitecrossbarbers.com/whitecross-logo.png',
             accent:  '#d4af37',
@@ -1951,13 +1973,13 @@ exports.sendReceipt = onRequest(
             <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
                 <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
                     ${BRAND.address}<br>
-                    <a href="tel:${BRAND.phone.replace(/\s/g,'')}" style="color:#666;text-decoration:none;">${BRAND.phone}</a> ·
-                    <a href="https://wa.me/${BRAND.wa}" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                    <a href="tel:${BRAND.phone.replace(/\s/g,'')}" style="color:#666;text-decoration:none;">Call us: ${BRAND.phone}</a>
                 </p>
             </div>
         </div>
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 ${BRAND.name}</p>
+            <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
 </body>
@@ -2433,8 +2455,7 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
             <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
                 <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
                     136 Whitecross Street, London EC1Y 8QJ<br>
-                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
-                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">Call us: 020 3621 5929</a>
                 </p>
             </div>
         </div>
@@ -2442,6 +2463,7 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
         <!-- Footer -->
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
 </body>
@@ -2483,4 +2505,73 @@ Always refer to monetary values in £ (GBP). When giving insights, be specific w
     });
 
     return { answer: message.content[0].text };
+});
+
+
+// ── Google Ads Customer Match — Sync clients to Google Sheet ─────────────────
+const { google } = require('googleapis');
+
+exports.syncClientsToSheet = onSchedule({
+    schedule: 'every 24 hours',
+    secrets: ['GOOGLE_SHEET_ID', 'GOOGLE_SERVICE_ACCOUNT'],
+}, async () => {
+    const db = getAdminDb();
+
+    // Auth via service account
+    const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    const auth = new google.auth.GoogleAuth({
+        credentials: serviceAccount,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+
+    // Fetch all clients (manual + from bookings)
+    const [clientSnap, bookingSnap] = await Promise.all([
+        db.collection('tenants/whitecross/clients').get(),
+        db.collection('tenants/whitecross/bookings').get(),
+    ]);
+
+    const seen = new Set();
+    const rows = [['Email', 'Phone', 'First Name', 'Last Name', 'Country']]; // header
+
+    const addClient = (name, email, phone) => {
+        const key = email || phone;
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        const parts = (name || '').trim().split(/\s+/);
+        const firstName = parts[0] || '';
+        const lastName = parts.slice(1).join(' ') || '';
+        const formattedPhone = phone
+            ? '+44' + String(phone).replace(/\D/g, '').replace(/^0/, '').replace(/^44/, '')
+            : '';
+        rows.push([email || '', formattedPhone, firstName, lastName, 'GB']);
+    };
+
+    // Manual clients collection
+    clientSnap.forEach(d => {
+        const { name, email, phone } = d.data();
+        addClient(name, email, phone);
+    });
+
+    // Clients derived from bookings
+    bookingSnap.forEach(d => {
+        const { name, email, phone, status } = d.data();
+        if (['CANCELLED', 'NO_SHOW', 'DELETED'].includes(String(status || '').toUpperCase())) return;
+        if (name && name !== 'Walk-in') addClient(name, email, phone);
+    });
+
+    // Clear sheet and rewrite
+    await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: 'clients!A:D',
+    });
+    await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'clients!A1',
+        valueInputOption: 'RAW',
+        requestBody: { values: rows },
+    });
+
+    console.log(`Synced ${rows.length - 1} clients to Google Sheet`);
 });

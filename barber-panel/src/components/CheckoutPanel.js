@@ -399,6 +399,7 @@ function CartStep({
   LOYALTY_REDEEM_RATE,
   onSaveUnpaid, onContinue,
   saving,
+  isTreatwellUnpaid,
 }) {
   const [showQuick, setShowQuick] = useState(false);
   const barberColor = getBColor(booking.barber, barbers);
@@ -417,6 +418,24 @@ function CartStep({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ fontSize: '1rem', fontWeight: '600', color: T.text, letterSpacing: '0.3px' }}>Cart</div>
+
+      {isTreatwellUnpaid && (
+        <div style={{
+          padding: '11px 14px', borderRadius: '10px',
+          background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.3)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }}>
+          <span style={{ fontSize: '1rem' }}>⚠️</span>
+          <div>
+            <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#ff5252', letterSpacing: '0.3px' }}>
+              Not paid — collect full payment
+            </div>
+            <div style={{ fontSize: '0.65rem', color: T.muted, marginTop: '2px' }}>
+              Treatwell booking · customer has not paid yet
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{
         ...S.card,
@@ -866,7 +885,9 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   const svc = findServiceByBookingValue(booking.service);
   const serviceLabel = getBookingServiceLabel(booking);
   const priceFromBooking = parseFloat(String(booking.price ?? booking.paidAmount ?? '0').replace('£', '')) || 0;
+  // If price is 0 but we can resolve the service from config, use config price (handles edited platform bookings)
   const basePrice = priceFromBooking > 0 ? priceFromBooking : (svc ? svc.price : 0);
+  const isTreatwellUnpaid = booking.source === 'Treatwell' && String(booking.status || '').toUpperCase() === 'UNPAID';
 
   const retailProducts = Array.isArray(products) ? products : [];
   const extrasList = Array.isArray(extras) ? extras : [];
@@ -1046,6 +1067,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
                 onSaveUnpaid={handleSaveUnpaid}
                 onContinue={() => setStep('tip')}
                 saving={saving}
+                isTreatwellUnpaid={isTreatwellUnpaid}
               />
             )}
             {step === 'tip' && (

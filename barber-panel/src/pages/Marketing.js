@@ -80,6 +80,7 @@ export default function Marketing({ tenantId, isAdmin }) {
   const [aiOpen,        setAiOpen]        = useState(false);
   const [aiMessages,    setAiMessages]    = useState([]);
   const [aiInput,       setAiInput]       = useState('');
+  const [expandedKpi,   setExpandedKpi]   = useState(null);
   const [aiLoading,     setAiLoading]     = useState(false);
   const aiBottomRef = useRef(null);
 
@@ -131,7 +132,10 @@ export default function Marketing({ tenantId, isAdmin }) {
     filteredAll.filter(b=>!!toDate(b.startTime)),[filteredAll]);
 
   const thisWeekBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=thisWeekMon; }),[bookings,thisWeekMon]);
-  const lastWeekBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=lastWeekMon&&d<thisWeekMon; }),[bookings,lastWeekMon,thisWeekMon]);
+  // Elapsed cutoff: same number of ms into last week as we are into this week
+  const lastWeekElapsedEnd = useMemo(()=>new Date(lastWeekMon.getTime()+(now-thisWeekMon)),[lastWeekMon,now,thisWeekMon]);
+  const lastWeekBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=lastWeekMon&&d<lastWeekElapsedEnd; }),[bookings,lastWeekMon,lastWeekElapsedEnd]);
+  const lastWeekFullBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=lastWeekMon&&d<thisWeekMon; }),[bookings,lastWeekMon,thisWeekMon]);
 
   // ── Month boundaries ────────────────────────────────────────
   const thisMonthStart = useMemo(()=>new Date(now.getFullYear(),now.getMonth(),1),[now]);
@@ -188,16 +192,19 @@ export default function Marketing({ tenantId, isAdmin }) {
   // ── Overview metrics ────────────────────────────────────────
   const overview = useMemo(()=>{
     const twCount = thisWeekBks.length;
-    const lwCount = lastWeekBks.length;
+    const lwCount = lastWeekBks.length;        // elapsed-matched
+    const lwFullCount = lastWeekFullBks.length; // full last week
     const twRev   = thisWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
-    const lwRev   = lastWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const lwRev   = lastWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);   // elapsed
+    const lwFullRev = lastWeekFullBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0); // full
     const daysSinceMonday = (now-thisWeekMon)/(1000*60*60*24);
     const workDaysElapsed = Math.max(1,Math.ceil(daysSinceMonday));
     const bCount = Math.max(1,barbers.length);
     const avgPerBarberDay = (twCount/(workDaysElapsed*bCount)).toFixed(1);
-    return { twCount, lwCount, twRev, lwRev, avgPerBarberDay,
+    const daysElapsedLabel = workDaysElapsed === 1 ? '1 day' : `${workDaysElapsed} days`;
+    return { twCount, lwCount, lwFullCount, twRev, lwRev, lwFullRev, avgPerBarberDay, daysElapsedLabel,
       countTrend: trend(twCount,lwCount), revTrend: trend(twRev,lwRev) };
-  },[thisWeekBks,lastWeekBks,barbers,now,thisWeekMon]);
+  },[thisWeekBks,lastWeekBks,lastWeekFullBks,barbers,now,thisWeekMon]);
 
   // ── Cancellation / no-show stats ────────────────────────────
   const cancelStats = useMemo(()=>{
@@ -604,19 +611,27 @@ export default function Marketing({ tenantId, isAdmin }) {
         {/* KPI cards */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'10px',marginBottom:'10px'}}>
           {[
-            { icon:'📅', label:'This Week', val:overview.twCount+' bookings', sub:`vs ${overview.lwCount} last week`, trend:overview.countTrend },
-            { icon:'💷', label:'This Week Revenue', val:`£${overview.twRev.toFixed(0)}`, sub:`vs £${overview.lwRev.toFixed(0)} last week`, trend:overview.revTrend },
-            { icon:'✂️', label:'Avg / Barber / Day', val:overview.avgPerBarberDay, sub:'customers this week', trend:null },
-            { icon:'👥', label:'Total Clients', val:customerInsights.total, sub:`${customerInsights.lost30} inactive 30d+`, trend:null },
-          ].map(({icon,label,val,sub,trend:tr})=>(
-            <div key={label} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'14px 16px',position:'relative',overflow:'hidden'}}>
+            { key:'bookings', icon:'📅', label:'This Week', val:overview.twCount+' bookings', sub:`${overview.daysElapsedLabel} elapsed`, trend:overview.countTrend, fullVal:`${overview.lwFullCount}`, elapsedVal:`${overview.lwCount}` },
+            { key:'revenue',  icon:'💷', label:'This Week Revenue', val:`£${overview.twRev.toFixed(0)}`, sub:`${overview.daysElapsedLabel} elapsed`, trend:overview.revTrend, fullVal:`£${overview.lwFullRev.toFixed(0)}`, elapsedVal:`£${overview.lwRev.toFixed(0)}` },
+            { key:'avg',      icon:'✂️', label:'Avg / Barber / Day', val:overview.avgPerBarberDay, sub:'customers this week', trend:null, fullVal:null, elapsedVal:null },
+            { key:'clients',  icon:'👥', label:'Total Clients', val:customerInsights.total, sub:`${customerInsights.lost30} inactive 30d+`, trend:null, fullVal:null, elapsedVal:null },
+          ].map(({key,icon,label,val,sub,trend:tr,fullVal,elapsedVal})=>(
+            <div key={label} onClick={()=>elapsedVal?setExpandedKpi(expandedKpi===key?null:key):null}
+              style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'14px 16px',position:'relative',overflow:'hidden',cursor:elapsedVal?'pointer':'default',transition:'border-color 0.15s',borderColor:expandedKpi===key?'var(--gold)':'var(--border)'}}>
               <div style={{position:'absolute',top:0,left:0,right:0,height:'1.5px',background:'linear-gradient(90deg,transparent,var(--gold-dark),transparent)',opacity:0.4}}/>
               <div style={{fontSize:'1.1rem',marginBottom:'8px'}}>{icon}</div>
               <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.5rem',fontWeight:700,color:'var(--gold)',lineHeight:1}}>{val}</div>
               <div style={{fontSize:'0.58rem',color:'var(--muted)',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:'4px',fontWeight:600}}>{label}</div>
               <div style={{fontSize:'0.65rem',marginTop:'6px',fontWeight:600,color:tr?(tr.up?'#4caf50':'#ef5350'):'var(--muted)'}}>
-                {tr?`${tr.up?'↑':'↓'} ${Math.abs(tr.d)}% vs last week`:sub}
+                {tr?`${tr.up?'↑':'↓'} ${Math.abs(tr.d)}% vs last wk (${overview.daysElapsedLabel})`:sub}
               </div>
+              {expandedKpi===key && elapsedVal && (
+                <div style={{marginTop:'8px',paddingTop:'8px',borderTop:'1px solid var(--border)',display:'flex',flexDirection:'column',gap:'3px'}}>
+                  <div style={{fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1px',textTransform:'uppercase',fontWeight:700}}>Last Week Breakdown</div>
+                  <div style={{fontSize:'0.65rem',color:'var(--gold-dark)',fontWeight:600}}>Same {overview.daysElapsedLabel}: <span style={{color:'#c9a84c'}}>{elapsedVal}</span></div>
+                  <div style={{fontSize:'0.65rem',color:'var(--muted)',fontWeight:600}}>Full last week: <span style={{color:'var(--fg)'}}>{fullVal}</span></div>
+                </div>
+              )}
             </div>
           ))}
         </div>

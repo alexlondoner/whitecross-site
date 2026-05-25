@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import config from '../config';
 import { editBooking, createWalkIn } from '../firestoreActions';
-import { getAvailableBarbersForDate } from '../utils/bookingUtils';
+import { getAvailableBarbersForDate, findServiceByBookingValue } from '../utils/bookingUtils';
 import { convertTo24, minsToLabel } from '../utils/timeUtils';
 import { getEffectiveDayHours } from '../utils/scheduleUtils';
 import { hasTimeConflict } from '../utils/conflictUtils';
@@ -41,7 +41,11 @@ export default function BookingForm({ preBarber, preHour, preMins, preDate, preB
       for (const c of COUNTRY_CODES) {
         if (existingLocal.startsWith(c.code)) { existingCode = c.code; existingLocal = existingLocal.slice(c.code.length).trim(); break; }
       }
-      return { name:preBooking.name||'', email:preBooking.email||'', phone:preBooking.phone||'', service:preBooking.service||(config.services?config.services[0].id:''), barber:(preBooking.barber||'').toLowerCase(), date:yr+'-'+mo+'-'+dy, time:preBooking.time||'9:00 AM', paymentType:preBooking.paymentType||'CASH', _countryCode:existingCode, _phoneLocal:existingLocal };
+      // Normalize service: platform bookings use display names — find matching config ID
+      const rawSvc = preBooking.service || '';
+      const matchedSvc = findServiceByBookingValue(rawSvc);
+      const serviceId = matchedSvc ? matchedSvc.id : (config.services ? config.services[0].id : '');
+      return { name:preBooking.name||'', email:preBooking.email||'', phone:preBooking.phone||'', service:serviceId, barber:(preBooking.barber||'').toLowerCase(), date:yr+'-'+mo+'-'+dy, time:preBooking.time||'9:00 AM', paymentType:preBooking.paymentType||'CASH', _countryCode:existingCode, _phoneLocal:existingLocal };
     }
     return { name:'', email:'', phone:'', service:config.services?config.services[0].id:'', barber:preBarber?preBarber.name.toLowerCase():(barbers[0]?barbers[0].name.toLowerCase():''), date:preDate?preDate.toISOString().split('T')[0]:new Date().toISOString().split('T')[0], time:preMins!==undefined?minsToLabel(preMins):(preHour!==undefined?minsToLabel(preHour*60):'9:00 AM'), paymentType:'CASH', _countryCode:'+44', _phoneLocal:'' };
   });
