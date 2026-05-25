@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { deleteBooking, cancelBooking, markNoShow, getClientLoyaltyPoints } from '../firestoreActions';
 import { logAudit } from '../utils/auditLogger';
 import { db } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import {
   getBColor,
   getBookingServiceLabel,
@@ -137,6 +137,8 @@ export default function BookingDetail({
   const [editing, setEditing] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [receiptSent, setReceiptSent] = useState(false);
+  const [sendingLoyalty, setSendingLoyalty] = useState(false);
+  const [loyaltySent, setLoyaltySent] = useState(false);
   const [clientPoints, setClientPoints] = useState(null);
   const [clientIsMember, setClientIsMember] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
@@ -371,22 +373,43 @@ export default function BookingDetail({
                 }}>{booking.source}</span>
               )}
 
-              {status === 'CHECKED_OUT' && (
-                <button onClick={onViewReceipt} style={{
-                  padding: '2px 8px', background: T.goldFaint,
-                  border: `1px solid ${T.goldDim}`, borderRadius: '6px',
-                  color: T.gold, fontSize: '0.58rem', fontWeight: '600', cursor: 'pointer',
-                }}>Receipt</button>
-              )}
-              {status === 'CHECKED_OUT' && booking.clientEmail && (
-                <span style={{
-                  padding: '2px 8px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700',
-                  color: booking.loyaltyEmailSent ? '#4caf50' : '#9e9e9e',
-                  background: booking.loyaltyEmailSent ? '#4caf5018' : 'transparent',
-                  border: `1px solid ${booking.loyaltyEmailSent ? '#4caf5040' : 'transparent'}`,
-                }} title={booking.loyaltyEmailSent ? 'Loyalty card email was sent to this client' : 'No loyalty email sent'}>
-                  {booking.loyaltyEmailSent ? '📧 Email sent' : '📧 No email'}
-                </span>
+              {status === 'CHECKED_OUT' && (booking.email || booking.clientEmail) && (
+                booking.loyaltyEmailSent ? (
+                  <span style={{
+                    padding: '2px 8px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700',
+                    color: '#4caf50', background: '#4caf5018', border: '1px solid #4caf5040',
+                  }}>📧 Email sent</span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (sendingLoyalty || loyaltySent) return;
+                      setSendingLoyalty(true);
+                      try {
+                        const _q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', booking.bookingId));
+                        const _snap = await getDocs(_q);
+                        if (_snap.empty) throw new Error('Booking not found in database');
+                        await updateDoc(_snap.docs[0].ref, {
+                          manualLoyaltyEmailTrigger: true,
+                          sendLoyaltyEmail: true,
+                        });
+                        setLoyaltySent(true);
+                      } catch (e) {
+                        alert('Failed to send: ' + e.message);
+                      } finally {
+                        setSendingLoyalty(false);
+                      }
+                    }}
+                    style={{
+                      padding: '2px 8px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700',
+                      color: loyaltySent ? '#4caf50' : '#9e9e9e',
+                      background: loyaltySent ? '#4caf5018' : 'transparent',
+                      border: `1px solid ${loyaltySent ? '#4caf5040' : '#9e9e9e44'}`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {sendingLoyalty ? '⏳ Sending…' : loyaltySent ? '📧 Sent!' : '📧 Send loyalty email'}
+                  </button>
+                )
               )}
 
               {booking.groupId && (
@@ -587,12 +610,18 @@ export default function BookingDetail({
               >Checkout</button>
             </div>
           ) : (
-            <div style={{
-              width: '100%', padding: '11px',
-              background: `${T.green}10`, border: `1px solid ${T.green}30`,
-              borderRadius: '8px', color: T.green,
-              fontSize: '0.82rem', fontWeight: '700', textAlign: 'center',
-            }}>✓ Checked out</div>
+            <button
+              onClick={onViewReceipt}
+              style={{
+                width: '100%', padding: '11px',
+                background: `${T.green}10`, border: `1px solid ${T.green}30`,
+                borderRadius: '8px', color: T.green,
+                fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = `${T.green}20`}
+              onMouseLeave={e => e.currentTarget.style.background = `${T.green}10`}
+            >✓ View Receipt</button>
           )}
 
           <a

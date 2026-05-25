@@ -47,7 +47,6 @@ function effectiveRevenue(b) {
 function paymentMethod(b) {
   const m = String(b.paymentMethod || b.paymentType || '').toLowerCase();
   if (m === 'cash') return 'CASH';
-  if (m === 'monzo') return 'MONZO';
   return 'CARD';
 }
 
@@ -175,7 +174,7 @@ export default function Finance() {
   const now = new Date();
   const [activeTab, setActiveTab] = useState('daily');
   const [showEmptyDays, setShowEmptyDays] = useState(false);
-  const [monthMode, setMonthMode] = useState('selected');
+  const [monthMode, setMonthMode] = useState('month');
   const [selectedMonth, setSelectedMonth] = useState(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   );
@@ -211,6 +210,10 @@ export default function Finance() {
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseDraft, setExpenseDraft] = useState({ cashExpense: '', bankExpense: '', notes: '' });
   const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseList, setExpenseList] = useState([]);
+  const [editingExpEntryId, setEditingExpEntryId] = useState(null);
+  const [editExpEntryDraft, setEditExpEntryDraft] = useState({ cashExpense: '', bankExpense: '', notes: '' });
+  const [editExpEntrySaving, setEditExpEntrySaving] = useState(false);
 
   const [year, month] = useMemo(() => {
     const [y, m] = selectedMonth.split('-').map(Number);
@@ -218,7 +221,7 @@ export default function Finance() {
   }, [selectedMonth]);
 
   useEffect(() => {
-    if (monthMode !== 'selected') return;
+    if (monthMode !== 'month') return;
     const first = new Date(year, month, 1, 12, 0, 0);
     const last  = new Date(year, month + 1, 0, 12, 0, 0);
     if (selectedDay < first || selectedDay > last) setSelectedDay(first);
@@ -288,16 +291,31 @@ export default function Finance() {
         else expMap[dk].bankExpense += amt;
         if (data.note && !expMap[dk].notes) expMap[dk].notes = data.note;
       });
-      expSnap.docs.forEach(d => {
+      const rawExpList = expSnap.docs.map(d => {
         const data = d.data();
-        expMap[data.date] = {
+        return {
           id: d.id,
+          date: data.date || '',
+          month: data.month || (data.date || '').slice(0, 7),
           cashExpense: parseFloat(data.cashExpense ?? data.kasaMasraf ?? 0),
           bankExpense:  parseFloat(data.bankExpense  ?? data.bankaMasraf ?? 0),
           notes:        data.notes || data.aciklama || '',
-          ...data,
         };
       });
+      rawExpList.forEach(e => {
+        if (!e.date) return;
+        if (!expMap[e.date]) expMap[e.date] = { cashExpense: 0, bankExpense: 0, notes: '' };
+        expMap[e.date].cashExpense += e.cashExpense;
+        expMap[e.date].bankExpense += e.bankExpense;
+        // Keep id on map entry only when there's a single doc for that date (for legacy saveExpense in daily grid)
+        expMap[e.date].id = rawExpList.filter(x => x.date === e.date).length === 1 ? e.id : expMap[e.date].id;
+        if (e.notes) {
+          expMap[e.date].notes = expMap[e.date].notes
+            ? expMap[e.date].notes + ' | ' + e.notes
+            : e.notes;
+        }
+      });
+      setExpenseList(rawExpList.sort((a, b) => b.date.localeCompare(a.date)));
       setExpenses(expMap);
 
       // Payments — merge finance_payments + legacy advances
@@ -353,7 +371,12 @@ export default function Finance() {
 
   // ── Daily rows ────────────────────────────────────────────────────────────
   const dailyData = useMemo(() => {
-    const inScope = dk => monthMode === 'all' || String(dk || '').startsWith(selectedMonth);
+    const inScope = dk => {
+      if (monthMode === 'all') return true;
+      if (monthMode === 'month') return String(dk || '').startsWith(selectedMonth);
+      if (monthMode === 'week') { const d = dk ? new Date(dk + 'T12:00:00') : null; return d && d >= startOfWeek(selectedDay) && d < endOfWeek(selectedDay); }
+      return dk === toInputDate(selectedDay); // day
+    };
     const realBarberSet = new Set(barbers.filter(b => b._isReal).map(b => normalizeName(b.name)));
     const scopedBk = bookings.filter(b => {
       if (!b.dateKey || !inScope(b.dateKey)) return false;
@@ -363,7 +386,7 @@ export default function Finance() {
     });
     const scopedExpKeys = Object.keys(expenses).filter(inScope);
 
-    const dateKeys = monthMode === 'selected'
+    const dateKeys = monthMode === 'month'
       ? Array.from({ length: daysInMonth(year, month) }, (_, i) =>
           `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`)
       : Array.from(new Set([...scopedBk.map(b => b.dateKey), ...scopedExpKeys])).sort();
@@ -379,8 +402,8 @@ export default function Finance() {
       const barberRev  = {};
       const barberTips = {};
       barbers.forEach(b => {
-        barberRev[b.name]  = { cash: 0, monzo: 0, card: 0 };
-        barberTips[b.name] = { cash: 0, monzo: 0, card: 0 };
+        barberRev[b.name]  = { cash: 0, card: 0 };
+        barberTips[b.name] = { cash: 0, card: 0 };
       });
       // Revenue: only CHECKED_OUT bookings; wages: all non-cancelled (worked)
       const workedNames = new Set();
@@ -388,22 +411,22 @@ export default function Finance() {
         const name = b.barber;
         workedNames.add(name);
         if (b.status !== 'CHECKED_OUT') return;
-        if (!barberRev[name])  barberRev[name]  = { cash: 0, monzo: 0, card: 0 };
-        if (!barberTips[name]) barberTips[name] = { cash: 0, monzo: 0, card: 0 };
+        if (!barberRev[name])  barberRev[name]  = { cash: 0, card: 0 };
+        if (!barberTips[name]) barberTips[name] = { cash: 0, card: 0 };
         const rev = effectiveRevenue(b);
         const tip = parsePrice(b.tip);
         const pm2 = paymentMethod(b);
         if (pm2 === 'CASH') { barberRev[name].cash += rev; if (tip) barberTips[name].cash += tip; }
-        else if (pm2 === 'MONZO') { barberRev[name].monzo += rev; if (tip) barberTips[name].monzo += tip; }
+
         else { barberRev[name].card += rev; if (tip) barberTips[name].card += tip; }
       });
       // Card/monzo tips need to be reimbursed to the barber from the till
       const tillTipPayout = tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash'
-        ? Object.values(barberTips).reduce((s, t) => s + t.card + t.monzo, 0)
+        ? Object.values(barberTips).reduce((s, t) => s + t.card, 0)
         : 0;
-      const totalTipsDay = Object.values(barberTips).reduce((s, t) => s + t.cash + t.card + t.monzo, 0);
+      const totalTipsDay = Object.values(barberTips).reduce((s, t) => s + t.cash + t.card, 0);
 
-      const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.monzo + v.card, 0);
+      const grossRevenue = Object.values(barberRev).reduce((s, v) => s + v.cash + v.card, 0);
       let productRev = 0;
       dayBk.forEach(b => { if (b.status === 'CHECKED_OUT') productRev += soldProductsTotal(b); });
       const serviceRev = Math.max(0, grossRevenue - productRev);
@@ -451,6 +474,11 @@ export default function Finance() {
       return String(d.dateKey || '').startsWith(selectedMonth);
     });
   }, [dailyData, dailyRangeMode, selectedDay, showEmptyDays, monthMode, selectedMonth]);
+
+  // Only show barber columns that have any revenue in the visible rows
+  const activeBarbers = useMemo(() =>
+    barbers.filter(b => visibleDailyRows.some(d => (d.barberRev[b.name]?.cash || 0) + (d.barberRev[b.name]?.card || 0) > 0))
+  , [barbers, visibleDailyRows]);
 
   const monthlyTotals = useMemo(() => ({
     grossRevenue:   dailyData.reduce((s, d) => s + d.grossRevenue,   0),
@@ -589,7 +617,12 @@ export default function Finance() {
     payments
       .map(p => ({ ...p, __date: paymentToDate(p.date) }))
       .filter(p => p.__date)
-      .filter(p => monthMode === 'all' ? true : monthKey(p.__date) === selectedMonth)
+      .filter(p => {
+        if (monthMode === 'all') return true;
+        if (monthMode === 'month') return monthKey(p.__date) === selectedMonth;
+        if (monthMode === 'week') return p.__date >= startOfWeek(selectedDay) && p.__date < endOfWeek(selectedDay);
+        return toInputDate(p.__date) === toInputDate(selectedDay);
+      })
       .filter(p => paymentBarberFilter === 'all' ? true : normalizeName(p.barberName) === normalizeName(paymentBarberFilter))
       .sort((a, b) => b.__date.getTime() - a.__date.getTime()),
   [payments, selectedMonth, monthMode, paymentBarberFilter]);
@@ -644,35 +677,67 @@ export default function Finance() {
     setExpenseFormSaving(true);
     try {
       const dk = expenseForm.date;
-      const existing = expenses[dk] || null;
-      const nextCash = (parseFloat(existing?.cashExpense) || 0) + cashToAdd;
-      const nextBank = (parseFloat(existing?.bankExpense) || 0) + bankToAdd;
-      const nextNotes = [String(existing?.notes || '').trim(), notesToAdd]
-        .filter(Boolean)
-        .join(existing?.notes && notesToAdd ? ' | ' : '');
-
-      const data = {
-        date: dk,
-        month: dk.slice(0, 7),
-        cashExpense: nextCash,
-        bankExpense: nextBank,
-        notes: nextNotes,
-      };
-
-      if (existing?.id) {
-        await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, existing.id), data);
-        data.id = existing.id;
-      } else {
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
-        data.id = ref.id;
-      }
-
-      setExpenses(prev => ({ ...prev, [dk]: data }));
+      const data = { date: dk, month: dk.slice(0, 7), cashExpense: cashToAdd, bankExpense: bankToAdd, notes: notesToAdd };
+      const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
+      const entry = { ...data, id: ref.id };
+      setExpenseList(prev => [entry, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
+      setExpenses(prev => {
+        const ex = prev[dk] || { cashExpense: 0, bankExpense: 0, notes: '' };
+        return {
+          ...prev,
+          [dk]: {
+            ...ex,
+            cashExpense: (ex.cashExpense || 0) + cashToAdd,
+            bankExpense: (ex.bankExpense || 0) + bankToAdd,
+            notes: [ex.notes, notesToAdd].filter(Boolean).join(ex.notes && notesToAdd ? ' | ' : ''),
+          }
+        };
+      });
       setExpenseForm({ date: '', cashExpense: '', bankExpense: '', notes: '' });
     } catch (e) {
       console.error(e);
     }
     setExpenseFormSaving(false);
+  };
+
+  const deleteExpenseEntry = async entry => {
+    if (!window.confirm('Delete this expense entry?')) return;
+    try {
+      await deleteDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id));
+      setExpenseList(prev => prev.filter(e => e.id !== entry.id));
+      setExpenses(prev => {
+        const dk = entry.date;
+        const ex = prev[dk];
+        if (!ex) return prev;
+        const newCash = Math.max(0, (ex.cashExpense || 0) - (entry.cashExpense || 0));
+        const newBank = Math.max(0, (ex.bankExpense || 0) - (entry.bankExpense || 0));
+        if (newCash === 0 && newBank === 0) { const { [dk]: _, ...rest } = prev; return rest; }
+        return { ...prev, [dk]: { ...ex, cashExpense: newCash, bankExpense: newBank } };
+      });
+    } catch (e) { console.error(e); }
+  };
+
+  const saveExpenseEntry = async entry => {
+    setEditExpEntrySaving(true);
+    try {
+      const data = {
+        date: entry.date, month: entry.month,
+        cashExpense: parseFloat(editExpEntryDraft.cashExpense) || 0,
+        bankExpense: parseFloat(editExpEntryDraft.bankExpense) || 0,
+        notes: String(editExpEntryDraft.notes || '').trim(),
+      };
+      await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id), data);
+      setExpenseList(prev => prev.map(e => e.id === entry.id ? { ...e, ...data } : e));
+      setExpenses(prev => {
+        const dk = entry.date;
+        const ex = prev[dk] || { cashExpense: 0, bankExpense: 0, notes: '' };
+        const newCash = (ex.cashExpense || 0) - (entry.cashExpense || 0) + data.cashExpense;
+        const newBank = (ex.bankExpense || 0) - (entry.bankExpense || 0) + data.bankExpense;
+        return { ...prev, [dk]: { ...ex, cashExpense: Math.max(0, newCash), bankExpense: Math.max(0, newBank) } };
+      });
+      setEditingExpEntryId(null);
+    } catch (e) { console.error(e); }
+    setEditExpEntrySaving(false);
   };
 
   const deletePayment = async payment => {
@@ -730,38 +795,57 @@ export default function Finance() {
     <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', letterSpacing: '2px', color: '#d4af37' }}>FINANCE</h2>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-          </div>
-          <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--muted)', letterSpacing: '1px' }}>
-            {MONTH_NAMES[month]} {year} · Revenue / Expenses / Partnership
-          </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {/* Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '3px', color: '#d4af37', fontFamily: "'Cormorant Garamond',serif" }}>Finance</h2>
+          <span style={{ display: 'inline-block', width: '4px', height: '28px', borderRadius: '4px', background: 'linear-gradient(180deg,#d4af37,#b8860b)' }} />
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Month navigator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '3px 6px', opacity: monthMode === 'all' ? 0.45 : 1 }}>
-            <button onClick={() => { if (monthMode === 'all') return; const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m-2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
-              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: monthMode==='all'?'default':'pointer', fontSize: '1rem', width: '24px', height: '24px', display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
-            <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text)', minWidth: '90px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {MONTH_NAMES[month]} {year}
-            </span>
-            <button onClick={() => { if (monthMode === 'all') return; const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
-              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: monthMode==='all'?'default':'pointer', fontSize: '1rem', width: '24px', height: '24px', display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
+
+        {/* Period tabs */}
+        <div style={{ display: 'flex', gap: '2px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '4px', flexShrink: 0 }}>
+          {[['day','Day'],['week','Week'],['month','Month'],['all','All Time']].map(([id, lbl]) => (
+            <div key={id} onClick={() => setMonthMode(id)}
+              style={{ padding: '7px 16px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                background: monthMode === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'transparent',
+                color: monthMode === id ? '#000' : 'var(--muted)', transition: 'all 0.15s' }}>
+              {lbl}
+            </div>
+          ))}
+        </div>
+
+        {/* Context picker */}
+        {monthMode === 'month' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '3px 6px', flexShrink: 0 }}>
+            <button onClick={() => { const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m-2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
+              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontSize: '1rem', width: '26px', height: '26px', display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
+            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text)', minWidth: '96px', textAlign: 'center' }}>{MONTH_NAMES[month]} {year}</span>
+            <button onClick={() => { const [y,m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }}
+              style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontSize: '1rem', width: '26px', height: '26px', display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
           </div>
-          <button onClick={() => setMonthMode(v => v === 'all' ? 'selected' : 'all')}
-            style={{ padding: '5px 12px', background: monthMode==='all' ? 'rgba(212,175,55,0.15)' : 'var(--card)', border: `1px solid ${monthMode==='all' ? 'rgba(212,175,55,0.5)' : 'var(--border)'}`, borderRadius: '8px', color: monthMode==='all' ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.5px' }}>
-            All Time
-          </button>
+        )}
+        {(monthMode === 'day' || monthMode === 'week') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <input type="date" value={toInputDate(selectedDay)}
+              onChange={e => { const d = new Date(e.target.value + 'T12:00:00'); setSelectedDay(d); setSelectedMonth(monthKey(d)); }}
+              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: '0.82rem' }} />
+            {monthMode === 'week' && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                {startOfWeek(selectedDay).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {new Date(endOfWeek(selectedDay).getTime() - 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
           <button onClick={fetchAll}
-            style={{ padding: '5px 12px', background: 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
-            ↺ Refresh
+            style={{ padding: '7px 13px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+            ↺
           </button>
           <button onClick={openSettings}
-            style={{ padding: '5px 12px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'var(--card2)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
-            ⚙ Settings
+            style={{ padding: '7px 13px', background: showSettings ? 'rgba(212,175,55,0.15)' : 'var(--card)', border: `1px solid ${showSettings ? 'rgba(212,175,55,0.4)' : 'var(--border)'}`, borderRadius: '8px', color: showSettings ? '#d4af37' : 'var(--muted)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
+            ⚙
           </button>
         </div>
       </div>
@@ -921,7 +1005,7 @@ export default function Finance() {
                 if (!e.target.value) return;
                 const d = new Date(e.target.value + 'T12:00:00');
                 setSelectedDay(d);
-                if (monthMode === 'selected') setSelectedMonth(monthKey(d));
+                if (monthMode === 'month') setSelectedMonth(monthKey(d));
               }}
               style={{ ...inp, width: 'auto', colorScheme: 'dark', padding: '7px 10px' }} />
           )}
@@ -945,7 +1029,7 @@ export default function Finance() {
               <thead>
                 <tr style={{ background: 'rgba(212,175,55,0.07)' }}>
                   <th style={{ ...thS, textAlign: 'left', minWidth: '75px' }}>Date</th>
-                  {barbers.map(b => (
+                  {activeBarbers.map(b => (
                     <React.Fragment key={b.name}>
                       <th style={{ ...thS, color: b.color || BARBER_COLORS[b.name] }}>{b.name}<br/>Cash</th>
                       <th style={{ ...thS, color: b.color || BARBER_COLORS[b.name], opacity: 0.75 }}>{b.name}<br/>Card</th>
@@ -972,9 +1056,9 @@ export default function Finance() {
                         <span style={{ color: 'var(--muted)', marginLeft: '4px', fontSize: '0.6rem' }}>{row.dayOfWeek}</span>
                       </td>
 
-                      {barbers.map(b => {
-                        const rev = row.barberRev[b.name] || { cash: 0, monzo: 0, card: 0 };
-                        const cardTotal = rev.card + rev.monzo;
+                      {activeBarbers.map(b => {
+                        const rev = row.barberRev[b.name] || { cash: 0, card: 0 };
+                        const cardTotal = rev.card;
                         return (
                           <React.Fragment key={b.name}>
                             <td style={{ ...tdS(), color: rev.cash > 0 ? 'var(--text)' : 'var(--muted)' }}>
@@ -982,7 +1066,6 @@ export default function Finance() {
                             </td>
                             <td style={{ ...tdS(), color: cardTotal > 0 ? 'var(--text)' : 'var(--muted)', fontSize: '0.72rem' }}>
                               {cardTotal > 0 ? '£' + Math.round(cardTotal) : '–'}
-                              {rev.monzo > 0 && rev.card > 0 && <span style={{ fontSize: '0.55rem', color: 'var(--muted)', marginLeft: '2px' }}>m</span>}
                             </td>
                           </React.Fragment>
                         );
@@ -1036,7 +1119,7 @@ export default function Finance() {
                       {tipSettings.tipsToIndividual && (
                         <td style={{ ...tdS(), color: row.totalTipsDay > 0 ? '#2196f3' : 'var(--muted)', fontSize: '0.72rem' }}>
                           {row.totalTipsDay > 0
-                            ? <span title={Object.entries(row.barberTips || {}).filter(([,t]) => t.cash+t.card+t.monzo>0).map(([n,t]) => `${n}: £${(t.cash+t.card+t.monzo).toFixed(2)}`).join(' | ')}>
+                            ? <span title={Object.entries(row.barberTips || {}).filter(([,t]) => t.cash+t.card>0).map(([n,t]) => `${n}: £${(t.cash+t.card).toFixed(2)}`).join(' | ')}>
                                 £{row.totalTipsDay.toFixed(2)}
                               </span>
                             : '–'}
@@ -1054,15 +1137,15 @@ export default function Finance() {
                 {/* Totals */}
                 <tr style={{ background: 'rgba(212,175,55,0.08)', borderTop: '2px solid rgba(212,175,55,0.3)' }}>
                   <td style={{ ...tdS(), textAlign: 'left', fontWeight: '800', fontSize: '0.72rem', color: '#d4af37' }}>TOTAL</td>
-                  {barbers.map(b => {
+                  {activeBarbers.map(b => {
                     const cash  = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.cash  || 0), 0);
                     const card  = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.card  || 0), 0);
-                    const monzo = visibleDailyRows.reduce((s, d) => s + (d.barberRev[b.name]?.monzo || 0), 0);
+
                     const col = b.color || BARBER_COLORS[b.name];
                     return (
                       <React.Fragment key={b.name}>
                         <td style={{ ...tdS(), fontWeight: '700', color: col }}>{cash > 0 ? '£' + Math.round(cash) : '–'}</td>
-                        <td style={{ ...tdS(), fontWeight: '700', color: col }}>{(card + monzo) > 0 ? '£' + Math.round(card + monzo) : '–'}</td>
+                        <td style={{ ...tdS(), fontWeight: '700', color: col }}>{card > 0 ? '£' + Math.round(card) : '–'}</td>
                       </React.Fragment>
                     );
                   })}
@@ -1091,7 +1174,7 @@ export default function Finance() {
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(212,175,55,0.1)', fontSize: '0.6rem', color: 'var(--muted)' }}>
             Click any expense cell to edit. Card total includes Monzo (shown as "m"). Net P&L = Net Revenue – Wages – Fixed Cost (£{fixedDailyRate}/day).
-            {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && ' Hover over Tips cell to see per-barber breakdown. Till→Barbers = card/monzo tips reimbursed from till.'}
+            {tipSettings.tipsToIndividual && tipSettings.cardTipMethod === 'till_cash' && ' Hover over Tips cell to see per-barber breakdown. Till→Barbers = card tips reimbursed from till.'}
           </div>
         </div>
       )}
@@ -1107,7 +1190,7 @@ export default function Finance() {
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--muted)', letterSpacing: '1px' }}>
-                {monthMode === 'all' ? 'All Time' : `${MONTH_NAMES[month]} ${year}`}
+                {monthMode === 'all' ? 'All Time' : monthMode === 'month' ? `${MONTH_NAMES[month]} ${year}` : monthMode === 'week' ? `${startOfWeek(selectedDay).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${new Date(endOfWeek(selectedDay).getTime()-1).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}` : toInputDate(selectedDay)}
               </span>
               <div style={{ flex: 1 }} />
               <select value={paymentBarberFilter} onChange={e => setPaymentBarberFilter(e.target.value)} style={{ ...inp, width: 'auto', minWidth: '130px', padding: '6px 10px' }}>
@@ -1133,7 +1216,7 @@ export default function Finance() {
                         <tr key={p.id + p.sourceType} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{p.__date.toLocaleDateString('en-GB')}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: bColor, fontWeight: '600' }}>{p.barberName}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#ff7043' }}>£{Math.round(parseFloat(p.amount || 0))}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#ff7043' }}>£{parseFloat(p.amount || 0).toFixed(2)}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.method}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.65rem', color: 'var(--muted)' }}>{p.sourceType === 'advances' ? 'imported' : 'manual'}</td>
                           <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{p.notes || '–'}</td>
@@ -1147,6 +1230,19 @@ export default function Finance() {
                   </tbody>
                 </table>
             }
+            {paymentRows.length > 0 && (() => {
+              const total = paymentRows.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+              const byCash = paymentRows.filter(p => (p.method||'').toLowerCase() === 'cash').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+              const byBank = paymentRows.filter(p => (p.method||'').toLowerCase() !== 'cash').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+              return (
+                <div style={{ padding: '12px 18px', borderTop: '2px solid rgba(212,175,55,0.25)', background: 'rgba(212,175,55,0.05)', display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.6rem', color: '#d4af37', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Total</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Cash: <strong style={{ color: '#d4af37' }}>£{byCash.toFixed(2)}</strong></div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Bank: <strong style={{ color: '#d4af37' }}>£{byBank.toFixed(2)}</strong></div>
+                  <div style={{ marginLeft: 'auto', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.3rem', fontWeight: 700, color: '#d4af37' }}>£{total.toFixed(2)}</div>
+                </div>
+              );
+            })()}
           </div>
 
           <div style={{ ...card, padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1220,40 +1316,97 @@ export default function Finance() {
 
           <div style={{ ...card, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(212,175,55,0.1)', fontSize: '0.65rem', color: '#ff7043', fontWeight: '700', letterSpacing: '2px' }}>
-              EXPENSE HISTORY ({monthMode === 'selected' ? 'THIS MONTH' : 'ALL MONTHS'})
+              EXPENSE HISTORY ({monthMode === 'all' ? 'ALL TIME' : monthMode === 'month' ? `${MONTH_NAMES[month]} ${year}` : monthMode === 'week' ? 'THIS WEEK' : toInputDate(selectedDay)})
             </div>
-            {Object.entries(expenses)
-              .filter(([dk]) => monthMode === 'all' || String(dk || '').startsWith(selectedMonth))
-              .sort((a, b) => b[0].localeCompare(a[0])).length === 0 ? (
+            {expenseList.filter(e => (() => { if (monthMode === 'all') return true; if (monthMode === 'month') return String(e.date || '').startsWith(selectedMonth); if (monthMode === 'week') { const d = e.date ? new Date(e.date + 'T12:00:00') : null; return d && d >= startOfWeek(selectedDay) && d < endOfWeek(selectedDay); } return e.date === toInputDate(selectedDay); })()).length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8rem' }}>No expense records in current filter.</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'rgba(255,112,67,0.08)' }}>
-                    {['Date','Cash','Bank','Notes'].map(h => (
-                      <th key={h} style={{ ...thS, textAlign: 'left', padding: '8px 14px' }}>{h}</th>
+                    {['Date','Cash','Bank','Notes',''].map((h, i) => (
+                      <th key={i} style={{ ...thS, textAlign: 'left', padding: '8px 14px' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(expenses)
-                    .filter(([dk]) => monthMode === 'all' || String(dk || '').startsWith(selectedMonth))
-                    .sort((a, b) => b[0].localeCompare(a[0]))
-                    .map(([dk, exp]) => (
-                      <tr key={dk} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '10px 14px', fontSize: '0.75rem' }}>{dk}</td>
-                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
-                          {(parseFloat(exp?.cashExpense) || 0) > 0 ? `£${Math.round(parseFloat(exp?.cashExpense) || 0)}` : '–'}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
-                          {(parseFloat(exp?.bankExpense) || 0) > 0 ? `£${Math.round(parseFloat(exp?.bankExpense) || 0)}` : '–'}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>{exp?.notes || '–'}</td>
-                      </tr>
-                    ))}
+                  {expenseList
+                    .filter(e => (() => { if (monthMode === 'all') return true; if (monthMode === 'month') return String(e.date || '').startsWith(selectedMonth); if (monthMode === 'week') { const d = e.date ? new Date(e.date + 'T12:00:00') : null; return d && d >= startOfWeek(selectedDay) && d < endOfWeek(selectedDay); } return e.date === toInputDate(selectedDay); })())
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map(entry => {
+                      const isEditingThis = editingExpEntryId === entry.id;
+                      return (
+                        <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '10px 14px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{entry.date}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
+                            {isEditingThis
+                              ? <input type="number" value={editExpEntryDraft.cashExpense}
+                                  onChange={e => setEditExpEntryDraft(d => ({ ...d, cashExpense: e.target.value }))}
+                                  style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }} />
+                              : (entry.cashExpense || 0) > 0 ? `£${parseFloat(entry.cashExpense).toFixed(2)}` : '–'
+                            }
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: '#ff7043', fontWeight: '700' }}>
+                            {isEditingThis
+                              ? <input type="number" value={editExpEntryDraft.bankExpense}
+                                  onChange={e => setEditExpEntryDraft(d => ({ ...d, bankExpense: e.target.value }))}
+                                  style={{ ...inp, width: '70px', padding: '4px 7px', fontSize: '0.75rem' }} />
+                              : (entry.bankExpense || 0) > 0 ? `£${parseFloat(entry.bankExpense).toFixed(2)}` : '–'
+                            }
+                          </td>
+                          <td style={{ padding: '10px 14px', fontSize: '0.72rem', color: 'var(--muted)' }}>
+                            {isEditingThis
+                              ? <input type="text" value={editExpEntryDraft.notes}
+                                  onChange={e => setEditExpEntryDraft(d => ({ ...d, notes: e.target.value }))}
+                                  placeholder="Notes"
+                                  style={{ ...inp, width: '200px', padding: '4px 7px', fontSize: '0.72rem' }} />
+                              : entry.notes || '–'
+                            }
+                          </td>
+                          <td style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}>
+                            {isEditingThis ? (
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button onClick={() => saveExpenseEntry(entry)} disabled={editExpEntrySaving}
+                                  style={{ padding: '4px 8px', background: '#d4af37', border: 'none', borderRadius: '5px', color: '#000', fontWeight: '700', fontSize: '0.65rem', cursor: 'pointer' }}>
+                                  {editExpEntrySaving ? '...' : '✓ Save'}
+                                </button>
+                                <button onClick={() => setEditingExpEntryId(null)}
+                                  style={{ padding: '4px 6px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--muted)', fontSize: '0.65rem', cursor: 'pointer' }}>✕</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button onClick={() => { setEditingExpEntryId(entry.id); setEditExpEntryDraft({ cashExpense: entry.cashExpense || '', bankExpense: entry.bankExpense || '', notes: entry.notes || '' }); }}
+                                  style={{ padding: '4px 8px', background: 'transparent', border: '1px solid #d4af3744', borderRadius: '5px', color: '#d4af37', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '700' }}>
+                                  Edit
+                                </button>
+                                <button onClick={() => deleteExpenseEntry(entry)}
+                                  style={{ padding: '4px 8px', background: 'transparent', border: '1px solid #ff525244', borderRadius: '5px', color: '#ff5252', fontSize: '0.65rem', cursor: 'pointer', fontWeight: '700' }}>
+                                  Del
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             )}
+            {/* Totals footer */}
+            {expenseList.filter(e => (() => { if (monthMode === 'all') return true; if (monthMode === 'month') return String(e.date || '').startsWith(selectedMonth); if (monthMode === 'week') { const d = e.date ? new Date(e.date + 'T12:00:00') : null; return d && d >= startOfWeek(selectedDay) && d < endOfWeek(selectedDay); } return e.date === toInputDate(selectedDay); })()).length > 0 && (() => {
+              const filtered = expenseList.filter(e => (() => { if (monthMode === 'all') return true; if (monthMode === 'month') return String(e.date || '').startsWith(selectedMonth); if (monthMode === 'week') { const d = e.date ? new Date(e.date + 'T12:00:00') : null; return d && d >= startOfWeek(selectedDay) && d < endOfWeek(selectedDay); } return e.date === toInputDate(selectedDay); })());
+              const totalCash = filtered.reduce((s, e) => s + (parseFloat(e.cashExpense) || 0), 0);
+              const totalBank = filtered.reduce((s, e) => s + (parseFloat(e.bankExpense) || 0), 0);
+              const totalAll  = totalCash + totalBank;
+              return (
+                <div style={{ padding: '12px 18px', borderTop: '2px solid rgba(255,112,67,0.25)', background: 'rgba(255,112,67,0.06)', display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.6rem', color: '#ff7043', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Total</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Cash: <strong style={{ color: '#ff7043' }}>£{totalCash.toFixed(2)}</strong></div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Bank: <strong style={{ color: '#ff7043' }}>£{totalBank.toFixed(2)}</strong></div>
+                  <div style={{ marginLeft: 'auto', fontFamily: "'Cormorant Garamond',serif", fontSize: '1.3rem', fontWeight: 700, color: '#ff7043' }}>£{totalAll.toFixed(2)}</div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1581,18 +1734,37 @@ export default function Finance() {
 // ── TIPS TAB ─────────────────────────────────────────────────────────────────
 function TipsTab({ bookings, selectedDay, setSelectedDay }) {
   const [tipping, setTipping] = useState({});
+  const [tipMode, setTipMode] = useState('day');
 
   const dayKey = selectedDay instanceof Date
     ? selectedDay.getFullYear() + '-' + String(selectedDay.getMonth() + 1).padStart(2, '0') + '-' + String(selectedDay.getDate()).padStart(2, '0')
     : String(selectedDay).slice(0, 10);
 
+  const monthPrefix = dayKey.slice(0, 7); // YYYY-MM
+
+  const weekStart = useMemo(() => {
+    const d = selectedDay instanceof Date ? new Date(selectedDay) : new Date(dayKey + 'T12:00:00');
+    const day = d.getDay();
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [dayKey]);
+
+  const weekEnd = useMemo(() => {
+    const d = new Date(weekStart); d.setDate(d.getDate() + 7); return d;
+  }, [weekStart]);
+
   const tippedBookings = useMemo(() => {
     return bookings.filter(function(b) {
       const tip = parseFloat(b.tip) || 0;
       if (tip <= 0) return false;
-      return b.dateKey === dayKey;
-    });
-  }, [bookings, dayKey]);
+      if (tipMode === 'day')   return b.dateKey === dayKey;
+      if (tipMode === 'month') return String(b.dateKey || '').startsWith(monthPrefix);
+      // week
+      const d = b.dateKey ? new Date(b.dateKey + 'T12:00:00') : null;
+      return d && d >= weekStart && d < weekEnd;
+    }).sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+  }, [bookings, dayKey, monthPrefix, weekStart, weekEnd, tipMode]);
 
   const cardTips = tippedBookings.filter(b => {
     const m = (b.paymentMethod || b.method || '').toUpperCase();
@@ -1606,6 +1778,16 @@ function TipsTab({ bookings, selectedDay, setSelectedDay }) {
   const totalCard = cardTips.reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
   const totalCash = cashTips.reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
   const cardTakenAsCash = cardTips.filter(b => b.tipTakenAsCash).reduce((s, b) => s + (parseFloat(b.tip) || 0), 0);
+
+  // Card tips not taken as cash → need bank transfer per barber
+  const bankDue = useMemo(() => {
+    const map = {};
+    cardTips.filter(b => !b.tipTakenAsCash).forEach(b => {
+      const name = b.barber || b.barberName || 'Unknown';
+      map[name] = (map[name] || 0) + (parseFloat(b.tip) || 0);
+    });
+    return Object.entries(map).map(([name, amt]) => ({ name, amt })).sort((a, b) => b.amt - a.amt);
+  }, [cardTips]);
 
   const toggle = async function(booking, field) {
     const id = booking.bookingId;
@@ -1671,17 +1853,34 @@ function TipsTab({ bookings, selectedDay, setSelectedDay }) {
     );
   };
 
+  const periodLabel = tipMode === 'day' ? dayKey
+    : tipMode === 'month' ? monthPrefix
+    : `${weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(weekEnd.getTime() - 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Date picker */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* Controls row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Mode tabs */}
+        <div style={{ display: 'flex', gap: '2px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '3px' }}>
+          {['day', 'week', 'month'].map(m => (
+            <div key={m} onClick={() => setTipMode(m)}
+              style={{ padding: '5px 14px', borderRadius: '7px', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize',
+                background: tipMode === m ? '#d4af37' : 'transparent',
+                color: tipMode === m ? '#080705' : 'var(--muted)', transition: 'all 0.15s' }}>
+              {m}
+            </div>
+          ))}
+        </div>
         <input
           type="date"
           value={dayKey}
           onChange={e => setSelectedDay(new Date(e.target.value + 'T12:00:00'))}
           style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: '0.85rem' }}
         />
-        <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{tippedBookings.length} tip{tippedBookings.length !== 1 ? 's' : ''} · Total £{(totalCard + totalCash).toFixed(2)}</span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
+          {periodLabel} · <strong style={{ color: 'var(--text)' }}>{tippedBookings.length}</strong> tip{tippedBookings.length !== 1 ? 's' : ''} · <strong style={{ color: '#d4af37' }}>£{(totalCard + totalCash).toFixed(2)}</strong>
+        </span>
       </div>
 
       {/* Cash impact banner */}
@@ -1692,7 +1891,7 @@ function TipsTab({ bookings, selectedDay, setSelectedDay }) {
       )}
 
       {tippedBookings.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)', border: '1px dashed var(--border)', borderRadius: '12px' }}>No tips for this day</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)', border: '1px dashed var(--border)', borderRadius: '12px' }}>No tips for {tipMode === 'day' ? 'this day' : tipMode === 'week' ? 'this week' : 'this month'}</div>
       ) : (
         <>
           {/* Card tips */}
@@ -1705,6 +1904,25 @@ function TipsTab({ bookings, selectedDay, setSelectedDay }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {cardTips.map(b => renderRow(b, true))}
               </div>
+            </div>
+          )}
+
+          {/* Bank transfers due */}
+          {bankDue.length > 0 && (
+            <div style={{ padding: '14px 16px', background: 'rgba(100,181,246,0.08)', border: '1px solid rgba(100,181,246,0.25)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64b5f6', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>🏦 Bank Transfer Due</span>
+                <span style={{ fontSize: '0.82rem', color: '#64b5f6', fontWeight: '700' }}>£{bankDue.reduce((s, x) => s + x.amt, 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {bankDue.map(({ name, amt }) => (
+                  <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(100,181,246,0.06)', borderRadius: '8px', border: '1px solid rgba(100,181,246,0.15)' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text)' }}>{name}</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: '700', color: '#64b5f6', fontFamily: "'Cormorant Garamond',serif" }}>£{amt.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '8px' }}>Card tips not yet taken as cash — transfer these to each barber via bank.</div>
             </div>
           )}
 

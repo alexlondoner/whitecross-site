@@ -16,6 +16,7 @@ const Finance = lazy(() => import('./pages/Finance'));
 const OnlineProfile = lazy(() => import('./pages/OnlineProfile'));
 const Products = lazy(() => import('./pages/Products'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
+const Marketing = lazy(() => import('./pages/Marketing'));
 import config from './config';
 import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import './App.css';
@@ -52,12 +53,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          const result = await firebaseUser.getIdTokenResult();
-          setTenantId(result.claims.tenantId || null);
-        } catch {
-          setTenantId(null);
-        }
+        setTenantId('whitecross');
         // Fetch role from Firestore — no doc = admin (backwards compat for owner)
         try {
           const staffDoc = await getDoc(doc(db, 'tenants/whitecross/staff', firebaseUser.uid));
@@ -117,6 +113,7 @@ function App() {
       case 'finance':       return <Finance tenantId={tenantId} isAdmin={isAdmin} />;
       case 'products':      return <Products tenantId={tenantId} isAdmin={isAdmin} />;
       case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} authUser={authUser} />;
+      case 'marketing':     return <Marketing tenantId={tenantId} isAdmin={isAdmin} />;
       case 'activity-log':  return isAdmin ? <AuditLog tenantId={tenantId} /> : <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
       default:              return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
     }

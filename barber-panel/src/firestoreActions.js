@@ -19,6 +19,10 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     : total;
   const redeemed = loyaltyPointsRedeemed || 0;
   const wasCheckedOut = String(bookingData.status || '').toUpperCase() === 'CHECKED_OUT';
+  // Deposit already collected upfront — include it in totalSpent on fresh checkout
+  const depositPaid = wasCheckedOut ? 0
+    : (parseFloat(bookingData.platformDepositAmount) || 0)
+      || (bookingData.paymentType === 'DEPOSIT' ? parseFloat(String(bookingData.paidAmount || 0).replace(/[£,]/g, '')) || 0 : 0);
 
   // Look up client BEFORE writing so loyaltyPointsEarned is correct when CF fires
   let clientDoc = null;
@@ -37,7 +41,20 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
       }
     }
     isMember = clientDoc?.data()?.isMember || false;
-    pointsEarned = (isMember || hasDiscount) ? 0 : Math.floor(fullPrice);
+    let multiplier = 1;
+    try {
+      const settingsSnap = await getDoc(doc(db, `${TENANT}/settings/settings`));
+      const camp = settingsSnap.data()?.doublePointsCampaign;
+      if (camp?.active && camp.startDate && camp.endDate) {
+        const src = (bookingData.source || '').toLowerCase();
+        const isWebsite = src === 'website' || src === 'online' || src === 'web';
+        const today = new Date().toISOString().slice(0, 10);
+        if (isWebsite && today >= camp.startDate && today <= camp.endDate) multiplier = 2;
+      }
+    } catch (_) {}
+    const productTotal = (soldProducts || []).reduce((s, p) => s + (parseFloat(p.price) || 0) * (parseInt(p.qty, 10) || 1), 0);
+    const addOnTotal   = (soldAddOns   || []).reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
+    pointsEarned = (isMember || hasDiscount) ? 0 : Math.floor(fullPrice + productTotal + addOnTotal) * multiplier;
   } catch (err) {
     console.warn('Loyalty pre-fetch failed (non-critical):', err.message);
   }
@@ -79,28 +96,50 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
     loyaltyPointsRedeemed: redeemed,
   });
 
-  // Update client loyalty balance — non-critical, never blocks checkout
+  // Update client doc — loyalty + running stats — non-critical, never blocks checkout
   try {
-    if (!isMember && (phone || email)) {
+    if (phone || email) {
+      const barberName = bookingData.barberName || bookingData.barberId || '';
+      const serviceId  = bookingData.serviceId  || bookingData.service  || '';
+      const clientsRef = collection(db, `${TENANT}/clients`);
+
       const prevEarned   = wasCheckedOut ? (bookingData.loyaltyPointsEarned   || 0) : 0;
       const prevRedeemed = wasCheckedOut ? (bookingData.loyaltyPointsRedeemed || 0) : 0;
-      const netDelta = (pointsEarned - redeemed) - (prevEarned - prevRedeemed);
-      if (netDelta !== 0) {
-        const clientsRef = collection(db, `${TENANT}/clients`);
-        if (clientDoc) {
-          await updateDoc(clientDoc.ref, { loyaltyPoints: increment(netDelta) });
-        } else if (!wasCheckedOut) {
-          await addDoc(clientsRef, {
-            name: bookingData.clientName || '',
-            phone, email,
-            loyaltyPoints: Math.max(0, pointsEarned - redeemed),
-            createdAt: Timestamp.fromDate(new Date()),
-          });
+      const netDelta = !isMember ? (pointsEarned - redeemed) - (prevEarned - prevRedeemed) : 0;
+
+      // Only increment running totals on a fresh checkout (not re-saves of already-paid bookings)
+      const statsUpdate = !wasCheckedOut ? {
+        totalSpent:    increment(total + depositPaid),
+        totalVisits:   increment(1),
+        totalDiscount: increment(discount || 0),
+        lastVisit:     Timestamp.fromDate(new Date()),
+        lastBarber:    barberName,
+        lastService:   serviceId,
+      } : {};
+
+      if (netDelta !== 0) statsUpdate.loyaltyPoints = increment(netDelta);
+
+      if (clientDoc) {
+        if (Object.keys(statsUpdate).length > 0) {
+          await updateDoc(clientDoc.ref, statsUpdate);
         }
+      } else if (!wasCheckedOut) {
+        await addDoc(clientsRef, {
+          name: bookingData.clientName || '',
+          phone, email,
+          loyaltyPoints: !isMember ? Math.max(0, pointsEarned - redeemed) : 0,
+          totalSpent:    total + depositPaid,
+          totalVisits:   1,
+          totalDiscount: discount || 0,
+          lastVisit:     Timestamp.fromDate(new Date()),
+          lastBarber:    barberName,
+          lastService:   serviceId,
+          createdAt:     Timestamp.fromDate(new Date()),
+        });
       }
     }
   } catch (err) {
-    console.warn('Loyalty points update failed (non-critical):', err.message);
+    console.warn('Client update failed (non-critical):', err.message);
   }
 }
 
@@ -139,16 +178,18 @@ export async function getClientLoyaltyPoints({ phone, email }) {
     if (data) {
       const offer = data.welcomeOffer || null;
       const offerActive = offer && offer.expiresAt && (offer.expiresAt.toDate ? offer.expiresAt.toDate() : new Date(offer.expiresAt)) > new Date();
+      const totalVisits = data.totalVisits || 0;
       return {
         points: data.loyaltyPoints || 0,
         isMember: data.isMember || false,
         clientName: data.name || '',
         membershipTier: data.membershipTier || '',
         welcomeOffer: offerActive ? offer : null,
+        isReturningCustomer: totalVisits >= 1,
       };
     }
   } catch (e) {}
-  return { points: 0, isMember: false, clientName: '', membershipTier: '', welcomeOffer: null };
+  return { points: 0, isMember: false, clientName: '', membershipTier: '', welcomeOffer: null, isReturningCustomer: false };
 }
 
 export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, serviceCharge, discount }) {
@@ -202,6 +243,7 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
     clientEmail: email || '',
     clientPhone: phone || '',
     barberId: barber,
+    barberName: barber,
     serviceId: service,
     startTime: Timestamp.fromDate(startTime),
     endTime: Timestamp.fromDate(endTime),

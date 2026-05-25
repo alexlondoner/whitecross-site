@@ -73,7 +73,10 @@ export default function ReceiptPanel({ booking, barbers, clientData, onClose, on
     const addOnRows = soldAddOns.length
       ? soldAddOns.map(p => `<div class="row"><span>${p.name}${p.qty > 1 ? ` x${p.qty}` : ''}</span><span>£${(parseFloat(p.price) * (parseInt(p.qty,10)||1)).toFixed(2)}</span></div>`).join('')
       : '';
-    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}.surcharge{color:#b36200;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div>${basePrice>0?`<div class="row"><span>${serviceLabel}</span><span>£${basePrice.toFixed(2)}</span></div>`:''}${productRows}${addOnRows}${scCharge>0?`<div class="row surcharge"><span>Service Charge (12.5%)</span><span>£${scCharge.toFixed(2)}</span></div>`:''}${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${calculatedTotal.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
+    const subtotalRow = (addOnsTotal > 0 || productsTotal > 0) && discount > 0
+      ? `<div class="row subtotal"><span>Subtotal</span><span>£${(basePrice + addOnsTotal + productsTotal).toFixed(2)}</span></div>`
+      : '';
+    const receiptHTML = `<!DOCTYPE html><html><head><title>Receipt - ${booking.name}</title><style>body{font-family:'Courier New',monospace;max-width:300px;margin:0 auto;padding:20px;color:#000;}.header{text-align:center;border-bottom:1px dashed #000;padding-bottom:10px;margin-bottom:10px;}.shop-name{font-size:14px;font-weight:bold;}.shop-info{font-size:10px;color:#555;}.row{display:flex;justify-content:space-between;margin:4px 0;font-size:12px;}.subtotal{border-top:1px dashed #ccc;padding-top:4px;color:#555;}.total-row{border-top:1px dashed #000;margin-top:8px;padding-top:8px;font-weight:bold;font-size:14px;}.footer{text-align:center;margin-top:16px;font-size:10px;color:#555;border-top:1px dashed #000;padding-top:10px;}.discount{color:#27500A;}.surcharge{color:#b36200;}</style></head><body><div class="header"><div class="shop-name">I CUT WHITECROSS BARBERS</div><div class="shop-info">136 Whitecross Street, London EC1Y 8QJ</div><div class="shop-info">${booking.date} · ${booking.time}</div></div><div class="row"><span>Customer</span><span>${booking.name}</span></div><div class="row"><span>Barber</span><span>${(booking.barber||'').toUpperCase()}</span></div>${basePrice>0?`<div class="row"><span>${serviceLabel}</span><span>£${basePrice.toFixed(2)}</span></div>`:''}${productRows}${addOnRows}${subtotalRow}${scCharge>0?`<div class="row surcharge"><span>Service Charge (12.5%)</span><span>£${scCharge.toFixed(2)}</span></div>`:''}${discount>0?`<div class="row discount"><span>Discount</span><span>-£${discount.toFixed(2)}</span></div>`:''}${tip>0?`<div class="row"><span>Tip</span><span>£${tip.toFixed(2)}</span></div>`:''}<div class="row total-row"><span>TOTAL</span><span>£${calculatedTotal.toFixed(2)}</span></div><div class="row"><span>Payment</span><span>${paymentMethod}</span></div><div class="footer"><div>Thank you for visiting!</div><div>whitecrossbarbers.com</div><div>Booking ID: ${booking.bookingId}</div></div></body></html>`;
     const win = window.open('', '_blank');
     win.document.write(receiptHTML);
     win.document.close();
@@ -119,16 +122,10 @@ export default function ReceiptPanel({ booking, barbers, clientData, onClose, on
               <span style={{ fontSize:'0.72rem', color:'#ff9800' }}>£{(p.price * p.qty).toFixed(2)}</span>
             </div>
           ))}
-          {productsTotal > 0 && (
-            <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Products subtotal</span>
-              <span style={{ fontSize:'0.72rem', color:'#8bc4ff' }}>£{productsTotal.toFixed(2)}</span>
-            </div>
-          )}
-          {addOnsTotal > 0 && (
-            <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Add-ons subtotal</span>
-              <span style={{ fontSize:'0.72rem', color:'#ff9800' }}>£{addOnsTotal.toFixed(2)}</span>
+          {(addOnsTotal > 0 || productsTotal > 0) && discount > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', borderTop:'1px dashed var(--border)', paddingTop:'4px', marginTop:'2px' }}>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Subtotal</span>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>£{(basePrice + addOnsTotal + productsTotal).toFixed(2)}</span>
             </div>
           )}
           {discount > 0 && (
@@ -157,7 +154,9 @@ export default function ReceiptPanel({ booking, barbers, clientData, onClose, on
           )}
           {tip > 0 && (
             <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>Tip</span>
+              <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>
+                Tip{booking.tipPaymentMethod ? ` · ${booking.tipPaymentMethod}` : ''}
+              </span>
               <span style={{ fontSize:'0.72rem', color:'var(--text)' }}>£{tip.toFixed(2)}</span>
             </div>
           )}

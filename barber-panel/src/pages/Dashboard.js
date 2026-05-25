@@ -1,6 +1,6 @@
 
 import { db } from '../firebase';
-import { collection, query, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, doc, getDoc, setDoc, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import config, { seedServices } from '../config';
 import { checkoutBooking, saveUnpaidBooking, createWalkIn, blockTime, editBooking, deleteBooking, cancelBooking, markNoShow, getProducts as getProductsAction, createProductSale, getClientLoyaltyPoints } from '../firestoreActions';
@@ -129,12 +129,26 @@ export default function Dashboard({ isAdmin = true }) {
   const [fabOpen, setFabOpen] = useState(false);
   const [customRange, setCustomRange] = useState({ start: null, end: null });
   const today = new Date(); today.setHours(0,0,0,0);
+  const dayListenerRef = useRef(null);
 
 useEffect(() => {
   fetchAll();
-  const interval = setInterval(() => { fetchAll(); }, 10000);
+  const interval = setInterval(() => { fetchAll(); }, 60000);
   return () => clearInterval(interval);
 }, []);
+
+useEffect(() => {
+  if (dayListenerRef.current) { dayListenerRef.current(); dayListenerRef.current = null; }
+  const s0 = new Date(selectedDate); s0.setHours(0,0,0,0);
+  const s1 = new Date(selectedDate); s1.setHours(23,59,59,999);
+  let first = true;
+  dayListenerRef.current = onSnapshot(
+    query(collection(db, 'tenants/whitecross/bookings'), where('startTime', '>=', Timestamp.fromDate(s0)), where('startTime', '<=', Timestamp.fromDate(s1))),
+    () => { if (first) { first = false; return; } fetchAll(); },
+    () => {}
+  );
+  return () => { if (dayListenerRef.current) { dayListenerRef.current(); dayListenerRef.current = null; } };
+}, [selectedDate]);
 
 useEffect(() => {
   if (barberFilter === 'all') return;

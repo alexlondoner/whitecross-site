@@ -395,6 +395,7 @@ function CartStep({
   clientIsMember, clientMemberTier,
   matchedClientName,
   welcomeOffer,
+  isReturningCustomer,
   LOYALTY_REDEEM_RATE,
   onSaveUnpaid, onContinue,
   saving,
@@ -485,6 +486,16 @@ function CartStep({
         </div>
       </div>
 
+      {!(booking.clientPhone || booking.phone || booking.clientEmail || booking.email) && (
+        <div style={{
+          padding: '9px 13px', borderRadius: '8px',
+          background: 'rgba(255,152,0,0.07)', border: '1px solid rgba(255,152,0,0.22)',
+          fontSize: '0.67rem', color: '#ff9800', lineHeight: 1.5,
+        }}>
+          ⚠️ No phone or email on this booking — loyalty points won't be tracked.
+        </div>
+      )}
+
       {clientIsMember ? (
         <div style={{
           padding: '10px 14px', borderRadius: '10px',
@@ -555,7 +566,7 @@ function CartStep({
         </div>
       )}
 
-      {welcomeOffer && welcomeOffer.value && (
+      {welcomeOffer && welcomeOffer.value && isReturningCustomer && (
         <div style={{
           padding: '10px 14px', borderRadius: '10px',
           background: 'rgba(212,175,55,0.07)',
@@ -574,7 +585,7 @@ function CartStep({
             onClick={() => {
               setDiscountType('%');
               setDiscountValue(String(welcomeOffer.value));
-              setDiscountApplied(Math.round(startingTotal * welcomeOffer.value / 100 * 100) / 100);
+              setDiscountApplied(Math.min(Math.round(basePrice * welcomeOffer.value / 100 * 100) / 100, startingTotal));
             }}
             style={{
               padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.3)',
@@ -796,7 +807,7 @@ function PaymentStep({ paymentMethod, setPaymentMethod, splitSecond, setSplitSec
         </div>
       )}
 
-      {isPlatformBooking && !isEditCheckoutMode && (
+      {isPlatformBooking && (
         <div
           onClick={() => setSendLoyaltyEmail(v => !v)}
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: T.bg3, borderRadius: '10px', border: `1px solid ${sendLoyaltyEmail ? T.gold + '55' : T.border}`, cursor: 'pointer', userSelect: 'none' }}
@@ -847,6 +858,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
   const [pointsInput, setPointsInput] = useState('');
   const [pointsApplied, setPointsApplied] = useState(0);
   const [welcomeOffer, setWelcomeOffer] = useState(null);
+  const [isReturningCustomer, setIsReturningCustomer] = useState(false);
 
   const LOYALTY_REDEEM_RATE = 20;
   const isPlatformBooking = ['Booksy', 'Fresha', 'Treatwell'].includes(booking.source);
@@ -898,6 +910,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
       setClientMemberTier(result.membershipTier || '');
       setMatchedClientName(result.clientName || '');
       setWelcomeOffer(result.welcomeOffer || null);
+      setIsReturningCustomer(result.isReturningCustomer || false);
     }).catch(() => {});
   }, [booking.bookingId]);
 
@@ -1028,6 +1041,7 @@ export default function CheckoutPanel({ booking, barbers, products, extras, isEd
                 clientIsMember={clientIsMember} clientMemberTier={clientMemberTier}
                 matchedClientName={matchedClientName}
                 welcomeOffer={welcomeOffer}
+                isReturningCustomer={isReturningCustomer}
                 LOYALTY_REDEEM_RATE={LOYALTY_REDEEM_RATE}
                 onSaveUnpaid={handleSaveUnpaid}
                 onContinue={() => setStep('tip')}

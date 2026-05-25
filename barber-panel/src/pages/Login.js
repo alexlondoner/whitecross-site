@@ -25,12 +25,7 @@ function Login({ onLogin }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const idTokenResult = await userCredential.user.getIdTokenResult();
-      const tenantId = idTokenResult.claims.tenantId;
-      if (!tenantId) {
-        setError('Access denied. No tenant assigned.');
-        return;
-      }
-      onLogin(tenantId);
+      onLogin();
     } catch (err) {
       setError(getLoginErrorMessage(err));
     } finally {

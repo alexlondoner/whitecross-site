@@ -156,6 +156,7 @@ export default function Reports() {
   const [loading,  setLoading]  = useState(true);
   const [period,   setPeriod]   = useState('month');
   const [activeTab, setActiveTab] = useState('overview');
+
   const [financeGroup, setFinanceGroup] = useState('day'); // day | week | month
   const [financeSource, setFinanceSource] = useState('all'); // all | services | products
   const [financePayment, setFinancePayment] = useState('all'); // all | cash | card
@@ -424,7 +425,7 @@ export default function Reports() {
   const th    = { padding: '8px 10px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', textAlign: 'left', fontWeight: '600', whiteSpace: 'nowrap' };
   const td    = (extra) => ({ padding: '7px 10px', fontSize: '0.75rem', ...extra });
 
-  const tabs  = ['overview', 'finance', 'barbers', 'services', 'products', 'clients'];
+  const tabs  = ['overview', 'breakdown', 'barbers', 'services', 'products', 'clients'];
 
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--muted)' }}>Loading reports...</div>;
 
@@ -533,8 +534,8 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ── FINANCE ── */}
-      {activeTab === 'finance' && (
+      {/* ── BREAKDOWN ── */}
+      {activeTab === 'breakdown' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           {/* Summary bar */}

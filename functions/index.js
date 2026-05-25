@@ -3,6 +3,7 @@ const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const nodemailer = require('nodemailer');
 const Stripe = require('stripe');
+const Anthropic = require('@anthropic-ai/sdk');
 const admin = require('firebase-admin');
 if (!admin.apps.length) admin.initializeApp();
 
@@ -590,6 +591,7 @@ exports.stripeWebhook = onRequest(
                     stripeEventId: event.id || null,
                     stripeAmountPaid: amountPaid,
                     paidAmount: paidAmount,
+                    platformDepositAmount: paymentType === 'DEPOSIT' ? depositAmount : 0,
                     remaining: remaining,
                     cancelReason: admin.firestore.FieldValue.delete(),
                     cancelledAt: admin.firestore.FieldValue.delete(),
@@ -1368,13 +1370,23 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
 
         const prevStatus = String(before.status || '').trim().toUpperCase();
         const newStatus  = String(after.status  || '').trim().toUpperCase();
-        if (newStatus !== 'CHECKED_OUT' || prevStatus === 'CHECKED_OUT') return;
+        const isManualTrigger = after.manualLoyaltyEmailTrigger === true && before.manualLoyaltyEmailTrigger !== true;
 
-        // Platform bookings only get loyalty email if explicitly opted-in at checkout
-        const platformSources = ['Booksy', 'Fresha', 'Treatwell'];
-        if (platformSources.includes(after.source) && after.sendLoyaltyEmail !== true) {
-            console.log(`Platform booking (${after.source}) — loyalty email not opted-in, skipping.`);
-            return;
+        // Normal checkout flow: status must transition TO CHECKED_OUT
+        // Manual trigger: panel button sets manualLoyaltyEmailTrigger = true on already-checked-out booking
+        if (!isManualTrigger) {
+            if (newStatus !== 'CHECKED_OUT' || prevStatus === 'CHECKED_OUT') return;
+            // Platform bookings only get loyalty email if explicitly opted-in at checkout
+            const platformSources = ['Booksy', 'Fresha', 'Treatwell'];
+            if (platformSources.includes(after.source) && after.sendLoyaltyEmail !== true) {
+                console.log(`Platform booking (${after.source}) — loyalty email not opted-in, skipping.`);
+                return;
+            }
+        }
+
+        // Clear the manual trigger flag so it doesn't re-fire
+        if (isManualTrigger) {
+            await event.data.after.ref.update({ manualLoyaltyEmailTrigger: false });
         }
 
         const email = after.clientEmail;
@@ -1438,6 +1450,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         }
         const redeemed    = after.loyaltyPointsRedeemed || 0;
         const discount    = parseFloat(String(after.discount || '0').replace('£', '')) || 0;
+        const tipAmount   = parseFloat(String(after.tip || '0').replace('£', '')) || 0;
 
         let dateStr = 'Today';
         if (after.startTime) {
@@ -1624,14 +1637,32 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                         <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">Total</td>
                         <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">£${paidAmount.toFixed(2)}</td>
                     </tr>
+                    ${tipAmount > 0 ? `
+                    <tr>
+                        <td style="color:#4caf50;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-top:10px;">Tip</td>
+                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-top:10px;">£${tipAmount.toFixed(2)}</td>
+                    </tr>
+                    ` : ''}
                     ` : `
                     <tr style="border-top:1px solid #222;">
                         <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">Total Paid</td>
                         <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">£${paidAmount.toFixed(2)}</td>
                     </tr>
+                    ${tipAmount > 0 ? `
+                    <tr>
+                        <td style="color:#4caf50;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-top:10px;">Tip</td>
+                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-top:10px;">£${tipAmount.toFixed(2)}</td>
+                    </tr>
+                    ` : ''}
                     `}
                 </table>
             </div>
+
+            ${tipAmount > 0 ? `
+            <div style="background:#071a07;border:1px solid #1a3d1a;border-radius:3px;padding:13px 20px;margin-top:8px;text-align:center;">
+                <p style="margin:0;color:#66bb6a;font-size:13px;font-weight:600;">Thanks for your generosity 😊</p>
+            </div>
+            ` : ''}
 
             ${memberSection}
             ${pointsSection}
@@ -1812,9 +1843,31 @@ exports.sendReceipt = onRequest(
             date, time, total, discount, tip,
             paymentMethod, bookingId,
             soldProducts, soldAddOns, basePrice,
+            tenantId,
         } = req.body || {};
 
         if (!email) { res.status(400).json({ error: 'email is required' }); return; }
+
+        const isEekurt = tenantId === 'eekurt';
+        const BRAND = isEekurt ? {
+            name:    'Ee Kurt Barbers',
+            address: '318 St John Street, London EC1V 4NT',
+            phone:   '020 7833 1525',
+            wa:      '447577487547',
+            website: 'eekurtbarbers.com',
+            logo:    'https://eekurtbarbers.com/img/logo.png',
+            accent:  '#c8c8c8',
+            from:    'Ee Kurt Barbers',
+        } : {
+            name:    'I CUT Whitecross Barbers',
+            address: '136 Whitecross Street, London EC1Y 8QJ',
+            phone:   '020 3621 5929',
+            wa:      '447470108578',
+            website: 'whitecrossbarbers.com',
+            logo:    'https://whitecrossbarbers.com/whitecross-logo.png',
+            accent:  '#d4af37',
+            from:    'I CUT Whitecross Barbers',
+        };
 
         const totalNum    = parseFloat(total)    || 0;
         const discountNum = parseFloat(discount) || 0;
@@ -1858,18 +1911,18 @@ exports.sendReceipt = onRequest(
 <body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
     <div style="max-width:520px;margin:0 auto;color:#ffffff;">
         <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
-            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
-            <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+            <img src="${BRAND.logo}" alt="${BRAND.name}" style="width:60px;margin-bottom:16px;">
+            <h1 style="margin:0;color:${BRAND.accent};font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">${BRAND.name.toUpperCase()}</h1>
         </div>
         <div style="background:#111;border:1px solid #1a1a1a;border-top:none;padding:36px 32px;">
-            <p style="color:#d4af37;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px 0;font-weight:700;">Payment Receipt</p>
+            <p style="color:${BRAND.accent};font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px 0;font-weight:700;">Payment Receipt</p>
             <h2 style="margin:0 0 6px 0;font-size:24px;font-weight:300;color:#fff;">Thanks, <strong>${nameLabel}</strong></h2>
             <p style="margin:0 0 28px 0;color:#666;font-size:13px;">${serviceLabel} · ${barberLabel} · ${date || ''} ${time ? '· ' + time : ''}</p>
             <div style="background:#161616;border:1px solid #222;padding:20px 24px;border-radius:3px;margin-bottom:28px;">
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Service</td>
-                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#d4af37;font-size:14px;font-weight:700;text-align:right;">${serviceLabel}</td>
+                        <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:${BRAND.accent};font-size:14px;font-weight:700;text-align:right;">${serviceLabel}</td>
                     </tr>
                     <tr>
                         <td style="padding:8px 0;border-bottom:1px solid #1e1e1e;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Barber</td>
@@ -1885,8 +1938,8 @@ exports.sendReceipt = onRequest(
                     ${discountRow}
                     ${tipRow}
                     <tr style="border-top:1px solid #333;">
-                        <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:14px;font-weight:700;">Total Paid</td>
-                        <td style="color:#d4af37;font-size:22px;font-weight:800;text-align:right;padding-top:14px;">£${totalNum.toFixed(2)}</td>
+                        <td style="color:${BRAND.accent};font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:14px;font-weight:700;">Total Paid</td>
+                        <td style="color:${BRAND.accent};font-size:22px;font-weight:800;text-align:right;padding-top:14px;">£${totalNum.toFixed(2)}</td>
                     </tr>
                     <tr>
                         <td style="color:#666;font-size:12px;padding-top:6px;">Payment</td>
@@ -1897,14 +1950,14 @@ exports.sendReceipt = onRequest(
             </div>
             <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
                 <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
-                    136 Whitecross Street, London EC1Y 8QJ<br>
-                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
-                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                    ${BRAND.address}<br>
+                    <a href="tel:${BRAND.phone.replace(/\s/g,'')}" style="color:#666;text-decoration:none;">${BRAND.phone}</a> ·
+                    <a href="https://wa.me/${BRAND.wa}" style="color:#25D366;text-decoration:none;">WhatsApp</a>
                 </p>
             </div>
         </div>
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
-            <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 ${BRAND.name}</p>
         </div>
     </div>
 </body>
@@ -1912,9 +1965,9 @@ exports.sendReceipt = onRequest(
 
         try {
             await getTransporter().sendMail({
-                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+                from: `"${BRAND.from}" <${process.env.GMAIL_USER}>`,
                 to: email,
-                subject: `Receipt – ${serviceLabel} | I CUT Whitecross`,
+                subject: `Receipt – ${serviceLabel} | ${BRAND.name}`,
                 html: htmlBody,
             });
             console.log(`sendReceipt: sent to ${email} for booking ${bookingId}`);
@@ -2015,12 +2068,24 @@ exports.createMobileCheckout = onCall(
 async function sendBookingPush(booking, bookingId) {
     const db = getAdminDb();
     const tokensSnap = await db.collection('tenants/whitecross/fcmTokens').get();
-    const tokens = tokensSnap.docs.map(d => d.data().token).filter(Boolean);
+    const bookingBarber = (booking.barberName || booking.barber || booking.barberId || '').toLowerCase();
+    console.log(`sendBookingPush: ${bookingId} barber="${bookingBarber}" totalTokenDocs=${tokensSnap.size}`);
+    const tokens = tokensSnap.docs
+        .map(d => d.data())
+        .filter(d => {
+            if (!d.token) return false;
+            const role = (d.role || 'staff').toLowerCase();
+            if (role === 'owner' || role === 'admin') return true;
+            const tokenBarber = (d.barberName || '').toLowerCase();
+            return !tokenBarber || !bookingBarber || tokenBarber === bookingBarber;
+        })
+        .map(d => d.token);
+    console.log(`sendBookingPush: sending to ${tokens.length} token(s)`);
     if (!tokens.length) return;
 
     const client  = booking.clientName || booking.client || 'New client';
     const time    = booking.time || '';
-    const service = booking.service || booking.serviceName || '';
+    const service = booking.serviceId || booking.service || booking.serviceName || '';
     const source  = (booking.source || '').toLowerCase();
 
     const title =
@@ -2047,9 +2112,14 @@ async function sendBookingPush(booking, bookingId) {
         },
     });
 
+    response.responses.forEach((r, i) => {
+        if (!r.success) console.error(`FCM send failed token[${i}]:`, r.error?.code, r.error?.message);
+        else console.log(`FCM sent ok token[${i}]`);
+    });
     const expired = response.responses
         .map((r, i) => (!r.success && r.error?.code === 'messaging/registration-token-not-registered') ? tokens[i] : null)
         .filter(Boolean);
+    if (expired.length) console.log(`Removing ${expired.length} expired token(s)`);
     await Promise.all(expired.map(t => db.collection('tenants/whitecross/fcmTokens').doc(t).delete()));
 }
 
@@ -2124,7 +2194,7 @@ exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
         return;
     }
 
-    const SKIP_STATUSES = ['CANCELLED', 'BLOCKED'];
+    const SKIP_STATUSES = ['CANCELLED'];
     const now = new Date();
 
     let events = '';
@@ -2151,12 +2221,22 @@ exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
         }
 
         const uid = `${doc.id}@whitecrossbarbers.com`;
-        const clientName = escIcal(b.clientName || 'Client');
+        const created = b.createdAt?.toDate ? b.createdAt.toDate() : now;
         const barberName = escIcal(b.barberName || b.barber || '');
-        const service    = escIcal(b.service || b.serviceId || '');
-        const summary    = barberName ? `${clientName} – ${barberName}` : clientName;
-        const desc       = [service, b.source, b.note].filter(Boolean).map(escIcal).join(' | ');
-        const created    = b.createdAt?.toDate ? b.createdAt.toDate() : now;
+
+        let summary, desc, icalStatus;
+        if (status === 'BLOCKED') {
+            // Show as Unavailable — no client details exposed
+            summary    = barberName ? `Unavailable – ${barberName}` : 'Unavailable';
+            desc       = escIcal(b.note || 'Blocked');
+            icalStatus = 'CONFIRMED';
+        } else {
+            const clientName = escIcal(b.clientName || 'Client');
+            const service    = escIcal(b.service || b.serviceId || '');
+            summary    = barberName ? `${clientName} – ${barberName}` : clientName;
+            desc       = [service, b.source, b.note].filter(Boolean).map(escIcal).join(' | ');
+            icalStatus = 'CONFIRMED';
+        }
 
         events += [
             'BEGIN:VEVENT',
@@ -2167,7 +2247,7 @@ exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
             `SUMMARY:${summary}`,
             desc ? `DESCRIPTION:${desc}` : '',
             `CREATED:${toIcalDate(created)}`,
-            'STATUS:CONFIRMED',
+            `STATUS:${icalStatus}`,
             'END:VEVENT',
         ].filter(Boolean).join('\r\n') + '\r\n';
     });
@@ -2196,3 +2276,211 @@ exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
 
 // ── ONE-TIME: backfill loyalty points from checkout history ───────────────────
 
+// ── ONE-TIME: backfill client stats (totalSpent, totalVisits, totalDiscount, lastVisit…) ──
+exports.backfillClientStats = onRequest({ timeoutSeconds: 540, memory: '512MiB' }, async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('POST only'); return; }
+    const db = admin.firestore();
+    const TENANT = 'tenants/whitecross';
+
+    function pp(v) { return parseFloat(String(v || 0).replace('£', '').replace('-', '')) || 0; }
+    function normPhone(p) { return String(p || '').replace(/\D/g, '').slice(-10); }
+
+    // Load all bookings + clients
+    const [bSnap, cSnap] = await Promise.all([
+        db.collection(`${TENANT}/bookings`).get(),
+        db.collection(`${TENANT}/clients`).get(),
+    ]);
+
+    const paid = bSnap.docs
+        .map(d => ({ _id: d.id, ...d.data() }))
+        .filter(b => (b.status || '').toUpperCase() === 'CHECKED_OUT');
+
+    const clients = cSnap.docs.map(d => ({ _ref: d.ref, _id: d.id, ...d.data() }));
+
+    // Phone / email lookup maps
+    const phoneMap = {}, emailMap = {};
+    for (const c of clients) {
+        if (c.phone) phoneMap[normPhone(c.phone)] = c;
+        if (c.email) emailMap[(c.email || '').toLowerCase()] = c;
+    }
+
+    function findClient(phone, email) {
+        if (phone) { const n = normPhone(phone); if (n && phoneMap[n]) return phoneMap[n]; }
+        if (email) { const e = (email || '').toLowerCase(); if (e && emailMap[e]) return emailMap[e]; }
+        return null;
+    }
+
+    // Aggregate
+    const stats = {};
+    for (const b of paid) {
+        const c = findClient(b.clientPhone || '', b.clientEmail || '');
+        if (!c) continue;
+        if (!stats[c._id]) stats[c._id] = { ref: c._ref, totalSpent: 0, totalVisits: 0, totalDiscount: 0, lastVisit: null, lastBarber: '', lastService: '' };
+        const s = stats[c._id];
+        s.totalSpent    += pp(b.paidAmount || b.price);
+        s.totalVisits   += 1;
+        s.totalDiscount += pp(b.discount || 0);
+        const bDate = b.startTime?.toDate ? b.startTime.toDate() : null;
+        if (bDate && (!s.lastVisit || bDate > s.lastVisit)) {
+            s.lastVisit   = bDate;
+            s.lastBarber  = b.barberName || b.barberId || '';
+            s.lastService = b.serviceId  || b.service  || '';
+        }
+    }
+
+    // Batch write
+    let updated = 0, batch = db.batch(), ops = 0;
+    for (const [, s] of Object.entries(stats)) {
+        const upd = {
+            totalSpent:    s.totalSpent,
+            totalVisits:   s.totalVisits,
+            totalDiscount: s.totalDiscount,
+            lastBarber:    s.lastBarber,
+            lastService:   s.lastService,
+        };
+        if (s.lastVisit) upd.lastVisit = admin.firestore.Timestamp.fromDate(s.lastVisit);
+        batch.update(s.ref, upd);
+        updated++; ops++;
+        if (ops >= 400) { await batch.commit(); batch = db.batch(); ops = 0; }
+    }
+    if (ops > 0) await batch.commit();
+
+    res.json({ ok: true, updatedClients: updated, paidBookings: paid.length, totalClients: clients.length });
+});
+
+
+// ── Manual loyalty adjustment email ──────────────────────────────────────────
+exports.sendManualLoyaltyAdjustmentEmail = onCall(
+    { secrets: ['GMAIL_USER', 'GMAIL_PASS'], cors: true },
+    async (req) => {
+        const { clientEmail, clientName, points, reason, newTotal } = req.data || {};
+        if (!clientEmail) throw new HttpsError('invalid-argument', 'clientEmail required');
+        if (!points || isNaN(points)) throw new HttpsError('invalid-argument', 'points required');
+
+        const isAdd = points > 0;
+        const absPoints = Math.abs(points);
+        const REDEEM_RATE = 20;
+        const redeemable = (newTotal / REDEEM_RATE).toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1');
+        const name = clientName || 'Valued Client';
+        const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const htmlBody = `<!DOCTYPE html>
+<html>
+<head><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap');</style></head>
+<body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
+    <div style="max-width:560px;margin:0 auto;color:#ffffff;">
+
+        <!-- Header -->
+        <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
+            <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+        </div>
+
+        <!-- Body -->
+        <div style="background:#111;border:1px solid #1a1a1a;border-top:none;padding:36px 32px;">
+            <p style="color:#d4af37;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px 0;font-weight:700;">Loyalty Points Update</p>
+            <h2 style="margin:0 0 6px 0;font-size:24px;font-weight:300;color:#fff;">Hi, <strong>${name}</strong></h2>
+            <p style="margin:0 0 28px 0;color:#666;font-size:13px;">${dateStr}</p>
+
+            <!-- Adjustment card -->
+            <div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:4px;overflow:hidden;margin:0 0 24px;">
+                <div style="background:linear-gradient(135deg,#1a1500,#0d0d0d);padding:22px 24px 18px;border-bottom:1px solid #222;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td>
+                                <p style="margin:0;color:#d4af37;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;">Loyalty Card</p>
+                                <p style="margin:4px 0 0 0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">${name}</p>
+                            </td>
+                            <td style="text-align:right;vertical-align:top;">
+                                <p style="margin:0;color:#d4af37;font-size:32px;font-weight:800;line-height:1;">⭐ ${newTotal}</p>
+                                <p style="margin:2px 0 0 0;color:#888;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Points</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="padding:20px 24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:10px;">Adjustment</td>
+                            <td style="font-size:20px;font-weight:800;text-align:right;padding-bottom:10px;color:${isAdd ? '#4caf50' : '#ff5252'};">${isAdd ? '+' : '−'}${absPoints} pts</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:10px;">Reason</td>
+                            <td style="color:#fff;font-size:13px;text-align:right;padding-bottom:10px;">${reason}</td>
+                        </tr>
+                        <tr style="border-top:1px solid #222;">
+                            <td style="color:#d4af37;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding-top:12px;font-weight:700;">New Total</td>
+                            <td style="color:#d4af37;font-size:20px;font-weight:800;text-align:right;padding-top:12px;">${newTotal} pts</td>
+                        </tr>
+                    </table>
+                </div>
+                ${newTotal >= 20 ? `
+                <div style="margin:0 24px 18px;padding:14px;background:#0f1f0f;border:1px solid #1e3d1e;border-radius:3px;text-align:center;">
+                    <p style="margin:0;color:#4caf50;font-size:18px;font-weight:800;">£${redeemable} available to redeem</p>
+                    <p style="margin:4px 0 0 0;color:#2e7d32;font-size:11px;">Tell your barber at your next visit · Min 20 pts</p>
+                </div>
+                ` : `
+                <div style="margin:0 24px 18px;padding:12px;background:#111;border:1px solid #222;border-radius:3px;text-align:center;">
+                    <p style="margin:0;color:#555;font-size:12px;">${20 - newTotal} more points until your first £1 off</p>
+                </div>
+                `}
+                <div style="padding:12px 24px;text-align:center;background:#070707;">
+                    <p style="margin:0;color:#333;font-size:10px;letter-spacing:1px;">1 pt per £1 spent · 20 pts = £1 off · Min 20 pts to redeem</p>
+                </div>
+            </div>
+
+            <!-- Footer contact -->
+            <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
+                <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">
+                    136 Whitecross Street, London EC1Y 8QJ<br>
+                    <a href="tel:+442036215929" style="color:#666;text-decoration:none;">020 3621 5929</a> ·
+                    <a href="https://wa.me/447470108578" style="color:#25D366;text-decoration:none;">WhatsApp</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
+            <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        const subject = `Your loyalty points have been ${isAdd ? 'updated' : 'adjusted'} · ⭐ ${newTotal} pts | I CUT Whitecross`;
+        await getTransporter().sendMail({
+            from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+            to: clientEmail,
+            subject,
+            html: htmlBody,
+        });
+        console.log(`Manual loyalty adjustment email sent to ${clientEmail} · ${isAdd ? '+' : ''}${points} pts · reason: ${reason}`);
+        return { success: true };
+    }
+);
+
+// ── AI Analytics Assistant ────────────────────────────────────────────────────
+exports.askAI = onCall({ secrets: ['ANTHROPIC_API_KEY'], timeoutSeconds: 30 }, async (req) => {
+    const { question, context } = req.data || {};
+    if (!question) throw new HttpsError('invalid-argument', 'question required');
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const systemPrompt = `You are an AI assistant for Whitecross Barbers, a barber shop in the UK. 
+You help the owner analyse their business data and answer questions about bookings, revenue, clients, and performance.
+Answer in the same language the user asks (Turkish or English). Be concise and actionable.
+Always refer to monetary values in £ (GBP). When giving insights, be specific with numbers from the data provided.`;
+
+    const userMessage = context
+        ? `Here is the current analytics data for Whitecross Barbers:\n\n${context}\n\n---\n\nQuestion: ${question}`
+        : question;
+
+    const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+    });
+
+    return { answer: message.content[0].text };
+});

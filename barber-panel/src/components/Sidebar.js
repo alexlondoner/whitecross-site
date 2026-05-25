@@ -10,6 +10,7 @@ const navItems = [
   { id: 'products',      icon: '🛒', label: 'Products' },
   { id: 'reports',       icon: '📈', label: 'Reports' },
   { id: 'finance',       icon: '💰', label: 'Finance' },
+  { id: 'marketing',     icon: '📊', label: 'Analytics' },
   { id: 'online-profile',icon: '🌐', label: 'Online Profile' },
   { id: 'settings',      icon: '⚙️', label: 'Settings' },
 ];
@@ -127,7 +128,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '18px 10px 10px' }}>
+      <nav style={{ flex: 1, padding: '18px 10px 10px', overflowY: 'auto', overflowX: 'visible' }}>
         {[...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])].map(item => (
           <div key={item.id} style={{ position: 'relative', marginBottom: '6px' }}>
             <button

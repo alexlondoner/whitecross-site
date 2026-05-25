@@ -199,6 +199,11 @@ export default function WalkInForm({ preBarber, preHour, preMins, preDate, barbe
               <label style={lbl}>Email <span style={{ color:'var(--muted)', fontWeight:'400', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
               <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@..." style={inp} type="email" />
             </div>
+            {!phone.trim() && !email.trim() && (
+              <div style={{ padding:'8px 12px', background:'rgba(255,152,0,0.08)', border:'1px solid rgba(255,152,0,0.25)', borderRadius:'8px', fontSize:'0.67rem', color:'#ff9800', lineHeight:1.5 }}>
+                ⚠️ No phone or email — loyalty points won't be tracked for this visit.
+              </div>
+            )}
           </div>
         )}
         <div>

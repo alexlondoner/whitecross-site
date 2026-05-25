@@ -27,7 +27,7 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
 
   const byBarber = {};
   barbers.forEach(b => { byBarber[b.id] = []; byBarber[b.name.toLowerCase()] = byBarber[b.id]; });
-  bookings.forEach(b => { const key = (b.barber||'').toLowerCase(); if (byBarber[key]) byBarber[key].push(b); });
+  bookings.forEach(b => { const key = (b.barber||b.barberId||b.barberName||'').toLowerCase(); if (byBarber[key]) byBarber[key].push(b); });
 
   useEffect(() => {
     if (isToday && nowRef.current) nowRef.current.scrollIntoView({ behavior:'smooth', block:'center' });
