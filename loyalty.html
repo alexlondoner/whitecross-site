@@ -605,7 +605,7 @@ window.findCard = async function(){
     await loadApp(c, c.phone||phone, c.email||email);
   }catch(e){
     console.error('findCard error',e);
-    errEl.textContent='Could not connect. Check your internet and try again.';
+    errEl.textContent='Error: '+(e?.code||e?.message||'unknown')+'. Try again.';
     btn.disabled=false; btn.textContent='FIND MY CARD →';
   }
 };
