@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { getProducts, addProduct, updateProduct, deleteProduct, toggleProductField } from '../firestoreActions';
 
 const CATEGORIES = ['Hair Care', 'Beard Care', 'Accessories', 'Other'];
@@ -19,7 +20,9 @@ function Toggle({ value, onChange, color = '#4caf50', size = 'md' }) {
   );
 }
 
-export default function Products() {
+
+// Sepet state'i üstten alınacak
+export default function Products({ cart, setCart, onOpenCart }) {
   const [products, setProducts]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [filterCat, setFilterCat] = useState('All');
@@ -31,6 +34,19 @@ export default function Products() {
   const [togglingId, setTogglingId] = useState(null);
   const [searchQ, setSearchQ]     = useState('');
   const [error, setError]         = useState('');
+
+  // Sepete ekle fonksiyonu
+  const handleAddToCart = (product) => {
+    if (!product.inStock || !product.active) return;
+    setCart((prev) => {
+      const exists = prev.find((item) => item.id === product.id);
+      if (exists) {
+        return prev.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
+      } else {
+        return [...prev, { ...product, qty: 1 }];
+      }
+    });
+  };
 
   const fetchAll = useCallback(async () => {
     try {
@@ -178,6 +194,16 @@ export default function Products() {
           style={{ marginLeft: 'auto', padding: '7px 14px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '20px', color: 'var(--text)', fontSize: '0.78rem', outline: 'none', minWidth: '180px' }} />
       </div>
 
+      {/* Sepet Butonu */}
+      <div style={{ position: 'fixed', top: 24, right: 48, zIndex: 999 }}>
+        <button onClick={onOpenCart} style={{ position: 'relative', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '50%', width: 54, height: 54, boxShadow: '0 2px 12px #d4af3730', cursor: 'pointer' }}>
+          <span style={{ fontSize: '2rem' }}>🛒</span>
+          {cart && cart.length > 0 && (
+            <span style={{ position: 'absolute', top: 6, right: 6, background: '#ff5252', color: '#fff', borderRadius: '50%', fontSize: '0.85rem', fontWeight: 700, padding: '2px 7px', minWidth: 22, textAlign: 'center' }}>{cart.reduce((a, b) => a + b.qty, 0)}</span>
+          )}
+        </button>
+      </div>
+
       {/* ── Product Grid ───────────────────────────────────────────────── */}
       {loading ? (
         <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '80px 20px', fontSize: '0.85rem' }}>Loading products...</div>
@@ -237,6 +263,10 @@ export default function Products() {
                       <span style={{ fontSize: '0.65rem', color: p.active ? '#4caf50' : 'var(--muted)', fontWeight: '600' }}>Active</span>
                     </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                      <button onClick={() => handleAddToCart(p)} disabled={!p.inStock || !p.active}
+                        style={{ padding: '5px 12px', background: (!p.inStock || !p.active) ? 'rgba(212,175,55,0.18)' : 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '6px', color: (!p.inStock || !p.active) ? 'var(--muted)' : '#000', cursor: (!p.inStock || !p.active) ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: '700', boxShadow: '0 2px 8px #d4af3722' }}>
+                        Sepete Ekle
+                      </button>
                       <button onClick={() => openEdit(p)}
                         style={{ padding: '5px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600' }}>
                         Edit
