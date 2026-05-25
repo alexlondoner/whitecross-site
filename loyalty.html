@@ -857,6 +857,8 @@ async function loadApp(c, phone, email){
     });
 
   const visits=bookings.length;
+  // Prefer values stored on client document (written by admin panel at checkout)
+  // Fall back to counting from bookings array if not present
   const svcCount={},barberCount={};
   let lastVisitTs=null;
   bookings.forEach(b=>{
@@ -864,9 +866,14 @@ async function loadApp(c, phone, email){
     const bar=b.barberName||b.barberId||''; if(bar) barberCount[bar]=(barberCount[bar]||0)+1;
     if(!lastVisitTs&&b.startTime) lastVisitTs=b.startTime;
   });
-  const favSvcId=Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
-  const favSvcName=window._svcMap[favSvcId]||favSvcId;
-  const favBarber=Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+  const favSvcIdCalc=Object.entries(svcCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+
+  const visits       = c.visitCount ?? c.totalVisits ?? c.visits ?? bookings.length;
+  const lastVisitTs2 = c.lastVisit  ?? c.lastVisitDate ?? lastVisitTs;
+  const favBarber    = c.favBarber  ?? c.favouriteBarber ?? c.preferredBarber ??
+                       Object.entries(barberCount).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? '';
+  const favSvcName   = c.favService ?? c.favouriteService ?? c.preferredService ??
+                       window._svcMap[favSvcIdCalc] ?? favSvcIdCalc;
 
   // Progress
   const nextTier=TIERS_LIST.find(t=>pts<t.pts)||TIERS_LIST[TIERS_LIST.length-1];
@@ -914,7 +921,7 @@ async function loadApp(c, phone, email){
     lcUp.innerHTML=`<div class="lc-up-lbl">📅 Next Visit</div><div class="lc-up-svc">${esc(sName)}</div><div class="lc-up-meta">${barber?esc(barber)+' · ':''}${dateStr}</div><div class="lc-up-time">${timeStr}</div>`;
   }
   document.getElementById('statVisits').textContent=visits>0?visits:'—';
-  document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs)||'—';
+  document.getElementById('statLastVisit').textContent=daysSince(lastVisitTs2)||'—';
 
   if(favSvcName||favBarber){
     document.getElementById('favsRow').style.display='flex';
