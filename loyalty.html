@@ -53,16 +53,8 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
 .auth-inp::placeholder{color:var(--muted2);}
 .auth-btn{width:100%;padding:13px;background:var(--gold);border:none;border-radius:11px;color:#080705;font-size:.78rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:2px;transition:opacity .2s;}
 .auth-btn:disabled{opacity:.45;cursor:not-allowed;}
-.auth-or{text-align:center;font-size:.58rem;color:var(--muted2);margin:10px 0;}
-.auth-link-btn{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:11px;color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;transition:border-color .2s,color .2s;}
-.auth-link-btn:hover{border-color:var(--gold2);color:var(--gold2);}
-.auth-back{font-size:.62rem;color:var(--muted);cursor:pointer;text-align:center;margin-top:14px;text-decoration:underline;}
 .auth-err{font-size:.65rem;color:var(--red);text-align:center;min-height:18px;margin-top:2px;}
-.auth-hint{font-size:.62rem;color:var(--muted);text-align:center;line-height:1.5;margin-top:4px;}
-/* OTP inputs */
-.otp-row{display:flex;gap:8px;justify-content:center;margin:4px 0;}
-.otp-inp{width:40px;height:48px;background:var(--card);border:1px solid var(--border2);border-radius:10px;color:var(--txt);font-size:1.3rem;font-weight:700;text-align:center;font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;transition:border-color .2s;}
-.otp-inp:focus{border-color:var(--gold);}
+.auth-hint{font-size:.62rem;color:var(--muted);text-align:center;line-height:1.6;margin-top:6px;}
 
 /* ── ERROR STATE ── */
 #stateError{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;min-height:100dvh;text-align:center;padding:40px;}
@@ -265,53 +257,15 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
   <div class="auth-logo"><div class="auth-letter">W</div></div>
   <div class="auth-title">WHITECROSS</div>
   <div class="auth-sub">BARBERS · MEMBER ACCESS</div>
-
-  <!-- Phone step -->
-  <div id="authPhone" class="auth-form">
+  <div class="auth-form">
     <div>
-      <label class="auth-lbl">Phone number</label>
-      <input class="auth-inp" id="authPhoneInp" type="tel" placeholder="+44 7700 000000" autocomplete="tel" inputmode="tel"/>
+      <label class="auth-lbl">Phone number or email</label>
+      <input class="auth-inp" id="authInp" type="text" placeholder="+44 7700 000000" autocomplete="tel" inputmode="tel"
+        onkeydown="if(event.key==='Enter')findCard()"/>
     </div>
-    <div id="recaptcha-container" style="margin-top:4px;"></div>
-    <div class="auth-err" id="authPhoneErr"></div>
-    <button class="auth-btn" id="authPhoneBtn" onclick="sendOTP()">SEND CODE →</button>
-    <div class="auth-or">— or —</div>
-    <button class="auth-link-btn" onclick="showAuthStep('email')">✉️ Continue with email link</button>
-  </div>
-
-  <!-- OTP step -->
-  <div id="authOTP" style="display:none;" class="auth-form">
-    <div class="auth-hint" id="authOTPHint" style="margin-bottom:12px;"></div>
-    <div class="otp-row">
-      <input class="otp-inp" id="otp0" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(0,this)"/>
-      <input class="otp-inp" id="otp1" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(1,this)"/>
-      <input class="otp-inp" id="otp2" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(2,this)"/>
-      <input class="otp-inp" id="otp3" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(3,this)"/>
-      <input class="otp-inp" id="otp4" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(4,this)"/>
-      <input class="otp-inp" id="otp5" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(5,this)"/>
-    </div>
-    <div class="auth-err" id="authOTPErr"></div>
-    <button class="auth-btn" id="authOTPBtn" onclick="verifyOTP()">VERIFY →</button>
-    <div class="auth-back" onclick="showAuthStep('phone')">← Back</div>
-  </div>
-
-  <!-- Email step -->
-  <div id="authEmail" style="display:none;" class="auth-form">
-    <div>
-      <label class="auth-lbl">Email address</label>
-      <input class="auth-inp" id="authEmailInp" type="email" placeholder="you@example.com" autocomplete="email"/>
-    </div>
-    <div class="auth-err" id="authEmailErr"></div>
-    <button class="auth-btn" id="authEmailBtn" onclick="sendEmailLink()">SEND MAGIC LINK →</button>
-    <div class="auth-back" onclick="showAuthStep('phone')">← Back</div>
-  </div>
-
-  <!-- Email sent -->
-  <div id="authEmailSent" style="display:none;text-align:center;">
-    <div style="font-size:2rem;margin-bottom:12px;">✉️</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--gold);margin-bottom:8px;">Check your inbox</div>
-    <div class="auth-hint">We sent a sign-in link to<br><strong id="authEmailSentTo" style="color:var(--txt);"></strong><br><br>Tap the link in your email to sign in.</div>
-    <div class="auth-back" style="margin-top:20px;" onclick="showAuthStep('phone')">← Use phone instead</div>
+    <div class="auth-err" id="authErr"></div>
+    <button class="auth-btn" id="authBtn" onclick="findCard()">FIND MY CARD →</button>
+    <div class="auth-hint">Enter the phone number or email used at Whitecross Barbers.<br>No password needed.</div>
   </div>
 </div>
 
@@ -320,7 +274,7 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
   <div style="font-size:2.2rem">✂️</div>
   <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold);letter-spacing:1px;">Something went wrong</div>
   <div style="font-size:.72rem;color:var(--muted);line-height:1.7;max-width:260px;" id="errMsg">Please try again or ask your barber for help.</div>
-  <button onclick="showAuthStep('phone');showState('stateAuth');" style="margin-top:8px;padding:10px 20px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--muted);font-size:.72rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
+  <button onclick="showState('stateAuth');" style="margin-top:8px;padding:10px 20px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--muted);font-size:.72rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Try again</button>
 </div>
 
 <!-- ── MAIN APP ── -->
@@ -536,16 +490,8 @@ updateClock();setInterval(updateClock,10000);
 function showState(id){
   ['stateLoading','stateAuth','stateError','stateMain'].forEach(s=>{
     const el=document.getElementById(s);
-    if(el) el.style.display=s===id?(s==='stateMain'?'flex':'flex'):'none';
+    if(el) el.style.display=s===id?'flex':'none';
   });
-}
-
-// Auth step visibility
-function showAuthStep(step){
-  ['phone','OTP','email','emailSent'].forEach(s=>{ const el=document.getElementById('auth'+s.charAt(0).toUpperCase()+s.slice(1)); if(el) el.style.display=s===step?'':'none'; });
-  // Capitalise first letter for div IDs: authPhone, authOTP, authEmail, authEmailSent
-  const ids={phone:'authPhone',OTP:'authOTP',email:'authEmail',emailSent:'authEmailSent'};
-  Object.entries(ids).forEach(([k,v])=>{ const el=document.getElementById(v); if(el) el.style.display=k===step?'':'none'; });
 }
 
 // Tab switching
@@ -570,15 +516,6 @@ function toast(msg,dur=2500){
   setTimeout(()=>el.classList.remove('show'),dur);
 }
 
-// OTP field navigation
-function otpInput(idx,el){
-  el.value=el.value.replace(/\D/g,'').slice(-1);
-  if(el.value&&idx<5) document.getElementById('otp'+(idx+1)).focus();
-  // Auto-verify if all 6 filled
-  const code=[...Array(6)].map((_,i)=>document.getElementById('otp'+i)?.value||'').join('');
-  if(code.length===6) verifyOTP();
-}
-
 // Esc(html)
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -588,8 +525,7 @@ window._bk={date:null,barber:null,svc:null,slot:null,slotsLoaded:false};
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, query, where, getDocs, addDoc, doc, setDoc, updateDoc, getDoc, orderBy, limit, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut as fbSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, query, where, getDocs, addDoc, limit, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = initializeApp({
   apiKey:"AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -626,194 +562,100 @@ window._allServices = [];
 window._shopSettings = null;
 window._clientData = null;
 window._svcMap = {};
-window._confirmationResult = null;
 
-// ── AUTH ──────────────────────────────────────────────────────────────────────
+const LS_KEY = 'wc_loyalty_id'; // stores "phone:+447..." or "email:foo@bar.com"
 
-// reCAPTCHA (normal visible widget — renders inside the form)
-function ensureRecaptcha(){
-  if(!window._recaptchaVerifier){
-    window._recaptchaVerifier = new RecaptchaVerifier(auth,'recaptcha-container',{
-      size:'normal',
-      theme:'dark',
-      callback:()=>{ /* reCAPTCHA solved, sendOTP will proceed */ }
-    });
-    window._recaptchaVerifier.render();
-  }
-  return window._recaptchaVerifier;
-}
+// ── FIND CARD (no auth, pure Firestore lookup) ────────────────────────────────
 
-window.sendOTP = async function(){
-  const inp = document.getElementById('authPhoneInp');
-  const errEl = document.getElementById('authPhoneErr');
-  let phone = (inp.value||'').trim().replace(/\s+/g,'');
-  // Auto-prefix UK numbers
-  if(phone.startsWith('07')) phone='+44'+phone.slice(1);
-  if(phone.startsWith('7')&&phone.length===10) phone='+44'+phone;
-  if(!/^\+\d{7,15}$/.test(phone)){ errEl.textContent='Enter a valid phone number (e.g. +44 7700 000000)'; return; }
+window.findCard = async function(){
+  const inp = document.getElementById('authInp');
+  const errEl = document.getElementById('authErr');
+  const btn = document.getElementById('authBtn');
+  let raw = (inp.value||'').trim();
+
+  // Auto-prefix UK mobile
+  if(/^07\d{9}$/.test(raw.replace(/\s/g,''))) raw='+44'+raw.replace(/\s/g,'').slice(1);
+
+  const isEmail = raw.includes('@');
+  const isPhone = /^\+?\d[\d\s\-]{6,}$/.test(raw);
+  if(!isEmail && !isPhone){ errEl.textContent='Enter a phone number or email address.'; return; }
+
   errEl.textContent='';
-  const btn=document.getElementById('authPhoneBtn');
-  btn.disabled=true; btn.textContent='Sending…';
+  btn.disabled=true; btn.textContent='Searching…';
+
   try{
-    const rcv = ensureRecaptcha();
-    const result = await signInWithPhoneNumber(auth,phone,rcv);
-    window._confirmationResult = result;
-    document.getElementById('authOTPHint').innerHTML=`Enter the 6-digit code sent to <strong style="color:var(--txt)">${phone}</strong>`;
-    showAuthStep('OTP');
-    setTimeout(()=>document.getElementById('otp0').focus(),200);
-  }catch(e){
-    console.error('sendOTP error:', e.code, e.message);
-    errEl.textContent = e.code==='auth/invalid-phone-number'?'Invalid phone number.'
-      :e.code==='auth/too-many-requests'?'Too many attempts — wait a few minutes and retry.'
-      :e.code==='auth/operation-not-allowed'?'Phone sign-in is not enabled. Use email link below.'
-      :e.code==='auth/captcha-check-failed'?'reCAPTCHA failed — please refresh the page and try again.'
-      :e.code==='auth/quota-exceeded'?'SMS quota reached — try email link instead.'
-      :'SMS failed ('+( e.code||'unknown')+') — try email link.';
-    // Reset recaptcha on error so next attempt gets a fresh one
-    if(window._recaptchaVerifier){ try{window._recaptchaVerifier.clear();}catch(_){} window._recaptchaVerifier=null; }
-  }finally{
-    btn.disabled=false; btn.textContent='SEND CODE →';
-  }
-};
-
-window.verifyOTP = async function(){
-  const code=[...Array(6)].map((_,i)=>document.getElementById('otp'+i)?.value||'').join('');
-  if(code.length<6) return;
-  const errEl=document.getElementById('authOTPErr');
-  errEl.textContent='';
-  const btn=document.getElementById('authOTPBtn');
-  btn.disabled=true; btn.textContent='Verifying…';
-  try{
-    await window._confirmationResult.confirm(code);
-    // onAuthStateChanged will handle the rest
-  }catch(e){
-    errEl.textContent = e.code==='auth/invalid-verification-code'?'Wrong code, please try again.'
-      :e.code==='auth/code-expired'?'Code expired. Go back and resend.'
-      :'Verification failed. Try again.';
-    btn.disabled=false; btn.textContent='VERIFY →';
-  }
-};
-
-window.sendEmailLink = async function(){
-  const inp=document.getElementById('authEmailInp');
-  const errEl=document.getElementById('authEmailErr');
-  const email=(inp.value||'').trim().toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent='Enter a valid email address.'; return; }
-  errEl.textContent='';
-  const btn=document.getElementById('authEmailBtn');
-  btn.disabled=true; btn.textContent='Sending…';
-  const actionSettings = {
-    url: 'https://whitecrossbarbers.com/loyalty.html',
-    handleCodeInApp: true
-  };
-  try{
-    await sendSignInLinkToEmail(auth, email, actionSettings);
-    localStorage.setItem('emailForSignIn', email);
-    document.getElementById('authEmailSentTo').textContent=email;
-    showAuthStep('emailSent');
-  }catch(e){
-    errEl.textContent='Could not send link. Please try again.';
-  }finally{
-    btn.disabled=false; btn.textContent='SEND MAGIC LINK →';
-  }
-};
-
-window.doSignOut = async function(){
-  await fbSignOut(auth);
-  showState('stateAuth');
-  showAuthStep('phone');
-};
-
-// ── Check email link on page load ─────────────────────────────────────────────
-if(isSignInWithEmailLink(auth, window.location.href)){
-  let email = localStorage.getItem('emailForSignIn');
-  if(!email) email = window.prompt('Please enter your email to confirm sign-in:');
-  if(email){
-    signInWithEmailLink(auth, email, window.location.href)
-      .then(()=>{ localStorage.removeItem('emailForSignIn'); history.replaceState(null,'',window.location.pathname); })
-      .catch(e=>{ console.error('Email link sign-in failed',e); showState('stateAuth'); showAuthStep('phone'); });
-  }
-}
-
-// ── Auth state observer ───────────────────────────────────────────────────────
-onAuthStateChanged(auth, async(user)=>{
-  if(user){
-    try{
-      await loadClientAndShowApp(user);
-    }catch(e){
-      console.error('App load error',e);
-      document.getElementById('errMsg').textContent = 'Could not load your account. Please try again.';
-      showState('stateError');
+    const phone = isPhone ? raw.replace(/\s/g,'') : '';
+    const email = isEmail ? raw.toLowerCase() : '';
+    const c = await lookupClient(phone, email);
+    if(!c){
+      errEl.textContent='No account found. Ask your barber to add you.';
+      btn.disabled=false; btn.textContent='FIND MY CARD →';
+      return;
     }
-  } else {
-    // Check for legacy ?t= token (backward compat)
-    const token = new URLSearchParams(location.search).get('t');
-    if(token){
-      loadLegacyToken(token);
-    } else {
-      setTimeout(()=>{
-        showState('stateAuth');
-        showAuthStep('phone');
-        // Pre-render reCAPTCHA widget so it's ready
-        setTimeout(ensureRecaptcha, 300);
-      }, 2400);
-    }
-  }
-});
-
-// ── Load client by Auth user ──────────────────────────────────────────────────
-async function loadClientAndShowApp(user){
-  const phone  = (user.phoneNumber||'').trim();
-  const email  = (user.email||'').toLowerCase().trim();
-
-  // Try find existing client
-  let clientDoc = null, clientRef = null;
-
-  if(phone){
-    const snap = await getDocs(query(collection(db,`${T}/clients`),where('phone','==',phone),limit(1)));
-    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
-  }
-  if(!clientRef && email){
-    const snap = await getDocs(query(collection(db,`${T}/clients`),where('email','==',email),limit(1)));
-    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
-  }
-  if(!clientRef && user.uid){
-    const snap = await getDocs(query(collection(db,`${T}/clients`),where('authUid','==',user.uid),limit(1)));
-    if(!snap.empty){ clientDoc=snap.docs[0].data(); clientRef=snap.docs[0].ref; }
-  }
-
-  if(!clientRef){
-    // Create new client
-    const newClient = {
-      name: user.displayName||'',
-      phone: phone||'',
-      email: email||'',
-      authUid: user.uid,
-      loyaltyPoints: 0,
-      memberSince: Timestamp.now(),
-      createdAt: Timestamp.now()
-    };
-    clientRef = await addDoc(collection(db,`${T}/clients`), newClient);
-    clientDoc = newClient;
-  } else if(!clientDoc.authUid){
-    // Link auth UID to existing client
-    await updateDoc(clientRef, { authUid: user.uid });
-  }
-
-  window._clientData = clientDoc;
-  await loadApp(clientDoc, phone, email);
-}
-
-// ── Legacy token flow (QR codes) ─────────────────────────────────────────────
-async function loadLegacyToken(token){
-  try{
-    const snap = await getDocs(query(collection(db,`${T}/clients`),where('loyaltyToken','==',token),limit(1)));
-    if(snap.empty){ showState('stateError'); return; }
-    const c = snap.docs[0].data();
+    // Save for auto-login next time
+    localStorage.setItem(LS_KEY, isEmail?'email:'+email:'phone:'+phone);
     window._clientData = c;
-    await loadApp(c, c.phone||'', (c.email||'').toLowerCase());
-  }catch(e){ showState('stateError'); }
+    await loadApp(c, c.phone||phone, c.email||email);
+  }catch(e){
+    console.error('findCard error',e);
+    errEl.textContent='Could not connect. Check your internet and try again.';
+    btn.disabled=false; btn.textContent='FIND MY CARD →';
+  }
+};
+
+async function lookupClient(phone, email){
+  if(phone){
+    const s=await getDocs(query(collection(db,`${T}/clients`),where('phone','==',phone),limit(1)));
+    if(!s.empty) return s.docs[0].data();
+    // Try clientPhone field used by some imports
+    const s2=await getDocs(query(collection(db,`${T}/clients`),where('clientPhone','==',phone),limit(1)));
+    if(!s2.empty) return s2.docs[0].data();
+  }
+  if(email){
+    const s=await getDocs(query(collection(db,`${T}/clients`),where('email','==',email),limit(1)));
+    if(!s.empty) return s.docs[0].data();
+  }
+  return null;
 }
+
+window.doSignOut = function(){
+  localStorage.removeItem(LS_KEY);
+  window._clientData=null;
+  document.getElementById('authInp').value='';
+  document.getElementById('authErr').textContent='';
+  document.getElementById('authBtn').disabled=false;
+  document.getElementById('authBtn').textContent='FIND MY CARD →';
+  showState('stateAuth');
+};
+
+// ── Startup: check localStorage → auto-login, or ?t= token, or show auth ─────
+async function startup(){
+  // Legacy QR token
+  const token = new URLSearchParams(location.search).get('t');
+  if(token){
+    try{
+      const snap=await getDocs(query(collection(db,`${T}/clients`),where('loyaltyToken','==',token),limit(1)));
+      if(!snap.empty){ const c=snap.docs[0].data(); window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
+    }catch(_){}
+  }
+
+  // Auto-login from localStorage
+  const saved = localStorage.getItem(LS_KEY);
+  if(saved){
+    const isEmail = saved.startsWith('email:');
+    const val = saved.slice(saved.indexOf(':')+1);
+    try{
+      const c = await lookupClient(isEmail?'':val, isEmail?val:'');
+      if(c){ window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
+    }catch(_){}
+    localStorage.removeItem(LS_KEY);
+  }
+
+  showState('stateAuth');
+  setTimeout(()=>document.getElementById('authInp')?.focus(), 100);
+}
+
+startup();
 
 // ── Main app load ─────────────────────────────────────────────────────────────
 async function loadApp(c, phone, email){
@@ -1156,11 +998,10 @@ window.confirmBooking = async function(){
   const btn=document.getElementById('bkConfirmBtn');
   btn.disabled=true; btn.textContent='Booking…';
 
-  const user=auth.currentUser;
   const c=window._clientData||{};
-  const clientName=c.name||user?.displayName||'Member';
-  const clientPhone=c.phone||user?.phoneNumber||'';
-  const clientEmail=c.email||user?.email||'';
+  const clientName=c.name||'Member';
+  const clientPhone=c.phone||'';
+  const clientEmail=c.email||'';
 
   const start=new Date(date+'T00:00:00');
   start.setHours(Math.floor(slot.mins/60), slot.mins%60, 0, 0);
