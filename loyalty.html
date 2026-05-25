@@ -629,30 +629,36 @@ window.doSignOut = function(){
 };
 
 // ── Startup: check localStorage → auto-login, or ?t= token, or show auth ─────
+const SPLASH_MS = 2000;
+const _splashStart = Date.now();
+function afterSplash(fn){ const wait = SPLASH_MS - (Date.now()-_splashStart); setTimeout(fn, Math.max(0,wait)); }
+
 async function startup(){
-  // Legacy QR token
-  const token = new URLSearchParams(location.search).get('t');
-  if(token){
-    try{
-      const snap=await getDocs(query(collection(db,`${T}/clients`),where('loyaltyToken','==',token),limit(1)));
-      if(!snap.empty){ const c=snap.docs[0].data(); window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
-    }catch(_){}
-  }
+  try{
+    // Legacy QR token
+    const token = new URLSearchParams(location.search).get('t');
+    if(token){
+      try{
+        const snap=await getDocs(query(collection(db,`${T}/clients`),where('loyaltyToken','==',token),limit(1)));
+        if(!snap.empty){ const c=snap.docs[0].data(); window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
+      }catch(_){}
+    }
 
-  // Auto-login from localStorage
-  const saved = localStorage.getItem(LS_KEY);
-  if(saved){
-    const isEmail = saved.startsWith('email:');
-    const val = saved.slice(saved.indexOf(':')+1);
-    try{
-      const c = await lookupClient(isEmail?'':val, isEmail?val:'');
-      if(c){ window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
-    }catch(_){}
-    localStorage.removeItem(LS_KEY);
-  }
+    // Auto-login from localStorage — with 5s timeout so it never hangs
+    const saved = localStorage.getItem(LS_KEY);
+    if(saved){
+      const isEmail = saved.startsWith('email:');
+      const val = saved.slice(saved.indexOf(':')+1);
+      try{
+        const timeoutP = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
+        const c = await Promise.race([lookupClient(isEmail?'':val, isEmail?val:''), timeoutP]);
+        if(c){ window._clientData=c; await loadApp(c,c.phone||'',(c.email||'').toLowerCase()); return; }
+      }catch(_){}
+      localStorage.removeItem(LS_KEY);
+    }
+  }catch(_){}
 
-  showState('stateAuth');
-  setTimeout(()=>document.getElementById('authInp')?.focus(), 100);
+  afterSplash(()=>{ showState('stateAuth'); setTimeout(()=>document.getElementById('authInp')?.focus(),100); });
 }
 
 startup();
