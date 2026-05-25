@@ -827,9 +827,16 @@ async function loadApp(c, phone, email){
     }catch(_){}
   }
 
-  // Normalize status and split into past visits / upcoming
+  // Past visits: CHECKED_OUT always counts; CONFIRMED/PENDING that are in the past
+  // also count (barber forgot to check out). CANCELLED/NO_SHOW excluded.
   const bookings=allClientBookings
-    .filter(b=>(b.status||'').toUpperCase()==='CHECKED_OUT')
+    .filter(b=>{
+      const st=(b.status||'').toUpperCase();
+      if(['CANCELLED','NO_SHOW'].includes(st)) return false;
+      if(st==='CHECKED_OUT') return true;
+      const t=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+      return t.getTime()<nowMs;
+    })
     .sort((a,b)=>{
       const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
       const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
