@@ -218,6 +218,29 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
 .prof-row-arr{font-size:.7rem;color:var(--muted2);}
 .prof-logout{width:100%;padding:12px;background:transparent;border:1px solid var(--red);border-radius:11px;color:var(--red);font-size:.74rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;margin-top:4px;}
 
+/* ── TICKET CARD ── */
+.ticket{background:var(--card);border:1px solid var(--border2);border-radius:14px;margin-bottom:9px;display:flex;overflow:hidden;position:relative;}
+.ticket::after{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:.45;}
+.ticket-stub{width:62px;flex-shrink:0;background:linear-gradient(135deg,rgba(201,168,76,.1),rgba(201,168,76,.04));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 6px;border-right:1px dashed rgba(201,168,76,.22);}
+.ticket.past .ticket-stub{background:rgba(255,255,255,.02);border-right-color:var(--border);}
+.ticket-day-num{font-family:'Cormorant Garamond',serif;font-size:1.65rem;font-weight:700;color:var(--gold);line-height:1;}
+.ticket.past .ticket-day-num{color:var(--muted);}
+.ticket-month{font-size:.46rem;color:var(--gold2);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.ticket.past .ticket-month{color:var(--muted);}
+.ticket-dow{font-size:.43rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:5px;border-top:1px solid rgba(201,168,76,.18);padding-top:5px;width:100%;text-align:center;}
+.ticket.past .ticket-dow{border-top-color:var(--border);}
+.ticket-body{flex:1;padding:12px 13px;display:flex;flex-direction:column;justify-content:center;}
+.ticket-svc{font-size:.81rem;font-weight:700;color:var(--txt);line-height:1.2;margin-bottom:4px;}
+.ticket.past .ticket-svc{color:var(--muted);}
+.ticket-meta{font-size:.6rem;color:var(--muted);line-height:1.6;}
+.ticket-time{font-size:.65rem;font-weight:600;color:var(--gold);margin-top:4px;}
+.ticket.past .ticket-time{color:var(--muted2);}
+.ticket-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:.5rem;font-weight:700;letter-spacing:.7px;margin-top:6px;}
+.tb-confirmed{background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);color:var(--gold);}
+.tb-pending{background:rgba(180,140,60,.1);border:1px solid rgba(180,140,60,.28);color:#c9a84c;}
+.tb-visited{background:rgba(61,139,94,.1);border:1px solid rgba(61,139,94,.25);color:#5dab7e;}
+.tb-cancelled{background:rgba(155,58,58,.1);border:1px solid rgba(155,58,58,.25);color:#d06060;}
+
 /* ── BOTTOM NAV ── */
 .bottomnav{display:flex;background:var(--bg);border-top:1px solid var(--border);padding:8px 0 max(14px,env(safe-area-inset-bottom));flex-shrink:0;}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;border:none;background:transparent;}
@@ -458,6 +481,16 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
           <div class="prof-row"><div class="prof-row-icon">✂️</div><div class="prof-row-txt">Preferred Barber</div><div class="prof-row-val" id="prefBarber" style="color:var(--gold);">—</div></div>
           <div class="prof-row"><div class="prof-row-icon">⭐</div><div class="prof-row-txt">Favourite Service</div><div class="prof-row-val" id="prefSvc">—</div></div>
         </div>
+      </div>
+
+      <div id="profUpcomingSection" style="display:none;">
+        <div class="sec-title">Upcoming</div>
+        <div id="profUpcoming"></div>
+      </div>
+
+      <div id="profHistorySection" style="display:none;">
+        <div class="sec-title">Visit History</div>
+        <div id="profVisits"></div>
       </div>
 
       <button class="prof-logout" onclick="doSignOut()">Sign Out</button>
@@ -718,6 +751,32 @@ async function loadApp(c, phone, email){
     return tb-ta;
   });
 
+  // Load upcoming bookings (CONFIRMED / PENDING, future startTime)
+  let upcomingBookings=[];
+  const nowMs=Date.now();
+  const _filterFuture=arr=>arr.filter(b=>{ const t=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0); return t.getTime()>nowMs; });
+  if(phone){
+    try{
+      const u1=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CONFIRMED'),limit(20)));
+      upcomingBookings=_filterFuture(u1.docs.map(d=>d.data()));
+    }catch(_){}
+    try{
+      const u2=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','PENDING'),limit(10)));
+      upcomingBookings=[...upcomingBookings,..._filterFuture(u2.docs.map(d=>d.data()))];
+    }catch(_){}
+  }
+  if(!upcomingBookings.length&&email){
+    try{
+      const u3=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CONFIRMED'),limit(20)));
+      upcomingBookings=_filterFuture(u3.docs.map(d=>d.data()));
+    }catch(_){}
+  }
+  upcomingBookings.sort((a,b)=>{
+    const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
+    const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+    return ta-tb;
+  });
+
   const visits=bookings.length;
   const svcCount={},barberCount={};
   let lastVisitTs=null;
@@ -836,6 +895,56 @@ async function loadApp(c, phone, email){
     document.getElementById('prefSection').style.display='block';
     document.getElementById('prefBarber').textContent=favBarber?favBarber.split(' ')[0]:'—';
     document.getElementById('prefSvc').textContent=favSvcName||'—';
+  }
+
+  // Profile — bookings ticket helper
+  function renderTicket(b, isPast){
+    const sName=window._svcMap[b.serviceId||b.service||'']||b.serviceId||b.service||'Visit';
+    const barber=b.barberName||b.barberId||'';
+    const ts=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+    const dayNum=ts.getDate();
+    const monthStr=ts.toLocaleDateString('en-GB',{month:'short'}).toUpperCase();
+    const dowStr=ts.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase();
+    const timeStr=ts.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const yearStr=ts.getFullYear()!==new Date().getFullYear()?' \''+String(ts.getFullYear()).slice(2):'';
+    const status=(b.status||'').toUpperCase();
+    let badgeCls='tb-confirmed', badgeLbl='CONFIRMED';
+    if(isPast){badgeCls='tb-visited';badgeLbl='VISITED';}
+    else if(status==='PENDING'){badgeCls='tb-pending';badgeLbl='PENDING';}
+    else if(status==='CANCELLED'){badgeCls='tb-cancelled';badgeLbl='CANCELLED';}
+    return`<div class="ticket${isPast?' past':''}">
+      <div class="ticket-stub">
+        <div class="ticket-day-num">${dayNum}</div>
+        <div class="ticket-month">${monthStr}</div>
+        <div class="ticket-dow">${dowStr}${yearStr}</div>
+      </div>
+      <div class="ticket-body">
+        <div class="ticket-svc">${esc(sName)}</div>
+        <div class="ticket-meta">✂️ ${esc(barber||'Whitecross Barbers')}</div>
+        <div class="ticket-time">🕐 ${timeStr}</div>
+        <div class="ticket-badge ${badgeCls}">${badgeLbl}</div>
+      </div>
+    </div>`;
+  }
+
+  // Upcoming
+  const upcomSec=document.getElementById('profUpcomingSection');
+  const upcomEl=document.getElementById('profUpcoming');
+  if(upcomingBookings.length){
+    upcomEl.innerHTML=upcomingBookings.map(b=>renderTicket(b,false)).join('');
+    upcomSec.style.display='block';
+  } else {
+    upcomEl.innerHTML='<div class="empty-msg">No upcoming bookings. Use the Book tab to schedule a visit.</div>';
+    upcomSec.style.display='block';
+  }
+
+  // Visit history (past CHECKED_OUT)
+  const profHistSec=document.getElementById('profHistorySection');
+  const profHistEl=document.getElementById('profVisits');
+  const pastVisits=bookings.slice(0,10);
+  if(pastVisits.length){
+    profHistEl.innerHTML=pastVisits.map(b=>renderTicket(b,true)).join('');
+    profHistSec.style.display='block';
   }
 
   showState('stateMain');
