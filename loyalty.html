@@ -552,9 +552,40 @@ body{font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;min-hei
 
 <div class="toast-el" id="toast"></div>
 <script>
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('/loyalty-sw.js');
-  }
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/loyalty-sw.js').then(reg => {
+    // When a new SW is waiting, activate it immediately
+    if(reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    reg.addEventListener('updatefound', () => {
+      const sw = reg.installing;
+      sw.addEventListener('statechange', () => {
+        if(sw.state === 'installed' && navigator.serviceWorker.controller){
+          sw.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+    // Poll for updates when app comes to foreground
+    document.addEventListener('visibilitychange', () => {
+      if(!document.hidden) reg.update();
+    });
+  });
+
+  // When new SW takes over, reload once to get fresh assets
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
+  // New SW says it's live → reload
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(e.data?.type === 'SW_UPDATED' && !reloading){
+      reloading = true;
+      window.location.reload();
+    }
+  });
+}
 </script>
 
 <script>
