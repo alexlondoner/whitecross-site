@@ -494,6 +494,14 @@ function showState(id){
   });
 }
 
+// Fallback: if module script hasn't moved us away from splash in 3.5s, force auth
+setTimeout(()=>{
+  const loading=document.getElementById('stateLoading');
+  if(loading&&loading.style.display!=='none'&&getComputedStyle(loading).display!=='none'){
+    showState('stateAuth');
+  }
+},3500);
+
 // Tab switching
 const TABS=['home','book','rewards','profile'];
 const HEADERS={home:'BARBERS · LOYALTY',book:'BOOK APPOINTMENT',rewards:'BARBERS · REWARDS',profile:'MY PROFILE'};
