@@ -1719,6 +1719,14 @@ var todayStr = now.getFullYear() + '-' +
             document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
             document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + bDate + " at " + bTime + ". Check your email for confirmation!";
             popup.style.display = 'flex';
+            // Google Ads + Firebase Analytics conversion
+            if (typeof gtag === 'function') {
+                gtag('event', 'conversion', { send_to: 'AW-18017585907' });
+                gtag('event', 'purchase', { currency: 'GBP', value: bookingData ? (bookingData.price || 0) : 0 });
+            }
+            if (window._logEvent && window._analytics) {
+                window._logEvent(window._analytics, 'purchase', { currency: 'GBP', value: bookingData ? (bookingData.price || 0) : 0 });
+            }
         }
 
         if (bookingData && bookingData.isGroup && bookingData.groupBookingIds) {
