@@ -811,51 +811,43 @@ async function loadApp(c, phone, email){
   window._allServices.forEach(s=>{ window._svcMap[s.id]=s.name||s.id; });
   window._allBarbers = bSnap.docs.map(d=>({id:d.id,...d.data()})).filter(b=>!b.hidden).sort((a,b)=>(a.order||99)-(b.order||99));
 
-  // Load bookings
-  let bookings=[];
-  if(phone){
-    try{
-      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CHECKED_OUT'),limit(50)));
-      bookings=bs.docs.map(d=>d.data());
-    }catch(_){}
-  }
-  if(!bookings.length&&email){
-    try{
-      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CHECKED_OUT'),limit(50)));
-      bookings=bs.docs.map(d=>d.data());
-    }catch(_){}
-  }
-  bookings.sort((a,b)=>{
-    const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
-    const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
-    return tb-ta;
-  });
-
-  // Load upcoming bookings (CONFIRMED / PENDING, future startTime)
-  let upcomingBookings=[];
+  // Load all client bookings in one query per identifier, normalize status client-side
   const nowMs=Date.now();
-  const _filterFuture=arr=>arr.filter(b=>{ const t=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0); return t.getTime()>nowMs; });
+  let allClientBookings=[];
   if(phone){
     try{
-      const u1=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','CONFIRMED'),limit(20)));
-      upcomingBookings=_filterFuture(u1.docs.map(d=>d.data()));
-    }catch(_){}
-    try{
-      const u2=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),where('status','==','PENDING'),limit(10)));
-      upcomingBookings=[...upcomingBookings,..._filterFuture(u2.docs.map(d=>d.data()))];
+      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientPhone','==',phone),limit(100)));
+      allClientBookings=bs.docs.map(d=>d.data());
     }catch(_){}
   }
-  if(!upcomingBookings.length&&email){
+  if(!allClientBookings.length&&email){
     try{
-      const u3=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),where('status','==','CONFIRMED'),limit(20)));
-      upcomingBookings=_filterFuture(u3.docs.map(d=>d.data()));
+      const bs=await getDocs(query(collection(db,`${T}/bookings`),where('clientEmail','==',email),limit(100)));
+      allClientBookings=bs.docs.map(d=>d.data());
     }catch(_){}
   }
-  upcomingBookings.sort((a,b)=>{
-    const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
-    const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
-    return ta-tb;
-  });
+
+  // Normalize status and split into past visits / upcoming
+  const bookings=allClientBookings
+    .filter(b=>(b.status||'').toUpperCase()==='CHECKED_OUT')
+    .sort((a,b)=>{
+      const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
+      const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+      return tb-ta;
+    });
+
+  const upcomingBookings=allClientBookings
+    .filter(b=>{
+      const st=(b.status||'').toUpperCase();
+      if(!['CONFIRMED','PENDING'].includes(st)) return false;
+      const t=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+      return t.getTime()>nowMs;
+    })
+    .sort((a,b)=>{
+      const ta=a.startTime?.toDate?a.startTime.toDate():new Date(a.startTime||0);
+      const tb=b.startTime?.toDate?b.startTime.toDate():new Date(b.startTime||0);
+      return ta-tb;
+    });
 
   const visits=bookings.length;
   const svcCount={},barberCount={};
