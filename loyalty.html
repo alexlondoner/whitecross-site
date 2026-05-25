@@ -664,7 +664,7 @@ window.findCard = async function(){
   const isEmail = raw.includes('@');
   const isPhone = /^\+?\d[\d\s\-]{6,}$/.test(raw);
   if(!isEmail && !isPhone){ errEl.textContent='Enter a phone number or email address.'; return; }
-  if(!surname){ errEl.textContent='Please enter your last name.'; surnameInp?.focus(); return; }
+  if(surname.length < 2){ errEl.textContent='Please enter your last name.'; surnameInp?.focus(); return; }
 
   errEl.textContent='';
   btn.disabled=true;
@@ -680,13 +680,26 @@ window.findCard = async function(){
       btn.disabled=false;
       return;
     }
-    // Verify last name
-    const clientName=(c.name||'').toLowerCase();
-    if(clientName && !clientName.includes(surname)){
+    // Verify last name — compare against last word of stored name
+    const storedName=(c.name||'').trim().toLowerCase();
+    if(storedName){
+      const storedLast=storedName.split(/\s+/).pop().replace(/[^a-z]/g,'');
+      const inputLast=surname.replace(/[^a-z]/g,'');
+      // exact match or input is a prefix of ≥3 chars (handles partial entry)
+      const matched = storedLast===inputLast ||
+        (inputLast.length>=3 && storedLast.startsWith(inputLast));
+      if(!matched){
+        showState('stateAuth');
+        errEl.textContent='Details don\'t match. Check your last name and try again.';
+        btn.disabled=false;
+        document.getElementById('authSurnameInp')?.focus();
+        return;
+      }
+    } else {
+      // No name stored — can't verify, block login and ask barber to add name
       showState('stateAuth');
-      errEl.textContent='Details don\'t match. Check your last name and try again.';
+      errEl.textContent='Account incomplete. Ask your barber to update your details.';
       btn.disabled=false;
-      document.getElementById('authSurnameInp')?.focus();
       return;
     }
     // Save for auto-login next time
