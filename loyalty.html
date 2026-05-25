@@ -783,6 +783,23 @@ async function startup(){
 
 startup();
 
+// ── Background refresh: re-fetch when app comes back to foreground ────────────
+let _lastFetchMs = 0;
+async function silentRefresh(){
+  const saved = localStorage.getItem(LS_KEY);
+  if(!saved || !window._clientData) return;
+  if(Date.now() - _lastFetchMs < 20000) return; // skip if fetched <20s ago
+  const isEmail = saved.startsWith('email:');
+  const val = saved.slice(saved.indexOf(':')+1);
+  try{
+    const c = await lookupClient(isEmail?'':val, isEmail?val:'');
+    if(c){ window._clientData=c; await loadApp(c, c.phone||'', (c.email||'').toLowerCase()); }
+  }catch(_){}
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) silentRefresh(); });
+window.addEventListener('focus', ()=> silentRefresh());
+window.addEventListener('pageshow', ()=> silentRefresh());
+
 // ── Main app load ─────────────────────────────────────────────────────────────
 async function loadApp(c, phone, email){
   const pts = c.loyaltyPoints||0;
@@ -1045,6 +1062,7 @@ async function loadApp(c, phone, email){
     profHistSec.style.display='block';
   }
 
+  _lastFetchMs = Date.now();
   showState('stateMain');
 }
 
