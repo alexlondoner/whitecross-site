@@ -20,7 +20,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipY, setTooltipY] = useState(0);
 
-  const sidebarWidth = isCollapsed ? '68px' : '160px';
+  const sidebarWidth = isCollapsed ? '76px' : '185px';
 
   const t = {
     bg:      isLight ? '#f8f5ec' : '#0c0a06',
@@ -135,8 +135,10 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
                 <div style={{ flex: 1, height: '1px', background: t.border2 }} />
               </div>
               <div style={{
-                fontSize: '0.5rem', color: t.muted,
-                letterSpacing: '2.5px', textAlign: 'center',
+                fontSize: '0.68rem', color: t.gold2,
+                letterSpacing: '4px', textAlign: 'center',
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontWeight: '600',
               }}>
                 BARBERS
               </div>
@@ -148,7 +150,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
       {/* NAV */}
       <nav style={{
         flex: 1, padding: '10px 8px',
-        overflowY: 'auto', overflowX: 'visible',
+        overflowY: 'auto', overflowX: 'hidden',
       }}>
         {allItems.map(item => {
           const isActive = activePage === item.id;
@@ -195,8 +197,11 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
                     fontSize: '0.82rem',
                     fontWeight: isActive ? '700' : '500',
                     whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                     letterSpacing: '0.3px',
                     color: isActive ? t.gold : t.txt,
+                    minWidth: 0,
                   }}>
                     {item.label}
                   </span>

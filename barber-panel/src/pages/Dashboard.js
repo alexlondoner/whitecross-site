@@ -553,7 +553,17 @@ const activeBarbers = barberFilter === 'all'
               ) : (
                 <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, position:'relative' }}>
                   {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts || showCheckout || showReceipt) && (
-                    <div onClick={closeAllPanels} style={{ position:'absolute', inset:0, zIndex:5, cursor:'default' }} />
+                    <div
+                      onClick={closeAllPanels}
+                      onWheel={e => {
+                        const el = e.currentTarget;
+                        el.style.pointerEvents = 'none';
+                        const under = document.elementFromPoint(e.clientX, e.clientY);
+                        el.style.pointerEvents = '';
+                        if (under) under.dispatchEvent(new WheelEvent('wheel', { deltaY: e.deltaY, deltaX: e.deltaX, deltaMode: e.deltaMode, bubbles: true, cancelable: true }));
+                      }}
+                      style={{ position:'absolute', inset:0, zIndex:5, cursor:'default' }}
+                    />
                   )}
                   <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
                   {/* Revenue strip */}

@@ -148,6 +148,8 @@ function getPeriodRange(period) {
   return null;
 }
 
+const SOURCE_COLORS = { Booksy: '#9c27b0', Fresha: '#2196f3', Treatwell: '#ff7043', Website: '#4caf50', 'Walk-in': '#ff9800', 'Product Sale': '#03a9f4', App: '#e91e63' };
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Reports() {
@@ -274,8 +276,7 @@ export default function Reports() {
   const sourceSegments = useMemo(() => {
     const map = {};
     active.forEach(b => { map[b.source] = (map[b.source] || 0) + 1; });
-    const colors = { Booksy: '#9c27b0', Fresha: '#2196f3', Treatwell: '#ff7043', Website: '#4caf50', 'Walk-in': '#ff9800', 'Product Sale': '#03a9f4' };
-    return Object.entries(map).map(([k, v]) => ({ label: k, value: v, color: colors[k] || '#999' }));
+    return Object.entries(map).map(([k, v]) => ({ label: k, value: v, color: SOURCE_COLORS[k] || '#999' }));
   }, [active]);
 
   // Payment method breakdown (checked out only)
@@ -327,6 +328,27 @@ export default function Reports() {
     });
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
   }, [checkedOut]);
+
+  // Source stats
+  const sourceStats = useMemo(() => {
+    const map = {};
+    active.forEach(b => {
+      const src = b.source;
+      if (!map[src]) map[src] = { source: src, color: SOURCE_COLORS[src] || '#7a7260', bookings: 0, checkedOut: 0, serviceRev: 0, productRev: 0, tips: 0, discounts: 0, total: 0 };
+      map[src].bookings++;
+      if (b.status === 'CHECKED_OUT') {
+        const sv = serviceGross(b), pv = soldProductsTotal(b), tip = pp(b.tip), disc = pp(b.discount);
+        map[src].checkedOut++;
+        map[src].serviceRev += sv;
+        map[src].productRev += pv;
+        map[src].tips       += tip;
+        map[src].discounts  += disc;
+        map[src].total      += Math.max(0, sv + pv - disc) + tip;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   // Client stats
   const clientMap = useMemo(() => {
@@ -430,7 +452,7 @@ export default function Reports() {
   const th    = { padding: '8px 10px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', textAlign: 'left', fontWeight: '600', whiteSpace: 'nowrap' };
   const td    = (extra) => ({ padding: '7px 10px', fontSize: '0.75rem', ...extra });
 
-  const tabs  = ['overview', 'breakdown', 'barbers', 'services', 'products', 'clients'];
+  const tabs  = ['overview', 'breakdown', 'sources', 'barbers', 'services', 'products', 'clients'];
 
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--muted)' }}>Loading reports...</div>;
 
@@ -688,6 +710,125 @@ export default function Reports() {
 
           {financeGrouped.length === 0 && (
             <div style={{ textAlign:'center', padding:'50px', color:'var(--muted)' }}>No checked-out bookings in this period.</div>
+          )}
+        </div>
+      )}
+
+      {/* ── SOURCES ── */}
+      {activeTab === 'sources' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* Summary cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+            {sourceStats.map(s => (
+              <div key={s.source} style={{ ...card, borderTop: '3px solid ' + s.color }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text)' }}>{s.source}</span>
+                </div>
+                {[
+                  ['Bookings',    s.bookings],
+                  ['Checked Out', s.checkedOut],
+                  ['Service Rev', '£' + s.serviceRev.toFixed(2)],
+                  ['Product Rev', '£' + s.productRev.toFixed(2)],
+                  ['Tips',        s.tips > 0 ? '£' + s.tips.toFixed(2) : '—'],
+                  ['Total',       '£' + s.total.toFixed(2)],
+                ].map(([l, v]) => (
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>{l}</span>
+                    <span style={{ fontSize: '0.72rem', color: l === 'Total' ? s.color : 'var(--text)', fontWeight: l === 'Total' ? '700' : '500' }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Revenue comparison bars */}
+          {sourceStats.length > 0 && (
+            <div style={card}>
+              <div style={lbl}>Revenue by Source</div>
+              {sourceStats.map(s => {
+                const max = sourceStats[0]?.total || 1;
+                return (
+                  <div key={s.source} style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text)', fontWeight: '600' }}>{s.source}</span>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{s.checkedOut} sales</span>
+                        <span style={{ fontSize: '0.75rem', color: s.color, fontWeight: '700' }}>£{s.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <div style={{ height: '7px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: (s.total / max * 100) + '%', height: '100%', background: s.color, borderRadius: '4px', transition: 'width 0.5s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Detail table */}
+          <div style={card}>
+            <div style={lbl}>Full Breakdown</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Source', 'Bookings', 'Checked Out', 'Conv %', 'Service Rev', 'Product Rev', 'Discounts', 'Tips', 'Total Collected', 'Avg/Sale'].map(h => (
+                      <th key={h} style={th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceStats.map(s => (
+                    <tr key={s.source} style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={td({})}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                          <span style={{ fontWeight: '600', color: 'var(--text)' }}>{s.source}</span>
+                        </div>
+                      </td>
+                      <td style={td({ color: 'var(--muted)' })}>{s.bookings}</td>
+                      <td style={td({ color: 'var(--muted)' })}>{s.checkedOut}</td>
+                      <td style={td({ color: 'var(--muted)' })}>{s.bookings ? Math.round(s.checkedOut / s.bookings * 100) + '%' : '—'}</td>
+                      <td style={td({ color: '#d4af37', fontWeight: '600' })}>£{s.serviceRev.toFixed(2)}</td>
+                      <td style={td({ color: '#03a9f4', fontWeight: '600' })}>£{s.productRev.toFixed(2)}</td>
+                      <td style={td({ color: s.discounts > 0 ? '#ff5252' : 'var(--border)' })}>{s.discounts > 0 ? '−£' + s.discounts.toFixed(2) : '—'}</td>
+                      <td style={td({ color: s.tips > 0 ? '#2196f3' : 'var(--border)' })}>{s.tips > 0 ? '+£' + s.tips.toFixed(2) : '—'}</td>
+                      <td style={td({ color: s.color, fontWeight: '700' })}>£{s.total.toFixed(2)}</td>
+                      <td style={td({ color: 'var(--muted)' })}>{s.checkedOut ? '£' + (s.total / s.checkedOut).toFixed(2) : '—'}</td>
+                    </tr>
+                  ))}
+                  {sourceStats.length > 1 && (() => {
+                    const tot = sourceStats.reduce((acc, s) => ({
+                      bookings: acc.bookings + s.bookings, checkedOut: acc.checkedOut + s.checkedOut,
+                      serviceRev: acc.serviceRev + s.serviceRev, productRev: acc.productRev + s.productRev,
+                      discounts: acc.discounts + s.discounts, tips: acc.tips + s.tips, total: acc.total + s.total,
+                    }), { bookings: 0, checkedOut: 0, serviceRev: 0, productRev: 0, discounts: 0, tips: 0, total: 0 });
+                    return (
+                      <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(212,175,55,0.04)' }}>
+                        <td style={td({ fontWeight: '700', color: '#d4af37' })}>TOTAL</td>
+                        <td style={td({ fontWeight: '700', color: 'var(--text)' })}>{tot.bookings}</td>
+                        <td style={td({ fontWeight: '700', color: 'var(--text)' })}>{tot.checkedOut}</td>
+                        <td style={td({ color: 'var(--muted)' })}>{tot.bookings ? Math.round(tot.checkedOut / tot.bookings * 100) + '%' : '—'}</td>
+                        <td style={td({ fontWeight: '700', color: '#d4af37' })}>£{tot.serviceRev.toFixed(2)}</td>
+                        <td style={td({ fontWeight: '700', color: '#03a9f4' })}>£{tot.productRev.toFixed(2)}</td>
+                        <td style={td({ color: tot.discounts > 0 ? '#ff5252' : 'var(--border)' })}>{tot.discounts > 0 ? '−£' + tot.discounts.toFixed(2) : '—'}</td>
+                        <td style={td({ color: tot.tips > 0 ? '#2196f3' : 'var(--border)' })}>{tot.tips > 0 ? '+£' + tot.tips.toFixed(2) : '—'}</td>
+                        <td style={td({ fontWeight: '800', color: '#4caf50' })}>£{tot.total.toFixed(2)}</td>
+                        <td style={td({ color: 'var(--muted)' })}>{tot.checkedOut ? '£' + (tot.total / tot.checkedOut).toFixed(2) : '—'}</td>
+                      </tr>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {sourceStats.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '50px', color: 'var(--muted)' }}>No data in this period.</div>
           )}
         </div>
       )}
