@@ -160,6 +160,7 @@ export default function Reports() {
   const [financeGroup, setFinanceGroup] = useState('day'); // day | week | month
   const [financeSource, setFinanceSource] = useState('all'); // all | services | products
   const [financePayment, setFinancePayment] = useState('all'); // all | cash | card
+  const [financeBarber, setFinanceBarber] = useState('all'); // all | <barber name>
 
   useEffect(() => {
     (async () => {
@@ -359,8 +360,12 @@ export default function Reports() {
         if (financePayment === 'card') return pm !== 'CASH';
         return true;
       })
+      .filter(b => {
+        if (financeBarber === 'all') return true;
+        return (b.barber || '').toLowerCase() === financeBarber.toLowerCase();
+      })
       .sort((a, b) => (b._date?.getTime() || 0) - (a._date?.getTime() || 0)),
-  [checkedOut, financeSource, financePayment]);
+  [checkedOut, financeSource, financePayment, financeBarber]);
 
   // Group key for finance grouping
   function groupKey(b) {
@@ -589,6 +594,18 @@ export default function Reports() {
                 </button>
               ))}
             </div>
+            {barbers.length > 0 && (
+              <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                {[{ id: 'all', name: 'All Barbers', color: '#d4af37' }, ...barbers.map(b => ({ id: b.name, name: b.name, color: b.color || '#d4af37' }))].map(({ id, name, color }) => (
+                  <button key={id} onClick={() => setFinanceBarber(id)}
+                    style={{ padding: '6px 13px', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '600',
+                      background: financeBarber === id ? color : 'transparent',
+                      color:      financeBarber === id ? '#000' : 'var(--muted)' }}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
             <button onClick={exportFinanceCSV}
               style={{ padding: '6px 14px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}>
               Export CSV

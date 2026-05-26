@@ -576,9 +576,9 @@ const activeBarbers = barberFilter === 'all'
               })}
             </div>
           </div>
-          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px', flex:1, overflow:'hidden' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-              <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase' }}>{periodLabel}</div>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden', flex:1 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'rgba(212,175,55,0.03)' }}>
+              <div style={{ fontSize:'0.52rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase', fontWeight:'700' }}>{periodLabel}</div>
               <div style={{ position:'relative' }}>
                 <button onClick={()=>setShowLeftCardSettings(v=>!v)}
                   style={{ padding:'3px 6px', background: showLeftCardSettings ? 'rgba(212,175,55,0.18)' : 'transparent', border:'1px solid ' + (showLeftCardSettings ? '#d4af37' : 'var(--border)'), borderRadius:'6px', color: showLeftCardSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.72rem', lineHeight:1 }}
@@ -606,45 +606,49 @@ const activeBarbers = barberFilter === 'all'
               </div>
             </div>
             {(visibleLeftCards.has('clients')||visibleLeftCards.has('revenue')||visibleLeftCards.has('discount')||visibleLeftCards.has('tips')) && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', padding:'10px 12px', borderBottom:'1px solid var(--border)' }}>
                 {visibleLeftCards.has('clients') && (
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(212,175,55,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.5rem', fontWeight:'700', color:'#d4af37' }}>{statsBookings.length}</div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>CLIENTS</div>
+                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(212,175,55,0.07)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.4rem', fontWeight:'800', color:'#d4af37', lineHeight:1 }}>{statsBookings.length}</div>
+                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Clients</div>
                   </div>
                 )}
                 {visibleLeftCards.has('revenue') && (
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.2rem', fontWeight:'700', color:'#4caf50' }}>£{revenue.toFixed(0)}</div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>REVENUE</div>
+                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(76,175,80,0.07)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1.15rem', fontWeight:'800', color:'#4caf50', lineHeight:1 }}>£{revenue.toFixed(0)}</div>
+                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Revenue</div>
                   </div>
                 )}
                 {visibleLeftCards.has('discount') && (
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(76,175,80,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.05rem', fontWeight:'700', color:'#4caf50' }}>£{discountGiven.toFixed(2)}</div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>DISCOUNT</div>
+                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(76,175,80,0.07)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1rem', fontWeight:'800', color:'#4caf50', lineHeight:1 }}>£{discountGiven.toFixed(0)}</div>
+                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Discount</div>
                   </div>
                 )}
                 {visibleLeftCards.has('tips') && (
-                  <div style={{ textAlign:'center', padding:'10px', background:'rgba(33,150,243,0.06)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.05rem', fontWeight:'700', color:'#2196f3' }}>£{tipsGiven.toFixed(2)}</div>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)' }}>TIPS</div>
+                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(255,152,0,0.07)', borderRadius:'8px' }}>
+                    <div style={{ fontSize:'1rem', fontWeight:'800', color:'#ff9800', lineHeight:1 }}>£{tipsGiven.toFixed(0)}</div>
+                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Tips</div>
                   </div>
                 )}
               </div>
             )}
-            {visibleLeftCards.has('barbers') && activeBarbers.map(barber=>{
-              const cnt=statsBookings.filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
-              return (
-                <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid var(--border)' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                    <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:barber.color }} />
-                    <span style={{ fontSize:'0.75rem', color:'var(--text)' }}>{barber.name}</span>
-                  </div>
-                  <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{cnt}</span>
-                </div>
-              );
-            })}
+            {visibleLeftCards.has('barbers') && (
+              <div style={{ padding:'8px 12px' }}>
+                {activeBarbers.map((barber, i) => {
+                  const cnt = statsBookings.filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
+                  return (
+                    <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 2px', borderBottom: i < activeBarbers.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
+                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:barber.color }} />
+                        <span style={{ fontSize:'0.72rem', color:'var(--text)', fontWeight:'500' }}>{barber.name}</span>
+                      </div>
+                      <span style={{ fontSize:'0.7rem', color:'var(--muted)', fontWeight:'600' }}>{cnt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* PILLS IN SIDEBAR */}
@@ -697,7 +701,33 @@ const activeBarbers = barberFilter === 'all'
               {loading ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)' }}>Loading...</div>
               ) : (
-                <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
+                <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+                  <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
+                  {/* Revenue strip */}
+                  {(() => {
+                    const dayBks = (bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status === 'CHECKED_OUT');
+                    const dayRev = dayBks.reduce((s, b) => s + bookingNetWithoutTip(b), 0);
+                    const dayTips = dayBks.reduce((s, b) => s + pp(b.tip), 0);
+                    const dayCheckedOut = dayBks.length;
+                    const dayTotal = (bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED' && b.status !== 'BLOCKED').length;
+                    const dayRemaining = dayTotal - dayCheckedOut;
+                    return (
+                      <div style={{ height:'40px', flexShrink:0, display:'flex', background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px' }}>
+                        {[
+                          { label: 'Revenue',     value: '£'+dayRev.toFixed(0),  color: '#d4af37' },
+                          { label: 'Checked Out', value: dayCheckedOut,           color: '#4caf50' },
+                          { label: 'Remaining',   value: dayRemaining,            color: 'var(--text)' },
+                          { label: 'Tips',        value: '£'+dayTips.toFixed(0),  color: '#ff9800' },
+                        ].map((item, i, arr) => (
+                          <div key={item.label} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight: i < arr.length-1 ? '1px solid var(--border)' : 'none' }}>
+                            <div style={{ fontSize:'0.45rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700' }}>{item.label}</div>
+                            <div style={{ fontSize:'0.9rem', fontWeight:'800', color:item.color, lineHeight:1, marginTop:'1px' }}>{item.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               )}
               {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts) && <ResizeHandle onResize={() => {}} />}
               {selectedBooking && !showForm && !showWalkIn && !showBlockTime && (

@@ -272,7 +272,13 @@ export default function Finance() {
         const data = d.data();
         const rawBarber = data.barberName || barberById[String(data.barberId || '').toLowerCase()] || data.barberId || '';
         const barber = resolveBarberName(rawBarber, canonMap);
-        const startTime = data.startTime?.toDate?.();
+        let startTime = data.startTime?.toDate?.();
+        // Fallback: some older bookings store date as a string field instead of startTime Timestamp
+        if (!startTime && data.date) {
+          const raw = data.time ? data.date + ' ' + data.time : data.date;
+          const parsed = new Date(raw);
+          if (!isNaN(parsed.getTime())) startTime = parsed;
+        }
         const rawStatus = String(data.status || '').trim().toUpperCase().replace(/[-\s]+/g, '_');
         const status = ['CONFIRMED','PENDING','CHECKED_OUT','CANCELLED','BLOCKED','NO_SHOW'].includes(rawStatus) ? rawStatus : (rawStatus || 'CONFIRMED');
         return { ...data, status, barber, startTime, dateKey: startTime ? toDateKey(startTime) : null };
@@ -517,7 +523,8 @@ export default function Finance() {
 
       const monthBk = bookings.filter(b => monthKey(b.startTime) === mk);
       monthBk.forEach(b => {
-        // All non-cancelled bookings count for worked-days (wages)
+        // BLOCKED slots don't count as worked days (mirrors Barber Revenue table)
+        if (b.status === 'BLOCKED') return;
         if (!barberDays[b.barber]) barberDays[b.barber] = new Set();
         barberDays[b.barber].add(b.dateKey);
         // Only CHECKED_OUT bookings count for revenue
@@ -547,8 +554,9 @@ export default function Finance() {
         }
       });
 
-      // Shop-open days = any day with revenue (for fixed cost)
-      const shopDays = new Set(monthBk.map(b => b.dateKey)).size;
+      // Shop-open days = days with actual revenue (mirrors dailyData: grossRevenue > 0)
+      const revDaySet = new Set(monthBk.filter(b => b.status === 'CHECKED_OUT' && effectiveRevenue(b) > 0).map(b => b.dateKey));
+      const shopDays = revDaySet.size;
       fixedCostTotal = shopDays * fixedDailyRate;
 
       const companyNetPL = netRevenue - totalWages - fixedCostTotal;

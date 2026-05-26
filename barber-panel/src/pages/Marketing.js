@@ -642,29 +642,40 @@ export default function Marketing({ tenantId, isAdmin }) {
       return `${r.label}: ${ps}`;
     });
 
-    // ── Finance: cumulative net durum + initial investment balance ──
+    // ── Finance: total position per partner (operational + initial investment) ──
+    // Total Position = cumulative operational net durum + initial investment balance (paid - required)
+    // Positive = company owes this partner; Negative = this partner owes the company/others
+    const partnerTotals = {};
     const finCumLines = Object.entries(finCumulative).map(([name, netDurum]) => {
       const inv = FIN_INITIAL_INVESTMENT.find(r => r.name === name);
       const required = inv ? FIN_INITIAL_POOL * (inv.share / 100) : 0;
-      const invBalance = inv ? inv.paid - required : 0;
-      return `${name}: Birikimli NetDurum £${netDurum.toFixed(0)} | Initial yatırım ${invBalance >= 0 ? 'alacaklı' : 'borçlu'} £${Math.abs(invBalance).toFixed(0)}`;
+      const invBalance = inv ? inv.paid - required : 0; // positive = overpaid (owed back), negative = underpaid (owes)
+      const totalPosition = netDurum + invBalance;
+      partnerTotals[name] = totalPosition;
+      return [
+        `${name}:`,
+        `  Operational (wages+profit share birikimli): £${netDurum.toFixed(2)}`,
+        `  Initial investment paid: £${(inv?.paid||0).toFixed(2)} | Required (${inv?.share||0}% of £${FIN_INITIAL_POOL.toFixed(2)}): £${required.toFixed(2)} | Balance: ${invBalance >= 0 ? '+' : ''}£${invBalance.toFixed(2)}`,
+        `  TOTAL POSITION: ${totalPosition >= 0 ? '+' : ''}£${totalPosition.toFixed(2)} (${totalPosition >= 0 ? 'company owes this partner' : 'this partner owes the company'})`,
+      ].join('\n');
     });
 
-    // ── Finance: who owes who (settlement) ──
-    // A partner with negative cumulative netDurum owes the one with positive
+    // ── Finance: settlement — who pays who and how much ──
+    // Partners with negative total position owe those with positive total position
     const settlements = [];
-    const debtors  = Object.entries(finCumulative).filter(([,v]) => v < 0).sort((a,b) => a[1]-b[1]);
-    const creditors= Object.entries(finCumulative).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+    const totalEntries = Object.entries(partnerTotals);
+    const debtors   = totalEntries.filter(([,v]) => v < 0).sort((a,b) => a[1]-b[1]);
+    const creditors = totalEntries.filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
     if (debtors.length && creditors.length) {
       const debMap  = Object.fromEntries(debtors.map(([n,v]) => [n, -v]));
       const credMap = Object.fromEntries(creditors.map(([n,v]) => [n, v]));
-      const dNames = debtors.map(([n]) => n);
-      const cNames = creditors.map(([n]) => n);
-      dNames.forEach(d => { cNames.forEach(c => { if (debMap[d] > 0 && credMap[c] > 0) {
+      debtors.forEach(([d]) => { creditors.forEach(([c]) => { if (debMap[d] > 0.01 && credMap[c] > 0.01) {
         const amt = Math.min(debMap[d], credMap[c]);
-        settlements.push(`${d} → ${c}: £${amt.toFixed(0)}`);
+        settlements.push(`${d} must pay ${c}: £${amt.toFixed(2)}`);
         debMap[d] -= amt; credMap[c] -= amt;
       }}); });
+    } else if (!debtors.length) {
+      settlements.push('All partners are in positive or neutral position — no payments needed.');
     }
 
     return [
@@ -718,11 +729,13 @@ export default function Marketing({ tenantId, isAdmin }) {
       `Partners: Alex 50% share £100/day | Arda 25% share £100/day | Tuncay 25% share £0/day (Kadim+Manoj wages credit to Tuncay)`,
       ...finPartnerLines,
       '',
-      `=== FINANCE — CUMULATIVE NET DURUM & INITIAL INVESTMENT ===`,
+      `=== FINANCE — PARTNER TOTAL POSITIONS ===`,
       `Initial Investment Pool: £${FIN_INITIAL_POOL.toFixed(2)} (includes £1,212.20 stamp duty)`,
+      `Total Position = cumulative operational net durum + initial investment overpay/underpay`,
       ...finCumLines,
       '',
-      settlements.length ? `=== FINANCE — SETTLEMENT (who owes who) ===\n${settlements.join('\n')}` : `=== FINANCE — SETTLEMENT ===\nAll partners balanced or insufficient data`,
+      `=== FINANCE — SETTLEMENT (who must pay who to settle up) ===`,
+      ...settlements,
     ].filter(v => v !== undefined).join('\n');
   };
 

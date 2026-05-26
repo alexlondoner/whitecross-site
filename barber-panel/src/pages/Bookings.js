@@ -103,7 +103,7 @@ function stepAnchor(period, anchor, dir) {
   return d;
 }
 
-export default function Bookings() {
+export default function Bookings({ isAdmin }) {
   const [bookings, setBookings]       = useState([]);
   const [barbers, setBarbers]         = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -571,7 +571,7 @@ export default function Bookings() {
                     )}
                   </div>
 
-                  {isCancelled && (
+                  {isCancelled && isAdmin && (
                     <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       {isConfirming ? (
                         <>

@@ -45,7 +45,7 @@ const normalizeBarberForm = function(barber) {
   return Object.assign({}, defaultBarber, barber, { workingDays, hours, dayHours });
 };
 
-export default function Barbers() {
+export default function Barbers({ isAdmin }) {
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -260,9 +260,11 @@ export default function Barbers() {
                   <button onClick={function() { openEdit(barber); }} style={{ flex: 1, padding: '10px', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
                     ✏️ Edit
                   </button>
-                  <button onClick={function() { handleDelete(barber.id); }} style={{ padding: '10px 14px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.8rem' }}>
-                    🗑️
-                  </button>
+                  {isAdmin && (
+                    <button onClick={function() { handleDelete(barber.id); }} style={{ padding: '10px 14px', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '8px', color: '#ff5252', cursor: 'pointer', fontSize: '0.8rem' }}>
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

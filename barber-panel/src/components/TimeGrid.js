@@ -37,21 +37,18 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
     <div style={{ flex:1, overflowY:'auto', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', position:'relative' }}>
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)', position:'sticky', top:0, background:'var(--card)', zIndex:10 }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }} />
-        {barbers.map((barber, bi) => (
-          <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
-            style={{ flex:1, padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer' }}
-            onMouseEnter={e=>{ e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
-            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:barber.color+'22', border:'1px solid '+barber.color+'44', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:'700', color:barber.color, flexShrink:0 }}>{barber.name[0]}</div>
-            <div>
-              <div style={{ fontSize:'0.85rem', fontWeight:'700', color:'var(--text)' }}>{barber.name}</div>
-              <div style={{ fontSize:'0.62rem', color:'var(--muted)' }}>{minsToLabel(OPEN_MINS) + ' -- ' + minsToLabel(CLOSE_MINS) + (dayHours && dayHours.note ? ' · ' + dayHours.note : '')}</div>
+        {barbers.map((barber, bi) => {
+          const aptCount = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length;
+          return (
+            <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
+              style={{ flex:1, padding:'10px 14px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer', borderTop:'2px solid '+barber.color+'55', transition:'background 0.15s' }}
+              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{ fontSize:'0.72rem', fontWeight:'800', color:barber.color, letterSpacing:'2px', textTransform:'uppercase' }}>{barber.name}</div>
+              <div style={{ fontSize:'0.55rem', color:'var(--muted)', letterSpacing:'0.5px' }}>{aptCount} apt{aptCount !== 1 ? 's' : ''} · {minsToLabel(OPEN_MINS)}–{minsToLabel(CLOSE_MINS)}</div>
             </div>
-            <span style={{ fontSize:'0.65rem', color:'var(--muted)', marginLeft:'auto', background:'rgba(212,175,55,0.08)', padding:'2px 7px', borderRadius:'8px' }}>
-              {(byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length + ' appts'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div style={{ display:'flex', position:'relative' }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }}>

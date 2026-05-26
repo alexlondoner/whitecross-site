@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './firebase';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
+import ProfileBar from './components/ProfileBar';
 import Login from './pages/Login';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -139,7 +140,8 @@ function App() {
         tenantId={tenantId}
         isOwner={isAdmin}
       />
-      <div style={{ position: 'fixed', top: '16px', right: '24px', zIndex: 200 }}>
+      <div style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} />
         <NotificationBell tenantId={tenantId} />
       </div>
       <main style={{
