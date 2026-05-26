@@ -1,9 +1,11 @@
+
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-// removed duplicate import
 import config from '../config';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { deleteBooking } from '../firestoreActions';
+import StatPill from '../components/StatPill';
+
 
 const PAGE_SIZE = 100;
 
@@ -409,37 +411,16 @@ export default function Bookings({ isAdmin }) {
       </div>
 
       {/* Stat pills — clickable filters */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div onClick={() => setActiveFilter(null)}
-          style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: !activeFilter ? 'rgba(212,175,55,0.25)' : 'rgba(212,175,55,0.1)', border:'1px solid '+(!activeFilter ? '#d4af37' : 'rgba(212,175,55,0.3)'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
-          onMouseEnter={e=>e.currentTarget.style.background='rgba(212,175,55,0.2)'}
-          onMouseLeave={e=>e.currentTarget.style.background=!activeFilter?'rgba(212,175,55,0.25)':'rgba(212,175,55,0.1)'}>
-          <span style={{ fontSize:'1.4rem', fontWeight:'800', color:'#d4af37' }}>{stats.total}</span>
-          <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Total</span>
-        </div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <StatPill label="Total" value={stats.total} color="#d4af37" active={!activeFilter} onClick={() => setActiveFilter(null)} />
         {statPills.map(p => (
-          <div key={p.key} onClick={() => toggleFilter(p.key)}
-            style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: activeFilter===p.key ? p.color+'25' : p.color+'10', border:'1px solid '+(activeFilter===p.key ? p.color : p.color+'30'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background=p.color+'20'}
-            onMouseLeave={e=>e.currentTarget.style.background=activeFilter===p.key?p.color+'25':p.color+'10'}>
-            <span style={{ fontSize:'1.4rem', fontWeight:'800', color:p.color }}>{p.value}</span>
-            <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{p.label}</span>
-          </div>
+          <StatPill key={p.key} label={p.label} value={p.value} color={p.color} active={activeFilter === p.key} onClick={() => toggleFilter(p.key)} />
         ))}
-        <div style={{ width:'1px', background:'var(--border)', alignSelf:'stretch', margin:'0 4px' }} />
+        <div style={{ width:'1px', background:'var(--border)', alignSelf:'stretch', margin:'0 2px' }} />
         {sourcePills.map(p => (
-          <div key={p.key} onClick={() => toggleFilter(p.key)}
-            style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 20px', background: activeFilter===p.key ? p.color+'25' : p.color+'10', border:'1px solid '+(activeFilter===p.key ? p.color : p.color+'30'), borderRadius:'10px', minWidth:'80px', cursor:'pointer', transition:'all 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background=p.color+'20'}
-            onMouseLeave={e=>e.currentTarget.style.background=activeFilter===p.key?p.color+'25':p.color+'10'}>
-            <span style={{ fontSize:'1.4rem', fontWeight:'800', color:p.color }}>{p.value}</span>
-            <span style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>{p.label}</span>
-          </div>
+          <StatPill key={p.key} label={p.label} value={p.value} color={p.color} active={activeFilter === p.key} onClick={() => toggleFilter(p.key)} />
         ))}
-        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'8px' }}>
-          <span style={{ fontSize:'0.72rem', fontWeight:'800', color:'#d4af37' }}>£{stats.revenue}</span>
-          <span style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase' }}>Revenue</span>
-        </div>
+        <StatPill label="Revenue" value={'£' + stats.revenue.toFixed(2)} color="#d4af37" />
       </div>
 
       {/* Search + Barber tabs + Sort */}
@@ -550,15 +531,15 @@ export default function Bookings({ isAdmin }) {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ padding: '2px 7px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700', color: STATUS_COLORS[b.status] || 'var(--muted)', background: (STATUS_COLORS[b.status] || '#888') + '18', letterSpacing: '0.5px' }}>
-                      {b.status === 'CHECKED_OUT' ? 'PAID' : b.status}
-                    </span>
+                      <span style={{ padding: '2px 7px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700', color: STATUS_COLORS[b.status] || 'var(--muted)', background: (STATUS_COLORS[b.status] || '#888') + '18', letterSpacing: '0.5px' }}>
+                        {b.status === 'CHECKED_OUT' ? 'PAID' : b.status}
+                      </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ padding: '2px 7px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700', color: srcStyle.color, background: srcStyle.bg, letterSpacing: '0.5px' }}>
-                      {b.source}
-                    </span>
+                      <span style={{ padding: '2px 7px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700', color: srcStyle.color, background: srcStyle.bg, letterSpacing: '0.5px' }}>
+                        {b.source}
+                      </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>

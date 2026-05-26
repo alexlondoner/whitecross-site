@@ -33,6 +33,7 @@ body {
   --slot-hover: rgba(212,175,55,0.05);
   --slot-past: #0a0a08;
   --time-color: #3a3830;
+  --border2: #332a1a;
 }
 body.light {
   background: #f0efe8;
@@ -52,8 +53,10 @@ body.light {
   --slot-hover: rgba(212,175,55,0.06);
   --slot-past: rgba(0,0,0,0.04);
   --time-color: #999;
+  --border2: rgba(139,105,20,0.22);
 }
 ::-webkit-scrollbar { width: 6px; }
+.pills-row-scroll::-webkit-scrollbar { display: none; }
 ::-webkit-scrollbar-track { background: var(--dark); }
 ::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
 

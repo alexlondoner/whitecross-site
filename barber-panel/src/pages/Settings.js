@@ -371,12 +371,12 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
     setRegisteringMe(true);
     try {
       await setDoc(doc(db, `tenants/${TENANT}/staff`, authUser.uid), {
-        name: authUser.displayName || 'Owner',
+        name: authUser.displayName || 'Super Admin',
         email: authUser.email,
         role: 'owner',
         createdAt: Timestamp.now(),
       }, { merge: true });
-      setStaffResult('✓ Saved as Owner. Refresh the page to apply.');
+      setStaffResult('✓ Saved as Super Admin. Refresh the page to apply.');
       await loadStaff();
     } catch (e) {
       setStaffResult('Error: ' + e.message);
@@ -1091,7 +1091,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
         {isAdmin && (
           <>
             <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '18px' }}>
-              Create accounts for staff. <strong>Admin</strong> can do everything except delete clients or cancel bookings. <strong>Staff</strong> is same. Only <strong>Owner</strong> sees delete/cancel buttons.
+              Create accounts for staff. <strong>Admin</strong> can do everything except delete clients or cancel bookings. <strong>Staff</strong> is same. Only <strong>Super Admin</strong> sees delete/cancel buttons.
             </p>
 
             {staffList.length > 0 && (
@@ -1106,7 +1106,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
                       style={{ padding: '6px 10px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '6px', color: s.role === 'owner' ? '#d4af37' : 'var(--text)', fontSize: '0.78rem', cursor: 'pointer' }}>
                       <option value="staff">Staff</option>
                       <option value="admin">Admin</option>
-                      <option value="owner">Owner</option>
+                      <option value="owner">Super Admin</option>
                     </select>
                     <button onClick={() => deleteStaff(s.uid, s.email)}
                       style={{ padding: '6px 12px', background: 'transparent', border: '1px solid rgba(255,82,82,0.3)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem' }}>
@@ -1141,7 +1141,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
                     style={{ ...inputStyle, cursor: 'pointer' }}>
                     <option value="staff">Staff — view & checkout only</option>
                     <option value="admin">Admin — no delete/cancel</option>
-                    <option value="owner">Owner — full access</option>
+                    <option value="owner">Super Admin — full access</option>
                   </select>
                 </div>
               </div>

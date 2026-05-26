@@ -123,7 +123,7 @@ export default function ProfileBar({ authUser, isAdmin, tenantId }) {
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const color   = barberMatch?.color || '#d4af37';
   const photo   = barberMatch?.photo || null;
-  const role    = isAdmin ? 'Owner' : 'Barber';
+  const role    = isAdmin ? 'Super Admin' : 'Admin';
   const activeSocials = PLATFORMS.filter(p => staffData[p.key]);
 
   return (

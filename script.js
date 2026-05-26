@@ -1554,7 +1554,8 @@ var todayStr = now.getFullYear() + '-' +
                     }
                     if (!d.startTime || !d.endTime) return;
                     var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
-                    if (busyMap[d.barberId] !== undefined) busyMap[d.barberId].push(slot);
+                    var bKey = (d.barberId != null && d.barberId !== '') ? d.barberId : (d.barberName ? d.barberName.toLowerCase() : '');
+                    if (busyMap[bKey] !== undefined) busyMap[bKey].push(slot);
                 });
                 return busyMap;
             });

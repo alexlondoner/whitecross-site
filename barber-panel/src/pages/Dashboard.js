@@ -124,11 +124,18 @@ export default function Dashboard({ isAdmin = true }) {
   const [barbers, setBarbers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formPreset, setFormPreset] = useState({});
-  const [leftPanelWidth, setLeftPanelWidth] = useState(240);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(180);
   const [slotHeight, setSlotHeight] = useState(24);
   const [fabOpen, setFabOpen] = useState(false);
   const [customRange, setCustomRange] = useState({ start: null, end: null });
   const today = new Date(); today.setHours(0,0,0,0);
+
+  const closeAllPanels = () => {
+    setShowForm(false); setShowWalkIn(false); setShowBlockTime(false);
+    setShowBookingProducts(false); setShowProductSale(false);
+    setSelectedBooking(null); setShowCheckout(false); setShowReceipt(false);
+    setFabOpen(false); setShowPillSettings(false);
+  };
   const dayListenerRef = useRef(null);
 
 useEffect(() => {
@@ -389,7 +396,6 @@ const activeBarbers = barberFilter === 'all'
         )}
         <button onClick={()=>{setSelectedDate(new Date());setCurrentMonth(new Date());setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}
           style={{ padding:'4px 10px', background:'rgba(212,175,55,0.1)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'5px', color:'#d4af37', fontSize:'0.72rem', cursor:'pointer' }}>Today</button>
-        <div style={{ flex:1 }} />
         <div style={{ display:'flex', alignItems:'center', gap:'4px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'6px', padding:'3px 6px' }}>
           <button onClick={()=>setSlotHeight(h=>Math.max(8,h-2))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem', width:'20px', height:'20px' }}>-</button>
           <span style={{ fontSize:'0.62rem', color:'var(--muted)', minWidth:'26px', textAlign:'center' }}>{slotHeight}px</span>
@@ -406,9 +412,9 @@ const activeBarbers = barberFilter === 'all'
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', alignItems:'center' }}>
+      <div style={{ display:'flex', gap:'6px', alignItems:'center', flexWrap:'wrap', padding:'4px 0' }}>
         <button onClick={()=>setPillsCollapsed(v=>!v)}
-          style={{ padding:'4px 8px', background:'transparent', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--muted)', cursor:'pointer', fontSize:'0.7rem', flexShrink:0, transition:'all 0.15s' }}
+          style={{ padding:'4px 8px', background:'transparent', border:'1px solid var(--border2)', borderRadius:'99px', color:'var(--muted)', cursor:'pointer', fontSize:'0.65rem', flexShrink:0, transition:'all 0.12s' }}
           title={pillsCollapsed ? 'Show stats' : 'Hide stats'}>
           {pillsCollapsed ? '▶' : '◀'}
         </button>
@@ -429,14 +435,13 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
         {!pillsCollapsed && visiblePills.has('addonsale') && <StatPill label="Add-ons Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldAddOns).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#ff9800" active={pillFilter==='addonsale'} onClick={()=>setPillFilter(pillFilter==='addonsale'?null:'addonsale')} />}
 
-        {/* Gear button */}
-        {!pillsCollapsed && <div style={{ position:'relative', marginLeft:'auto' }}>
-
+        {/* Gear button — fixed far right, same size as bell */}
+        <div style={{ position:'fixed', top:'12px', right:'24px', zIndex:210 }}>
           <button onClick={()=>setShowPillSettings(v=>!v)}
-            style={{ padding:'5px 9px', background: showPillSettings ? 'rgba(212,175,55,0.18)' : 'transparent', border:'1px solid ' + (showPillSettings ? '#d4af37' : 'var(--border)'), borderRadius:'8px', color: showPillSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.85rem', lineHeight:1, transition:'all 0.15s' }}
+            style={{ width:'42px', height:'42px', display:'flex', alignItems:'center', justifyContent:'center', background: showPillSettings ? 'rgba(212,175,55,0.18)' : 'var(--card)', border:'1px solid ' + (showPillSettings ? '#d4af37' : 'var(--border)'), borderRadius:'50%', color: showPillSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.9rem', transition:'all 0.15s' }}
             title="Customise pills">⚙️</button>
           {showPillSettings && (
-            <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'14px', zIndex:200, minWidth:'210px', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
+            <div style={{ position:'fixed', top:'62px', right:'24px', background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'14px', zIndex:210, minWidth:'210px', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
               <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'10px' }}>Show / Hide Pills</div>
               {[
                 {key:'total',       label:'Total',          color:'#d4af37'},
@@ -465,7 +470,7 @@ const activeBarbers = barberFilter === 'all'
               ))}
             </div>
           )}
-        </div>}
+        </div>
       </div>
 
       {pillFilter && (()=>{
@@ -540,168 +545,16 @@ const activeBarbers = barberFilter === 'all'
         );
       })()}
 
-      <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', position:'relative' }}>
-        {/* SIDEBAR TOGGLE TAB */}
-        <button onClick={toggleSidebar}
-          style={{ position:'absolute', left: sidebarOpen ? leftPanelWidth + 6 : 0, top:'50%', transform:'translateY(-50%)', zIndex:50, width:'18px', height:'48px', background:'var(--card2)', border:'1px solid var(--border)', borderRadius: sidebarOpen ? '0 8px 8px 0' : '8px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)', fontSize:'0.7rem', padding:0, transition:'left 0.25s', boxShadow:'2px 0 8px rgba(0,0,0,0.2)' }}
-          title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
-          {sidebarOpen ? '‹' : '›'}
-        </button>
-
-        {/* SHARED LEFT PANEL */}
-        <div style={{ width: sidebarOpen ? leftPanelWidth : 0, flexShrink:0, display:'flex', flexDirection:'column', gap:'12px', overflow:'hidden', transition:'width 0.25s' }}>
-          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'14px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-              <button onClick={()=>setCurrentMonth(new Date(year,month-1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8249;</button>
-              <span style={{ fontSize:'0.8rem', fontWeight:'600', color:'var(--text)' }}>{MONTHS[month]} {year}</span>
-              <button onClick={()=>setCurrentMonth(new Date(year,month+1,1))} style={{ background:'transparent', border:'none', color:'#d4af37', cursor:'pointer', fontSize:'1rem' }}>&#8250;</button>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px', marginBottom:'4px' }}>
-              {DAYS_SHORT.map(d=><div key={d} style={{ textAlign:'center', fontSize:'0.55rem', color:'var(--muted)' }}>{d}</div>)}
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
-              {calDays.map((d,i)=>{
-                const cnt=dayCount(d), sel=isSel(d), tod=isToday(d);
-                return (
-                  <div key={i} onClick={()=>{if(d){setSelectedDate(new Date(year,month,d));setView('day');setSelectedBooking(null);setShowForm(false);setShowWalkIn(false);setShowBlockTime(false);setShowBookingProducts(false);setShowProductSale(false);}}}
-                    style={{ height:'26px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'4px', cursor:d?'pointer':'default', background:sel?'#d4af37':tod?'rgba(212,175,55,0.15)':'transparent', position:'relative' }}
-                    onMouseEnter={e=>{if(d&&!sel)e.currentTarget.style.background='rgba(212,175,55,0.08)';}}
-                    onMouseLeave={e=>{if(d&&!sel)e.currentTarget.style.background=tod?'rgba(212,175,55,0.15)':'transparent';}}>
-                    {d&&<>
-                      <span style={{ fontSize:'0.68rem', color:sel?'#000':tod?'#d4af37':'var(--text)', fontWeight:(sel||tod)?'700':'400', lineHeight:1 }}>{d}</span>
-                      {cnt>0&&<div style={{ position:'absolute', bottom:'1px', width:'3px', height:'3px', borderRadius:'50%', background:sel?'#000':'#d4af37' }} />}
-                    </>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', overflow:'hidden', flex:1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'rgba(212,175,55,0.03)' }}>
-              <div style={{ fontSize:'0.52rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase', fontWeight:'700' }}>{periodLabel}</div>
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setShowLeftCardSettings(v=>!v)}
-                  style={{ padding:'3px 6px', background: showLeftCardSettings ? 'rgba(212,175,55,0.18)' : 'transparent', border:'1px solid ' + (showLeftCardSettings ? '#d4af37' : 'var(--border)'), borderRadius:'6px', color: showLeftCardSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.72rem', lineHeight:1 }}
-                  title="Customise">⚙️</button>
-                {showLeftCardSettings && (
-                  <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'10px', padding:'12px', zIndex:300, minWidth:'170px', boxShadow:'0 8px 28px rgba(0,0,0,0.45)' }}>
-                    <div style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'8px' }}>Show / Hide</div>
-                    {[
-                      {key:'clients',  label:'Clients',       color:'#d4af37'},
-                      {key:'revenue',  label:'Revenue',       color:'#4caf50'},
-                      {key:'discount', label:'Discount Given',color:'#4caf50'},
-                      {key:'tips',     label:'Tips',          color:'#2196f3'},
-                      {key:'barbers',  label:'Barbers',       color:'#9c27b0'},
-                    ].map(c => (
-                      <label key={c.key} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'4px 0', cursor:'pointer', userSelect:'none' }}>
-                        <div onClick={()=>toggleLeftCard(c.key)}
-                          style={{ width:'28px', height:'16px', borderRadius:'8px', background: visibleLeftCards.has(c.key) ? c.color : 'rgba(180,180,180,0.2)', position:'relative', transition:'background 0.2s', flexShrink:0, cursor:'pointer' }}>
-                          <div style={{ position:'absolute', top:'2px', left: visibleLeftCards.has(c.key) ? '14px' : '2px', width:'12px', height:'12px', borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />
-                        </div>
-                        <span style={{ fontSize:'0.74rem', color: visibleLeftCards.has(c.key) ? 'var(--text)' : 'var(--muted)', fontWeight: visibleLeftCards.has(c.key) ? '600' : '400' }}>{c.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            {(visibleLeftCards.has('clients')||visibleLeftCards.has('revenue')||visibleLeftCards.has('discount')||visibleLeftCards.has('tips')) && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', padding:'10px 12px', borderBottom:'1px solid var(--border)' }}>
-                {visibleLeftCards.has('clients') && (
-                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(212,175,55,0.07)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.4rem', fontWeight:'800', color:'#d4af37', lineHeight:1 }}>{statsBookings.length}</div>
-                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Clients</div>
-                  </div>
-                )}
-                {visibleLeftCards.has('revenue') && (
-                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(76,175,80,0.07)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1.15rem', fontWeight:'800', color:'#4caf50', lineHeight:1 }}>£{revenue.toFixed(0)}</div>
-                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Revenue</div>
-                  </div>
-                )}
-                {visibleLeftCards.has('discount') && (
-                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(76,175,80,0.07)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1rem', fontWeight:'800', color:'#4caf50', lineHeight:1 }}>£{discountGiven.toFixed(0)}</div>
-                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Discount</div>
-                  </div>
-                )}
-                {visibleLeftCards.has('tips') && (
-                  <div style={{ textAlign:'center', padding:'8px 6px', background:'rgba(255,152,0,0.07)', borderRadius:'8px' }}>
-                    <div style={{ fontSize:'1rem', fontWeight:'800', color:'#ff9800', lineHeight:1 }}>£{tipsGiven.toFixed(0)}</div>
-                    <div style={{ fontSize:'0.48rem', color:'var(--muted)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'2px' }}>Tips</div>
-                  </div>
-                )}
-              </div>
-            )}
-            {visibleLeftCards.has('barbers') && (
-              <div style={{ padding:'8px 12px' }}>
-                {activeBarbers.map((barber, i) => {
-                  const cnt = statsBookings.filter(b=>(b.barber||'').toLowerCase()===barber.name.toLowerCase()).length;
-                  return (
-                    <div key={barber.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 2px', borderBottom: i < activeBarbers.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
-                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:barber.color }} />
-                        <span style={{ fontSize:'0.72rem', color:'var(--text)', fontWeight:'500' }}>{barber.name}</span>
-                      </div>
-                      <span style={{ fontSize:'0.7rem', color:'var(--muted)', fontWeight:'600' }}>{cnt}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* PILLS IN SIDEBAR */}
-          {(() => {
-            const sidePillDefs = [
-              {key:'total',        label:'Total',         color:'#d4af37', val: statsBookings.length},
-              {key:'confirmed',    label:'Confirmed',     color:'#4caf50', val: statsBookings.filter(b=>b.status==='CONFIRMED').length},
-              {key:'pending',      label:'Pending',       color:'#ff9800', val: statsBookings.filter(b=>b.status==='PENDING').length},
-              {key:'checkedout',   label:'Checked Out',   color:'#2196f3', val: checkedOutCount},
-              {key:'revenue',      label:'Revenue',       color:'#d4af37', val: '£'+revenue},
-              {key:'discount',     label:'Discount',      color:'#4caf50', val: '£'+discountGiven.toFixed(2)},
-              {key:'tips',         label:'Tips',          color:'#ff9800', val: '£'+tipsGiven.toFixed(2)},
-              {key:'booksy',       label:'Booksy',        color:'#9c27b0', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length},
-              {key:'fresha',       label:'Fresha',        color:'#2196f3', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length},
-              {key:'treatwell',    label:'Treatwell',     color:'#ff7043', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='treatwell').length},
-              {key:'website',      label:'Website',       color:'#4caf50', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length},
-              {key:'walkin',       label:'Walk-in',       color:'#ff9800', val: statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length},
-              {key:'productsale',  label:'Products Sold', color:'#03a9f4', val: statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)},
-            ];
-            const shown = sidePillDefs.filter(p => visiblePills.has(p.key));
-            if (!shown.length) return null;
-            return (
-              <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'12px', padding:'10px 12px' }}>
-                <div onClick={()=>setSidebarStatsOpen(v=>!v)} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', marginBottom: sidebarStatsOpen ? '8px' : 0 }}>
-                  <div style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'2px', textTransform:'uppercase' }}>Stats</div>
-                  <span style={{ fontSize:'0.6rem', color:'var(--muted)', transition:'transform 0.2s', display:'inline-block', transform: sidebarStatsOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
-                </div>
-                {sidebarStatsOpen && shown.map(p => (
-                  <div key={p.key} onClick={()=>setPillFilter(pillFilter===p.key?null:p.key)}
-                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 6px', marginBottom:'2px', borderRadius:'6px', cursor:'pointer', background: pillFilter===p.key ? p.color+'18' : 'transparent', transition:'background 0.15s' }}
-                    onMouseEnter={e=>{ if(pillFilter!==p.key) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
-                    onMouseLeave={e=>{ if(pillFilter!==p.key) e.currentTarget.style.background='transparent'; }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                      <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:p.color, flexShrink:0 }} />
-                      <span style={{ fontSize:'0.72rem', color: pillFilter===p.key ? p.color : 'var(--text)', fontWeight: pillFilter===p.key ? '700' : '400' }}>{p.label}</span>
-                    </div>
-                    <span style={{ fontSize:'0.72rem', fontWeight:'700', color: pillFilter===p.key ? p.color : 'var(--muted)' }}>{p.val}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-        <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
-
-        {/* RIGHT PANEL */}
-        <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', marginLeft:'26px' }}>
+      <div style={{ flex:1, display:'flex', overflow:'hidden', position:'relative' }}>
           {view === 'day' && (
             <>
               {loading ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)' }}>Loading...</div>
               ) : (
-                <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+                <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, position:'relative' }}>
+                  {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts || showCheckout || showReceipt) && (
+                    <div onClick={closeAllPanels} style={{ position:'absolute', inset:0, zIndex:5, cursor:'default' }} />
+                  )}
                   <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
                   {/* Revenue strip */}
                   {(() => {
@@ -909,6 +762,11 @@ const activeBarbers = barberFilter === 'all'
           </div>
         )}
 
+        {(showPillSettings || fabOpen) && (
+          <div onClick={() => { setShowPillSettings(false); setFabOpen(false); }}
+               style={{ position:'fixed', inset:0, zIndex:99, background:'transparent' }} />
+        )}
+
         <div style={{ position:'fixed', bottom:'32px', right:'32px', display:'flex', flexDirection:'column', gap:'8px', alignItems:'flex-end', zIndex:200 }}>
           {fabOpen && (
             <>
@@ -949,7 +807,6 @@ const activeBarbers = barberFilter === 'all'
             />
           </div>
         )}
-        </div>
       </div>
     </div>
   );

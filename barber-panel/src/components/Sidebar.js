@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import config from '../config';
 
 const navItems = [
-  { id: 'dashboard',     icon: '📊', label: 'Dashboard' },
-  { id: 'bookings',      icon: '📅', label: 'Bookings' },
-  { id: 'calendar',      icon: '🗓️', label: 'Calendar' },
-  { id: 'clients',       icon: '👥', label: 'Clients' },
-  { id: 'barbers',       icon: '🎨', label: 'Team Members' },
-  { id: 'products',      icon: '🛒', label: 'Products' },
-  { id: 'reports',       icon: '📈', label: 'Reports' },
-  { id: 'finance',       icon: '💰', label: 'Finance' },
-  { id: 'marketing',     icon: '📊', label: 'Analytics' },
-  { id: 'online-profile',icon: '🌐', label: 'Online Profile' },
-  { id: 'settings',      icon: '⚙️', label: 'Settings' },
+  { id: 'dashboard',      icon: '📊', label: 'Dashboard' },
+  { id: 'bookings',       icon: '📅', label: 'Bookings' },
+  { id: 'calendar',       icon: '🗓️', label: 'Calendar' },
+  { id: 'clients',        icon: '👥', label: 'Clients' },
+  { id: 'barbers',        icon: '✂️', label: 'Team Members' },
+  { id: 'products',       icon: '🛒', label: 'Products' },
+  { id: 'reports',        icon: '📈', label: 'Reports' },
+  { id: 'finance',        icon: '💰', label: 'Finance' },
+  { id: 'marketing',      icon: '📣', label: 'Marketing' },
+  { id: 'online-profile', icon: '🌐', label: 'Online Profile' },
+  { id: 'settings',       icon: '⚙️', label: 'Settings' },
 ];
 
 function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner }) {
@@ -20,217 +20,259 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipY, setTooltipY] = useState(0);
 
-  // Dynamic values based on state
-  const sidebarWidth = isCollapsed ? '72px' : '220px';
+  const sidebarWidth = isCollapsed ? '68px' : '160px';
+
+  const t = {
+    bg:      isLight ? '#f8f5ec' : '#0c0a06',
+    bg2:     isLight ? '#f0ebdd' : '#141008',
+    card:    isLight ? '#ffffff' : '#1a1610',
+    border:  isLight ? '#e2d9c4' : '#252015',
+    border2: isLight ? '#d4c9ae' : '#302818',
+    gold:    isLight ? '#9a7020' : '#c9a84c',
+    gold2:   isLight ? '#7a5510' : '#a07828',
+    goldDim: isLight ? 'rgba(154,112,32,0.08)' : 'rgba(201,168,76,0.08)',
+    goldActive: isLight ? 'rgba(154,112,32,0.12)' : 'rgba(201,168,76,0.12)',
+    txt:     isLight ? '#1a1408' : '#ede0c4',
+    muted:   isLight ? '#8a7a5a' : '#6b5f43',
+    muted2:  isLight ? '#b0a080' : '#3a3224',
+    red:     isLight ? '#8b2a2a' : '#ff5252',
+  };
+
+  const allItems = [...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])];
 
   return (
     <aside style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
+      position: 'fixed', left: 0, top: 0, bottom: 0,
       width: sidebarWidth,
-      background: isLight
-        ? 'linear-gradient(135deg, #fffbe7 0%, #f7ecd0 100%)'
-        : 'linear-gradient(135deg, #18140a 0%, #23201a 100%)',
-      borderRight: 'none',
-      boxShadow: isLight
-        ? '2px 0 24px 0 rgba(212,175,55,0.07)'
-        : '2px 0 32px 0 rgba(212,175,55,0.13)',
-      display: 'flex',
-      flexDirection: 'column',
+      background: t.bg,
+      borderRight: `1px solid ${t.border}`,
+      display: 'flex', flexDirection: 'column',
       zIndex: 100,
-      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       overflow: 'visible',
-      borderTopRightRadius: '18px',
-      borderBottomRightRadius: '18px',
-      border: isLight ? '1.5px solid #f3e3b2' : '1.5px solid #2d2412',
     }}>
-      
-      {/* Gold Toggle Tab — sits on the outer edge of the sidebar */}
+
+      {/* COLLAPSE TOGGLE */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{
-          position: 'absolute',
-          right: '-16px',
-          top: '50%',
+          position: 'absolute', right: '-14px', top: '50%',
           transform: 'translateY(-50%)',
-          width: '18px',
-          height: '54px',
-          background: 'linear-gradient(180deg, #d4af37 0%, #b8932a 100%)',
-          border: 'none',
-          borderRadius: '0 10px 10px 0',
+          width: '14px', height: '42px',
+          background: t.bg2, border: `1px solid ${t.border}`,
+          borderLeft: 'none',
+          borderRadius: '0 6px 6px 0',
           cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#000',
-          fontSize: '10px',
-          zIndex: 101,
-          boxShadow: '2px 0 12px rgba(212,175,55,0.25)',
-          transition: 'width 0.2s, box-shadow 0.2s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: t.gold, fontSize: '9px', zIndex: 101,
+          transition: 'all 0.2s',
           padding: 0,
         }}
-        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isCollapsed ? 'Expand' : 'Collapse'}
       >
         <span style={{
-          display: 'block',
-          transition: 'transform 0.3s',
+          display: 'block', transition: 'transform 0.25s',
           transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
           lineHeight: 1,
         }}>▶</span>
       </button>
 
-      {/* Logo Section + Gold Line */}
+      {/* LOGO SECTION */}
       <div style={{
-        padding: isCollapsed ? '16px 10px 10px' : '22px 18px 12px',
-        borderBottom: 'none',
-        minHeight: isCollapsed ? '76px' : '140px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
+        padding: isCollapsed ? '14px 10px 10px' : '18px 16px 14px',
+        borderBottom: `1px solid ${t.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', flexShrink: 0,
         position: 'relative',
       }}>
-        <div style={{ width: '100%', height: '6px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '0 0 8px 8px', marginBottom: isCollapsed ? '10px' : '18px', boxShadow: '0 2px 8px #d4af3722' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isCollapsed ? '0' : '8px' }}>
-          <img
-            src="/logo.png"
-            alt="Whitecross Barbers"
-            style={{
-              width: isCollapsed ? '40px' : '80px',
-              height: isCollapsed ? '40px' : '80px',
-              objectFit: 'contain',
-              borderRadius: '12px',
-              boxShadow: '0 2px 12px #d4af3722',
-              background: '#fff',
-              border: '1.5px solid #e7d7a2',
-            }}
-          />
-          {!isCollapsed && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+          background: `linear-gradient(90deg, transparent, ${t.gold}, transparent)`,
+        }} />
+
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: isCollapsed ? '0' : '8px',
+        }}>
+          <div style={{
+            width: isCollapsed ? '38px' : '56px',
+            height: isCollapsed ? '38px' : '56px',
+            borderRadius: isCollapsed ? '10px' : '14px',
+            background: t.card,
+            border: `1px solid ${t.border2}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', overflow: 'hidden',
+            transition: 'all 0.25s',
+          }}>
             <div style={{
-              fontFamily: 'Georgia, serif',
-              fontSize: '1.05rem',
-              color: '#d4af37',
-              letterSpacing: '2.5px',
-              fontWeight: '700',
-              lineHeight: 1,
-              textAlign: 'center',
-              marginTop: '2px',
-              textShadow: '0 1px 8px #d4af3740',
-            }}>
-              I CUT
-            </div>
+              position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+              background: `linear-gradient(90deg, transparent, ${t.gold2}, transparent)`,
+            }} />
+            <span style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontSize: isCollapsed ? '1.2rem' : '1.6rem',
+              fontWeight: '700', color: t.gold,
+              position: 'relative', zIndex: 1,
+            }}>W</span>
+          </div>
+
+          {!isCollapsed && (
+            <>
+              <div style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: '1rem', color: t.gold,
+                letterSpacing: '3px', fontWeight: '700',
+                lineHeight: 1, textAlign: 'center',
+              }}>
+                WHITECROSS
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                width: '80%', margin: '0 auto',
+              }}>
+                <div style={{ flex: 1, height: '1px', background: t.border2 }} />
+                <div style={{ width: '3px', height: '3px', borderRadius: '50%', background: t.gold2 }} />
+                <div style={{ flex: 1, height: '1px', background: t.border2 }} />
+              </div>
+              <div style={{
+                fontSize: '0.5rem', color: t.muted,
+                letterSpacing: '2.5px', textAlign: 'center',
+              }}>
+                BARBERS
+              </div>
+            </>
           )}
         </div>
-        {!isCollapsed && (
-          <div style={{ width: '80%', height: '2px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', borderRadius: '2px', margin: '18px auto 0', opacity: 0.5 }} />
-        )}
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '18px 10px 10px', overflowY: 'auto', overflowX: 'visible', overflowClipMargin: 'unset' }}>
-        {[...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])].map(item => (
-          <div key={item.id} style={{ position: 'relative', marginBottom: '6px' }}>
-            <button
-              onClick={() => setActivePage(item.id)}
-              onMouseEnter={(e) => { setHoveredItem(item.id); const r=e.currentTarget.getBoundingClientRect(); setTooltipY(r.top + r.height/2); }}
-              onMouseLeave={() => setHoveredItem(null)}
-              title={isCollapsed ? item.label : ""}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                padding: isCollapsed ? '13px 0' : '13px 18px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activePage === item.id
-                  ? 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)'
-                  : 'transparent',
-                color: activePage === item.id ? '#d4af37' : (isLight ? '#4a4030' : '#e4c46a'),
-                cursor: 'pointer',
-                transition: 'all 0.22s cubic-bezier(.4,0,.2,1)',
-                boxShadow: activePage === item.id
-                  ? '0 2px 16px #d4af3730, 0 0 0 2px #d4af3722'
-                  : hoveredItem === item.id
-                    ? '0 2px 12px #d4af3722'
-                    : 'none',
-                borderLeft: activePage === item.id ? '4px solid #d4af37' : '4px solid transparent',
-                filter: activePage === item.id ? 'blur(0.1px) brightness(1.08)' : 'none',
-              }}
-            >
-              <span style={{
-                fontSize: isCollapsed ? '1.45rem' : '1.25rem',
-                minWidth: isCollapsed ? '100%' : '32px',
-                textAlign: 'center',
-                transition: 'transform 0.18s',
-                transform: hoveredItem === item.id ? 'scale(1.18) rotate(-8deg)' : 'scale(1)',
-                filter: activePage === item.id ? 'drop-shadow(0 0 6px #d4af37cc)' : 'none',
-              }}>{item.icon}</span>
-              {!isCollapsed && (
+      {/* NAV */}
+      <nav style={{
+        flex: 1, padding: '10px 8px',
+        overflowY: 'auto', overflowX: 'visible',
+      }}>
+        {allItems.map(item => {
+          const isActive = activePage === item.id;
+          const isHover = hoveredItem === item.id;
+
+          return (
+            <div key={item.id} style={{ position: 'relative', marginBottom: '2px' }}>
+              <button
+                onClick={() => setActivePage(item.id)}
+                onMouseEnter={(e) => {
+                  setHoveredItem(item.id);
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setTooltipY(r.top + r.height / 2);
+                }}
+                onMouseLeave={() => setHoveredItem(null)}
+                title={isCollapsed ? item.label : ''}
+                style={{
+                  width: '100%',
+                  display: 'flex', alignItems: 'center',
+                  padding: isCollapsed ? '10px 0' : '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isActive ? t.goldActive : isHover ? t.goldDim : 'transparent',
+                  color: isActive ? t.gold : t.muted,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  borderLeft: isActive ? `3px solid ${t.gold}` : '3px solid transparent',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                }}
+              >
                 <span style={{
-                  marginLeft: '14px',
-                  fontSize: '1.01rem',
-                  fontWeight: activePage === item.id ? '700' : '500',
+                  fontSize: isCollapsed ? '1.2rem' : '1rem',
+                  minWidth: isCollapsed ? 'auto' : '26px',
+                  textAlign: 'center',
+                  transition: 'transform 0.15s',
+                  transform: isHover ? 'scale(1.1)' : 'scale(1)',
+                  filter: isActive ? `drop-shadow(0 0 4px ${t.gold}88)` : 'none',
+                }}>
+                  {item.icon}
+                </span>
+                {!isCollapsed && (
+                  <span style={{
+                    marginLeft: '10px',
+                    fontSize: '0.82rem',
+                    fontWeight: isActive ? '700' : '500',
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '0.3px',
+                    color: isActive ? t.gold : t.txt,
+                  }}>
+                    {item.label}
+                  </span>
+                )}
+              </button>
+
+              {isCollapsed && isHover && (
+                <div style={{
+                  position: 'fixed',
+                  left: '78px', top: tooltipY,
+                  transform: 'translateY(-50%)',
+                  background: t.card,
+                  color: t.gold,
+                  border: `1px solid ${t.border2}`,
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '0.78rem', fontWeight: 700,
+                  letterSpacing: '0.3px',
                   whiteSpace: 'nowrap',
-                  letterSpacing: '0.5px',
-                  textShadow: activePage === item.id ? '0 1px 8px #d4af3740' : 'none',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                  zIndex: 9999,
+                  pointerEvents: 'none',
                 }}>
                   {item.label}
-                </span>
+                </div>
               )}
-            </button>
-            {isCollapsed && hoveredItem === item.id && (
-              <div style={{
-                position: 'fixed',
-                left: '82px',
-                top: tooltipY,
-                transform: 'translateY(-50%)',
-                background: isLight ? '#fffbe7' : '#23201a',
-                color: isLight ? '#3b3324' : '#e4c46a',
-                border: '1.5px solid #d4af37',
-                borderRadius: '8px',
-                padding: '7px 14px',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                letterSpacing: '0.2px',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 8px 24px rgba(212,175,55,0.22)',
-                zIndex: 9999,
-                pointerEvents: 'none',
-              }}>
-                {item.label}
-              </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </nav>
 
-      {/* Shop info & Footer */}
+      {/* FOOTER */}
       <div style={{
-        padding: isCollapsed ? '10px 8px' : '10px 16px',
-        borderTop: 'none',
-        background: isCollapsed ? 'transparent' : 'inherit',
-        marginTop: 'auto',
+        padding: isCollapsed ? '8px' : '10px 12px',
+        borderTop: `1px solid ${t.border}`,
+        flexShrink: 0,
       }}>
-        {/* Address + theme toggle on one row */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent: isCollapsed ? 'center' : 'space-between', marginBottom:'8px', gap:'6px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: isCollapsed ? 'center' : 'space-between',
+          marginBottom: '8px', gap: '6px',
+        }}>
           {!isCollapsed && (
-            <div style={{ fontSize: '0.62rem', color: isLight ? '#9a8a70' : '#7a7260', lineHeight:1.3, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div style={{
+              fontSize: '0.55rem', color: t.muted,
+              lineHeight: 1.3, flex: 1, minWidth: 0,
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap', letterSpacing: '0.3px',
+            }}>
               {config.shopAddress}
             </div>
           )}
-          {/* Theme toggle */}
+
           <div
             onClick={onToggleTheme}
             title={isLight ? 'Switch to Dark' : 'Switch to Light'}
-            style={{ display:'flex', alignItems:'center', gap:'4px', cursor:'pointer', flexShrink:0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', flexShrink: 0 }}
           >
-            {!isCollapsed && <span style={{ fontSize: '0.6rem', color: isLight ? '#9a8a70' : '#7a7260' }}>
-              {isLight ? 'Light' : 'Dark'}
-            </span>}
-            <div style={{ width:'32px', height:'17px', borderRadius:'9px', background: isLight ? '#d4af37' : '#333', position:'relative', flexShrink:0 }}>
-              <div style={{ position:'absolute', top:'2px', left: isLight ? '17px' : '3px', width:'13px', height:'13px', borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+            {!isCollapsed && (
+              <span style={{ fontSize: '0.55rem', color: t.muted, letterSpacing: '0.5px' }}>
+                {isLight ? '☀️' : '🌙'}
+              </span>
+            )}
+            <div style={{
+              width: '30px', height: '16px', borderRadius: '8px',
+              background: isLight ? t.gold : t.border2,
+              position: 'relative', flexShrink: 0,
+              transition: 'background 0.2s',
+            }}>
+              <div style={{
+                position: 'absolute', top: '2px',
+                left: isLight ? '16px' : '2px',
+                width: '12px', height: '12px',
+                borderRadius: '50%', background: '#fff',
+                transition: 'left 0.2s',
+              }} />
             </div>
           </div>
         </div>
@@ -240,20 +282,25 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           title={isCollapsed ? 'Sign Out' : ''}
           style={{
             width: '100%',
-            padding: isCollapsed ? '10px 0' : '12px 0',
-            background: 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)',
-            border: 'none',
+            padding: isCollapsed ? '8px 0' : '9px 0',
+            background: 'transparent',
+            border: `1px solid ${t.red}44`,
             borderRadius: '8px',
-            color: '#ff5252',
-            fontSize: isCollapsed ? '1.2rem' : '0.95rem',
+            color: t.red,
+            fontSize: isCollapsed ? '1rem' : '0.78rem',
             cursor: 'pointer',
-            fontWeight: 700,
-            marginTop: '8px',
-            boxShadow: '0 2px 8px #ff525222',
-            transition: 'background 0.18s',
+            fontWeight: 600,
+            letterSpacing: '0.5px',
+            transition: 'all 0.15s',
           }}
-          onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg,#ffe7e7 60%,#ffd6d6 100%)'}
-          onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #fffbe7 60%, #f7ecd0 100%)'}
+          onMouseOver={e => {
+            e.currentTarget.style.background = `${t.red}12`;
+            e.currentTarget.style.borderColor = `${t.red}66`;
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = `${t.red}44`;
+          }}
         >
           {isCollapsed ? '🚪' : 'Sign Out'}
         </button>

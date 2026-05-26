@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './firebase';
@@ -5,6 +6,9 @@ import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
 import ProfileBar from './components/ProfileBar';
 import Login from './pages/Login';
+import config from './config';
+import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
+import './App.css';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Bookings = lazy(() => import('./pages/Bookings'));
@@ -19,9 +23,6 @@ const Products = lazy(() => import('./pages/Products'));
 const Cart = lazy(() => import('./pages/Cart'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const Marketing = lazy(() => import('./pages/Marketing'));
-import config from './config';
-import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
-import './App.css';
 
 async function loadServicesIntoConfig() {
   try {
@@ -111,7 +112,7 @@ function App() {
       return <Cart cartItems={cart} onCheckout={() => alert('Ödeme entegrasyonu eklenecek!')} onRemove={(id) => setCart(cart => cart.filter(item => item.id !== id))} />;
     }
     switch (activePage) {
-      case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} />;
       case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
       case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
       case 'online-profile':return <OnlineProfile tenantId={tenantId} isAdmin={isAdmin} />;
@@ -140,14 +141,14 @@ function App() {
         tenantId={tenantId}
         isOwner={isAdmin}
       />
-      <div style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ position: 'fixed', top: '12px', right: '76px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
         <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} />
         <NotificationBell tenantId={tenantId} />
       </div>
       <main style={{
         flex: 1,
-        marginLeft: isCollapsed ? '80px' : '200px',
-        padding: '60px 32px 32px',
+        marginLeft: isCollapsed ? '74px' : '166px',
+        padding: '60px 20px 20px',
         overflowY: 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
