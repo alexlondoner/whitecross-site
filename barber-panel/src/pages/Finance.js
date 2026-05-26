@@ -19,11 +19,13 @@ const PARTNER_CONFIG_DEFAULT = {
 };
 
 const INITIAL_INVESTMENT = [
-  { name: 'Alex',   share: 50, paid: 17743 },
-  { name: 'Arda',   share: 25, paid: 5500  },
-  { name: 'Tuncay', share: 25, paid: 2700  },
+  { name: 'Alex',   share: 50, paid: 20755.20 },
+  { name: 'Arda',   share: 25, paid: 5500     },
+  { name: 'Tuncay', share: 25, paid: 1400     },
 ];
-const INITIAL_TOTAL = INITIAL_INVESTMENT.reduce((s, r) => s + r.paid, 0);
+const INITIAL_EXTRA = { label: 'Stamp Duty etc.', amount: 1212.20 };
+// Pool = base contributions (34,692.2) + extra costs (1,212.2)
+const INITIAL_POOL = 35904.40;
 
 const FIXED_DAILY_COST_DEFAULT = 100; // £/day
 
@@ -1699,24 +1701,29 @@ export default function Finance() {
                 </thead>
                 <tbody>
                   {INITIAL_INVESTMENT.map(r => {
-                    const required = INITIAL_TOTAL * (r.share / 100);
+                    const required = INITIAL_POOL * (r.share / 100);
                     const balance  = r.paid - required;
                     return (
                       <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: BARBER_COLORS[r.name] || '#b39ddb' }}>{r.name}</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>{r.share}%</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>£{r.paid.toLocaleString()}</td>
-                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{Math.round(required).toLocaleString()}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{(INITIAL_POOL * r.share / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.8rem', fontWeight: '700', color: balance >= 0 ? '#4caf50' : '#ff5252' }}>
-                          {balance >= 0 ? '+' : ''}£{Math.round(balance).toLocaleString()}
+                          {balance >= 0 ? '+' : ''}£{Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     );
                   })}
+                  <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)', fontStyle: 'italic' }} colSpan={2}>{INITIAL_EXTRA.label}</td>
+                    <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)' }}>£{INITIAL_EXTRA.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td colSpan={2} style={{ padding: '8px 16px', fontSize: '0.7rem', color: 'var(--muted)' }}></td>
+                  </tr>
                   <tr style={{ background: 'rgba(126,87,194,0.08)', borderTop: '2px solid rgba(126,87,194,0.25)' }}>
-                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.78rem' }}>TOTAL</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.78rem' }}>TOTAL POOL</td>
                     <td style={{ padding: '10px 16px', fontWeight: '700', color: '#b39ddb', fontSize: '0.78rem' }}>100%</td>
-                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.88rem' }}>£{INITIAL_TOTAL.toLocaleString()}</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.88rem' }}>£{INITIAL_POOL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td colSpan={2} style={{ padding: '10px 16px', fontSize: '0.7rem', color: 'var(--muted)' }}>
                       * Required = Total Pool × Share%
                     </td>
