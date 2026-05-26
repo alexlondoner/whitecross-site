@@ -695,7 +695,7 @@ const activeBarbers = barberFilter === 'all'
         <ResizeHandle onResize={(delta) => setLeftPanelWidth(w => Math.max(180, Math.min(400, w + delta)))} />
 
         {/* RIGHT PANEL */}
-        <div style={{ flex:1, display:'flex', gap:'0', overflowX:'hidden', overflowY:'auto', marginLeft:'26px' }}>
+        <div style={{ flex:1, display:'flex', gap:'0', overflow:'hidden', marginLeft:'26px' }}>
           {view === 'day' && (
             <>
               {loading ? (
