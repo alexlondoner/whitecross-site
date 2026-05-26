@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, getDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, query, orderBy } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const TENANT  = 'tenants/whitecross';
@@ -9,6 +9,35 @@ const DAYS    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_F  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const SKIP    = new Set(['CANCELLED','BLOCKED','DELETED','NO_SHOW']);
 const MONTHS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── Finance constants (mirrors Finance.js) ─────────────────────────────────
+const FIN_PARTNER_CONFIG = {
+  Alex:   { share: 50, wage: 100, isPartner: true,  creditTo: null     },
+  Arda:   { share: 25, wage: 100, isPartner: true,  creditTo: null     },
+  Tuncay: { share: 25, wage: 0,   isPartner: true,  creditTo: null     },
+  Kadim:  { share: 0,  wage: 100, isPartner: false, creditTo: 'Tuncay' },
+  Manoj:  { share: 0,  wage: 50,  isPartner: false, creditTo: 'Tuncay' },
+};
+const FIN_INITIAL_INVESTMENT = [
+  { name: 'Alex',   share: 50, paid: 20755.20 },
+  { name: 'Arda',   share: 25, paid: 5500     },
+  { name: 'Tuncay', share: 25, paid: 1400     },
+];
+const FIN_INITIAL_POOL  = 35904.40;
+const FIN_FIXED_DEFAULT = 100;
+
+function finPaymentToDate(v) {
+  if (!v) return null;
+  if (typeof v.toDate === 'function') return v.toDate();
+  if (v instanceof Date) return v;
+  if (typeof v === 'string') {
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  }
+  return null;
+}
+function finMonthKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function finNormName(n) { return String(n||'').trim().toLowerCase(); }
 
 function toDate(v) {
   if (!v) return null;
@@ -83,16 +112,22 @@ export default function Marketing({ tenantId, isAdmin }) {
   const [hoveredKpi,    setHoveredKpi]    = useState(null);
   const [aiLoading,     setAiLoading]     = useState(false);
   const aiBottomRef = useRef(null);
+  const [finExpenses,   setFinExpenses]   = useState({});
+  const [finPayments,   setFinPayments]   = useState([]);
+  const [finFixedRate,  setFinFixedRate]  = useState(FIN_FIXED_DEFAULT);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const [bkSnap, barberSnap, clientSnap, settSnap] = await Promise.all([
+        const [bkSnap, barberSnap, clientSnap, settSnap, expSnap, paySnap, finCfgSnap] = await Promise.all([
           getDocs(collection(db, `${TENANT}/bookings`)),
           getDocs(collection(db, `${TENANT}/barbers`)),
           getDocs(collection(db, `${TENANT}/clients`)),
           getDoc(doc(db, `${TENANT}/settings/settings`)),
+          getDocs(collection(db, `${TENANT}/finance_expenses`)),
+          getDocs(query(collection(db, `${TENANT}/finance_payments`), orderBy('date', 'desc'))),
+          getDoc(doc(db, `${TENANT}/settings`, 'finance_config')),
         ]);
         setBarbers(barberSnap.docs.map(d=>({id:d.id,...d.data()})).filter(b=>b.active!==false).sort((a,b)=>(a.order||99)-(b.order||99)));
         const allBks = bkSnap.docs.map(d=>({...d.data(),_id:d.id}));
@@ -103,6 +138,13 @@ export default function Marketing({ tenantId, isAdmin }) {
         if (data.doublePointsCampaign) setCamp(data.doublePointsCampaign);
         if (data.hours) setShopHours(data.hours);
         if (data.weeklyTarget) { setWeeklyTarget(data.weeklyTarget); setTargetInput(String(data.weeklyTarget)); }
+        // Finance data
+        const expMap = {};
+        expSnap.docs.forEach(d => { const dt = finPaymentToDate(d.data().date); if (dt) expMap[`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`] = d.data(); });
+        setFinExpenses(expMap);
+        setFinPayments(paySnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const fcData = finCfgSnap.data() || {};
+        if (fcData.fixedDailyRate) setFinFixedRate(parseFloat(fcData.fixedDailyRate) || FIN_FIXED_DEFAULT);
       } catch(e){ console.error(e); }
       setLoading(false);
     })();
@@ -410,6 +452,85 @@ export default function Marketing({ tenantId, isAdmin }) {
   const TABS  = ['overview','bookings','customers','occupancy','campaigns'];
   const TAB_LABELS = { overview:'Overview', bookings:'Bookings', customers:'Customers', occupancy:'Occupancy', campaigns:'Campaigns' };
 
+  // ── Finance monthly P&L + partner positions ─────────────────
+  const financeMonthly = useMemo(() => {
+    if (!bookings.length) return [];
+    // Group bookings by month
+    const bksByMonth = {};
+    bookings.forEach(b => {
+      const d = bookingDate(b); if (!d) return;
+      const mk = finMonthKey(d);
+      if (!bksByMonth[mk]) bksByMonth[mk] = [];
+      bksByMonth[mk].push(b);
+    });
+    const months = Object.keys(bksByMonth).sort();
+    return months.map(mk => {
+      const [my, mm] = mk.split('-').map(Number);
+      const mBks = bksByMonth[mk] || [];
+      // Revenue
+      let grossRev = 0, cashRev = 0, cardRev = 0;
+      const barberDays = {}, barberRev = {};
+      mBks.forEach(b => {
+        const status = String(b.status || '').toUpperCase();
+        if (['CANCELLED','BLOCKED','DELETED','NO_SHOW'].includes(status)) return;
+        const tip = pp(b.tip);
+        let rev = 0;
+        if (status === 'CHECKED_OUT') { const paid = pp(b.paidAmount); rev = paid > 0 ? Math.max(0, paid - tip) : pp(b.price); }
+        else { rev = pp(b.price) || Math.max(0, pp(b.paidAmount) - tip); }
+        grossRev += rev;
+        const pm = String(b.paymentMethod || '').toLowerCase();
+        if (pm === 'cash') cashRev += rev; else cardRev += rev;
+        const bname = b.barberName || b.barberId || '';
+        if (bname) {
+          const d2 = bookingDate(b);
+          if (!barberDays[bname]) barberDays[bname] = new Set();
+          if (d2) barberDays[bname].add(`${d2.getFullYear()}-${d2.getMonth()}-${d2.getDate()}`);
+          barberRev[bname] = (barberRev[bname] || 0) + rev;
+        }
+      });
+      // Expenses
+      let cashExp = 0, bankExp = 0;
+      Object.entries(finExpenses).forEach(([dk, exp]) => {
+        const [ey, em] = dk.split('-').map(Number);
+        if (ey === my && em === mm) { cashExp += pp(exp.cashExpense); bankExp += pp(exp.bankExpense); }
+      });
+      const netRevenue = grossRev - cashExp - bankExp;
+      // Shop days (days with any booking)
+      const shopDays = new Set(mBks.map(b => { const d2 = bookingDate(b); return d2 ? `${d2.getDate()}` : null; }).filter(Boolean)).size;
+      const fixedCostTotal = shopDays * finFixedRate;
+      // Wages
+      let totalWages = 0;
+      Object.entries(FIN_PARTNER_CONFIG).forEach(([name, cfg]) => {
+        const days = barberDays[name]?.size || 0;
+        totalWages += days * cfg.wage;
+      });
+      const companyNetPL = netRevenue - totalWages - fixedCostTotal;
+      // Per partner
+      const partners = {};
+      Object.entries(FIN_PARTNER_CONFIG).filter(([, cfg]) => cfg.isPartner).forEach(([name, cfg]) => {
+        let wagesEarned = cfg.wage > 0 ? (barberDays[name]?.size || 0) * cfg.wage : 0;
+        Object.entries(FIN_PARTNER_CONFIG).filter(([, c]) => c.creditTo === name).forEach(([empName, empCfg]) => {
+          wagesEarned += (barberDays[empName]?.size || 0) * empCfg.wage;
+        });
+        const advances = finPayments
+          .filter(p => { const d2 = finPaymentToDate(p.date); return d2 && finMonthKey(d2) === mk && finNormName(p.barberName) === finNormName(name); })
+          .reduce((s, p) => s + pp(p.amount), 0);
+        const elEmegi  = wagesEarned - advances;
+        const hisseden = (cfg.share / 100) * companyNetPL;
+        partners[name] = { wagesEarned, advances, elEmegi, hisseden, netDurum: elEmegi + hisseden, share: cfg.share };
+      });
+      return { mk, label: MONTHS[mm - 1] + ' ' + my, grossRev, cashRev, cardRev, cashExp, bankExp, netRevenue, totalWages, fixedCostTotal, companyNetPL, shopDays, partners, barberRev };
+    });
+  }, [bookings, finExpenses, finPayments, finFixedRate]);
+
+  const finCumulative = useMemo(() => {
+    const cum = {};
+    financeMonthly.forEach(row => {
+      Object.entries(row.partners).forEach(([name, p]) => { cum[name] = (cum[name] || 0) + p.netDurum; });
+    });
+    return cum;
+  }, [financeMonthly]);
+
   // ── AI helpers ──────────────────────────────────────────────
   const buildContext = () => {
     const { twRev, lwRev, twCount, lwCount } = overview;
@@ -508,6 +629,44 @@ export default function Marketing({ tenantId, isAdmin }) {
       return `${d?`${d.getDate()}/${d.getMonth()+1}`:'?'} | ${b.clientName||'?'} | ${b.serviceId||b.service||'?'} | ${b.status}`;
     });
 
+    // ── Finance: monthly P&L lines ──
+    const finMonthLines = financeMonthly.slice(-12).map(r =>
+      `${r.label}: Gross £${r.grossRev.toFixed(0)} | Expenses £${(r.cashExp+r.bankExp).toFixed(0)} | Wages £${r.totalWages.toFixed(0)} | Fixed £${r.fixedCostTotal.toFixed(0)} | Net P&L £${r.companyNetPL.toFixed(0)}`
+    );
+
+    // ── Finance: partner monthly net durum (last 6 months) ──
+    const finPartnerLines = financeMonthly.slice(-6).map(r => {
+      const ps = Object.entries(r.partners).map(([name, p]) =>
+        `${name}: el £${p.elEmegi.toFixed(0)} + hisse £${p.hisseden.toFixed(0)} = net £${p.netDurum.toFixed(0)}`
+      ).join(' | ');
+      return `${r.label}: ${ps}`;
+    });
+
+    // ── Finance: cumulative net durum + initial investment balance ──
+    const finCumLines = Object.entries(finCumulative).map(([name, netDurum]) => {
+      const inv = FIN_INITIAL_INVESTMENT.find(r => r.name === name);
+      const required = inv ? FIN_INITIAL_POOL * (inv.share / 100) : 0;
+      const invBalance = inv ? inv.paid - required : 0;
+      return `${name}: Birikimli NetDurum £${netDurum.toFixed(0)} | Initial yatırım ${invBalance >= 0 ? 'alacaklı' : 'borçlu'} £${Math.abs(invBalance).toFixed(0)}`;
+    });
+
+    // ── Finance: who owes who (settlement) ──
+    // A partner with negative cumulative netDurum owes the one with positive
+    const settlements = [];
+    const debtors  = Object.entries(finCumulative).filter(([,v]) => v < 0).sort((a,b) => a[1]-b[1]);
+    const creditors= Object.entries(finCumulative).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+    if (debtors.length && creditors.length) {
+      const debMap  = Object.fromEntries(debtors.map(([n,v]) => [n, -v]));
+      const credMap = Object.fromEntries(creditors.map(([n,v]) => [n, v]));
+      const dNames = debtors.map(([n]) => n);
+      const cNames = creditors.map(([n]) => n);
+      dNames.forEach(d => { cNames.forEach(c => { if (debMap[d] > 0 && credMap[c] > 0) {
+        const amt = Math.min(debMap[d], credMap[c]);
+        settlements.push(`${d} → ${c}: £${amt.toFixed(0)}`);
+        debMap[d] -= amt; credMap[c] -= amt;
+      }}); });
+    }
+
     return [
       `=== WHITECROSS BARBERS — FULL BUSINESS SNAPSHOT ===`,
       `Date: ${now.toDateString()}`,
@@ -549,6 +708,21 @@ export default function Marketing({ tenantId, isAdmin }) {
       `Format: date | client | service | barber | amount payment`,
       ...recentBks,
       cancelLines.length ? `\n=== RECENT CANCELLATIONS ===\n${cancelLines.join('\n')}` : '',
+      '',
+      `=== FINANCE — MONTHLY P&L (last 12 months) ===`,
+      `Formula: Net P&L = Gross Revenue - Expenses - Wages - Fixed Costs (£${finFixedRate}/day)`,
+      ...finMonthLines,
+      '',
+      `=== FINANCE — PARTNER NET DURUM (last 6 months) ===`,
+      `Formula per partner: El Emeği = (worked days × wage) + credited employees - advances; Hisseden = Net P&L × share%; Net Durum = El Emeği + Hisseden`,
+      `Partners: Alex 50% share £100/day | Arda 25% share £100/day | Tuncay 25% share £0/day (Kadim+Manoj wages credit to Tuncay)`,
+      ...finPartnerLines,
+      '',
+      `=== FINANCE — CUMULATIVE NET DURUM & INITIAL INVESTMENT ===`,
+      `Initial Investment Pool: £${FIN_INITIAL_POOL.toFixed(2)} (includes £1,212.20 stamp duty)`,
+      ...finCumLines,
+      '',
+      settlements.length ? `=== FINANCE — SETTLEMENT (who owes who) ===\n${settlements.join('\n')}` : `=== FINANCE — SETTLEMENT ===\nAll partners balanced or insufficient data`,
     ].filter(v => v !== undefined).join('\n');
   };
 
