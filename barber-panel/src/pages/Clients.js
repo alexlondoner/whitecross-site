@@ -957,7 +957,10 @@ export default function Clients({ isAdmin = true }) {
                       ? <div style={{ color: 'var(--muted)', fontSize: '0.78rem', textAlign: 'center', marginTop: '24px' }}>No booking history</div>
                       : selectedClient.bookings.slice().reverse().map((b, i) => {
                           const statusColor = b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800';
-                          const amount = b.paidAmount ? '£' + b.paidAmount : (b.price ? '£' + b.price : '--');
+                          const tipVal = parseFloat(String(b.tip || '0').replace('£', '')) || 0;
+                          const rawPaid = parseFloat(String(b.paidAmount || '0').replace('£', '')) || 0;
+                          const displayAmt = rawPaid > 0 ? rawPaid - tipVal : 0;
+                          const amount = rawPaid > 0 ? '£' + displayAmt.toFixed(2) : (b.price ? '£' + b.price : '--');
                           return (
                             <div key={i} style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>

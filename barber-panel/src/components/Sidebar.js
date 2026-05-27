@@ -148,7 +148,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
       </div>
 
       {/* NAV */}
-      <nav style={{
+      <nav className="sidebar-nav" style={{
         flex: 1, padding: '10px 8px',
         overflowY: 'auto', overflowX: 'hidden',
       }}>

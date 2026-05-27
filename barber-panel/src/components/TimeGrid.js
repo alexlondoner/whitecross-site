@@ -5,6 +5,15 @@ import { convertTo24, minsToLabel } from '../utils/timeUtils';
 import { getEffectiveDayHours } from '../utils/scheduleUtils';
 import SlotPopup from './SlotPopup';
 
+const SOURCE_COLORS = {
+  'booksy':    '#9c27b0',
+  'fresha':    '#2196f3',
+  'treatwell': '#ff7043',
+  'website':   '#4caf50',
+  'walk-in':   '#ff9800',
+  'manual':    '#ff9800',
+};
+
 export default function TimeGrid({ date, bookings, barbers, slotHeight, specialHours, onSlotClick, onWalkIn, onBlockTime, onBookingClick, selectedBooking, onAnySlotClick }) {
   const nowRef = useRef(null);
   const [slotPopup, setSlotPopup] = useState(null);
@@ -105,6 +114,7 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
                 const duration = (svc&&svc.duration) || 30;
                 const height = Math.max(duration * slotHeight / 15 - 4, slotHeight * 2);
                 const isSel = selectedBooking && selectedBooking.bookingId===b.bookingId;
+                const sourceColor = SOURCE_COLORS[(b.source||'').toLowerCase()];
                 const displayName = getBookingName(b);
                 const compactName = height < 34 ? displayName.split(' ')[0] || displayName : displayName;
                 return (
@@ -112,9 +122,10 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
                     style={{ position:'absolute', top:top+2, left:4, right:4, height, background:isSel?barber.color+'35':barber.color+'18', border:'1px solid '+barber.color+(isSel?'bb':'45'), borderLeft:'3px solid '+barber.color, borderRadius:'6px', padding:'4px 8px', cursor:'pointer', overflow:'hidden', transition:'all 0.15s', zIndex:2 }}
                     onMouseEnter={e=>e.currentTarget.style.background=barber.color+'28'}
                     onMouseLeave={e=>e.currentTarget.style.background=isSel?barber.color+'35':barber.color+'18'}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'4px', lineHeight:'1.2' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'4px', lineHeight:'1.2', flexWrap:'wrap' }}>
                       <span style={{ fontSize:'0.68rem', fontWeight:'700', color:barber.color }}>{b.time}</span>
                       {b.groupId && <span style={{ fontSize:'0.5rem', fontWeight:'800', color:'#fff', background:'rgba(212,175,55,0.8)', borderRadius:'4px', padding:'0 3px', letterSpacing:'0.5px', flexShrink:0 }}>GROUP×{b.groupSize||'?'}</span>}
+                      {sourceColor && <span style={{ fontSize:'0.5rem', fontWeight:'800', color:sourceColor, background:sourceColor+'22', border:'1px solid '+sourceColor+'55', borderRadius:'4px', padding:'0 4px', letterSpacing:'0.5px', flexShrink:0, textTransform:'uppercase' }}>{b.source}</span>}
                     </div>
                     <div title={displayName} style={{ fontSize:'0.72rem', fontWeight:'600', color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{compactName}</div>
                     <div style={{ fontSize:'0.62rem', color:'var(--muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{svc ? svc.name : b.service}</div>
