@@ -1352,8 +1352,8 @@ export default function Marketing({ tenantId, isAdmin }) {
           {/* Header */}
           <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
             <div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.2rem',fontWeight:700,color:'var(--gold)',letterSpacing:'1.5px'}}>✦ AI Assistant</div>
-              <div style={{fontSize:'0.58rem',color:'var(--muted)',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:'2px'}}>Powered by Claude Haiku</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.2rem',fontWeight:700,color:'var(--gold)',letterSpacing:'1.5px'}}>✦ Ask Whitecross AI</div>
+              <div style={{fontSize:'0.58rem',color:'var(--muted)',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:'2px'}}>Powered by Claude Sonnet</div>
             </div>
             <button onClick={()=>setAiOpen(false)} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'1.2rem',cursor:'pointer',padding:'4px 8px',borderRadius:'8px'}}>✕</button>
           </div>
