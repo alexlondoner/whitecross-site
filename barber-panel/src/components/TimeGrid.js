@@ -25,7 +25,8 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
   const OPEN_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.open) : 9 * 60;
   const CLOSE_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.close) : 19 * 60;
   const IS_CLOSED = !!(dayHours && dayHours.closed);
-  const GRID_START = 7, GRID_END = 21;
+  const GRID_START = Math.floor(OPEN_MINS / 60);
+  const GRID_END = Math.ceil(CLOSE_MINS / 60) + 1;
   const slots = [];
   for (let h = GRID_START; h < GRID_END; h++) {
     [0, 15, 30, 45].forEach(m => { slots.push({ h, m, mins: h * 60 + m }); });
