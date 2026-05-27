@@ -318,6 +318,15 @@ const activeBarbers = barberFilter === 'all'
       })()
     : (() => { const y=currentMonth.getFullYear(), m=currentMonth.getMonth(); return Array.from({length:getDaysInMonth(y,m)},(_,i)=>new Date(y,m,i+1)).flatMap(d=>getForDate(d)); })();
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
+  const sourceCount = {
+    booksy:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'booksy').length,
+    fresha:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'fresha').length,
+    treatwell: statsBookings.filter(b => (b.source||'').toLowerCase() === 'treatwell').length,
+    website:   statsBookings.filter(b => (b.source||'').toLowerCase() === 'website').length,
+    walkin:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'walk-in').length,
+  };
+  const hasAnySourcePill = Object.values(sourceCount).some(c => c > 0);
+  const unpaidCount = statsBookings.filter(b => b.status === 'UNPAID').length;
   const revenue = statsBookings
     .filter(b => b.status === 'CHECKED_OUT')
     .reduce((s, b) => s + bookingNetWithoutTip(b), 0);
@@ -422,16 +431,16 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('confirmed') && <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />}
         {!pillsCollapsed && visiblePills.has('pending') && <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
         {!pillsCollapsed && visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
-        {!pillsCollapsed && visiblePills.has('unpaid') && <StatPill label="Unpaid" value={statsBookings.filter(b=>b.status==='UNPAID').length} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
+        {!pillsCollapsed && (visiblePills.has('unpaid') || unpaidCount > 0) && <StatPill label="Unpaid" value={unpaidCount} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
         {!pillsCollapsed && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
         {!pillsCollapsed && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
         {!pillsCollapsed && visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
-        {!pillsCollapsed && (visiblePills.has('booksy')||visiblePills.has('fresha')||visiblePills.has('treatwell')||visiblePills.has('website')||visiblePills.has('walkin')||visiblePills.has('productsale')) && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
-        {!pillsCollapsed && visiblePills.has('booksy') && <StatPill label="Booksy" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='booksy').length} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />}
-        {!pillsCollapsed && visiblePills.has('fresha') && <StatPill label="Fresha" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='fresha').length} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />}
-        {!pillsCollapsed && visiblePills.has('treatwell') && <StatPill label="Treatwell" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='treatwell').length} color="#ff7043" active={pillFilter==='treatwell'} onClick={()=>setPillFilter(pillFilter==='treatwell'?null:'treatwell')} />}
-        {!pillsCollapsed && visiblePills.has('website') && <StatPill label="Website" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='website').length} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
-        {!pillsCollapsed && visiblePills.has('walkin') && <StatPill label="Walk-in" value={statsBookings.filter(b=>(b.source||'').toLowerCase()==='walk-in').length} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
+        {!pillsCollapsed && hasAnySourcePill && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
+        {!pillsCollapsed && visiblePills.has('booksy') && sourceCount.booksy > 0 && <StatPill label="Booksy" value={sourceCount.booksy} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />}
+        {!pillsCollapsed && visiblePills.has('fresha') && sourceCount.fresha > 0 && <StatPill label="Fresha" value={sourceCount.fresha} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />}
+        {!pillsCollapsed && visiblePills.has('treatwell') && sourceCount.treatwell > 0 && <StatPill label="Treatwell" value={sourceCount.treatwell} color="#ff7043" active={pillFilter==='treatwell'} onClick={()=>setPillFilter(pillFilter==='treatwell'?null:'treatwell')} />}
+        {!pillsCollapsed && visiblePills.has('website') && sourceCount.website > 0 && <StatPill label="Website" value={sourceCount.website} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
+        {!pillsCollapsed && visiblePills.has('walkin') && sourceCount.walkin > 0 && <StatPill label="Walk-in" value={sourceCount.walkin} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
         {!pillsCollapsed && visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
         {!pillsCollapsed && visiblePills.has('addonsale') && <StatPill label="Add-ons Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldAddOns).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#ff9800" active={pillFilter==='addonsale'} onClick={()=>setPillFilter(pillFilter==='addonsale'?null:'addonsale')} />}
 
