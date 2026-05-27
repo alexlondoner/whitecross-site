@@ -371,7 +371,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
     setRegisteringMe(true);
     try {
       await setDoc(doc(db, `tenants/${TENANT}/staff`, authUser.uid), {
-        name: authUser.displayName || 'Super Admin',
+        name: authUser.displayName || 'Alex',
         email: authUser.email,
         role: 'owner',
         createdAt: Timestamp.now(),

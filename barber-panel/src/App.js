@@ -92,6 +92,9 @@ function App() {
     return () => window.removeEventListener('services-updated', loadServicesIntoConfig);
   }, []);
 
+  const [sidebarDate, setSidebarDate] = useState(new Date());
+  const handleSidebarDateSelect = (date) => { setSidebarDate(date); setActivePage('dashboard'); };
+
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const handleLogout = () => auth.signOut();
 
@@ -112,7 +115,7 @@ function App() {
       return <Cart cartItems={cart} onCheckout={() => alert('Ödeme entegrasyonu eklenecek!')} onRemove={(id) => setCart(cart => cart.filter(item => item.id !== id))} />;
     }
     switch (activePage) {
-      case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} />;
+      case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
       case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
       case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
       case 'online-profile':return <OnlineProfile tenantId={tenantId} isAdmin={isAdmin} />;
@@ -140,6 +143,8 @@ function App() {
         setIsCollapsed={setIsCollapsed}
         tenantId={tenantId}
         isOwner={isAdmin}
+        selectedDate={sidebarDate}
+        onDateSelect={handleSidebarDateSelect}
       />
       <div style={{ position: 'fixed', top: '12px', right: '76px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
         <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} />

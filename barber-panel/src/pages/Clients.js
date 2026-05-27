@@ -124,7 +124,9 @@ export default function Clients({ isAdmin = true }) {
           ? (platformDeposit > 0 ? paidAtCheckout + platformDeposit : fullServicePrice || paidAtCheckout)
           : (parseFloat(String(b.paidAmount || b.price || '0').replace('£', '')) || 0);
         const price = b.source === 'Booksy'
-          ? (b.status === 'CHECKED_OUT' ? rawAmount + booksyDeposit : booksyDeposit)
+          ? (b.status === 'CHECKED_OUT'
+            ? (rawAmount < fullServicePrice ? rawAmount + booksyDeposit : rawAmount)
+            : booksyDeposit)
           : rawAmount;
         const tip = parseFloat(String(b.tip || '0').replace('£', '')) || 0;
         const discount = parseFloat(String(b.discount || '0').replace('£', '').replace('-', '')) || 0;
@@ -959,8 +961,12 @@ export default function Clients({ isAdmin = true }) {
                           const statusColor = b.status === 'CHECKED_OUT' ? '#4caf50' : b.status === 'CANCELLED' ? '#ff5252' : '#ff9800';
                           const tipVal = parseFloat(String(b.tip || '0').replace('£', '')) || 0;
                           const rawPaid = parseFloat(String(b.paidAmount || '0').replace('£', '')) || 0;
-                          const displayAmt = rawPaid > 0 ? rawPaid - tipVal : 0;
-                          const amount = rawPaid > 0 ? '£' + displayAmt.toFixed(2) : (b.price ? '£' + b.price : '--');
+                          const booksyDep = b.source === 'Booksy' && config.platforms?.booksy?.depositEnabled ? (config.platforms.booksy.depositAmount || 0) : 0;
+                          const fullPrice = parseFloat(String(b.price || '0').replace('£', '')) || 0;
+                          const needsDeposit = b.source === 'Booksy' && b.status === 'CHECKED_OUT' && rawPaid > 0 && booksyDep > 0 && rawPaid < fullPrice;
+                          const effectivePaid = needsDeposit ? rawPaid + booksyDep : rawPaid;
+                          const displayAmt = effectivePaid > 0 ? effectivePaid - tipVal : 0;
+                          const amount = effectivePaid > 0 ? '£' + displayAmt.toFixed(2) : (b.price ? '£' + b.price : '--');
                           return (
                             <div key={i} style={{ padding: '12px', background: 'var(--card)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>

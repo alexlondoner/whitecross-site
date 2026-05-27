@@ -42,7 +42,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252', NO_SHOW: '#9c27b0' };
 
-export default function Dashboard({ isAdmin = true }) {
+export default function Dashboard({ isAdmin = true, initialDate }) {
   // ...existing useState hooks...
   const [clientName, setClientName] = useState('Walk-in');
   const [clientPhone, setClientPhone] = useState('');
@@ -117,8 +117,17 @@ export default function Dashboard({ isAdmin = true }) {
       return next;
     });
   };
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => initialDate || new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => initialDate || new Date());
+  const prevInitialDate = useRef(initialDate);
+  useEffect(() => {
+    if (initialDate && initialDate !== prevInitialDate.current) {
+      prevInitialDate.current = initialDate;
+      setSelectedDate(initialDate);
+      setCurrentMonth(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
+      setView('day');
+    }
+  }, [initialDate]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [barberFilter, setBarberFilter] = useState('all');
   const [barbers, setBarbers] = useState([]);
@@ -579,29 +588,7 @@ const activeBarbers = barberFilter === 'all'
                     />
                   )}
                   <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
-                  {/* Revenue strip */}
-                  {(() => {
-                    const dayBks = (bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status === 'CHECKED_OUT');
-                    const dayRev = dayBks.reduce((s, b) => s + bookingNetWithoutTip(b), 0);
-                    const dayTips = dayBks.reduce((s, b) => s + pp(b.tip), 0);
-                    const dayCheckedOut = dayBks.length;
-                    const dayTotal = (bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED' && b.status !== 'BLOCKED').length;
-                    const dayRemaining = dayTotal - dayCheckedOut;
-                    return (
-                      <div style={{ height:'40px', flexShrink:0, display:'flex', background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px' }}>
-                        {[
-                          { label: 'Checked Out', value: dayCheckedOut,           color: '#4caf50' },
-                          { label: 'Remaining',   value: dayRemaining,            color: 'var(--text)' },
-                          { label: 'Tips',        value: '£'+dayTips.toFixed(0),  color: '#ff9800' },
-                        ].map((item, i, arr) => (
-                          <div key={item.label} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight: i < arr.length-1 ? '1px solid var(--border)' : 'none' }}>
-                            <div style={{ fontSize:'0.45rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700' }}>{item.label}</div>
-                            <div style={{ fontSize:'0.9rem', fontWeight:'800', color:item.color, lineHeight:1, marginTop:'1px' }}>{item.value}</div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                  <div style={{ height:'40px', flexShrink:0, background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px' }} />
                 </div>
               )}
               {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts) && <ResizeHandle onResize={() => {}} />}

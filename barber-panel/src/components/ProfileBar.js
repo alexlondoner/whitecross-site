@@ -75,7 +75,7 @@ export default function ProfileBar({ authUser, isAdmin, tenantId }) {
         ]);
         const staff = staffSnap.exists()
           ? { uid: authUser.uid, ...staffSnap.data() }
-          : { uid: authUser.uid, name: authUser.displayName || authUser.email, email: authUser.email, role: 'owner' };
+          : { uid: authUser.uid, name: authUser.displayName || 'Alex', email: authUser.email, role: 'owner' };
         setStaffData(staff);
         setSocialForm({
           instagram: staff.instagram || '',

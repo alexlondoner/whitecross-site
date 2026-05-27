@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import config from '../config';
+import { getDaysInMonth, getFirstDay } from '../utils/timeUtils';
+
+const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const navItems = [
   { id: 'dashboard',      icon: '📊', label: 'Dashboard' },
@@ -15,9 +18,10 @@ const navItems = [
   { id: 'settings',       icon: '⚙️', label: 'Settings' },
 ];
 
-function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner }) {
+function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner, selectedDate, onDateSelect }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [calMonth, setCalMonth] = useState(() => new Date());
   const [tooltipY, setTooltipY] = useState(0);
 
   const sidebarWidth = isCollapsed ? '76px' : '185px';
@@ -232,6 +236,48 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           );
         })}
       </nav>
+
+      {/* MINI CALENDAR */}
+      {!isCollapsed && (() => {
+        const cy = calMonth.getFullYear(), cm = calMonth.getMonth();
+        const today = new Date(); today.setHours(0,0,0,0);
+        const calDays = [...Array(getFirstDay(cy, cm)).fill(null), ...Array.from({length: getDaysInMonth(cy, cm)}, (_, i) => i + 1)];
+        const isSel = (d) => d && selectedDate && selectedDate.getDate() === d && selectedDate.getMonth() === cm && selectedDate.getFullYear() === cy;
+        const isToday = (d) => { if (!d) return false; const x = new Date(cy, cm, d); x.setHours(0,0,0,0); return x.getTime() === today.getTime(); };
+        return (
+          <div style={{ padding:'8px 10px 6px', borderTop:`1px solid ${t.border}`, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'5px' }}>
+              <button onClick={() => setCalMonth(new Date(cy, cm - 1, 1))}
+                style={{ background:'transparent', border:'none', color:t.gold, cursor:'pointer', padding:'0 2px', fontSize:'1rem', lineHeight:1 }}>‹</button>
+              <span style={{ fontSize:'0.58rem', color:t.txt, fontWeight:'700', letterSpacing:'0.5px', textTransform:'uppercase' }}>
+                {CAL_MONTHS[cm].slice(0,3)} {cy}
+              </span>
+              <button onClick={() => setCalMonth(new Date(cy, cm + 1, 1))}
+                style={{ background:'transparent', border:'none', color:t.gold, cursor:'pointer', padding:'0 2px', fontSize:'1rem', lineHeight:1 }}>›</button>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:'2px' }}>
+              {['M','T','W','T','F','S','S'].map((d, i) => (
+                <div key={i} style={{ textAlign:'center', fontSize:'0.45rem', color:t.muted, fontWeight:'700' }}>{d}</div>
+              ))}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
+              {calDays.map((d, i) => (
+                <div key={i}
+                  onClick={() => { if (d && onDateSelect) onDateSelect(new Date(cy, cm, d)); }}
+                  style={{
+                    height:'20px', display:'flex', alignItems:'center', justifyContent:'center',
+                    borderRadius:'3px', cursor: d ? 'pointer' : 'default',
+                    background: isSel(d) ? t.gold : isToday(d) ? t.goldDim : 'transparent',
+                    color: isSel(d) ? '#000' : isToday(d) ? t.gold : d ? t.txt : 'transparent',
+                    fontSize:'0.58rem', fontWeight: isSel(d) || isToday(d) ? '700' : '400',
+                    transition:'background 0.1s',
+                  }}
+                >{d || ''}</div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* FOOTER */}
       <div style={{
