@@ -371,7 +371,7 @@ const activeBarbers = barberFilter === 'all'
   const handleBookingClick = (b) => { setShowForm(false); setShowWalkIn(false); setShowBlockTime(false); setShowProductSale(false); setSelectedBooking(selectedBooking?.bookingId === b.bookingId ? null : b); if (selectedBooking?.bookingId === b.bookingId) setShowBookingProducts(false); };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:'8px', height:'calc(100vh - 64px)' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:'8px', height:'calc(100vh - 80px)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
         <div style={{ display:'flex', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'6px', overflow:'hidden' }}>
           {['day','week','month','custom'].map(v=>(
@@ -577,7 +577,6 @@ const activeBarbers = barberFilter === 'all'
                     return (
                       <div style={{ height:'40px', flexShrink:0, display:'flex', background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px' }}>
                         {[
-                          { label: 'Revenue',     value: '£'+dayRev.toFixed(0),  color: '#d4af37' },
                           { label: 'Checked Out', value: dayCheckedOut,           color: '#4caf50' },
                           { label: 'Remaining',   value: dayRemaining,            color: 'var(--text)' },
                           { label: 'Tips',        value: '£'+dayTips.toFixed(0),  color: '#ff9800' },

@@ -149,7 +149,8 @@ function App() {
         flex: 1,
         marginLeft: isCollapsed ? '74px' : '166px',
         padding: '60px 20px 20px',
-        overflowY: 'auto',
+        overflowY: activePage === 'dashboard' ? 'hidden' : 'auto',
+        height: activePage === 'dashboard' ? '100vh' : 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <Suspense fallback={<div style={{ color: '#888', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
