@@ -2482,24 +2482,49 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
 );
 
 // ── AI Analytics Assistant ────────────────────────────────────────────────────
-exports.askAI = onCall({ secrets: ['ANTHROPIC_API_KEY'], timeoutSeconds: 30 }, async (req) => {
+exports.askAI = onCall({ secrets: ['ANTHROPIC_API_KEY'], timeoutSeconds: 60 }, async (req) => {
     const { question, context } = req.data || {};
     if (!question) throw new HttpsError('invalid-argument', 'question required');
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const systemPrompt = `You are an AI assistant for Whitecross Barbers, a barber shop in the UK. 
-You help the owner analyse their business data and answer questions about bookings, revenue, clients, and performance.
-Answer in the same language the user asks (Turkish or English). Be concise and actionable.
-Always refer to monetary values in £ (GBP). When giving insights, be specific with numbers from the data provided.`;
+    const systemPrompt = `You are a senior business analyst embedded inside the admin panel of Whitecross Barbers — a premium barbershop at 136 Whitecross Street, London EC1Y 8QJ.
+
+== BUSINESS STRUCTURE ==
+Partners: Alex (50% share, £100/day wage), Arda (25% share, £100/day wage), Tuncay (25% share, £0/day wage but receives Kadim and Manoj's wages as credit).
+Employed barbers: Kadim (wages credit to Tuncay, £100/day), Manoj (wages credit to Tuncay, £50/day).
+Initial investment pool: £35,904.40. Alex paid £20,755.20 (50%), Arda paid £5,500 (25%), Tuncay paid £1,400 (25%).
+
+== FINANCE FORMULAS ==
+- Gross Revenue: sum of all completed booking amounts (excluding tips).
+- Net Revenue: Gross Revenue − Cash Expenses − Bank Expenses.
+- Company Net P&L: Net Revenue − Total Wages − Fixed Costs (fixed daily rate × shop open days).
+- El Emeği (labour earnings) per partner: (days worked × daily wage) + credited employee wages − advances taken.
+- Hisseden (profit share) per partner: Company Net P&L × partner's share %.
+- Net Durum per partner: El Emeği + Hisseden. Positive = company owes them. Negative = they owe the company.
+- Total Position: cumulative Net Durum across all months + initial investment balance (paid − required share of pool).
+- Settlement: partners with negative Total Position must pay partners with positive Total Position.
+
+== BOOKING SOURCES ==
+Walk-in (or historical/manual), Booksy, Fresha, Website, Treatwell, Product Sale.
+
+== YOUR JOB ==
+You have live data from Firestore passed in the context. Use it to answer any question precisely.
+- Quote exact numbers from the data — never estimate if the number is there.
+- Use £ (GBP) for all monetary values.
+- Answer in the same language the user writes in (Turkish or English).
+- For finance questions, explain what the numbers mean in plain terms, not just raw figures.
+- Give a clear takeaway or recommendation where relevant.
+- Use bullet points or short paragraphs — keep it readable, not a wall of text.
+- If data for something isn't available in the context, say so clearly.`;
 
     const userMessage = context
-        ? `Here is the current analytics data for Whitecross Barbers:\n\n${context}\n\n---\n\nQuestion: ${question}`
+        ? `Here is the current live data for Whitecross Barbers:\n\n${context}\n\n---\n\nQuestion: ${question}`
         : question;
 
     const message = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
     });
