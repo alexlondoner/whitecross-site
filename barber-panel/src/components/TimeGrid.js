@@ -141,8 +141,8 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
                       {b.groupId && <span style={{ fontSize:'0.5rem', fontWeight:'800', color:'#fff', background:'rgba(212,175,55,0.8)', borderRadius:'4px', padding:'0 3px', letterSpacing:'0.5px', flexShrink:0 }}>GROUP×{b.groupSize||'?'}</span>}
                       {sourceColor && <span style={{ fontSize:'0.5rem', fontWeight:'800', color:sourceColor, background:sourceColor+'22', border:'1px solid '+sourceColor+'55', borderRadius:'4px', padding:'0 4px', letterSpacing:'0.5px', flexShrink:0, textTransform:'uppercase' }}>{b.source}</span>}
                     </div>
-                    <div title={displayName} style={{ fontSize:'0.72rem', fontWeight:'600', color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{compactName}</div>
-                    <div style={{ fontSize:'0.62rem', color:'var(--muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{svc ? svc.name : b.service}</div>
+                    <div title={displayName} style={{ fontSize:'0.72rem', fontWeight:'700', color: isSel ? '#fff' : barber.color, filter: isSel ? 'none' : 'brightness(0.55) saturate(1.4)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{compactName}</div>
+                    <div style={{ fontSize:'0.62rem', fontWeight:'500', color: isSel ? 'rgba(255,255,255,0.85)' : barber.color, filter: isSel ? 'none' : 'brightness(0.45) saturate(1.2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:'1.2' }}>{svc ? svc.name : b.service}</div>
                   </div>
                 );
               })}
