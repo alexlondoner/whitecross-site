@@ -804,9 +804,7 @@ export default function Marketing({ tenantId, isAdmin }) {
             { key:'clients',  icon:'👥', label:'Total Clients', val:customerInsights.total, sub:`${customerInsights.lost30} inactive 30d+`, trend:null, fullVal:null, elapsedVal:null },
           ].map(({key,icon,label,val,sub,trend:tr,fullVal,elapsedVal})=>(
             <div key={label}
-              onMouseEnter={()=>elapsedVal?setHoveredKpi(key):null}
-              onMouseLeave={()=>setHoveredKpi(null)}
-              style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'14px 16px',position:'relative',overflow:'hidden',cursor:'default',transition:'border-color 0.15s',borderColor:hoveredKpi===key?'var(--gold)':'var(--border)'}}>
+              style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'14px 16px',position:'relative',overflow:'hidden',cursor:'default',borderColor:'var(--border)'}}>
               <div style={{position:'absolute',top:0,left:0,right:0,height:'1.5px',background:'linear-gradient(90deg,transparent,var(--gold-dark),transparent)',opacity:0.4}}/>
               <div style={{fontSize:'1.1rem',marginBottom:'8px'}}>{icon}</div>
               <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.5rem',fontWeight:700,color:'var(--gold)',lineHeight:1}}>{val}</div>
@@ -814,7 +812,7 @@ export default function Marketing({ tenantId, isAdmin }) {
               <div style={{fontSize:'0.65rem',marginTop:'6px',fontWeight:600,color:tr?(tr.up?'#4caf50':'#ef5350'):'var(--muted)'}}>
                 {tr?`${tr.up?'↑':'↓'} ${Math.abs(tr.d)}% vs last wk (${overview.daysElapsedLabel})`:sub}
               </div>
-              {hoveredKpi===key && elapsedVal && (
+              {elapsedVal && (
                 <div style={{marginTop:'8px',paddingTop:'8px',borderTop:'1px solid var(--border)',display:'flex',flexDirection:'column',gap:'3px'}}>
                   <div style={{fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1px',textTransform:'uppercase',fontWeight:700}}>Last Week Breakdown</div>
                   <div style={{fontSize:'0.65rem',color:'var(--gold-dark)',fontWeight:600}}>Same {overview.daysElapsedLabel}: <span style={{color:'#c9a84c'}}>{elapsedVal}</span></div>
@@ -844,7 +842,7 @@ export default function Marketing({ tenantId, isAdmin }) {
             },
             {
               label: 'This week vs same week last month',
-              sub: `${sameWeekLastMonthStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`,
+              sub: `${sameWeekLastMonthStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · ${overview.daysElapsedLabel} elapsed`,
               curr: `£${mom.twRev.toFixed(0)}`,
               prev: `£${mom.swRev.toFixed(0)}`,
               tr: mom.weekVsLastMonth,
