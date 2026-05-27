@@ -21,12 +21,26 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
   const dayName = DAYS[date.getDay()];
   const savedHours = (() => { try { const h = localStorage.getItem('shopHours'); return h ? JSON.parse(h) : null; } catch { return null; } })();
   const hoursConfig = savedHours || config.hours;
-  const dayHours = getEffectiveDayHours(date, dayName, hoursConfig, specialHours);
-  const OPEN_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.open) : 9 * 60;
-  const CLOSE_MINS = dayHours && !dayHours.closed ? convertTo24(dayHours.close) : 19 * 60;
-  const IS_CLOSED = !!(dayHours && dayHours.closed);
-  const GRID_START = Math.floor(OPEN_MINS / 60);
-  const GRID_END = Math.ceil(CLOSE_MINS / 60) + 1;
+
+  // Per-barber hours for this day
+  const barberHours = barbers.map(barber => {
+    const special = getEffectiveDayHours(date, dayName, hoursConfig, specialHours);
+    const bDayHours = barber.dayHours && barber.dayHours[dayName];
+    const h = bDayHours || special;
+    const isOff = !!(h && h.closed) || (barber.workingDays && !barber.workingDays.includes(dayName));
+    return {
+      open:  isOff ? null : convertTo24((h && h.open)  || '09:00'),
+      close: isOff ? null : convertTo24((h && h.close) || '19:00'),
+      isOff,
+    };
+  });
+
+  const allOpenMins  = barberHours.filter(h => !h.isOff).map(h => h.open);
+  const allCloseMins = barberHours.filter(h => !h.isOff).map(h => h.close);
+  const OPEN_MINS  = allOpenMins.length  ? Math.min(...allOpenMins)  : 9 * 60;
+  const CLOSE_MINS = allCloseMins.length ? Math.max(...allCloseMins) : 19 * 60;
+  const GRID_START = Math.max(0, Math.floor(OPEN_MINS / 60) - 2);
+  const GRID_END   = Math.min(24, Math.ceil(CLOSE_MINS / 60) + 2);
   const slots = [];
   for (let h = GRID_START; h < GRID_END; h++) {
     [0, 15, 30, 45].forEach(m => { slots.push({ h, m, mins: h * 60 + m }); });
@@ -73,20 +87,19 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
           ))}
         </div>
         {barbers.map((barber, bi) => {
+          const bh = barberHours[bi];
           const barberBs = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED');
           return (
             <div key={barber.id} style={{ flex:1, position:'relative', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none' }}>
               {slots.map(slot => {
-                const isOutsideHours = IS_CLOSED || slot.mins < OPEN_MINS || slot.mins >= CLOSE_MINS;
-                const past = isToday && slot.mins < nowMins;
-                const inactive = past || isOutsideHours;
+                const isOutsideHours = bh.isOff || slot.mins < bh.open || slot.mins >= bh.close;
+                const inactive = isOutsideHours;
                 return (
                   <div key={slot.mins}
                     onClick={(e) => { if (!inactive) { onAnySlotClick && onAnySlotClick(); const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
                     style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.06)', cursor:inactive?'default':'pointer', background:inactive?'var(--slot-past)':'var(--slot-bg)', transition:'background 0.1s', position:'relative' }}
                     onMouseEnter={e=>{ if(!inactive) e.currentTarget.style.background='var(--slot-hover)'; }}
                     onMouseLeave={e=>e.currentTarget.style.background=inactive?'var(--slot-past)':'var(--slot-bg)'}>
-                    {inactive && <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.03) 4px, rgba(0,0,0,0.03) 8px)', pointerEvents:'none' }} />}
                   </div>
                 );
               })}

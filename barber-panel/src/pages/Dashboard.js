@@ -72,7 +72,7 @@ export default function Dashboard({ isAdmin = true }) {
   const [showPillSettings, setShowPillSettings] = useState(false);
   const [pillsCollapsed, setPillsCollapsed] = useState(false);
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
-  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','revenue','discount','tips','booksy','fresha','treatwell','website','walkin','productsale','addonsale'];
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','revenue','discount','tips','booksy','fresha','treatwell','website','walkin','app','productsale','addonsale'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
   const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
@@ -324,6 +324,7 @@ const activeBarbers = barberFilter === 'all'
     treatwell: statsBookings.filter(b => (b.source||'').toLowerCase() === 'treatwell').length,
     website:   statsBookings.filter(b => (b.source||'').toLowerCase() === 'website').length,
     walkin:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'walk-in').length,
+    app:       statsBookings.filter(b => (b.source||'').toLowerCase() === 'app').length,
   };
   const hasAnySourcePill = Object.values(sourceCount).some(c => c > 0);
   const unpaidCount = statsBookings.filter(b => b.status === 'UNPAID').length;
@@ -441,6 +442,7 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('treatwell') && sourceCount.treatwell > 0 && <StatPill label="Treatwell" value={sourceCount.treatwell} color="#ff7043" active={pillFilter==='treatwell'} onClick={()=>setPillFilter(pillFilter==='treatwell'?null:'treatwell')} />}
         {!pillsCollapsed && visiblePills.has('website') && sourceCount.website > 0 && <StatPill label="Website" value={sourceCount.website} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
         {!pillsCollapsed && visiblePills.has('walkin') && sourceCount.walkin > 0 && <StatPill label="Walk-in" value={sourceCount.walkin} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
+        {!pillsCollapsed && visiblePills.has('app') && sourceCount.app > 0 && <StatPill label="App" value={sourceCount.app} color="#e91e63" active={pillFilter==='app'} onClick={()=>setPillFilter(pillFilter==='app'?null:'app')} />}
         {!pillsCollapsed && visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
         {!pillsCollapsed && visiblePills.has('addonsale') && <StatPill label="Add-ons Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldAddOns).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#ff9800" active={pillFilter==='addonsale'} onClick={()=>setPillFilter(pillFilter==='addonsale'?null:'addonsale')} />}
 
@@ -466,6 +468,7 @@ const activeBarbers = barberFilter === 'all'
                 {key:'treatwell',   label:'Treatwell',      color:'#ff7043'},
                 {key:'website',     label:'Website',        color:'#4caf50'},
                 {key:'walkin',      label:'Walk-in',        color:'#ff9800'},
+                {key:'app',         label:'App',            color:'#e91e63'},
                 {key:'productsale', label:'Products Sold',  color:'#03a9f4'},
                 {key:'addonsale',   label:'Add-ons Sold',   color:'#ff9800'},
               ].map(p => (
@@ -505,13 +508,14 @@ const activeBarbers = barberFilter === 'all'
           treatwell: b=>(b.source||'').toLowerCase()==='treatwell',
           website: b=>(b.source||'').toLowerCase()==='website',
           walkin: b=>(b.source||'').toLowerCase()==='walk-in',
+          app: b=>(b.source||'').toLowerCase()==='app',
           // Show all bookings with products sold, whether with a service or standalone product sales
           productsale: b=>getProductsTotal(b.soldProducts)>0,
           // Only show bookings with add-ons (soldAddOns)
           addonsale: b=>Array.isArray(b.soldAddOns) && b.soldAddOns.length>0 && getProductsTotal(b.soldAddOns)>0,
         };
         const pillColors = { total:'#d4af37', confirmed:'#4caf50', pending:'#ff9800', checkedout:'#2196f3', unpaid:'#ff5252', needscheckout:'#ff5252', revenue:'#d4af37', discount:'#4caf50', tips:'#ff9800', booksy:'#9c27b0', fresha:'#2196f3', treatwell:'#ff7043', website:'#4caf50', walkin:'#ff9800', productsale:'#03a9f4' };
-        const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', unpaid:'Unpaid', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', treatwell:'Treatwell', website:'Website', walkin:'Walk-in', productsale:'Products Sold' };
+        const pillLabels = { total:'Total', confirmed:'Confirmed', pending:'Pending', checkedout:'Checked Out', unpaid:'Unpaid', needscheckout:'Needs Checkout', revenue:'Revenue', discount:'Discount Given', tips:'Tips', booksy:'Booksy', fresha:'Fresha', treatwell:'Treatwell', website:'Website', walkin:'Walk-in', app:'App', productsale:'Products Sold' };
         const filtered = pillFilter === 'needscheckout' ? needsCheckoutBookings : statsBookings.filter(filterMap[pillFilter]||filterMap.total);
         const pillColor = pillColors[pillFilter]||'#d4af37';
         return (
