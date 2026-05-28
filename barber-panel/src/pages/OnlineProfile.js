@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import Services from './Services';
 import Gallery from './Gallery';
 import Announcements from './Announcements';
+import Products from './Products';
 
 const TABS = [
   { id: 'services', label: 'Services' },
   { id: 'gallery', label: 'Gallery' },
   { id: 'announcements', label: 'Announcements' },
+  { id: 'products', label: 'Products' },
 ];
 
 export default function OnlineProfile() {
@@ -15,6 +17,7 @@ export default function OnlineProfile() {
   const renderTab = function() {
     if (activeTab === 'services') return <Services />;
     if (activeTab === 'gallery') return <Gallery />;
+    if (activeTab === 'products') return <Products cart={[]} setCart={() => {}} onOpenCart={() => {}} />;
     return <Announcements />;
   };
 

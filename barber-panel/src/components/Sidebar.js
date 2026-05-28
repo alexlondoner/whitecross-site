@@ -10,9 +10,7 @@ const navItems = [
   { id: 'calendar',       icon: '🗓️', label: 'Calendar' },
   { id: 'clients',        icon: '👥', label: 'Clients' },
   { id: 'barbers',        icon: '✂️', label: 'Team Members' },
-  { id: 'products',       icon: '🛒', label: 'Products' },
   { id: 'reports',        icon: '📈', label: 'Reports' },
-  { id: 'finance',        icon: '💰', label: 'Finance' },
   { id: 'marketing',      icon: '📣', label: 'Marketing' },
   { id: 'online-profile', icon: '🌐', label: 'Online Profile' },
   { id: 'settings',       icon: '⚙️', label: 'Settings' },
@@ -24,7 +22,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
   const [calMonth, setCalMonth] = useState(() => new Date());
   const [tooltipY, setTooltipY] = useState(0);
 
-  const sidebarWidth = isCollapsed ? '76px' : '185px';
+  const sidebarWidth = isCollapsed ? '76px' : '205px';
 
   const t = {
     bg:      isLight ? '#f8f5ec' : '#0c0a06',
@@ -161,7 +159,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           const isHover = hoveredItem === item.id;
 
           return (
-            <div key={item.id} style={{ position: 'relative', marginBottom: '2px' }}>
+            <div key={item.id} style={{ position: 'relative', marginBottom: '5px' }}>
               <button
                 onClick={() => setActivePage(item.id)}
                 onMouseEnter={(e) => {

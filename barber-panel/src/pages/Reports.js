@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import Finance from './Finance';
 
 // ── Normalizers ───────────────────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ export default function Reports() {
   const [bookings, setBookings] = useState([]);
   const [barbers,  setBarbers]  = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [section,   setSection]  = useState('analytics');
   const [period,   setPeriod]   = useState('month');
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -454,10 +456,44 @@ export default function Reports() {
 
   const tabs  = ['overview', 'breakdown', 'sources', 'barbers', 'services', 'products', 'clients'];
 
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--muted)' }}>Loading reports...</div>;
+  const sectionTabStyle = (id) => ({
+    padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+    fontSize: '0.75rem', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase',
+    background: section === id ? 'linear-gradient(135deg,#d4af37,#b8860b)' : 'var(--card)',
+    color: section === id ? '#000' : 'var(--muted)',
+    transition: 'all 0.15s',
+  });
+
+  if (section === 'finance') {
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button style={sectionTabStyle('analytics')} onClick={() => setSection('analytics')}>Analytics</button>
+          <button style={sectionTabStyle('finance')} onClick={() => setSection('finance')}>Finance</button>
+        </div>
+        <Finance />
+      </div>
+    );
+  }
+
+  if (loading) return (
+    <div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <button style={sectionTabStyle('analytics')} onClick={() => setSection('analytics')}>Analytics</button>
+        <button style={sectionTabStyle('finance')} onClick={() => setSection('finance')}>Finance</button>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', color:'var(--muted)' }}>Loading reports...</div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+      {/* Section switcher */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button style={sectionTabStyle('analytics')} onClick={() => setSection('analytics')}>Analytics</button>
+        <button style={sectionTabStyle('finance')} onClick={() => setSection('finance')}>Finance</button>
+      </div>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
