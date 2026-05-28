@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../firebase';
+import PageHeader from '../components/PageHeader';
 import { collection, getDocs, getDoc, doc, setDoc, query, orderBy } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -762,27 +763,26 @@ export default function Marketing({ tenantId, isAdmin }) {
   return (
     <div style={{maxWidth:'920px',fontFamily:"'DM Sans',var(--font,sans-serif)"}}>
 
-      {/* Page header */}
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',paddingBottom:'16px',borderBottom:'1px solid var(--border)',marginBottom:'16px',flexWrap:'wrap',gap:'12px'}}>
-        <div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.8rem',fontWeight:700,color:'var(--gold)',letterSpacing:'3px',lineHeight:1}}>Analytics</div>
-          <div style={{fontSize:'0.65rem',color:'var(--muted)',letterSpacing:'2px',marginTop:'5px',textTransform:'uppercase'}}>Insights · occupancy · campaigns</div>
-        </div>
-        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
-          <div style={{display:'flex',gap:'4px',background:'var(--card)',border:'1px solid var(--border)',borderRadius:'10px',padding:'3px'}}>
-            {[2,4,8].map(w=>(
-              <div key={w} onClick={()=>setWeeks(w)} style={{padding:'5px 13px',borderRadius:'7px',fontSize:'0.68rem',fontWeight:700,cursor:'pointer',background:weeks===w?'var(--gold)':'transparent',color:weeks===w?'#080705':'var(--muted)',transition:'all 0.15s'}}>{w}w</div>
-            ))}
-          </div>
-          <select value={selBarber} onChange={e=>setSelBarber(e.target.value)} style={{...inp,width:'auto',padding:'7px 12px'}}>
-            <option value="all">All Barbers</option>
-            {barbers.map(b=><option key={b.id} value={b.name}>{b.name}</option>)}
-          </select>
-          <button onClick={()=>setAiOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',background:aiOpen?'var(--gold)':'var(--card)',border:'1px solid '+(aiOpen?'var(--gold)':'var(--border)'),borderRadius:'10px',color:aiOpen?'#080705':'var(--gold)',fontSize:'0.72rem',fontWeight:700,cursor:'pointer',letterSpacing:'0.5px',transition:'all 0.18s'}}>
-            ✦ AI
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Marketing"
+        subtitle="Insights · occupancy · campaigns"
+        actions={
+          <>
+            <div style={{display:'flex',gap:'4px',background:'var(--card)',border:'1px solid var(--border)',borderRadius:'10px',padding:'3px'}}>
+              {[2,4,8].map(w=>(
+                <div key={w} onClick={()=>setWeeks(w)} style={{padding:'5px 13px',borderRadius:'7px',fontSize:'0.68rem',fontWeight:700,cursor:'pointer',background:weeks===w?'var(--gold)':'transparent',color:weeks===w?'#080705':'var(--muted)',transition:'all 0.15s'}}>{w}w</div>
+              ))}
+            </div>
+            <select value={selBarber} onChange={e=>setSelBarber(e.target.value)} style={{...inp,width:'auto',padding:'7px 12px'}}>
+              <option value="all">All Barbers</option>
+              {barbers.map(b=><option key={b.id} value={b.name}>{b.name}</option>)}
+            </select>
+            <button onClick={()=>setAiOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',background:aiOpen?'var(--gold)':'var(--card)',border:'1px solid '+(aiOpen?'var(--gold)':'var(--border)'),borderRadius:'10px',color:aiOpen?'#080705':'var(--gold)',fontSize:'0.72rem',fontWeight:700,cursor:'pointer',letterSpacing:'0.5px',transition:'all 0.18s'}}>
+              ✦ AI
+            </button>
+          </>
+        }
+      />
 
       {/* Tabs */}
       <div style={{display:'flex',gap:'2px',background:'var(--card)',border:'1px solid var(--border)',borderRadius:'12px',padding:'4px',marginBottom:'20px',overflowX:'auto'}}>

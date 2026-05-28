@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import PageHeader from '../components/PageHeader';
 
 const TENANT = 'whitecross';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -327,22 +328,18 @@ export default function Calendar() {
   return (
     <div style={S.wrap}>
 
-      {/* Header */}
-      <div style={S.header}>
-        <div>
-          <h1 style={S.title}>
-            Calendar{' '}
-            <span style={{ display: 'inline-block', width: '28px', height: '5px', borderRadius: '3px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', verticalAlign: 'middle', marginLeft: '6px' }} />
-          </h1>
-          <p style={S.subLabel}>{bookings.length} bookings loaded · click any day for details</p>
-        </div>
-        <div style={S.navRow}>
-          <button onClick={goToday} style={S.todayBtn}>Today</button>
-          <button onClick={prevMonth} style={S.navBtn}>&#8249;</button>
-          <span style={S.monthLabel}>{MONTHS[month]} {year}</span>
-          <button onClick={nextMonth} style={S.navBtn}>&#8250;</button>
-        </div>
-      </div>
+      <PageHeader
+        title="Calendar"
+        subtitle={`${bookings.length} bookings loaded · click any day for details`}
+        actions={
+          <div style={S.navRow}>
+            <button onClick={goToday} style={S.todayBtn}>Today</button>
+            <button onClick={prevMonth} style={S.navBtn}>&#8249;</button>
+            <span style={S.monthLabel}>{MONTHS[month]} {year}</span>
+            <button onClick={nextMonth} style={S.navBtn}>&#8250;</button>
+          </div>
+        }
+      />
 
       {/* Month stats */}
       <div style={S.statsRow}>

@@ -65,8 +65,8 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
           const aptCount = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length;
           return (
             <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
-              style={{ flex:1, padding:'10px 14px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer', borderTop:'2px solid '+barber.color+'55', transition:'background 0.15s' }}
-              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(212,175,55,0.04)'; }}
+              style={{ flex:1, padding:'10px 14px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer', borderTop:'3px solid '+barber.color+'aa', transition:'background 0.15s' }}
+              onMouseEnter={e=>{ e.currentTarget.style.background='rgba(212,175,55,0.1)'; }}
               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
               <div style={{ fontSize:'0.72rem', fontWeight:'800', color:barber.color, letterSpacing:'2px', textTransform:'uppercase' }}>{barber.name}</div>
               <div style={{ fontSize:'0.55rem', color:'var(--muted)', letterSpacing:'0.5px' }}>{aptCount} apt{aptCount !== 1 ? 's' : ''} · {minsToLabel(OPEN_MINS)}–{minsToLabel(CLOSE_MINS)}</div>
@@ -77,7 +77,7 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
       <div style={{ display:'flex', position:'relative' }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }}>
           {slots.map(slot => (
-            <div key={slot.mins} style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.06)', background:'transparent', position:'relative', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', paddingRight:'6px' }}>
+            <div key={slot.mins} style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.1)', background: slot.h % 2 === 0 ? 'var(--slot-bg)' : 'var(--slot-alt)', position:'relative', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', paddingRight:'6px' }}>
               {slot.m === 0 && (
                 <span style={{ fontSize:'0.6rem', color:'var(--muted)', lineHeight:'1', marginTop:'2px', whiteSpace:'nowrap' }}>
                   {slot.h < 12 ? slot.h + ':00' : slot.h === 12 ? '12:00' : (slot.h - 12) + ':00'}{slot.h < 12 ? 'am' : 'pm'}
@@ -97,9 +97,9 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
                 return (
                   <div key={slot.mins}
                     onClick={(e) => { if (!inactive) { onAnySlotClick && onAnySlotClick(); const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: slot.h, mins: slot.mins, x: rect.left + 10, y: rect.top }); } }}
-                    style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.06)', cursor:inactive?'default':'pointer', background:inactive?'var(--slot-past)':'var(--slot-bg)', transition:'background 0.1s', position:'relative' }}
+                    style={{ height:slotHeight, borderBottom:slot.m===0?'1px solid var(--border)':'1px solid rgba(212,175,55,0.1)', cursor:inactive?'default':'pointer', background: inactive ? 'var(--slot-past)' : slot.h % 2 === 0 ? 'var(--slot-bg)' : 'var(--slot-alt)', transition:'background 0.1s', position:'relative' }}
                     onMouseEnter={e=>{ if(!inactive) e.currentTarget.style.background='var(--slot-hover)'; }}
-                    onMouseLeave={e=>e.currentTarget.style.background=inactive?'var(--slot-past)':'var(--slot-bg)'}>
+                    onMouseLeave={e=>e.currentTarget.style.background=inactive?'var(--slot-past)':slot.h%2===0?'var(--slot-bg)':'var(--slot-alt)'}>
                   </div>
                 );
               })}

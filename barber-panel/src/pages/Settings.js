@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
+import PageHeader from '../components/PageHeader';
 import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
@@ -678,20 +679,16 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '680px' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '1.4rem', color: '#c0c0c0', marginBottom: '4px' }}>Settings</h1>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-          </div>
-          <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Shop info, opening hours & platform settings</p>
-        </div>
-        <button onClick={handleSave} disabled={saving}
-          style={{ padding: '12px 28px', background: saving ? 'rgba(180,180,180,0.4)' : 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
-          {saving ? 'Saving...' : '💾 Save Changes'}
-        </button>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Shop info, opening hours & platform settings"
+        actions={
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: '12px 28px', background: saving ? 'rgba(180,180,180,0.4)' : 'linear-gradient(135deg, #c0c0c0, #666666)', border: 'none', borderRadius: '8px', color: '#000', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
+            {saving ? 'Saving...' : '💾 Save Changes'}
+          </button>
+        }
+      />
 
       {saved && (
         <div style={{ padding: '12px 16px', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)', borderRadius: '8px', color: '#4caf50', fontSize: '0.85rem' }}>

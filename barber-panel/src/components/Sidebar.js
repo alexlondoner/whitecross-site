@@ -9,7 +9,7 @@ const navItems = [
   { id: 'bookings',       icon: '📅', label: 'Bookings' },
   { id: 'calendar',       icon: '🗓️', label: 'Calendar' },
   { id: 'clients',        icon: '👥', label: 'Clients' },
-  { id: 'barbers',        icon: '✂️', label: 'Team Members' },
+  { id: 'barbers',        icon: '🧑‍💼', label: 'Team Members' },
   { id: 'reports',        icon: '📈', label: 'Reports' },
   { id: 'marketing',      icon: '📣', label: 'Marketing' },
   { id: 'online-profile', icon: '🌐', label: 'Online Profile' },
@@ -331,27 +331,38 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           title={isCollapsed ? 'Sign Out' : ''}
           style={{
             width: '100%',
-            padding: isCollapsed ? '8px 0' : '9px 0',
-            background: 'transparent',
-            border: `1px solid ${t.red}44`,
+            display: 'flex', alignItems: 'center',
+            padding: isCollapsed ? '10px 0' : '9px 12px',
             borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
             color: t.red,
-            fontSize: isCollapsed ? '1rem' : '0.78rem',
             cursor: 'pointer',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
             transition: 'all 0.15s',
+            borderLeft: `3px solid ${t.red}55`,
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
           }}
           onMouseOver={e => {
-            e.currentTarget.style.background = `${t.red}12`;
-            e.currentTarget.style.borderColor = `${t.red}66`;
+            e.currentTarget.style.background = `${t.red}10`;
+            e.currentTarget.style.borderLeftColor = `${t.red}aa`;
           }}
           onMouseOut={e => {
             e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = `${t.red}44`;
+            e.currentTarget.style.borderLeftColor = `${t.red}55`;
           }}
         >
-          {isCollapsed ? '🚪' : 'Sign Out'}
+          <span style={{ fontSize: isCollapsed ? '1.1rem' : '1rem', minWidth: isCollapsed ? 'auto' : '26px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </span>
+          {!isCollapsed && (
+            <span style={{ marginLeft: '10px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', letterSpacing: '0.3px' }}>
+              Sign Out
+            </span>
+          )}
         </button>
       </div>
     </aside>

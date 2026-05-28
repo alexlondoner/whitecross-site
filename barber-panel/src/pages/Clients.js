@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import config from '../config';
+import PageHeader from '../components/PageHeader';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -573,28 +574,22 @@ export default function Clients({ isAdmin = true }) {
   return (
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: 'calc(100vh - 64px)' }}>
-      {/* Header + Tabs + Add Client in one row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', margin: 0, fontWeight: 900, letterSpacing: '-0.5px', lineHeight: 1 }}>Clients</h1>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-          </div>
-          <div style={{ fontSize: '0.92rem', color: '#d4af37', fontWeight: 700, marginTop: '2px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ color: 'var(--muted)', fontWeight: 500, fontSize: '0.95rem' }}>{allClients.length} total clients · {totalVisits} visits</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginRight: '8px' }}>
-            <button onClick={() => setTab('list')} style={{ padding: '8px 18px', border: 'none', background: tab === 'list' ? 'rgba(212,175,55,0.15)' : 'transparent', color: tab === 'list' ? '#d4af37' : 'var(--muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}>All Clients</button>
-            <button onClick={() => setTab('segments')} style={{ padding: '8px 18px', border: 'none', background: tab === 'segments' ? 'rgba(212,175,55,0.15)' : 'transparent', color: tab === 'segments' ? '#d4af37' : 'var(--muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}>Segments</button>
-          </div>
-          <button onClick={() => setShowAddForm(true)}
-            style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
-            Add Client
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Clients"
+        subtitle={`${allClients.length} total clients · ${totalVisits} visits`}
+        actions={
+          <>
+            <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button onClick={() => setTab('list')} style={{ padding: '8px 18px', border: 'none', background: tab === 'list' ? 'rgba(212,175,55,0.15)' : 'transparent', color: tab === 'list' ? '#d4af37' : 'var(--muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}>All Clients</button>
+              <button onClick={() => setTab('segments')} style={{ padding: '8px 18px', border: 'none', background: tab === 'segments' ? 'rgba(212,175,55,0.15)' : 'transparent', color: tab === 'segments' ? '#d4af37' : 'var(--muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}>Segments</button>
+            </div>
+            <button onClick={() => setShowAddForm(true)}
+              style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
+              Add Client
+            </button>
+          </>
+        }
+      />
 
         {/* Active segment banner */}
         {activeSegment && (

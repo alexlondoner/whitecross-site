@@ -3,6 +3,7 @@ import config from '../config';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import Finance from './Finance';
+import PageHeader from '../components/PageHeader';
 
 // ── Normalizers ───────────────────────────────────────────────────────────────
 
@@ -495,24 +496,20 @@ export default function Reports() {
         <button style={sectionTabStyle('finance')} onClick={() => setSection('finance')}>Finance</button>
       </div>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Reports</h1>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
+      <PageHeader
+        title="Reports"
+        subtitle={`${active.length} bookings · ${checkedOut.length} checked out`}
+        actions={
+          <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+            {PERIODS.map(p => (
+              <button key={p.id} onClick={() => setPeriod(p.id)}
+                style={{ padding: '7px 11px', border: 'none', cursor: 'pointer', background: period === p.id ? '#d4af37' : 'transparent', color: period === p.id ? '#000' : 'var(--muted)', fontSize: '0.7rem', fontWeight: period === p.id ? '700' : '400', whiteSpace: 'nowrap' }}>
+                {p.label}
+              </button>
+            ))}
           </div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--muted)', margin: '2px 0 0' }}>{active.length} bookings · {checkedOut.length} checked out</p>
-        </div>
-        <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
-          {PERIODS.map(p => (
-            <button key={p.id} onClick={() => setPeriod(p.id)}
-              style={{ padding: '7px 11px', border: 'none', cursor: 'pointer', background: period === p.id ? '#d4af37' : 'transparent', color: period === p.id ? '#000' : 'var(--muted)', fontSize: '0.7rem', fontWeight: period === p.id ? '700' : '400', whiteSpace: 'nowrap' }}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '2px', borderBottom: '1px solid var(--border)' }}>

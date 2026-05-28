@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
+import PageHeader from '../components/PageHeader';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
@@ -177,18 +178,15 @@ export default function Barbers({ isAdmin }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>Team Members</h1>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-          </div>
-          <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{barbers.length} team member{barbers.length !== 1 ? 's' : ''}</p>
-        </div>
-        <button onClick={openAdd} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
-          + Add Team Member
-        </button>
-      </div>
+      <PageHeader
+        title="Team Members"
+        subtitle={`${barbers.length} team member${barbers.length !== 1 ? 's' : ''}`}
+        actions={
+          <button onClick={openAdd} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', letterSpacing: '1px' }}>
+            + Add Team Member
+          </button>
+        }
+      />
 
       {saved && (
         <div style={{ padding: '12px 16px', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)', borderRadius: '8px', color: '#4caf50', fontSize: '0.85rem' }}>

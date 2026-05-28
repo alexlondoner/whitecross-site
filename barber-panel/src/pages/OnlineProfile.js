@@ -3,6 +3,7 @@ import Services from './Services';
 import Gallery from './Gallery';
 import Announcements from './Announcements';
 import Products from './Products';
+import PageHeader from '../components/PageHeader';
 
 const TABS = [
   { id: 'services', label: 'Services' },
@@ -23,17 +24,10 @@ export default function OnlineProfile() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1 style={{ margin: 0, fontSize: '1.45rem', color: 'var(--text)', letterSpacing: '0.3px' }}>
-            Online Profile
-          </h1>
-          <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-        </div>
-        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted)' }}>
-          Manage all website-facing content from one place.
-        </p>
-      </div>
+      <PageHeader
+        title="Online Profile"
+        subtitle="Manage all website-facing content from one place."
+      />
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {TABS.map(function(tab) {

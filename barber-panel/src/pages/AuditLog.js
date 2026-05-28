@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import PageHeader from '../components/PageHeader';
 
 const ACTION_META = {
   CANCEL_BOOKING:  { label: 'Cancelled',    color: '#ff5252' },
@@ -83,15 +84,10 @@ export default function AuditLog({ tenantId }) {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: T.gold, fontSize: '1.4rem', fontWeight: 700, letterSpacing: '2px', margin: 0 }}>
-          ACTIVITY LOG
-        </h1>
-        <p style={{ color: T.muted, fontSize: '0.78rem', marginTop: '4px' }}>
-          Every action taken by staff — visible only to you
-        </p>
-      </div>
+      <PageHeader
+        title="Activity Log"
+        subtitle="Every action taken by staff — visible only to you"
+      />
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>

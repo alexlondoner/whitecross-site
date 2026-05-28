@@ -459,7 +459,12 @@ const activeBarbers = barberFilter === 'all'
         <div style={{ position:'fixed', top:'12px', right:'24px', zIndex:210 }}>
           <button onClick={()=>setShowPillSettings(v=>!v)}
             style={{ width:'42px', height:'42px', display:'flex', alignItems:'center', justifyContent:'center', background: showPillSettings ? 'rgba(212,175,55,0.18)' : 'var(--card)', border:'1px solid ' + (showPillSettings ? '#d4af37' : 'var(--border)'), borderRadius:'50%', color: showPillSettings ? '#d4af37' : 'var(--muted)', cursor:'pointer', fontSize:'0.9rem', transition:'all 0.15s' }}
-            title="Customise pills">⚙️</button>
+            title="Customise pills">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
           {showPillSettings && (
             <div style={{ position:'fixed', top:'62px', right:'24px', background:'var(--card2)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:'12px', padding:'14px', zIndex:210, minWidth:'210px', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
               <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'700', marginBottom:'10px' }}>Show / Hide Pills</div>

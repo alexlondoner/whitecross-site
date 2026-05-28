@@ -1,6 +1,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import config from '../config';
+import PageHeader from '../components/PageHeader';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { deleteBooking } from '../firestoreActions';
@@ -373,21 +374,15 @@ export default function Bookings({ isAdmin }) {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h1 style={{ fontSize: '1.4rem', color: '#d4af37', marginBottom: '4px' }}>All Bookings</h1>
-            <span style={{ display: 'inline-block', width: '32px', height: '6px', borderRadius: '4px', background: 'linear-gradient(90deg,#d4af37,#b8860b)', marginTop: '8px' }} />
-          </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-            {loading ? 'Loading...' : `${filtered.length} shown${totalFetched !== filtered.length ? ` of ${totalFetched} fetched` : ''}`}
-          </p>
-        </div>
-        <button onClick={exportCSV} style={{ padding: '9px 16px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontWeight: '600', fontSize: '0.82rem' }}>
-          Export CSV
-        </button>
-      </div>
+      <PageHeader
+        title="All Bookings"
+        subtitle={loading ? 'Loading...' : `${filtered.length} shown${totalFetched !== filtered.length ? ` of ${totalFetched} fetched` : ''}`}
+        actions={
+          <button onClick={exportCSV} style={{ padding: '9px 16px', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', color: '#d4af37', cursor: 'pointer', fontWeight: '600', fontSize: '0.82rem' }}>
+            Export CSV
+          </button>
+        }
+      />
 
       {/* Period selector + nav */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
