@@ -583,19 +583,14 @@ const activeBarbers = barberFilter === 'all'
                       { key:'website',   label:'Website',  color:'#4caf50', count: sourceCount.website },
                       { key:'walkin',    label:'Walk-in',  color:'#ff9800', count: sourceCount.walkin },
                       { key:'app',       label:'App',      color:'#e91e63', count: sourceCount.app },
-                    ].map((s, i, arr) => (
-                      <React.Fragment key={s.key}>
-                        <div
-                          onClick={() => setPillFilter(pillFilter === s.key ? null : s.key)}
-                          style={{ display:'flex', alignItems:'center', gap:'5px', padding:'0 12px', height:'100%', cursor:'pointer', opacity: pillFilter && pillFilter !== s.key ? 0.4 : 1, transition:'opacity 0.12s' }}
-                        >
-                          <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: s.count > 0 ? s.color : 'var(--muted2)', flexShrink:0 }} />
-                          <span style={{ fontSize:'0.72rem', fontWeight:'500', color:'var(--muted)', whiteSpace:'nowrap' }}>{s.label}</span>
-                          <span style={{ fontSize:'0.72rem', fontWeight:'800', color: s.count > 0 ? s.color : 'var(--muted2)', minWidth:'12px' }}>{s.count}</span>
-                        </div>
-                        {i < arr.length - 1 && <div style={{ width:'1px', height:'16px', background:'var(--border)', flexShrink:0 }} />}
-                      </React.Fragment>
-                    ))}
+                    ].flatMap((s, i, arr) => [
+                      <div key={s.key} style={{ display:'flex', alignItems:'center', gap:'5px', padding:'0 12px', height:'100%' }}>
+                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: s.count > 0 ? s.color : 'var(--muted2)', flexShrink:0 }} />
+                        <span style={{ fontSize:'0.72rem', fontWeight:'500', color:'var(--muted)', whiteSpace:'nowrap' }}>{s.label}</span>
+                        <span style={{ fontSize:'0.72rem', fontWeight:'800', color: s.count > 0 ? s.color : 'var(--muted2)', minWidth:'12px' }}>{s.count}</span>
+                      </div>,
+                      i < arr.length - 1 && <div key={s.key+'-sep'} style={{ width:'1px', height:'16px', background:'var(--border)', flexShrink:0 }} />,
+                    ])}
                   </div>
                 </div>
               )}
