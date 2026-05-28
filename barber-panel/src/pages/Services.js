@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config, { seedServices } from '../config';
 import { db } from '../firebase';
-import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const TENANT = 'whitecross';
 const CATEGORIES = ['Exclusive Bundles', 'Standard', 'Extras'];
@@ -36,9 +36,10 @@ export default function Services() {
 
   const fetchServices = async () => {
     try {
-      const snap = await getDocs(query(collection(db, `tenants/${TENANT}/services`), orderBy('order', 'asc')));
+      const snap = await getDocs(collection(db, `tenants/${TENANT}/services`));
       if (!snap.empty) {
-        const svcs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        let svcs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        svcs.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         const needsBackfill = svcs.filter(s => !s.description || !s.stripeUrl || !s.category);
         if (needsBackfill.length > 0) {
           await Promise.all(needsBackfill.map(s => {
@@ -66,14 +67,18 @@ export default function Services() {
         config.services = svcs.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
       } else {
         const seeded = await Promise.all(
-          config.services.map(async (s, i) => {
+          seedServices.map(async (s, i) => {
             const ref = await addDoc(collection(db, `tenants/${TENANT}/services`), { ...s, order: i, active: true });
             return { docId: ref.id, ...s, order: i, active: true };
           })
         );
         syncServices(seeded);
+        config.services = seeded.map(s => ({ id: s.id, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error('Services fetch error:', e);
+      syncServices(seedServices.map((s, i) => ({ docId: s.id, ...s, order: i })));
+    }
     finally { setLoading(false); }
   };
 

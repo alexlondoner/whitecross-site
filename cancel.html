@@ -398,10 +398,10 @@
         const apptMs = data.startTime ? data.startTime.toMillis() : 0;
         const hoursUntil = (apptMs - Date.now()) / 3600000;
         const policyEl = document.getElementById('policyMsg');
-        if (hoursUntil >= 24) {
-            policyEl.innerHTML = `<div class="policy-ok">✅ Free cancellation — your appointment is more than 24 hours away.</div>`;
+        if (hoursUntil >= 12) {
+            policyEl.innerHTML = `<div class="policy-ok">✅ Free cancellation — your appointment is more than 12 hours away.</div>`;
         } else if (hoursUntil > 0) {
-            policyEl.innerHTML = `<div class="policy-warn">⚠️ Your appointment is in less than 24 hours. Late cancellations may not be eligible for a refund.</div>`;
+            policyEl.innerHTML = `<div class="policy-warn">⚠️ Your appointment is in less than 12 hours. Late cancellations are not eligible for a refund — deposit is forfeited.</div>`;
         } else {
             policyEl.innerHTML = `<div class="policy-warn">⚠️ This appointment has already passed.</div>`;
         }

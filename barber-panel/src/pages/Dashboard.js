@@ -72,7 +72,7 @@ export default function Dashboard({ isAdmin = true, initialDate }) {
   const [showPillSettings, setShowPillSettings] = useState(false);
   const [pillsCollapsed, setPillsCollapsed] = useState(false);
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
-  const ALL_PILLS = ['total','confirmed','pending','checkedout','unpaid','revenue','discount','tips','booksy','fresha','treatwell','website','walkin','app','productsale','addonsale'];
+  const ALL_PILLS = ['total','confirmed','pending','checkedout','revenue','discount','tips'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
   const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
@@ -327,6 +327,7 @@ const activeBarbers = barberFilter === 'all'
       })()
     : (() => { const y=currentMonth.getFullYear(), m=currentMonth.getMonth(); return Array.from({length:getDaysInMonth(y,m)},(_,i)=>new Date(y,m,i+1)).flatMap(d=>getForDate(d)); })();
   const checkedOutCount = statsBookings.filter(b => b.status === 'CHECKED_OUT').length;
+  const pendingCount = statsBookings.filter(b => b.status === 'PENDING').length;
   const sourceCount = {
     booksy:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'booksy').length,
     fresha:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'fresha').length,
@@ -335,7 +336,7 @@ const activeBarbers = barberFilter === 'all'
     walkin:    statsBookings.filter(b => (b.source||'').toLowerCase() === 'walk-in').length,
     app:       statsBookings.filter(b => (b.source||'').toLowerCase() === 'app').length,
   };
-  const hasAnySourcePill = Object.values(sourceCount).some(c => c > 0);
+
   const unpaidCount = statsBookings.filter(b => b.status === 'UNPAID').length;
   const revenue = statsBookings
     .filter(b => b.status === 'CHECKED_OUT')
@@ -439,21 +440,11 @@ const activeBarbers = barberFilter === 'all'
         </button>
         {!pillsCollapsed && visiblePills.has('total') && <StatPill label="Total" value={statsBookings.length} color="#d4af37" active={pillFilter==='total'} onClick={()=>setPillFilter(pillFilter==='total'?null:'total')} />}
         {!pillsCollapsed && visiblePills.has('confirmed') && <StatPill label="Confirmed" value={statsBookings.filter(b=>b.status==='CONFIRMED').length} color="#4caf50" active={pillFilter==='confirmed'} onClick={()=>setPillFilter(pillFilter==='confirmed'?null:'confirmed')} />}
-        {!pillsCollapsed && visiblePills.has('pending') && <StatPill label="Pending" value={statsBookings.filter(b=>b.status==='PENDING').length} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
+        {!pillsCollapsed && visiblePills.has('pending') && pendingCount > 0 && <StatPill label="Pending" value={pendingCount} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
         {!pillsCollapsed && visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
-        {!pillsCollapsed && (visiblePills.has('unpaid') || unpaidCount > 0) && <StatPill label="Unpaid" value={unpaidCount} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
         {!pillsCollapsed && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
         {!pillsCollapsed && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
         {!pillsCollapsed && visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
-        {!pillsCollapsed && hasAnySourcePill && (visiblePills.has('total')||visiblePills.has('confirmed')||visiblePills.has('pending')||visiblePills.has('checkedout')||visiblePills.has('revenue')||visiblePills.has('discount')||visiblePills.has('tips')) && <div style={{ width:'1px', background:'var(--border)', margin:'0 4px', alignSelf:'stretch' }} />}
-        {!pillsCollapsed && visiblePills.has('booksy') && sourceCount.booksy > 0 && <StatPill label="Booksy" value={sourceCount.booksy} color="#9c27b0" active={pillFilter==='booksy'} onClick={()=>setPillFilter(pillFilter==='booksy'?null:'booksy')} />}
-        {!pillsCollapsed && visiblePills.has('fresha') && sourceCount.fresha > 0 && <StatPill label="Fresha" value={sourceCount.fresha} color="#2196f3" active={pillFilter==='fresha'} onClick={()=>setPillFilter(pillFilter==='fresha'?null:'fresha')} />}
-        {!pillsCollapsed && visiblePills.has('treatwell') && sourceCount.treatwell > 0 && <StatPill label="Treatwell" value={sourceCount.treatwell} color="#ff7043" active={pillFilter==='treatwell'} onClick={()=>setPillFilter(pillFilter==='treatwell'?null:'treatwell')} />}
-        {!pillsCollapsed && visiblePills.has('website') && sourceCount.website > 0 && <StatPill label="Website" value={sourceCount.website} color="#4caf50" active={pillFilter==='website'} onClick={()=>setPillFilter(pillFilter==='website'?null:'website')} />}
-        {!pillsCollapsed && visiblePills.has('walkin') && sourceCount.walkin > 0 && <StatPill label="Walk-in" value={sourceCount.walkin} color="#ff9800" active={pillFilter==='walkin'} onClick={()=>setPillFilter(pillFilter==='walkin'?null:'walkin')} />}
-        {!pillsCollapsed && visiblePills.has('app') && sourceCount.app > 0 && <StatPill label="App" value={sourceCount.app} color="#e91e63" active={pillFilter==='app'} onClick={()=>setPillFilter(pillFilter==='app'?null:'app')} />}
-        {!pillsCollapsed && visiblePills.has('productsale') && <StatPill label="Products Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldProducts).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#03a9f4" active={pillFilter==='productsale'} onClick={()=>setPillFilter(pillFilter==='productsale'?null:'productsale')} />}
-        {!pillsCollapsed && visiblePills.has('addonsale') && <StatPill label="Add-ons Sold" value={statsBookings.reduce((s,b)=>s+normalizeSoldProducts(b.soldAddOns).reduce((ss,p)=>ss+(parseInt(p.qty,10)||0),0),0)} color="#ff9800" active={pillFilter==='addonsale'} onClick={()=>setPillFilter(pillFilter==='addonsale'?null:'addonsale')} />}
 
         {/* Gear button — fixed far right, same size as bell */}
         <div style={{ position:'fixed', top:'12px', right:'24px', zIndex:210 }}>
@@ -473,18 +464,9 @@ const activeBarbers = barberFilter === 'all'
                 {key:'confirmed',   label:'Confirmed',      color:'#4caf50'},
                 {key:'pending',     label:'Pending',        color:'#ff9800'},
                 {key:'checkedout',  label:'Checked Out',    color:'#2196f3'},
-                {key:'unpaid',      label:'Unpaid',         color:'#ff5252'},
                 {key:'revenue',     label:'Revenue',        color:'#d4af37'},
                 {key:'discount',    label:'Discount Given', color:'#4caf50'},
                 {key:'tips',        label:'Tips',           color:'#ff9800'},
-                {key:'booksy',      label:'Booksy',         color:'#9c27b0'},
-                {key:'fresha',      label:'Fresha',         color:'#2196f3'},
-                {key:'treatwell',   label:'Treatwell',      color:'#ff7043'},
-                {key:'website',     label:'Website',        color:'#4caf50'},
-                {key:'walkin',      label:'Walk-in',        color:'#ff9800'},
-                {key:'app',         label:'App',            color:'#e91e63'},
-                {key:'productsale', label:'Products Sold',  color:'#03a9f4'},
-                {key:'addonsale',   label:'Add-ons Sold',   color:'#ff9800'},
               ].map(p => (
                 <label key={p.key} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
                   <div onClick={()=>togglePillVisibility(p.key)}
@@ -593,7 +575,28 @@ const activeBarbers = barberFilter === 'all'
                     />
                   )}
                   <TimeGrid date={selectedDate} bookings={(bookingsByDate[formatDateKey(selectedDate)] || []).filter(b => b.status !== 'CANCELLED')} barbers={activeBarbers} slotHeight={slotHeight} specialHours={specialHours} onSlotClick={openNewBooking} onWalkIn={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setSelectedBooking(null); setShowWalkIn(true); setShowBlockTime(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBlockTime={(barber, hour, mins) => { setFormPreset({barber, hour, mins, date: selectedDate}); setShowBlockTime(true); setShowWalkIn(false); setShowForm(false); setShowBookingProducts(false); setShowProductSale(false); }} onBookingClick={handleBookingClick} selectedBooking={selectedBooking} onAnySlotClick={() => { setShowWalkIn(false); setShowForm(false); setShowBlockTime(false); setShowBookingProducts(false); setShowProductSale(false); setSelectedBooking(null); }} />
-                  <div style={{ height:'40px', flexShrink:0, background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px' }} />
+                  <div style={{ flexShrink:0, background:'var(--card)', borderTop:'1px solid var(--border)', borderBottomLeftRadius:'12px', borderBottomRightRadius:'12px', display:'flex', alignItems:'center', gap:'0', padding:'0 16px', height:'40px', overflowX:'auto' }}>
+                    {[
+                      { key:'booksy',    label:'Booksy',   color:'#9c27b0', count: sourceCount.booksy },
+                      { key:'fresha',    label:'Fresha',   color:'#2196f3', count: sourceCount.fresha },
+                      { key:'treatwell', label:'Treatwell',color:'#ff7043', count: sourceCount.treatwell },
+                      { key:'website',   label:'Website',  color:'#4caf50', count: sourceCount.website },
+                      { key:'walkin',    label:'Walk-in',  color:'#ff9800', count: sourceCount.walkin },
+                      { key:'app',       label:'App',      color:'#e91e63', count: sourceCount.app },
+                    ].map((s, i, arr) => (
+                      <React.Fragment key={s.key}>
+                        <div
+                          onClick={() => setPillFilter(pillFilter === s.key ? null : s.key)}
+                          style={{ display:'flex', alignItems:'center', gap:'5px', padding:'0 12px', height:'100%', cursor:'pointer', opacity: pillFilter && pillFilter !== s.key ? 0.4 : 1, transition:'opacity 0.12s' }}
+                        >
+                          <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: s.count > 0 ? s.color : 'var(--muted2)', flexShrink:0 }} />
+                          <span style={{ fontSize:'0.72rem', fontWeight:'500', color:'var(--muted)', whiteSpace:'nowrap' }}>{s.label}</span>
+                          <span style={{ fontSize:'0.72rem', fontWeight:'800', color: s.count > 0 ? s.color : 'var(--muted2)', minWidth:'12px' }}>{s.count}</span>
+                        </div>
+                        {i < arr.length - 1 && <div style={{ width:'1px', height:'16px', background:'var(--border)', flexShrink:0 }} />}
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>
               )}
               {(selectedBooking || showForm || showWalkIn || showBlockTime || showBookingProducts) && <ResizeHandle onResize={() => {}} />}

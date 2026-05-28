@@ -198,7 +198,10 @@ export default function Marketing({ tenantId, isAdmin }) {
   const sameWeekLastMonthEnd = useMemo(()=>{
     const d=new Date(sameWeekLastMonthStart); d.setDate(d.getDate()+7); return d;
   },[sameWeekLastMonthStart]);
+  // Elapsed-matched end: same ms into that week as we are into this week
+  const sameWeekLastMonthElapsedEnd = useMemo(()=>new Date(sameWeekLastMonthStart.getTime()+(now-thisWeekMon)),[sameWeekLastMonthStart,now,thisWeekMon]);
   const sameWeekLastMonthBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=sameWeekLastMonthStart&&d<sameWeekLastMonthEnd; }),[bookings,sameWeekLastMonthStart,sameWeekLastMonthEnd]);
+  const sameWeekLastMonthElapsedBks = useMemo(()=>bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=sameWeekLastMonthStart&&d<sameWeekLastMonthElapsedEnd; }),[bookings,sameWeekLastMonthStart,sameWeekLastMonthElapsedEnd]);
 
   // ── MoM metrics ─────────────────────────────────────────────
   const mom = useMemo(()=>{
@@ -207,17 +210,21 @@ export default function Marketing({ tenantId, isAdmin }) {
     const tmCount= thisMonthBks.length;
     const lmCount= lastMonthBks.length;
     const lmFullRev = lastMonthFull.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
-    // Same week last month
-    const swRev  = sameWeekLastMonthBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
-    const twRev  = thisWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    // Same week last month — elapsed-matched and full week
+    const swElapsedRev   = sameWeekLastMonthElapsedBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const swElapsedCount = sameWeekLastMonthElapsedBks.length;
+    const swFullRev      = sameWeekLastMonthBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const swFullCount    = sameWeekLastMonthBks.length;
+    const twRev          = thisWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const twCount        = thisWeekBks.length;
     return {
       tmRev, lmRev, tmCount, lmCount, lmFullRev,
-      swRev, twRev,
+      swElapsedRev, swElapsedCount, swFullRev, swFullCount, twRev, twCount,
       revTrend:   trend(tmRev,  lmRev),
       countTrend: trend(tmCount,lmCount),
-      weekVsLastMonth: trend(twRev, swRev),
+      weekVsLastMonth: trend(twRev, swElapsedRev),
     };
-  },[thisMonthBks,lastMonthBks,lastMonthFull,sameWeekLastMonthBks,thisWeekBks]);
+  },[thisMonthBks,lastMonthBks,lastMonthFull,sameWeekLastMonthBks,sameWeekLastMonthElapsedBks,thisWeekBks]);
 
   // ── Last 12 months trend ─────────────────────────────────────
   const monthlyTrend = useMemo(()=>{
@@ -844,10 +851,12 @@ export default function Marketing({ tenantId, isAdmin }) {
               label: 'This week vs same week last month',
               sub: `${sameWeekLastMonthStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · ${overview.daysElapsedLabel} elapsed`,
               curr: `£${mom.twRev.toFixed(0)}`,
-              prev: `£${mom.swRev.toFixed(0)}`,
+              prev: `£${mom.swElapsedRev.toFixed(0)}`,
               tr: mom.weekVsLastMonth,
+              elapsedVal: `£${mom.swElapsedRev.toFixed(0)}`,
+              fullVal: `£${mom.swFullRev.toFixed(0)}`,
             },
-          ].map(({label,sub,curr,prev,tr})=>(
+          ].map(({label,sub,curr,prev,tr,elapsedVal,fullVal})=>(
             <div key={label+sub} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:'12px',padding:'12px 16px',display:'flex',flexDirection:'column',gap:'4px'}}>
               <div style={{fontSize:'0.58rem',color:'var(--muted)',letterSpacing:'1.5px',textTransform:'uppercase',fontWeight:700}}>{label}</div>
               <div style={{fontSize:'0.6rem',color:'var(--muted)'}}>{sub}</div>
@@ -858,6 +867,13 @@ export default function Marketing({ tenantId, isAdmin }) {
               {tr && (
                 <div style={{fontSize:'0.72rem',fontWeight:700,color:tr.up?'#4caf50':'#ef5350'}}>
                   {tr.up?'↑':'↓'} {Math.abs(tr.d)}% month-over-month
+                </div>
+              )}
+              {elapsedVal && (
+                <div style={{marginTop:'4px',padding:'6px 8px',background:'var(--card2)',borderRadius:'6px',border:'1px solid var(--border)'}}>
+                  <div style={{fontSize:'0.58rem',color:'var(--muted)',fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',marginBottom:'2px'}}>Same Week Last Month</div>
+                  <div style={{fontSize:'0.65rem',color:'var(--gold-dark)',fontWeight:600}}>Same {overview.daysElapsedLabel}: <span style={{color:'#c9a84c'}}>{elapsedVal}</span></div>
+                  <div style={{fontSize:'0.65rem',color:'var(--muted)',fontWeight:600}}>Full week: <span style={{color:'var(--muted)'}}>{fullVal}</span></div>
                 </div>
               )}
             </div>

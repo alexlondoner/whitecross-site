@@ -720,6 +720,16 @@
             if (!result) { showState('stateNotFound'); return; }
             currentDocRef      = result.ref;
             currentBookingData = result.data;
+
+            const apptMs = result.data.startTime ? result.data.startTime.toMillis() : 0;
+            const hoursUntil = (apptMs - Date.now()) / 3600000;
+            if (hoursUntil < 2 && hoursUntil > -1) {
+                const errDiv = document.getElementById('notFoundMsg');
+                if (errDiv) errDiv.innerHTML = 'Rescheduling is only available up to 2 hours before your appointment. To change, please call us on <a href="tel:02036215929" style="color:#d4af37;">020 3621 5929</a>.';
+                showState('stateNotFound');
+                return;
+            }
+
             selectedBarber = result.data.barberName || result.data.barberId || activeBarbers[0]?.name || '';
             renderCurrentBooking(result.data);
             renderBarberGrid();
