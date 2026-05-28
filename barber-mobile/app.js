@@ -819,11 +819,11 @@ function renderCalendar(bks){
       const{b,top,height,lane,totalLanes}=item;
       const st=(b.status||'').toUpperCase();
       const idx=window._bookings.indexOf(b);
-      const color=st==='BLOCKED'?'#6b5f43':bColor(col.name);
-      const bg=st==='CANCELLED'?`${color}0a`:st==='BLOCKED'?'rgba(42,34,24,0.9)':`${color}1a`;
-      const border=st==='CANCELLED'?`${color}44`:color;
+      const color=bColor(col.name);
+      const bg=st==='CANCELLED'?`${color}0a`:st==='BLOCKED'?`${color}18`:`${color}1a`;
+      const border=st==='CANCELLED'?`${color}44`:st==='BLOCKED'?`${color}55`:color;
       const opacity=st==='CANCELLED'?'0.45':'1';
-      const label=st==='BLOCKED'?(b.note||'Block'):(b.clientName||'Walk-in');
+      const label=st==='BLOCKED'?`⊘ ${b.note||'Blocked'}`:(b.clientName||'Walk-in');
       const paidBadge=st==='CHECKED_OUT'?`<span style="font-size:0.5rem;background:${color}33;color:${color};border-radius:3px;padding:0 3px;margin-left:3px;vertical-align:middle">✓ PAID</span>`:'';
       const svcName=(allServices.find(s=>s.id===(b.serviceId||b.service))||{}).name||b.serviceName||b.serviceId||b.service||'';
       const showSvc=height>42&&svcName;
@@ -866,8 +866,8 @@ window.openBooking=function(i){
   const startT=fmtTs(b.startTime)||b.time||'—';
   const endT=fmtTs(b.endTime);
   const timeStr=endT?`${startT} → ${endT}`:startT;
-  const chipStyle=isPaid?'background:rgba(61,139,94,0.14);color:var(--green)':st==='PENDING'?'background:rgba(155,58,58,0.14);color:var(--red)':'background:rgba(201,168,76,0.12);color:var(--gold)';
-  const chipLabel=isPaid?'PAID':st==='CONFIRMED'?'CONFIRMED':st;
+  const chipStyle=isPaid?'background:rgba(61,139,94,0.14);color:var(--green)':st==='PENDING'?'background:rgba(155,58,58,0.14);color:var(--red)':st==='BLOCKED'?'background:rgba(107,95,67,0.2);color:var(--muted)':'background:rgba(201,168,76,0.12);color:var(--gold)';
+  const chipLabel=isPaid?'PAID':st==='BLOCKED'?'⊘ BLOCKED':st==='CONFIRMED'?'CONFIRMED':st;
 
   // HERO
   document.getElementById('bk-hero').innerHTML=`<div class="bk-hero"><div class="bk-hero-top"><div><div class="bk-hero-name">${name}</div><div class="bk-hero-svc">${svc}${dur?' · '+dur+'min':''}</div></div><button class="sheet-close" onclick="closeSheet('bk')">✕</button></div><div class="bk-hero-chips"><span class="bk-status-chip" style="${chipStyle}">${chipLabel}</span><span class="bk-time-chip">🕘 ${timeStr}</span><span class="bk-barber-chip" style="color:${color};border-color:${color}40">${barber}</span></div></div>`;
@@ -880,6 +880,20 @@ window.openBooking=function(i){
   const thirdBtn=isPaid?`<div class="bk-qa-btn"><span class="bk-qa-icon">📅</span><span class="bk-qa-lbl">Next Visit</span></div>`:`<div class="bk-qa-btn" onclick="_bkReschedule()"><span class="bk-qa-icon">📅</span><span class="bk-qa-lbl">Reschedule</span></div>`;
   const fourthBtn=isPaid?`<div class="bk-qa-btn" style="border-color:rgba(201,168,76,0.2);background:rgba(201,168,76,0.04)" onclick="_bkReceipt()"><span class="bk-qa-icon">🧾</span><span class="bk-qa-lbl" style="color:var(--gold)">Receipt</span></div>`:`<div class="bk-qa-btn" style="border-color:rgba(155,58,58,0.25);background:rgba(155,58,58,0.05)" onclick="_bkNoShow()"><span class="bk-qa-icon">👻</span><span class="bk-qa-lbl" style="color:var(--red)">No Show</span></div>`;
   document.getElementById('bk-qa').innerHTML=`<div class="bk-qa">${callBtn}${waBtn}${thirdBtn}${fourthBtn}</div>`;
+
+  // BLOCKED: show minimal detail, skip client stats
+  if(st==='BLOCKED'){
+    document.getElementById('bk-body').innerHTML=`
+      <div class="bk-sec"><div class="bk-sec-t">Block Details</div>
+        <div class="bk-dr"><span class="bk-dl">Barber</span><span class="bk-dv" style="color:${color}">${barber}</span></div>
+        <div class="bk-dr"><span class="bk-dl">Time</span><span class="bk-dv">${timeStr}</span></div>
+        ${b.date?`<div class="bk-dr"><span class="bk-dl">Date</span><span class="bk-dv">${b.date}</span></div>`:''}
+        ${b.note&&b.note!=='Blocked'?`<div class="bk-sec"><div class="bk-note">&ldquo;${b.note}&rdquo;</div></div>`:''}
+      </div>`;
+    document.getElementById('bk-actions').innerHTML=`<button class="btn-ghost" onclick="closeSheet('bk')">Close</button><button class="btn-red" style="flex:2" onclick="_deleteBlock('${b._id}')">Remove Block</button>`;
+    openSheet('bk');
+    return;
+  }
 
   // BODY
   const price=pp(b.price||b.paidAmount);
@@ -1819,6 +1833,19 @@ async function openBookingById(bookingId){
   }catch(e){ toast('Error opening booking','error'); console.error(e); }
 }
 window.openBookingById=openBookingById;
+
+// ── BLOCK DELETE ─────────────────────────────────────────────────────────────
+window._deleteBlock=async function(docId){
+  if(!docId){ toast('Block ID missing','error'); return; }
+  if(!confirm('Remove this block?')) return;
+  try{
+    await deleteDoc(doc(db,`${T}/bookings`,docId));
+    closeSheet('bk');
+    toast('Block removed ✓','success');
+    _invalidateCache(toKey(selectedDate));
+    loadBookings(true);
+  }catch(ex){ toast('Error: '+ex.message,'error'); }
+};
 
 // SW message: app was already open when notification arrived
 if('serviceWorker' in navigator){
