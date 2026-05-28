@@ -209,6 +209,10 @@ useEffect(() => {
         const time = startTime ? startTime.toLocaleTimeString('en-GB', {
           hour: 'numeric', minute: '2-digit', hour12: true
         }).toUpperCase() : '';
+        const endTimeDate = d.endTime?.toDate?.();
+        const endTime = endTimeDate ? endTimeDate.toLocaleTimeString('en-GB', {
+          hour: 'numeric', minute: '2-digit', hour12: true
+        }).toUpperCase() : null;
         const rawBarber = String(d.barberId || '').trim();
         const barber = d.barberName || barberNameById[rawBarber.toLowerCase()] || rawBarber;
         return {
@@ -221,6 +225,7 @@ useEffect(() => {
           status: normalizeBookingStatus(d.status),
           date,
           time,
+          endTime,
           bookingId: d.bookingId || doc.id,
           source: normalizeBookingSource(d.source),
           paidAmount: d.paidAmount ?? '',
