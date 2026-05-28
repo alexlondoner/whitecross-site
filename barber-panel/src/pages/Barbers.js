@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import PageHeader from '../components/PageHeader';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const TENANT = 'whitecross';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -53,6 +54,8 @@ export default function Barbers({ isAdmin }) {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(Object.assign({}, defaultBarber));
   const [saved, setSaved] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const fetchBarbers = async function() {
     try {
@@ -80,19 +83,28 @@ export default function Barbers({ isAdmin }) {
   const openAdd = function() {
     setForm(normalizeBarberForm(Object.assign({}, defaultBarber, { id: 'barber-' + Date.now() })));
     setEditId(null);
+    setPhotoFile(null);
     setShowAdd(true);
   };
 
   const openEdit = function(barber) {
     setForm(normalizeBarberForm(barber));
     setEditId(barber.id);
+    setPhotoFile(null);
     setShowAdd(true);
   };
 
   const handleSave = async function() {
     if (!form.name.trim()) return;
     try {
+      setUploading(true);
       const barberId = form.id || 'barber-' + Date.now();
+      var photoUrl = form.photo || '';
+      if (photoFile) {
+        const storageRef = ref(storage, `tenants/${TENANT}/barbers/${barberId}/photo`);
+        await uploadBytes(storageRef, photoFile);
+        photoUrl = await getDownloadURL(storageRef);
+      }
       var active = typeof form.active === 'boolean' ? form.active : defaultActiveByName(form.name);
       var primaryDay = (form.workingDays || [])[0];
       var primaryHours = primaryDay && form.dayHours && form.dayHours[primaryDay]
@@ -103,7 +115,7 @@ export default function Barbers({ isAdmin }) {
         id: barberId,
         name: form.name,
         color: form.color,
-        photo: form.photo || '',
+        photo: photoUrl,
         workingDays: form.workingDays,
         hours: { open: primaryHours.open, close: primaryHours.close },
         dayHours: form.dayHours,
@@ -112,11 +124,14 @@ export default function Barbers({ isAdmin }) {
       });
       await fetchBarbers();
       setShowAdd(false);
+      setPhotoFile(null);
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 2000);
     } catch (err) {
       console.error('Save error:', err);
       alert('Error saving team member.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -168,6 +183,7 @@ export default function Barbers({ isAdmin }) {
   const handlePhoto = function(e) {
     var file = e.target.files[0];
     if (!file) return;
+    setPhotoFile(file);
     var reader = new FileReader();
     reader.onload = function(ev) {
       setForm(Object.assign({}, form, { photo: ev.target.result }));
@@ -207,7 +223,7 @@ export default function Barbers({ isAdmin }) {
                     {barber.photo ? (
                       <img src={barber.photo} alt={barber.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ fontSize: '1.8rem' }}>✂️</span>
+                      <span style={{ fontSize: '1.8rem' }}>🧑‍💼</span>
                     )}
                   </div>
                   <div>
@@ -281,7 +297,7 @@ export default function Barbers({ isAdmin }) {
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: form.color + '22', border: '2px solid ' + form.color, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 onClick={function() { document.getElementById('photoInput').click(); }}>
-                {form.photo ? <img src={form.photo} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>✂️</span>}
+                {form.photo ? <img src={form.photo} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>🧑‍💼</span>}
               </div>
               <input id="photoInput" type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
               <button onClick={function() { document.getElementById('photoInput').click(); }} style={{ fontSize: '0.72rem', color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Upload photo</button>
@@ -368,7 +384,7 @@ export default function Barbers({ isAdmin }) {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={function() { setShowAdd(false); }} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', fontWeight: '700' }}>{editId ? 'Save Changes' : 'Add Team Member'}</button>
+              <button onClick={handleSave} disabled={uploading} style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #d4af37, #b8860b)', border: 'none', borderRadius: '8px', color: '#000', cursor: uploading ? 'wait' : 'pointer', fontWeight: '700', opacity: uploading ? 0.7 : 1 }}>{uploading ? 'Uploading...' : editId ? 'Save Changes' : 'Add Team Member'}</button>
             </div>
           </div>
         </div>
