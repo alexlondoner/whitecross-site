@@ -25,7 +25,19 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
         {
-          "source": "/index.html",
+          "source": "/**",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        }
+      ],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
+      "site": "whitecrossbarbers-clientapp",
+      "public": "client-app",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "/**",
           "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
         }
       ],

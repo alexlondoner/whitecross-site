@@ -1,5 +1,11 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-05-28 (3)
+
+### Dashboard.js — Blok endTime Timestamp bug düzeltildi
+- **Sorun:** `blockTime` Firebase'e `endTime: Timestamp` olarak kaydediyor ama fetch sırasında sadece `time` (başlangıç) string'e dönüştürülüyordu; `endTime` ham Timestamp kalıyordu. `convertTo24(Timestamp)` → 0 döndürdüğünden blok her zaman 30 dakika görünüyordu.
+- **Fix:** `fetchedBookings` map'inde `endTimeDate = d.endTime?.toDate?.()` ile `endTime` string'e çevrildi (aynı format: "4:00 PM"). Bu değer `...d` spread'inden gelen Timestamp'ın üzerine yazar.
+
 ## 2026-05-28 (2)
 
 ### Dashboard.js — Source pills taşındı footer'a

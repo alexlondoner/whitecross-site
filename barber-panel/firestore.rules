@@ -4,7 +4,14 @@ service cloud.firestore {
     match /tenants/{tenantId}/bookings/{docId} {
       allow read: if true;
       allow create: if true;
-      allow update, delete: if request.auth != null;
+      allow delete: if request.auth != null;
+      allow update: if request.auth != null
+        || (
+          resource.data.clientEmail != null
+          && resource.data.clientEmail != ''
+          && request.resource.data.clientEmail == resource.data.clientEmail
+          && request.resource.data.bookingId == resource.data.bookingId
+        );
     }
     match /tenants/{tenantId}/{collection}/{docId} {
       allow read: if true;

@@ -15,6 +15,26 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<!-- ── SPLASH ── -->
+<div id="splash">
+  <div class="splash-logo">
+    <div class="splash-monogram">W</div>
+  </div>
+  <div class="splash-brand">
+    <div class="splash-name">WHITECROSS</div>
+    <div class="splash-divider">
+      <div class="splash-line"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-line"></div>
+    </div>
+    <div class="splash-sub">BARBERS</div>
+  </div>
+  <div class="splash-loader">
+    <div class="loader-track"><div class="loader-fill"></div></div>
+    <div class="loader-label">LOADING</div>
+  </div>
+</div>
+
 <div id="root">
 
   <!-- ── LOGIN ── -->
@@ -63,7 +83,7 @@
             🔔
             <span id="notif-badge" class="notif-dot-badge"></span>
           </div>
-          <div class="icon-btn" onclick="loadBookings()" aria-label="Refresh">↺</div>
+          <div class="icon-btn" onclick="loadBookings(true)" aria-label="Refresh">↺</div>
           <div class="avatar" id="user-avatar" title="Hold to sign out" oncontextmenu="event.preventDefault();signOut()" onclick="handleAvatarTap(this)">?</div>
           <div class="theme-btn" id="theme-toggle" title="Toggle theme">🌙</div>
         </div>
@@ -96,9 +116,22 @@
         </div>
       </div>
       <div class="scroll">
-        <div class="search-wrap">
+        <div class="search-wrap" style="margin-bottom:10px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="client-search" type="search" placeholder="Name, phone or email…" oninput="searchClients(this.value)" autocomplete="off" />
+        </div>
+        <div class="fp">
+          <button class="fp-pill active" onclick="setClFilter('all',this)">All</button>
+          <button class="fp-pill" onclick="setClFilter('members',this)">◆ Members</button>
+          <button class="fp-pill" onclick="setClFilter('topspenders',this)">Top Spenders</button>
+          <button class="fp-pill" onclick="setClFilter('regulars',this)">Regulars</button>
+          <button class="fp-pill" onclick="setClFilter('new',this)">New</button>
+          <button id="cl-sort-btn" class="fp-pill" onclick="toggleClSort()" style="margin-left:auto;opacity:0.7">🕐 Last Visit</button>
+        </div>
+        <div class="sstat-strip">
+          <div class="sstat"><div class="sstat-val" id="ss-clients">—</div><div class="sstat-lbl">Clients</div></div>
+          <div class="sstat"><div class="sstat-val" id="ss-members">—</div><div class="sstat-lbl">Members</div></div>
+          <div class="sstat"><div class="sstat-val" id="ss-avg">—</div><div class="sstat-lbl">Avg Visits</div></div>
         </div>
         <div id="clients-list"></div>
       </div>
@@ -113,8 +146,11 @@
         </div>
       </div>
       <div class="type-row">
+        <button class="type-btn" id="type-btn-walkin" onclick="setNewType('walkin')">
+          <span class="type-btn-icon">🚶</span><span>Walk-in</span>
+        </button>
         <button class="type-btn active" id="type-btn-booking" onclick="setNewType('booking')">
-          <span class="type-btn-icon">✂️</span><span>Booking</span>
+          <span class="type-btn-icon">📅</span><span>Booking</span>
         </button>
         <button class="type-btn" id="type-btn-block" onclick="openSheet('bt')">
           <span class="type-btn-icon">🚫</span><span>Block</span>
@@ -130,21 +166,32 @@
           </div>
           <div id="wi-client-results" style="margin-bottom:4px;"></div>
           <div id="wi-selected-client" style="display:none;padding:10px 14px;background:var(--gold-dim);border:1.5px solid var(--gold2);border-radius:10px;font-size:0.85rem;color:var(--gold);font-weight:600;align-items:center;justify-content:space-between;"></div>
+          <div id="wi-new-client-fields" style="display:none;margin-top:8px;flex-direction:column;gap:8px;">
+            <input class="inp" id="wi-phone" type="tel" placeholder="Phone (optional)" autocomplete="tel" style="font-size:0.88rem;" />
+            <input class="inp" id="wi-email-new" type="email" placeholder="Email (optional)" autocomplete="email" style="font-size:0.88rem;" />
+          </div>
         </div>
         <div class="form-group"><label class="form-lbl">Barber</label><div class="barber-row" id="wi-barber-row"></div></div>
         <div class="form-group"><label class="form-lbl">Service</label><select class="sel" id="wi-service" onchange="onWiParamChange()"></select></div>
-        <div class="form-group">
+        <div class="form-group" id="wi-date-group">
           <label class="form-lbl">Date</label>
           <div class="date-pills" id="wi-date-pills"></div>
           <input type="hidden" id="wi-date" />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="wi-time-group">
           <label class="form-lbl" id="wi-time-lbl">Available Times</label>
           <div class="slot-grid" id="wi-slot-grid"><div style="color:var(--muted);font-size:0.78rem;padding:4px 0">Select barber, service and date first</div></div>
           <input type="hidden" id="wi-time" />
         </div>
+        <div class="form-group" id="wi-walkin-time-group" style="display:none">
+          <label class="form-lbl">Time</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="inp" id="wi-walkin-time" type="time" oninput="onWiWalkinTimeChange()" style="flex:1" />
+            <button onclick="wiResetToNow()" style="padding:9px 13px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:0.72rem;font-weight:600;font-family:var(--font-ui);cursor:pointer;white-space:nowrap">Now</button>
+          </div>
+        </div>
         <div class="form-group"><label class="form-lbl">Notes (optional)</label><textarea class="textarea" id="wi-notes" placeholder="Any notes…" rows="2"></textarea></div>
-        <button class="btn-gold" id="wi-submit" onclick="createWalkIn()" disabled style="opacity:0.5">Select a time first</button>
+        <button class="btn-gold" id="wi-submit" onclick="submitWiForm()" disabled style="opacity:0.5">Select a time first</button>
         <div style="height:20px"></div>
       </div>
     </div>
@@ -171,11 +218,9 @@
 <div class="sheet-overlay" id="bk-overlay" onclick="closeSheet('bk')"></div>
 <div class="sheet" id="bk-sheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <div class="sheet-title" id="bk-title">Booking</div>
-    <button class="sheet-close" onclick="closeSheet('bk')">✕</button>
-  </div>
-  <div class="sheet-body" id="bk-body"></div>
+  <div id="bk-hero"></div>
+  <div id="bk-qa"></div>
+  <div class="sheet-body" id="bk-body" style="padding:0;overflow-y:auto;"></div>
   <div class="sheet-actions" id="bk-actions"></div>
 </div>
 
@@ -196,13 +241,10 @@
 <div class="sheet-overlay" id="cl-overlay" onclick="closeSheet('cl')"></div>
 <div class="sheet" id="cl-sheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <div class="sheet-title" id="cl-title">Client</div>
-    <button class="sheet-close" onclick="closeSheet('cl')">✕</button>
-  </div>
   <div class="sheet-body" id="cl-body"></div>
-  <div class="sheet-actions">
+  <div class="sheet-actions" id="cl-actions">
     <button class="btn-ghost" onclick="closeSheet('cl')">Close</button>
+    <button class="btn-gold" style="flex:2" onclick="bookClientNow()">📅 Book Now</button>
   </div>
 </div>
 
@@ -298,26 +340,16 @@
   </div>
   <div class="sheet-body">
     <div class="form-group"><label class="form-lbl">Barber</label><div class="barber-row" id="bt-barber-row"></div></div>
-    <div class="form-group"><label class="form-lbl">Date</label><input class="inp" id="bt-date" type="date" onchange="onBtParamChange()" /></div>
-    <div class="form-group">
-      <label class="form-lbl">Duration</label>
-      <div class="dur-row" id="bt-dur-row">
-        <div class="dur-btn" onclick="selectBtDuration(30)">30m</div>
-        <div class="dur-btn active" onclick="selectBtDuration(60)">1hr</div>
-        <div class="dur-btn" onclick="selectBtDuration(90)">90m</div>
-        <div class="dur-btn" onclick="selectBtDuration(120)">2hr</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-lbl" id="bt-time-lbl">Available Times</label>
-      <div class="slot-grid" id="bt-slot-grid"><div style="color:var(--muted);font-size:0.78rem;padding:4px 0">Select barber and date first</div></div>
-      <input type="hidden" id="bt-time" />
+    <div class="form-group"><label class="form-lbl">Date</label><input class="inp" id="bt-date" type="date" onchange="onBtTimeChange()" /></div>
+    <div class="form-group" style="display:flex;gap:12px">
+      <div style="flex:1"><label class="form-lbl">From</label><input class="inp" id="bt-from" type="time" onchange="onBtTimeChange()" /></div>
+      <div style="flex:1"><label class="form-lbl">To</label><input class="inp" id="bt-to" type="time" onchange="onBtTimeChange()" /></div>
     </div>
     <div class="form-group"><label class="form-lbl">Reason (optional)</label><input class="inp" id="bt-note" type="text" placeholder="e.g. Lunch break, Training…" /></div>
   </div>
   <div class="sheet-actions">
     <button class="btn-ghost" onclick="closeSheet('bt')">Cancel</button>
-    <button class="btn-gold" id="bt-submit" style="flex:2;opacity:0.5" disabled onclick="createBlockTime()">Select a time first</button>
+    <button class="btn-gold" id="bt-submit" style="flex:2;opacity:0.5" disabled onclick="createBlockTime()">Block Time</button>
   </div>
 </div>
 
@@ -355,7 +387,34 @@
   })();
 </script>
 
+<script>
+  (function(){
+    let _splashDone = false;
+    const MIN_MS = 2900;
+    const _t0 = Date.now();
+    function _doExit(){
+      if(_splashDone) return; _splashDone = true;
+      const s = document.getElementById('splash');
+      if(!s) return;
+      s.classList.add('exit');
+      setTimeout(()=>{ s.style.display='none'; }, 560);
+    }
+    // auto-dismiss after animation completes
+    setTimeout(_doExit, MIN_MS);
+    // allow app.js to dismiss early once auth resolves (but never before MIN_MS)
+    window.dismissSplash = function(){
+      const elapsed = Date.now() - _t0;
+      const wait = Math.max(0, MIN_MS - elapsed);
+      setTimeout(_doExit, wait);
+    };
+  })();
+</script>
 <script type="module" src="app.js"></script>
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+<script>
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js');
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+  }
+</script>
 </body>
 </html>

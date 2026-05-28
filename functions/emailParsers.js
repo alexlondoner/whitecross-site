@@ -89,6 +89,29 @@ function extractPlainText(payload) {
     return '';
 }
 
+// Fallback: extract raw text from HTML by stripping tags
+function extractHtmlAsText(payload) {
+    if (!payload) return '';
+    if (payload.mimeType === 'text/html' && payload.body && payload.body.data) {
+        const html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        return html
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/(?:p|div|td|tr|li|h[1-6])>/gi, '\n')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+            .replace(/[ \t]{2,}/g, '  ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+    if (payload.parts) {
+        for (const part of payload.parts) {
+            const text = extractHtmlAsText(part);
+            if (text) return text;
+        }
+    }
+    return '';
+}
+
 async function fetchUnreadMessages(gmail, query) {
     const res = await gmail.users.messages.list({ userId: 'me', q: query, maxResults: 50 });
     if (!res.data.messages || res.data.messages.length === 0) return [];
@@ -238,30 +261,58 @@ async function parseBooksyCancellations(gmail, db) {
 // Body: "Customer details: John Smith" | "Skin Fade with Alex" |
 //       "Sunday, 12 Apr 2026, 1:30pm"
 async function parseFreshaConfirmations(gmail, db) {
-    const messages = await fetchUnreadMessages(gmail, 'from:fresha.com "Appointment confirmed" is:unread');
+    const messages = await fetchUnreadMessages(gmail, 'from:fresha.com is:unread');
     for (const msg of messages) {
         try {
-            const body = extractPlainText(msg.payload);
+            const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
+            const body    = extractPlainText(msg.payload);
+            console.log(`Fresha email found — subject: "${subject}" body[:120]: ${body.slice(0,120).replace(/\n/g,' ')}`);
 
-            const nameMatch = body.match(/Customer details:\s*([\s\S]*?)\n/i);
-            const name      = nameMatch ? nameMatch[1].trim() : 'New Customer';
-
-            const serviceBarberMatch = body.match(/(.+) with (\w+)/i);
-            let service = '', barber = 'alex';
-            if (serviceBarberMatch) {
-                service = serviceBarberMatch[1].trim();
-                barber  = serviceBarberMatch[2].trim().toLowerCase().includes('arda') ? 'arda' : 'alex';
+            // Only process appointment notifications, skip marketing/receipts
+            const lsubj = subject.toLowerCase();
+            if (!lsubj.includes('appointment') && !lsubj.includes('booking') && !lsubj.includes('reservation')) {
+                await markRead(gmail, msg.id); continue;
             }
 
-            const dtMatch = body.match(/(\w+), (\d{1,2}) (\w+) (\d{4}), (\d{1,2}):(\d{2})(am|pm)/i);
-            if (!dtMatch) { await markRead(gmail, msg.id); continue; }
+            // Name: try several Fresha body formats
+            const nameMatch = body.match(/Customer(?:\s+details)?:?\s*([\w][\w\s'-]{1,50}?)(?:\n|$)/i)
+                           || body.match(/Client(?:\s+name)?:?\s*([\w][\w\s'-]{1,50}?)(?:\n|$)/i)
+                           || body.match(/Name:?\s*([\w][\w\s'-]{1,50}?)(?:\n|$)/i);
+            const name = nameMatch ? nameMatch[1].trim() : 'New Customer';
 
-            const bookingDate = `${dtMatch[2]} ${dtMatch[3]} ${dtMatch[4]}`;
-            let h = parseInt(dtMatch[5]), m = parseInt(dtMatch[6]);
-            const ampm = dtMatch[7].toLowerCase();
-            if (ampm === 'pm' && h < 12) h += 12;
-            if (ampm === 'am' && h === 12) h = 0;
-            const bookingTime = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
+            // Service + barber: "Skin Fade with Alex" OR "Service: Skin Fade\nBarber: Alex"
+            let service = '', barber = 'alex';
+            const sbMatch = body.match(/(.+?)\s+with\s+(\w+)/i);
+            const svcMatch = body.match(/Service(?:\s+name)?:?\s*(.+?)(?:\n|$)/i);
+            const brbMatch = body.match(/(?:Barber|Staff|Employee|Provider|with):?\s*(\w+)/i);
+            if (sbMatch) {
+                service = sbMatch[1].trim();
+                barber  = sbMatch[2].toLowerCase().includes('arda') ? 'arda' : 'alex';
+            } else {
+                if (svcMatch) service = svcMatch[1].trim();
+                if (brbMatch) barber  = brbMatch[1].toLowerCase().includes('arda') ? 'arda' : 'alex';
+            }
+
+            // Date/time: "Sunday, 12 Apr 2026, 1:30pm"  OR  "12 Apr 2026 at 1:30pm"  OR  "12/04/2026 13:30"
+            const dtMatch = body.match(/(\w+),?\s*(\d{1,2})\s+(\w+)\s+(\d{4}),?\s+(\d{1,2}):(\d{2})\s*(am|pm)/i)
+                         || body.match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s+at\s+(\d{1,2}):(\d{2})\s*(am|pm)/i);
+            if (!dtMatch) { console.log(`Fresha: no date match in email ${msg.id}, skipping`); await markRead(gmail, msg.id); continue; }
+
+            // Handle both regex formats: with day-of-week prefix (7 groups) or without (6 groups)
+            let day, month, year, rawH, rawM, ampm;
+            if (dtMatch.length === 8) {
+                // "Sunday, 12 Apr 2026, 1:30pm"
+                [, , day, month, year, rawH, rawM, ampm] = dtMatch;
+            } else {
+                // "12 Apr 2026 at 1:30pm"
+                [, day, month, year, rawH, rawM, ampm] = dtMatch;
+            }
+            const bookingDate = `${day} ${month} ${year}`;
+            let h = parseInt(rawH), m2 = parseInt(rawM);
+            const ampmL = (ampm || '').toLowerCase();
+            if (ampmL === 'pm' && h < 12) h += 12;
+            if (ampmL === 'am' && h === 12) h = 0;
+            const bookingTime = `${h < 10 ? '0' + h : h}:${m2 < 10 ? '0' + m2 : m2}`;
 
             let price = '£0';
             let freshaDuration = 30;
@@ -306,33 +357,47 @@ async function parseFreshaConfirmations(gmail, db) {
 }
 
 // ── Treatwell: new booking confirmations ─────────────────────────────────────
-// Subject: "You've got a new Treatwell booking (Our Ref. T2181236951)"
-// Body fields:
-//   Product Name:   Ladies - Wash & Blow Dry
-//   Date/time       11 May 2026 at 1:30 pm
-//   Price paid:     £35.00
-//   with            HERO
-//   Guest name      Zlata Mechetina Repeat
-//   Guest Email:    zl.mechetina@gmail.com
-//   Guest Tel.:     +44 7796 563495
-// Bookings are always pre-paid (Status: Prepaid) — no remaining to collect.
+// Old subject: "You've got a new Treatwell booking (Our Ref. T2181236951)"
+// New subject: "Congratulations, you've got a new customer via Treatwell!"
+// Body fields (new format):
+//   Product Name:          Young Gents Skin Fade (4–12)
+//   Date/time    25 May 2026 at 9:00 am
+//   Price    £24.00
+//   with    Arda Uzun
+//   Status    Unpaid
+//   Guest name    Juan David Mejia Alvarez New
+//   Guest Email:    j.david31m@gmail.com
+//   Guest Tel.:    +44 7440 160204
+//   Order ref #: T2182596753   (body, not subject)
 async function parseTreatwell(gmail, db) {
-    const messages = await fetchUnreadMessages(gmail, 'from:noreply@treatwell.co.uk subject:"new Treatwell booking" is:unread');
+    const messages = await fetchUnreadMessages(
+        gmail,
+        'from:noreply@treatwell.co.uk (subject:"new Treatwell booking" OR subject:"via Treatwell" OR subject:"new customer") is:unread'
+    );
     for (const msg of messages) {
         try {
             const headers = msg.payload.headers;
             const subject = (headers.find(h => h.name === 'Subject') || {}).value || '';
-            const body    = extractPlainText(msg.payload);
+            let body = extractPlainText(msg.payload);
+            // Treatwell sends HTML-only emails — fall back to stripping HTML
+            if (!body) body = extractHtmlAsText(msg.payload);
+            console.log(`Treatwell email found — subject: "${subject}" bodyLen: ${body.length} body[:200]: ${body.slice(0,200).replace(/\n/g,' ')}`);
 
-            // Use Treatwell order ref as a stable, idempotent booking ID
-            const refMatch = subject.match(/Our Ref\.\s*(T\d+)/i);
+            // Skip non-booking emails (receipts, newsletters, etc.) that slip through
+            if (!body.includes('Guest name') && !body.includes('Product Name')) {
+                console.log('Treatwell: skipping — no Guest name or Product Name in body');
+                await markRead(gmail, msg.id); continue;
+            }
+
+            // Order ref: old format in subject "Our Ref. T123", new format in body "Order ref #: T123"
+            const refMatch = subject.match(/Our Ref\.\s*(T\d+)/i) || body.match(/Order ref #?:?\s*(T\d+)/i);
             const orderRef  = refMatch ? refMatch[1] : `${Date.now()}`;
             const bookingId = `TREATWELL-${orderRef}`;
 
             const existing = await db.collection('tenants/whitecross/bookings').doc(bookingId).get();
             if (existing.exists) { await markRead(gmail, msg.id); continue; }
 
-            // Date/time: "Date/time    11 May 2026 at 1:30 pm"
+            // Date/time: "Date/time    25 May 2026 at 9:00 am"
             const dtMatch = body.match(/Date\/time\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+at\s+(\d{1,2}):(\d{2})\s*(am|pm)/i);
             if (!dtMatch) { await markRead(gmail, msg.id); continue; }
 
@@ -343,20 +408,26 @@ async function parseTreatwell(gmail, db) {
             if (ampm === 'am' && h === 12) h = 0;
             const bookingTime = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
 
-            // "Product Name:          Ladies - Wash & Blow Dry"
+            // "Product Name:          Young Gents Skin Fade (4–12)"
             const serviceMatch = body.match(/Product Name:\s*(.+?)(?:\s{2,}|\t|\r?\n)/i);
             const service      = serviceMatch ? serviceMatch[1].trim() : '';
 
-            // "with    HERO" — two or more spaces distinguish it from prose "with"
-            const barberMatch = body.match(/\bwith\s{2,}([\w\s]+?)(?:\r?\n|$)/im);
+            // "with    Arda Uzun" — one or more spaces/tabs after "with"
+            const barberMatch = body.match(/\bwith\s+([\w][\w\s]+?)(?:\r?\n|$)/im);
             const barberRaw   = barberMatch ? barberMatch[1].trim().toLowerCase() : '';
             const barber      = barberRaw.includes('arda') ? 'arda' : 'alex';
 
-            // "Price paid:          £35.00"
-            const priceMatch = body.match(/Price paid:\s*£([\d.]+)/i);
+            // "Price paid:    £35.00"  OR  "Price    £24.00"
+            const priceMatch = body.match(/Price paid:\s*£([\d.]+)/i) || body.match(/^Price\s+£([\d.]+)/im);
             const price      = priceMatch ? `£${priceMatch[1]}` : '';
 
-            // "Guest name    Zlata Mechetina Repeat" — strip Treatwell's "Repeat"/"New" label
+            // "Status    Unpaid" → UNPAID; anything else → CONFIRMED
+            const statusMatch = body.match(/^Status\s+(\w+)/im);
+            const statusRaw   = statusMatch ? statusMatch[1].toLowerCase() : 'confirmed';
+            const status      = statusRaw === 'unpaid' ? 'UNPAID' : 'CONFIRMED';
+            const paymentType = statusRaw === 'unpaid' ? 'UNPAID' : 'FULL';
+
+            // "Guest name    Juan David Mejia Alvarez New" — strip Treatwell's "Repeat"/"New" label
             const nameMatch = body.match(/Guest name\s+(.+?)(?:\s+Repeat|\s+New customer|\s+New)?\s*(?:\r?\n|$)/im);
             const name      = nameMatch ? nameMatch[1].replace(/\s+(Repeat|New customer|New)$/i, '').trim() : 'Guest';
 
@@ -381,14 +452,15 @@ async function parseTreatwell(gmail, db) {
                 bookingId,
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, serviceId: service, price,
-                paidAmount: priceNumTW, paymentType: 'FULL', status: 'CONFIRMED', source: 'Treatwell',
+                paidAmount: statusRaw === 'unpaid' ? 0 : priceNumTW,
+                paymentType, status, source: 'Treatwell',
                 date: bookingDate, time: bookingTime,
                 startTime: treatwellStart,
                 endTime: addMins(treatwellStart, twDuration),
                 treatwellRef: orderRef,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            console.log(`Treatwell: ${bookingId} ${name}`);
+            console.log(`Treatwell: ${bookingId} ${name} ${status}`);
             await markRead(gmail, msg.id);
         } catch (err) {
             console.error('Treatwell error', msg.id, err.message);
