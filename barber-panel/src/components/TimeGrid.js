@@ -243,7 +243,7 @@ export default function TimeGrid({ date, bookings, barbers, slotHeight, specialH
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)', position:'sticky', top:0, background:'var(--card)', zIndex:10 }}>
         <div style={{ width:TIME_COL, flexShrink:0, borderRight:'1px solid var(--border)' }} />
         {barbers.map((barber, bi) => {
-          const aptCount = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED').length;
+          const aptCount = (byBarber[barber.name.toLowerCase()]||[]).filter(b=>b.status!=='CANCELLED'&&b.status!=='BLOCKED').length;
           return (
             <div key={barber.id} onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setSlotPopup({ barber, hour: Math.floor(OPEN_MINS / 60), mins: OPEN_MINS, x: rect.left + 10, y: rect.bottom }); }}
               style={{ flex:1, padding:'10px 14px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px', borderRight:bi<barbers.length-1?'1px solid var(--border)':'none', cursor:'pointer', borderTop:'3px solid '+barber.color+'aa', transition:'background 0.15s' }}
