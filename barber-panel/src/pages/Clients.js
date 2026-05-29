@@ -5,6 +5,9 @@ import { db } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { logAudit } from '../utils/auditLogger';
+import { createWalkIn } from '../firestoreActions';
+import { convertTo24, minsToLabel, formatDateKey } from '../utils/timeUtils';
+import { hasTimeConflict } from '../utils/conflictUtils';
 
 const TENANT = 'whitecross';
 
@@ -52,7 +55,7 @@ export default function Clients({ isAdmin = true }) {
   const [addForm, setAddForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
   const [addSaving, setAddSaving] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', birthday: '', notes: '', bookingName: '' });
   const [noteInput, setNoteInput] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const [detailTab, setDetailTab] = useState('overview');
@@ -67,6 +70,13 @@ export default function Clients({ isAdmin = true }) {
   const [pointsLog, setPointsLog] = useState([]);
   const [pointsLogLoading, setPointsLogLoading] = useState(false);
   const [qrGenerating, setQrGenerating] = useState(false);
+  const [showQuickBook, setShowQuickBook] = useState(false);
+  const [quickBookForm, setQuickBookForm] = useState({ service: '', barber: '', time: '' });
+  const [quickBookSaving, setQuickBookSaving] = useState(false);
+  const [draggingClient, setDraggingClient] = useState(null);
+  const [dragOverKey, setDragOverKey] = useState(null);
+  const [mergeTarget, setMergeTarget] = useState(null);
+  const [mergeSaving, setMergeSaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,14 +168,30 @@ export default function Clients({ isAdmin = true }) {
     const manualById = {};
     manualClients.forEach(m => { if (m.id) manualById[m.id] = m; });
 
-    const matchManual = (c) => manualClients.find(m =>
-      !m.hidden && (
-        (m.phone && m.phone === c.phone) ||
-        (m.email && m.email === c.email) ||
-        m.name?.toLowerCase() === c.name?.toLowerCase() ||
-        (m._origName && m._origName.toLowerCase() === c.name?.toLowerCase())
-      )
-    );
+    const nameMatch = (m, name) => {
+      if (!name) return false;
+      const n = name.toLowerCase();
+      return m._aliases?.some(a => a.toLowerCase() === n) ||
+             (m._origName && m._origName.toLowerCase() === n) ||
+             m.name?.toLowerCase() === n;
+    };
+    const matchManual = (c) => {
+      // Aliases + _origName take priority so renamed/merged clients link correctly
+      const byAlias = manualClients.find(m =>
+        !m.hidden && (
+          m._aliases?.some(a => a.toLowerCase() === c.name?.toLowerCase()) ||
+          (m._origName && m._origName.toLowerCase() === c.name?.toLowerCase())
+        )
+      );
+      if (byAlias) return byAlias;
+      return manualClients.find(m =>
+        !m.hidden && (
+          (m.phone && m.phone === c.phone) ||
+          (m.email && m.email === c.email) ||
+          m.name?.toLowerCase() === c.name?.toLowerCase()
+        )
+      );
+    };
 
     const merged = bookingClients
       .filter(c => !hiddenKeys.has(c.phone) && !hiddenKeys.has(c.email) && !hiddenKeys.has(c.name?.toLowerCase()))
@@ -179,6 +205,8 @@ export default function Clients({ isAdmin = true }) {
           email: manual?.email || c.email,
           birthday: manual?.birthday || '',
           notes: manual?.notes || '',
+          _origName: manual?._origName || null,
+          _aliases: manual?._aliases || null,
           manualId: manual?.id,
           loyaltyPoints: manual?.loyaltyPoints || 0,
           isMember: manual?.isMember || false,
@@ -187,19 +215,46 @@ export default function Clients({ isAdmin = true }) {
           registeredAt: manualAddedAt || c.firstVisitRaw || new Date(0),
         };
       });
+
+    // Deduplicate: multiple booking-client entries can map to the same manual doc after a merge.
+    // Combine their bookings/stats into a single entry.
+    const deduped = [];
+    const seenManualIds = new Set();
+    merged.forEach(c => {
+      if (c.manualId && seenManualIds.has(c.manualId)) {
+        const ex = deduped.find(d => d.manualId === c.manualId);
+        if (ex) {
+          ex.bookings.push(...c.bookings);
+          ex.visits += c.visits;
+          ex.totalSpent += c.totalSpent;
+          ex.totalTip += c.totalTip;
+          ex.totalDiscount += c.totalDiscount;
+          ex.checkedOut += c.checkedOut;
+          ex.cancelled += c.cancelled;
+          Object.entries(c.services).forEach(([k, v]) => { ex.services[k] = (ex.services[k] || 0) + v; });
+          Object.entries(c.barbers).forEach(([k, v]) => { ex.barbers[k] = (ex.barbers[k] || 0) + v; });
+          Object.entries(c.sources).forEach(([k, v]) => { ex.sources[k] = (ex.sources[k] || 0) + v; });
+          if (c.firstVisitRaw && (!ex.firstVisitRaw || c.firstVisitRaw < ex.firstVisitRaw)) { ex.firstVisit = c.firstVisit; ex.firstVisitRaw = c.firstVisitRaw; }
+          if (c.lastVisitRaw && (!ex.lastVisitRaw || c.lastVisitRaw > ex.lastVisitRaw)) { ex.lastVisit = c.lastVisit; ex.lastVisitRaw = c.lastVisitRaw; ex.lastService = c.lastService; ex.lastBarber = c.lastBarber; }
+        }
+      } else {
+        if (c.manualId) seenManualIds.add(c.manualId);
+        deduped.push(c);
+      }
+    });
+
     manualClients.filter(m => !m.hidden).forEach(m => {
       const exists = bookingClients.some(c =>
         (m.phone && m.phone === c.phone) ||
         (m.email && m.email === c.email) ||
-        m.name?.toLowerCase() === c.name?.toLowerCase() ||
-        (m._origName && m._origName.toLowerCase() === c.name?.toLowerCase())
+        nameMatch(m, c.name)
       );
       if (!exists) {
         const addedAt = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : new Date());
-        merged.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, registeredAt: addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
+        deduped.push({ name: m.name || '', phone: m.phone || '', email: m.email || '', birthday: m.birthday || '', notes: m.notes || '', _origName: m._origName || null, _aliases: m._aliases || null, visits: 0, totalSpent: 0, totalTip: 0, totalDiscount: 0, services: {}, barbers: {}, sources: {}, bookings: [], firstVisit: null, lastVisit: null, firstVisitRaw: null, lastVisitRaw: null, lastService: '', lastBarber: '', paymentMethods: {}, checkedOut: 0, cancelled: 0, manualId: m.id, isManualOnly: true, addedAt, registeredAt: addedAt, loyaltyPoints: m.loyaltyPoints || 0, isMember: m.isMember || false, membershipTier: m.membershipTier || '', memberSince: m.memberSince || null });
       }
     });
-    return merged;
+    return deduped;
   }, [bookingClients, manualClients]);
 
   const segments = useMemo(() => {
@@ -442,6 +497,120 @@ export default function Clients({ isAdmin = true }) {
     finally { setQrGenerating(false); }
   };
 
+  const clientKey = (c) => c?.phone || c?.email || c?.name || '';
+
+  const handleDragStart = (e, client) => {
+    setDraggingClient(client);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleDragOver = (e, client) => {
+    e.preventDefault();
+    if (!draggingClient || clientKey(client) === clientKey(draggingClient)) return;
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverKey(clientKey(client));
+  };
+  const handleDrop = (e, target) => {
+    e.preventDefault();
+    if (!draggingClient || clientKey(target) === clientKey(draggingClient)) return;
+    setMergeTarget({ source: draggingClient, target });
+    setDraggingClient(null);
+    setDragOverKey(null);
+  };
+  const handleDragEnd = () => { setDraggingClient(null); setDragOverKey(null); };
+
+  const handleMerge = async () => {
+    if (!mergeTarget) return;
+    const { source, target } = mergeTarget;
+    setMergeSaving(true);
+    try {
+      // Get or create the target's manual doc
+      const targetManualId = await resolveMemberDocId(target);
+
+      // Collect all alias names from the source (name + _origName + existing _aliases)
+      const sourceNames = [source.name, source._origName, ...(source._aliases || [])].filter(Boolean);
+      const targetNameLower = target.name.toLowerCase();
+      const newAliases = sourceNames.filter(n => n.toLowerCase() !== targetNameLower);
+
+      // Merge with existing aliases on the target doc
+      const targetDocLocal = manualClients.find(m => m.id === targetManualId);
+      const existingAliases = targetDocLocal?._aliases || [];
+      const mergedAliases = [...new Set([...existingAliases, ...newAliases])];
+
+      await updateDoc(doc(db, `tenants/${TENANT}/clients`, targetManualId), { _aliases: mergedAliases });
+
+      // Delete the source's manual doc if it's a separate one
+      if (source.manualId && source.manualId !== targetManualId) {
+        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, source.manualId));
+        setManualClients(prev => prev.filter(m => m.id !== source.manualId));
+      }
+
+      setManualClients(prev => prev.map(m =>
+        m.id === targetManualId ? { ...m, _aliases: mergedAliases } : m
+      ));
+      setMergeTarget(null);
+      setSelectedClient(null);
+    } catch (e) {
+      console.error('Merge error:', e);
+      alert('Merge failed: ' + e.message);
+    } finally {
+      setMergeSaving(false);
+    }
+  };
+
+  const openQuickBook = (client) => {
+    const favSvc = Object.entries(client.services || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || config.services?.[0]?.id || '';
+    const favBarber = Object.entries(client.barbers || {}).sort((a, b) => b[1] - a[1])[0]?.[0]?.toLowerCase() || barbers[0]?.name?.toLowerCase() || '';
+    const now = new Date();
+    const nextSlot = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+    const todayStr = now.toISOString().slice(0, 10);
+    setQuickBookForm({ service: favSvc, barber: favBarber, time: minsToLabel(nextSlot), dateISO: todayStr });
+    setShowQuickBook(true);
+  };
+
+  const handleQuickBook = async () => {
+    if (!quickBookForm.service || !quickBookForm.barber || !selectedClient) return;
+    setQuickBookSaving(true);
+    try {
+      const svcObj = config.services?.find(s => s.id === quickBookForm.service);
+      const price = svcObj?.price || 0;
+      const duration = parseInt(svcObj?.duration) || 30;
+      const bookingDate = new Date(quickBookForm.dateISO + 'T12:00:00');
+      const dateStr = formatDateKey(bookingDate);
+      const selectedMins = convertTo24(quickBookForm.time);
+      if (hasTimeConflict(bookings, { dateValue: dateStr, barberValue: quickBookForm.barber, startMinutes: selectedMins, durationMinutes: duration })) {
+        alert('That time slot is already booked for this barber. Pick another time.');
+        setQuickBookSaving(false);
+        return;
+      }
+      // If client has no phone/email, bookings are keyed by name.
+      // Use _origName (the name stored on existing bookings) so new booking merges into the same record.
+      const bookingName = (!selectedClient.phone && !selectedClient.email && selectedClient._origName)
+        ? selectedClient._origName
+        : selectedClient.name;
+      await createWalkIn({
+        name: bookingName,
+        email: selectedClient.email || '',
+        phone: selectedClient.phone || '',
+        date: dateStr,
+        time: quickBookForm.time,
+        service: quickBookForm.service,
+        barber: quickBookForm.barber,
+        price,
+        duration,
+        paymentType: 'CASH',
+        status: 'CONFIRMED',
+        source: 'Walk-in',
+        soldProducts: [],
+      });
+      setShowQuickBook(false);
+    } catch (e) {
+      console.error('Quick book error:', e);
+      alert('Booking failed: ' + e.message);
+    } finally {
+      setQuickBookSaving(false);
+    }
+  };
+
   // Store original identifying fields for edit lookup
   const openEditClient = (client) => {
     setEditingClient({
@@ -450,7 +619,7 @@ export default function Clients({ isAdmin = true }) {
       _origEmail: client.email,
       _origName: client.name,
     });
-    setEditForm({ name: client.name, phone: client.phone, email: client.email, birthday: client.birthday || '', notes: client.notes || '' });
+    setEditForm({ name: client.name, phone: client.phone, email: client.email, birthday: client.birthday || '', notes: client.notes || '', bookingName: client._origName || '' });
     setShowEditForm(true);
   };
 
@@ -460,14 +629,18 @@ export default function Clients({ isAdmin = true }) {
     try {
       const newName = editForm.name.trim();
       const origName = (editingClient._origName || '').trim();
-      // Preserve _origName so future merges can still link to bookings with the old name
+      const bookingName = editForm.bookingName.trim();
+      // _origName anchors the client to their booking records by the name used at booking time.
+      // Priority: 1) explicit booking name from form, 2) auto-detect from rename, 3) nothing
+      const autoOrig = origName && origName.toLowerCase() !== newName.toLowerCase() ? origName : null;
+      const effectiveOrig = bookingName || autoOrig;
       const data = {
         name: newName,
         phone: (editForm.phone || '').trim(),
         email: (editForm.email || '').trim(),
         birthday: editForm.birthday || '',
         notes: (editForm.notes || '').trim(),
-        ...(origName && origName.toLowerCase() !== newName.toLowerCase() ? { _origName: origName } : {}),
+        ...(effectiveOrig ? { _origName: effectiveOrig } : {}),
       };
       const clientsRef = collection(db, `tenants/${TENANT}/clients`);
 
@@ -694,10 +867,21 @@ export default function Clients({ isAdmin = true }) {
                     const isNew = c.visits === 1;
                     const isSel = selectedClient?.phone === c.phone && selectedClient?.name === c.name;
                     return (
-                      <tr key={i} onClick={() => setSelectedClient(isSel ? null : c)}
-                        style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: isSel ? 'rgba(212,175,55,0.06)' : 'transparent', transition: 'background 0.15s' }}
-                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }}
-                        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                      <tr key={i}
+                        draggable
+                        onDragStart={e => handleDragStart(e, c)}
+                        onDragOver={e => handleDragOver(e, c)}
+                        onDrop={e => handleDrop(e, c)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => !draggingClient && setSelectedClient(isSel ? null : c)}
+                        style={{ borderBottom: '1px solid var(--border)', cursor: draggingClient ? 'copy' : 'pointer', transition: 'background 0.15s, opacity 0.15s, outline 0.1s',
+                          background: dragOverKey === clientKey(c) ? 'rgba(212,175,55,0.12)' : isSel ? 'rgba(212,175,55,0.06)' : 'transparent',
+                          outline: dragOverKey === clientKey(c) ? '2px solid rgba(212,175,55,0.55)' : 'none',
+                          outlineOffset: '-2px',
+                          opacity: draggingClient && clientKey(draggingClient) === clientKey(c) ? 0.35 : 1,
+                        }}
+                        onMouseEnter={e => { if (!isSel && dragOverKey !== clientKey(c)) e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }}
+                        onMouseLeave={e => { if (!isSel && dragOverKey !== clientKey(c)) e.currentTarget.style.background = 'transparent'; }}>
                         <td style={{ padding: '12px 14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: getBColor(favBarber?.[0]) + '22', border: '1px solid ' + getBColor(favBarber?.[0]) + '44', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', fontWeight: '700', color: getBColor(favBarber?.[0]), flexShrink: 0 }}>
@@ -739,6 +923,7 @@ export default function Clients({ isAdmin = true }) {
                 </tbody>
               </table>
               {filtered.length === 0 && <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.82rem' }}>No clients found</div>}
+              {filtered.length > 0 && <div style={{ padding: '8px 14px', fontSize: '0.6rem', color: 'var(--muted)', borderTop: '1px solid var(--border)', textAlign: 'center', opacity: 0.6 }}>Drag a client row onto another to merge duplicates</div>}
             </div>
           </div>
 
@@ -782,6 +967,7 @@ export default function Clients({ isAdmin = true }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
                       <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>×</button>
+                      <button onClick={() => openQuickBook(selectedClient)} style={{ padding: '3px 10px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.5)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px' }}>✂ Cut Him</button>
                       <button onClick={() => openEditClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600' }}>Edit</button>
                       {isAdmin && <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>}
                     </div>
@@ -1201,6 +1387,136 @@ export default function Clients({ isAdmin = true }) {
         </div>
       )}
 
+      {/* ── MERGE CONFIRM MODAL ── */}
+      {mergeTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+          onClick={e => { if (e.target === e.currentTarget && !mergeSaving) setMergeTarget(null); }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '16px', padding: '28px', width: '400px', maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ fontSize: '0.7rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>⟶ MERGE CLIENTS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Source */}
+              <div style={{ flex: 1, padding: '12px', background: 'rgba(255,82,82,0.06)', border: '1px solid rgba(255,82,82,0.2)', borderRadius: '10px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.6rem', color: '#ff5252', letterSpacing: '1px', fontWeight: '600', marginBottom: '6px' }}>MERGING IN</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: '700', color: 'var(--text)' }}>{mergeTarget.source.name}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '3px' }}>{mergeTarget.source.visits} visits</div>
+              </div>
+              <div style={{ fontSize: '1.4rem', color: 'var(--muted)', flexShrink: 0 }}>→</div>
+              {/* Target */}
+              <div style={{ flex: 1, padding: '12px', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '10px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.6rem', color: '#d4af37', letterSpacing: '1px', fontWeight: '600', marginBottom: '6px' }}>KEPT AS</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: '700', color: 'var(--text)' }}>{mergeTarget.target.name}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: '3px' }}>{mergeTarget.target.visits} visits</div>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)', lineHeight: 1.6, padding: '10px 14px', background: 'var(--card)', borderRadius: '8px' }}>
+              All bookings from <strong style={{ color: 'var(--text)' }}>{mergeTarget.source.name}</strong> will appear under <strong style={{ color: '#d4af37' }}>{mergeTarget.target.name}</strong>. The name <strong style={{ color: '#d4af37' }}>{mergeTarget.target.name}</strong> is kept. This cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setMergeTarget(null)} disabled={mergeSaving}
+                style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: mergeSaving ? 'not-allowed' : 'pointer', fontSize: '0.82rem' }}>
+                Cancel
+              </button>
+              <button onClick={handleMerge} disabled={mergeSaving}
+                style={{ flex: 2, padding: '11px', background: mergeSaving ? 'rgba(212,175,55,0.25)' : 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: mergeSaving ? 'var(--muted)' : '#000', fontWeight: '700', fontSize: '0.82rem', cursor: mergeSaving ? 'not-allowed' : 'pointer' }}>
+                {mergeSaving ? 'Merging...' : 'Merge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── QUICK BOOK MODAL ── */}
+      {showQuickBook && selectedClient && (() => {
+        const bookingDate = new Date((quickBookForm.dateISO || new Date().toISOString().slice(0,10)) + 'T12:00:00');
+        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][bookingDate.getDay()];
+        const dayHours = config.hours?.[dayName];
+        const openMins = dayHours && !dayHours.closed ? convertTo24(dayHours.open) : 9 * 60;
+        const closeMins = dayHours && !dayHours.closed ? convertTo24(dayHours.close) : 19 * 60;
+        const dateStr = formatDateKey(bookingDate);
+        const svcObj = config.services?.find(s => s.id === quickBookForm.service);
+        const dur = parseInt(svcObj?.duration) || 30;
+        const slots = [];
+        for (let m = openMins; m < closeMins; m += 15) {
+          const busy = !!quickBookForm.barber && hasTimeConflict(bookings, { dateValue: dateStr, barberValue: quickBookForm.barber, startMinutes: m, durationMinutes: dur });
+          slots.push({ label: minsToLabel(m), busy });
+        }
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowQuickBook(false); }}>
+            <div style={{ background: 'var(--bg)', border: '1px solid rgba(212,175,55,0.35)', borderRadius: '16px', padding: '24px', width: '380px', maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#d4af37', fontWeight: '700', letterSpacing: '2px' }}>✂ BOOK WALK-IN</div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text)', fontWeight: '600', marginTop: '2px' }}>{selectedClient.name}</div>
+                </div>
+                <button onClick={() => setShowQuickBook(false)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label style={lbl}>Date</label>
+                <input
+                  type="date"
+                  value={quickBookForm.dateISO}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setQuickBookForm(f => ({ ...f, dateISO: e.target.value }))}
+                  style={{ ...inp, colorScheme: 'dark' }}
+                />
+              </div>
+
+              {/* Service */}
+              <div>
+                <label style={lbl}>Service</label>
+                <select value={quickBookForm.service} onChange={e => setQuickBookForm(f => ({ ...f, service: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                  {(config.services || []).map(s => <option key={s.id} value={s.id}>{s.name} — £{s.price}</option>)}
+                </select>
+              </div>
+
+              {/* Barber */}
+              <div>
+                <label style={lbl}>Barber</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {barbers.map(b => (
+                    <button key={b.docId || b.id} onClick={() => setQuickBookForm(f => ({ ...f, barber: b.name.toLowerCase() }))}
+                      style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid ' + (quickBookForm.barber === b.name.toLowerCase() ? (b.color || '#d4af37') : 'var(--border)'), background: quickBookForm.barber === b.name.toLowerCase() ? (b.color || '#d4af37') + '20' : 'transparent', color: quickBookForm.barber === b.name.toLowerCase() ? (b.color || '#d4af37') : 'var(--muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time */}
+              <div>
+                <label style={lbl}>Time — today</label>
+                <select value={quickBookForm.time} onChange={e => setQuickBookForm(f => ({ ...f, time: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                  {slots.map(s => <option key={s.label} value={s.label} disabled={s.busy}>{s.label}{s.busy ? ' — Busy' : ''}</option>)}
+                </select>
+              </div>
+
+              {/* Summary */}
+              {svcObj && (
+                <div style={{ padding: '10px 14px', background: 'rgba(212,175,55,0.06)', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{svcObj.name} · {svcObj.duration}min · {quickBookForm.barber || '—'}</span>
+                  <span style={{ fontSize: '0.92rem', fontWeight: '700', color: '#d4af37' }}>£{svcObj.price}</span>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setShowQuickBook(false)} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--muted)', cursor: 'pointer', fontSize: '0.82rem' }}>
+                  Cancel
+                </button>
+                <button onClick={handleQuickBook} disabled={quickBookSaving || !quickBookForm.service || !quickBookForm.barber}
+                  style={{ flex: 2, padding: '11px', background: quickBookSaving || !quickBookForm.service || !quickBookForm.barber ? 'rgba(212,175,55,0.25)' : 'linear-gradient(135deg,#d4af37,#b8860b)', border: 'none', borderRadius: '8px', color: quickBookSaving || !quickBookForm.service || !quickBookForm.barber ? 'var(--muted)' : '#000', fontWeight: '700', fontSize: '0.82rem', cursor: quickBookSaving || !quickBookForm.service || !quickBookForm.barber ? 'not-allowed' : 'pointer' }}>
+                  {quickBookSaving ? 'Booking...' : 'Book Walk-In'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── EDIT CLIENT MODAL ── */}
       {showEditForm && editingClient && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
@@ -1233,6 +1549,13 @@ export default function Clients({ isAdmin = true }) {
                 <label style={lbl}>Notes</label>
                 <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Preferences, allergies, any notes..." rows={3} style={{ ...inp, resize: 'vertical', lineHeight: '1.5' }} />
               </div>
+              {(editingClient.isManualOnly || editForm.bookingName) && (
+                <div>
+                  <label style={lbl}>Booking name (links history)</label>
+                  <input value={editForm.bookingName} onChange={e => setEditForm(f => ({ ...f, bookingName: e.target.value }))} placeholder="Name as it appears in bookings (e.g. Ozcem)" style={inp} />
+                  <div style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '4px' }}>If this client's bookings were made under a different name, enter it here to link their history.</div>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
               <button onClick={() => { setShowEditForm(false); setEditingClient(null); }}
