@@ -217,6 +217,10 @@ export default function Finance() {
   const [editExpEntryDraft, setEditExpEntryDraft] = useState({ cashExpense: '', bankExpense: '', notes: '' });
   const [editExpEntrySaving, setEditExpEntrySaving] = useState(false);
 
+  const [investmentTransactions, setInvestmentTransactions] = useState([]);
+  const [invTxForm, setInvTxForm] = useState({ date: '', partnerName: '', amount: '', description: '', notes: '' });
+  const [invTxSaving, setInvTxSaving] = useState(false);
+
   const [year, month] = useMemo(() => {
     const [y, m] = selectedMonth.split('-').map(Number);
     return [y, m - 1];
@@ -233,13 +237,14 @@ export default function Finance() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [bookSnap, barberSnap, expSnap, paySnap, advSnap, legacyExpSnap] = await Promise.all([
+      const [bookSnap, barberSnap, expSnap, paySnap, advSnap, legacyExpSnap, invTxSnap] = await Promise.all([
         getDocs(collection(db, `tenants/${TENANT}/bookings`)),
         getDocs(collection(db, `tenants/${TENANT}/barbers`)),
         getDocs(collection(db, `tenants/${TENANT}/finance_expenses`)),
         getDocs(query(collection(db, `tenants/${TENANT}/finance_payments`), orderBy('date', 'desc'))),
         getDocs(collection(db, `tenants/${TENANT}/advances`)),
         getDocs(collection(db, `tenants/${TENANT}/expenses`)),
+        getDocs(query(collection(db, `tenants/${TENANT}/investment_transactions`), orderBy('date', 'desc'))),
       ]);
 
       // Barbers
@@ -344,6 +349,11 @@ export default function Finance() {
         return (bd?.getTime() || 0) - (ad?.getTime() || 0);
       });
       setPayments(merged);
+
+      // Investment transactions
+      const invTxList = invTxSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      setInvestmentTransactions(invTxList);
     } catch (err) {
       console.error('Finance fetchAll error:', err);
     }
@@ -413,11 +423,11 @@ export default function Finance() {
         barberRev[b.name]  = { cash: 0, card: 0 };
         barberTips[b.name] = { cash: 0, card: 0 };
       });
-      // Revenue: only CHECKED_OUT bookings; wages: all non-cancelled (worked)
+      // Revenue: only CHECKED_OUT bookings; wages: all non-cancelled non-blocked (worked)
       const workedNames = new Set();
       dayBk.forEach(b => {
         const name = b.barber;
-        workedNames.add(name);
+        if (b.status !== 'BLOCKED') workedNames.add(name);
         if (b.status !== 'CHECKED_OUT') return;
         if (!barberRev[name])  barberRev[name]  = { cash: 0, card: 0 };
         if (!barberTips[name]) barberTips[name] = { cash: 0, card: 0 };
@@ -622,6 +632,17 @@ export default function Finance() {
     return cum;
   }, [partnershipByMonth]);
 
+  // Investment transactions summed per partner
+  const invTxByPartner = useMemo(() => {
+    const map = {};
+    investmentTransactions.forEach(tx => {
+      const name = tx.partnerName;
+      if (!name) return;
+      map[name] = (map[name] || 0) + (parseFloat(tx.amount) || 0);
+    });
+    return map;
+  }, [investmentTransactions]);
+
   // Payment rows
   const paymentRows = useMemo(() =>
     payments
@@ -755,6 +776,33 @@ export default function Finance() {
     const col = payment.sourceType === 'advances' ? 'advances' : 'finance_payments';
     await deleteDoc(doc(db, `tenants/${TENANT}/${col}`, payment.id));
     setPayments(prev => prev.filter(p => !(p.id === payment.id && p.sourceType === payment.sourceType)));
+  };
+
+  const addInvTx = async () => {
+    if (!invTxForm.date || !invTxForm.partnerName || !invTxForm.amount) return;
+    setInvTxSaving(true);
+    try {
+      const data = {
+        date: invTxForm.date,
+        partnerName: invTxForm.partnerName,
+        amount: parseFloat(invTxForm.amount) || 0,
+        description: String(invTxForm.description || '').trim(),
+        notes: String(invTxForm.notes || '').trim(),
+        createdAt: new Date().toISOString(),
+      };
+      const ref = await addDoc(collection(db, `tenants/${TENANT}/investment_transactions`), data);
+      setInvestmentTransactions(prev => [{ id: ref.id, ...data }, ...prev].sort((a, b) => String(b.date).localeCompare(String(a.date))));
+      setInvTxForm({ date: '', partnerName: '', amount: '', description: '', notes: '' });
+    } catch (e) { console.error(e); }
+    setInvTxSaving(false);
+  };
+
+  const deleteInvTx = async id => {
+    if (!window.confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
+    try {
+      await deleteDoc(doc(db, `tenants/${TENANT}/investment_transactions`, id));
+      setInvestmentTransactions(prev => prev.filter(t => t.id !== id));
+    } catch (e) { console.error(e); }
   };
 
   const saveSettings = async () => {
@@ -1698,25 +1746,35 @@ export default function Finance() {
             <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(126,87,194,0.2)', fontSize: '0.65rem', color: '#b39ddb', fontWeight: '700', letterSpacing: '2px' }}>
               INITIAL INVESTMENT — SETUP
             </div>
+
+            {/* Summary table */}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
                 <thead>
                   <tr style={{ background: 'rgba(126,87,194,0.06)' }}>
-                    {['Partner','Share','Amount Paid','Required*','Balance'].map(h => (
+                    {['Partner','Share','Baz Ödeme','Ek Ödemeler','Toplam Ödendi','Gereken*','Bakiye'].map(h => (
                       <th key={h} style={{ ...thS, textAlign: 'left', padding: '8px 16px' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {INITIAL_INVESTMENT.map(r => {
+                    const extra = invTxByPartner[r.name] || 0;
+                    const totalPaid = r.paid + extra;
                     const required = INITIAL_POOL * (r.share / 100);
-                    const balance  = r.paid - required;
+                    const balance  = totalPaid - required;
                     return (
                       <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: BARBER_COLORS[r.name] || '#b39ddb' }}>{r.name}</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>{r.share}%</td>
-                        <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>£{r.paid.toLocaleString()}</td>
-                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{(INITIAL_POOL * r.share / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{r.paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: extra > 0 ? '700' : '400', color: extra > 0 ? '#4caf50' : 'var(--muted)' }}>
+                          {extra > 0 ? '+£' + extra.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '–'}
+                        </td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#b39ddb' }}>
+                          £{totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '10px 16px', fontSize: '0.78rem', color: 'var(--muted)' }}>£{required.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style={{ padding: '10px 16px', fontSize: '0.8rem', fontWeight: '700', color: balance >= 0 ? '#4caf50' : '#ff5252' }}>
                           {balance >= 0 ? '+' : ''}£{Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
@@ -1724,21 +1782,104 @@ export default function Finance() {
                     );
                   })}
                   <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)', fontStyle: 'italic' }} colSpan={2}>{INITIAL_EXTRA.label}</td>
+                    <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)', fontStyle: 'italic' }} colSpan={3}>{INITIAL_EXTRA.label}</td>
                     <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)' }}>£{INITIAL_EXTRA.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td colSpan={2} style={{ padding: '8px 16px', fontSize: '0.7rem', color: 'var(--muted)' }}></td>
+                    <td colSpan={3} />
                   </tr>
                   <tr style={{ background: 'rgba(126,87,194,0.08)', borderTop: '2px solid rgba(126,87,194,0.25)' }}>
                     <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.78rem' }}>TOTAL POOL</td>
                     <td style={{ padding: '10px 16px', fontWeight: '700', color: '#b39ddb', fontSize: '0.78rem' }}>100%</td>
+                    <td colSpan={2} />
                     <td style={{ padding: '10px 16px', fontWeight: '800', color: '#b39ddb', fontSize: '0.88rem' }}>£{INITIAL_POOL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td colSpan={2} style={{ padding: '10px 16px', fontSize: '0.7rem', color: 'var(--muted)' }}>
-                      * Required = Total Pool × Share%
+                      * Gereken = Toplam Pool × Hisse%
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
+            {/* Add transaction form */}
+            <div style={{ padding: '16px', borderTop: '1px solid rgba(126,87,194,0.15)', background: 'rgba(126,87,194,0.03)' }}>
+              <div style={{ fontSize: '0.6rem', color: '#b39ddb', fontWeight: '700', letterSpacing: '2px', marginBottom: '12px' }}>ÖDEME / KATKI EKLE</div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '0 0 130px' }}>
+                  <label style={lbl}>Tarih</label>
+                  <input type="date" value={invTxForm.date}
+                    onChange={e => setInvTxForm(f => ({ ...f, date: e.target.value }))}
+                    style={{ ...inp, colorScheme: 'dark' }} />
+                </div>
+                <div style={{ flex: '0 0 110px' }}>
+                  <label style={lbl}>Partner</label>
+                  <select value={invTxForm.partnerName}
+                    onChange={e => setInvTxForm(f => ({ ...f, partnerName: e.target.value }))}
+                    style={inp}>
+                    <option value="">Seç…</option>
+                    {INITIAL_INVESTMENT.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={lbl}>Açıklama</label>
+                  <input type="text" placeholder="Ekipman, ek ödeme…" value={invTxForm.description}
+                    onChange={e => setInvTxForm(f => ({ ...f, description: e.target.value }))}
+                    style={inp} />
+                </div>
+                <div style={{ flex: '0 0 110px' }}>
+                  <label style={lbl}>Tutar (£)</label>
+                  <input type="number" min="0" step="0.01" placeholder="0.00" value={invTxForm.amount}
+                    onChange={e => setInvTxForm(f => ({ ...f, amount: e.target.value }))}
+                    style={inp} />
+                </div>
+                <div style={{ flex: '1 1 150px' }}>
+                  <label style={lbl}>Not (opsiyonel)</label>
+                  <input type="text" placeholder="…" value={invTxForm.notes}
+                    onChange={e => setInvTxForm(f => ({ ...f, notes: e.target.value }))}
+                    style={inp} />
+                </div>
+                <button onClick={addInvTx}
+                  disabled={invTxSaving || !invTxForm.date || !invTxForm.partnerName || !invTxForm.amount}
+                  style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#b39ddb,#7e57c2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', opacity: (!invTxForm.date || !invTxForm.partnerName || !invTxForm.amount) ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+                  {invTxSaving ? '...' : '+ Ekle'}
+                </button>
+              </div>
+            </div>
+
+            {/* Transaction log */}
+            {investmentTransactions.length > 0 && (
+              <div style={{ borderTop: '1px solid rgba(126,87,194,0.15)' }}>
+                <div style={{ padding: '10px 16px 4px', fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>İşlem Geçmişi</div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
+                    <thead>
+                      <tr>
+                        {['Tarih','Partner','Açıklama','Tutar','Not',''].map((h, i) => (
+                          <th key={i} style={{ ...thS, textAlign: 'left', padding: '6px 16px' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {investmentTransactions.map(tx => (
+                        <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '8px 16px', fontSize: '0.75rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{tx.date}</td>
+                          <td style={{ padding: '8px 16px', fontSize: '0.78rem', fontWeight: '700', color: BARBER_COLORS[tx.partnerName] || '#b39ddb' }}>{tx.partnerName}</td>
+                          <td style={{ padding: '8px 16px', fontSize: '0.78rem', color: 'var(--text)' }}>{tx.description || '–'}</td>
+                          <td style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: '700', color: '#4caf50', whiteSpace: 'nowrap' }}>
+                            +£{parseFloat(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td style={{ padding: '8px 16px', fontSize: '0.72rem', color: 'var(--muted)' }}>{tx.notes || '–'}</td>
+                          <td style={{ padding: '8px 16px' }}>
+                            <button onClick={() => deleteInvTx(tx.id)}
+                              style={{ background: 'none', border: '1px solid rgba(255,82,82,0.35)', borderRadius: '6px', color: '#ff5252', cursor: 'pointer', fontSize: '0.7rem', padding: '3px 9px', lineHeight: 1 }}>
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

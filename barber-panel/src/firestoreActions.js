@@ -29,8 +29,15 @@ export async function checkoutBooking({ bookingId, paymentMethod, total, discoun
   let isMember = false;
   let pointsEarned = 0;
   try {
-    if (phone || email) {
-      const clientsRef = collection(db, `${TENANT}/clients`);
+    const clientsRef = collection(db, `${TENANT}/clients`);
+    // Prefer direct ID lookup (set by Cut Him / known client bookings — avoids duplicate creation)
+    if (bookingData.clientManualId) {
+      try {
+        const directSnap = await getDoc(doc(db, `${TENANT}/clients`, bookingData.clientManualId));
+        if (directSnap.exists()) clientDoc = directSnap;
+      } catch (_) {}
+    }
+    if (!clientDoc && (phone || email)) {
       if (phone) {
         const s = await getDocs(query(clientsRef, where('phone', '==', phone)));
         if (!s.empty) clientDoc = s.docs[0];
@@ -224,7 +231,7 @@ export async function saveUnpaidBooking({ bookingId, soldProducts, soldAddOns, s
 }
 
 // ── WALK-IN ───────────────────────────────────────────────────────────────
-export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source, duration: durationParam, soldProducts }) {
+export async function createWalkIn({ name, email, phone, date, time, service, barber, price, paymentType, source, duration: durationParam, soldProducts, clientManualId }) {
   const bookingId = 'WCB-' + Date.now();
   const months = { January:0, February:1, March:2, April:3, May:4, June:5, July:6, August:7, September:8, October:9, November:10, December:11 };
   const parts = date.split(' ');
@@ -262,6 +269,7 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
           }))
       : [],
     source: source || 'Walk-in',
+    ...(clientManualId ? { clientManualId } : {}),
     createdAt: Timestamp.fromDate(new Date()),
   });
   return bookingId;

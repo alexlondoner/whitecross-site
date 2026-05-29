@@ -591,6 +591,7 @@ export default function Clients({ isAdmin = true }) {
         name: bookingName,
         email: selectedClient.email || '',
         phone: selectedClient.phone || '',
+        clientManualId: selectedClient.manualId || '',
         date: dateStr,
         time: quickBookForm.time,
         service: quickBookForm.service,
