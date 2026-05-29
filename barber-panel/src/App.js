@@ -10,6 +10,7 @@ import config from './config';
 import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import './App.css';
 
+const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Bookings = lazy(() => import('./pages/Bookings'));
 const Barbers = lazy(() => import('./pages/Barbers'));
@@ -40,7 +41,7 @@ function App() {
   const [authUser, setAuthUser] = useState(undefined); // undefined = still checking
   const [tenantId, setTenantId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(true); // default true until role loaded
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('home');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [configReady, setConfigReady] = useState(false);
@@ -113,6 +114,7 @@ function App() {
       return <Cart cartItems={cart} onCheckout={() => alert('Ödeme entegrasyonu eklenecek!')} onRemove={(id) => setCart(cart => cart.filter(item => item.id !== id))} />;
     }
     switch (activePage) {
+      case 'home':          return <Home tenantId={tenantId} setActivePage={setActivePage} authUser={authUser} />;
       case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
       case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
       case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
@@ -123,7 +125,7 @@ function App() {
       case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} authUser={authUser} />;
       case 'marketing':     return <Marketing tenantId={tenantId} isAdmin={isAdmin} />;
       case 'activity-log':  return isAdmin ? <AuditLog tenantId={tenantId} /> : <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
-      default:              return <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
+      default:              return <Home tenantId={tenantId} setActivePage={setActivePage} />;
     }
   };
 

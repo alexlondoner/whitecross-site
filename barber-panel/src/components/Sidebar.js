@@ -5,6 +5,7 @@ import { getDaysInMonth, getFirstDay } from '../utils/timeUtils';
 const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const navItems = [
+  { id: 'home',           icon: '🏠', label: 'Home' },
   { id: 'dashboard',      icon: '📊', label: 'Dashboard' },
   { id: 'bookings',       icon: '📅', label: 'Bookings' },
   { id: 'calendar',       icon: '🗓️', label: 'Calendar' },

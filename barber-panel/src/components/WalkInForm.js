@@ -11,6 +11,8 @@ import AddClientModal from './AddClientModal';
 import ProductSelector from './ProductSelector';
 
 export default function WalkInForm({ preBarber, preHour, preMins, preDate, barbers, existingBookings, specialHours, products, onClose, onSaved }) {
+  const [showPastConfirm, setShowPastConfirm] = useState(false);
+  const [pendingGoCheckout, setPendingGoCheckout] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const handleAddClientInline = (client) => {
     setSearch(client.name || '');
