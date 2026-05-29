@@ -12,18 +12,29 @@ const AVATAR_COLORS = ['#d4af37','#2196f3','#ff9800','#e91e63','#b39ddb','#4caf5
 function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-function parsePrice(v) {
-  return parseFloat(String(v||'0').replace(/[£,]/g,'').replace('-','').trim()) || 0;
+function pp(v) {
+  return parseFloat(String(v||'0').replace(/[£,\-]/g,'').trim()) || 0;
 }
+function soldProductsTotal(b) {
+  const list = Array.isArray(b?.soldProducts) ? b.soldProducts : [];
+  return list.reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty,10)||0), 0);
+}
+function serviceGross(b) {
+  const src = String(b?.source||'').trim().toLowerCase();
+  if (src === 'product sale' || src === 'product_sale') return 0;
+  const explicit = pp(b.price) + pp(b.serviceCharge);
+  if (explicit > 0) return explicit;
+  const hasProd = soldProductsTotal(b) > 0;
+  if (hasProd && !b.serviceId && !b.service) return 0;
+  return Math.max(0, pp(b.paidAmount) - pp(b.tip) - soldProductsTotal(b));
+}
+// matches Reports.js bookingNetWithoutTip exactly
 function effectiveRevenue(b) {
-  const tip = parsePrice(b.tip);
-  if (b.status === 'CHECKED_OUT') {
-    const paid = parsePrice(b.paidAmount);
-    if (paid > 0) return Math.max(0, paid - tip);
+  const paid = pp(b.paidAmount);
+  if (String(b?.status||'').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
+    return Math.max(0, paid - pp(b.tip));
   }
-  const p = parsePrice(b.price);
-  if (p > 0) return p;
-  return Math.max(0, parsePrice(b.paidAmount) - tip);
+  return Math.max(0, serviceGross(b) + soldProductsTotal(b) - pp(b.discount));
 }
 function startOfWeek(d) {
   const x = new Date(d);
@@ -48,6 +59,27 @@ function capitalizeName(name) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function ClientRankRow({ c, i, accentColor, barColor }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.1rem', fontWeight:'700', color: i < 3 ? accentColor : 'var(--muted2)', minWidth:'18px', textAlign:'center' }}>{i+1}</div>
+      <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:avatarColor(c.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:'700', color:'#0a0705', flexShrink:0 }}>
+        {initials(c.name)}
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:'0.76rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
+        <div style={{ fontSize:'0.57rem', color:'var(--muted)', marginTop:'1px' }}>{c.visits} visits</div>
+      </div>
+      <div style={{ minWidth:'65px' }}>
+        <div style={{ height:'4px', borderRadius:'99px', background:'rgba(255,255,255,0.06)' }}>
+          <div style={{ height:'100%', borderRadius:'99px', background:barColor, width:`${c.pct}%`, opacity:0.8 }} />
+        </div>
+        <div style={{ fontSize:'0.6rem', fontWeight:'700', color:accentColor, marginTop:'2px', textAlign:'right' }}>{fmt(c.spent)}</div>
+      </div>
+    </div>
+  );
+}
 
 function SectionDivider({ label }) {
   return (
@@ -190,7 +222,11 @@ export default function Home({ tenantId, setActivePage, authUser }) {
   const vipToday = useMemo(() => {
     const todayNames = new Set(todayBookings.map(b => String(b.clientName||b.name||'').trim().toLowerCase()));
     return clients
-      .filter(c => (c.isMember || (c.loyaltyPoints||0) >= 100) && todayNames.has(String(c.name||'').trim().toLowerCase()))
+      .filter(c => {
+        const isMember = c.isMember === true || c.isMember === 'true';
+        const isLoyal  = (c.loyaltyPoints||0) >= 100;
+        return (isMember || isLoyal) && todayNames.has(String(c.name||'').trim().toLowerCase());
+      })
       .slice(0, 2);
   }, [clients, todayBookings]);
 
@@ -201,10 +237,12 @@ export default function Home({ tenantId, setActivePage, authUser }) {
       const dk = toDateKey(d);
       const isToday  = dk === todayKey;
       const isFuture = d > now && !isToday;
-      const dayBks   = bookings.filter(b => b.dateKey === dk && b.status !== 'BLOCKED');
-      const revenue  = isToday || isFuture
-        ? dayBks.reduce((s,b) => s + effectiveRevenue(b), 0)
-        : dayBks.filter(b => b.status === 'CHECKED_OUT').reduce((s,b) => s + effectiveRevenue(b), 0);
+      const dayBks   = bookings.filter(b => b.dateKey === dk && b.status !== 'BLOCKED' && b.status !== 'CANCELLED');
+      const checkedOutRev = dayBks.filter(b => b.status === 'CHECKED_OUT').reduce((s,b) => s + effectiveRevenue(b), 0);
+      // future: show booked price as estimate; today+past: only actual CHECKED_OUT
+      const revenue = isFuture
+        ? dayBks.reduce((s,b) => s + pp(b.price), 0)
+        : checkedOutRev;
       return { day: WEEK_DAYS[i], dk, revenue, isToday, isFuture, isPast: !isToday && !isFuture };
     });
   }, [bookings, now, todayKey]);
@@ -247,31 +285,51 @@ export default function Home({ tenantId, setActivePage, authUser }) {
       .sort((a,b) => b.count - a.count).slice(0,5);
   }, [bookings, monthKey]);
 
-  const topClients = useMemo(() => {
-    const map = {};       // key = lowercase name
-    const display = {};   // key → best display name
-    bookings
-      .filter(b => b.status === 'CHECKED_OUT' && String(b.dateKey||'').startsWith(monthKey))
-      .forEach(b => {
-        const raw = String(b.clientName || b.name || '').trim();
-        if (!raw) return;
-        const key = raw.toLowerCase();
-        const skip = ['walk-in','walk_in','walkin','unknown','guest'];
-        if (skip.includes(key)) return;
-        // prefer capitalized display name
-        const cap = capitalizeName(raw);
-        if (!display[key] || raw[0] === raw[0].toUpperCase()) display[key] = cap;
-        if (!map[key]) map[key] = { spent: 0, visits: 0 };
-        map[key].spent  += effectiveRevenue(b);
-        map[key].visits += 1;
-      });
+  // member name set (lowercase) for fast lookup
+  const memberNameSet = useMemo(() => {
+    const s = new Set();
+    clients.forEach(c => {
+      if (c.isMember === true || c.isMember === 'true') {
+        s.add(String(c.name||'').trim().toLowerCase());
+      }
+    });
+    return s;
+  }, [clients]);
+
+  const _buildClientList = (bookingList, excludeMembers) => {
+    const map = {};
+    const display = {};
+    const skip = ['walk-in','walk_in','walkin','unknown','guest'];
+    bookingList.forEach(b => {
+      const raw = String(b.clientName || b.name || '').trim();
+      if (!raw) return;
+      const key = raw.toLowerCase();
+      if (skip.includes(key)) return;
+      if (excludeMembers && memberNameSet.has(key)) return;
+      if (!excludeMembers && !memberNameSet.has(key)) return;
+      const cap = capitalizeName(raw);
+      if (!display[key] || raw[0] === raw[0].toUpperCase()) display[key] = cap;
+      if (!map[key]) map[key] = { spent: 0, visits: 0 };
+      map[key].spent  += effectiveRevenue(b);
+      map[key].visits += 1;
+    });
     const list = Object.entries(map)
       .map(([key, v]) => ({ name: display[key] || capitalizeName(key), spent: v.spent, visits: v.visits }))
       .sort((a,b) => b.spent - a.spent)
       .slice(0, 5);
     const maxSpent = list[0]?.spent || 1;
     return list.map(c => ({ ...c, pct: Math.round((c.spent / maxSpent) * 100) }));
-  }, [bookings, monthKey]);
+  };
+
+  const checkedOutBookings = useMemo(() => bookings.filter(b => b.status === 'CHECKED_OUT'), [bookings]);
+
+  const topClients = useMemo(() => _buildClientList(checkedOutBookings, true),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [checkedOutBookings, memberNameSet]);
+
+  const topMembers = useMemo(() => _buildClientList(checkedOutBookings, false),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [checkedOutBookings, memberNameSet]);
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const card  = { background:'var(--card)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden' };
@@ -573,25 +631,22 @@ export default function Home({ tenantId, setActivePage, authUser }) {
             <div style={card}>
               <div style={cHead}>
                 <span style={cTitle}>👑 Top Clients</span>
-                <span style={bdg('var(--card2)','var(--muted)','var(--border)')}>This month</span>
+                <span style={bdg('var(--card2)','var(--muted)','var(--border)')}>All time · non-members</span>
               </div>
               {topClients.map((c,i) => (
-                <div key={c.name} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.1rem', fontWeight:'700', color: i < 3 ? 'var(--gold)' : 'var(--muted2)', minWidth:'18px', textAlign:'center' }}>{i+1}</div>
-                  <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:avatarColor(c.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:'700', color:'#0a0705', flexShrink:0 }}>
-                    {initials(c.name)}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:'0.76rem', fontWeight:'600', color:'var(--text)' }}>{c.name}</div>
-                    <div style={{ fontSize:'0.57rem', color:'var(--muted)', marginTop:'1px' }}>{c.visits} visits</div>
-                  </div>
-                  <div style={{ minWidth:'65px' }}>
-                    <div style={{ height:'4px', borderRadius:'99px', background:'rgba(212,175,55,0.15)' }}>
-                      <div style={{ height:'100%', borderRadius:'99px', background:'var(--gold)', width:`${c.pct}%` }} />
-                    </div>
-                    <div style={{ fontSize:'0.6rem', fontWeight:'700', color:'var(--gold)', marginTop:'2px', textAlign:'right' }}>{fmt(c.spent)}</div>
-                  </div>
-                </div>
+                <ClientRankRow key={c.name} c={c} i={i} accentColor="var(--gold)" barColor="var(--gold)" />
+              ))}
+            </div>
+          )}
+
+          {topMembers.length > 0 && (
+            <div style={{ ...card, border:'1px solid rgba(124,58,237,0.25)' }}>
+              <div style={{ ...cHead, borderBottomColor:'rgba(124,58,237,0.2)' }}>
+                <span style={{ ...cTitle }}>◆ Top Members</span>
+                <span style={bdg('rgba(124,58,237,0.1)','#b39ddb','rgba(124,58,237,0.3)')}>All time</span>
+              </div>
+              {topMembers.map((c,i) => (
+                <ClientRankRow key={c.name} c={c} i={i} accentColor="#b39ddb" barColor="#7c3aed" />
               ))}
             </div>
           )}

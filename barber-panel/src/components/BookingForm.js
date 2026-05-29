@@ -20,6 +20,8 @@ const COUNTRY_CODES = [
 ];
 
 export default function BookingForm({ preBarber, preHour, preMins, preDate, preBooking, barbers, existingBookings, specialHours, onClose, onSaved }) {
+  const [showPastConfirm, setShowPastConfirm] = useState(false);
+  const [pendingGoCheckout, setPendingGoCheckout] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const handleAddClientInline = (client) => {
     let code = '+44', local = String(client.phone || '');
@@ -145,13 +147,17 @@ export default function BookingForm({ preBarber, preHour, preMins, preDate, preB
     if (dayHoursForForm && dayHoursForForm.closed) { alert('The shop is closed on this day. No bookings can be made.'); return; }
     const _selMinsCheck = convertTo24(form.time);
     if (_selMinsCheck < openMins || _selMinsCheck >= closeMins) { alert('Selected time is outside working hours (' + minsToLabel(openMins) + '–' + minsToLabel(closeMins) + '). Please choose a valid time slot.'); return; }
+    const today = new Date().toISOString().split('T')[0];
+    if (!isEdit && form.date < today) { setPendingGoCheckout(goCheckout); setShowPastConfirm(true); return; }
+    await doSave(goCheckout);
+  };
+
+  const doSave = async (goCheckout = false) => {
     const service = serviceForForm;
     const price = service ? service.price : 0;
     const duration = service ? (parseInt(service.duration) || 30) : 30;
     const [yr2, mo2, dy2] = form.date.split('-');
     const dateStr = parseInt(dy2) + ' ' + months2[parseInt(mo2)-1] + ' ' + yr2;
-    const today = new Date().toISOString().split('T')[0];
-    if (!isEdit && form.date < today) { alert('Cannot book a past date.'); return; }
     const selectedMins = convertTo24(form.time);
     if (hasTimeConflict(existingBookings, {
       dateValue: dateStr,
@@ -189,6 +195,25 @@ export default function BookingForm({ preBarber, preHour, preMins, preDate, preB
           <div style={{ width:'36px', height:'36px', border:'3px solid rgba(212,175,55,0.2)', borderTop:'3px solid #d4af37', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
           <span style={{ fontSize:'0.78rem', color:'#d4af37', fontWeight:'600', letterSpacing:'1px' }}>{isEdit ? 'Saving changes...' : 'Booking...'}</span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+      {showPastConfirm && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(10,10,8,0.9)', zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'16px', borderRadius:'16px', padding:'24px' }}>
+          <div style={{ fontSize:'1.4rem' }}>⚠️</div>
+          <div style={{ fontSize:'0.85rem', fontWeight:'700', color:'#ff9800', textAlign:'center' }}>Past Date</div>
+          <div style={{ fontSize:'0.78rem', color:'var(--muted)', textAlign:'center', lineHeight:1.6 }}>
+            You're adding a booking to <span style={{ color:'var(--text)', fontWeight:'600' }}>{formDateValue}</span>.<br />Are you sure?
+          </div>
+          <div style={{ display:'flex', gap:'10px', width:'100%' }}>
+            <button onClick={() => { setShowPastConfirm(false); if (onClose) onClose(); }}
+              style={{ flex:1, padding:'11px', background:'transparent', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--muted)', cursor:'pointer', fontSize:'0.82rem', fontWeight:'600' }}>
+              No, go back
+            </button>
+            <button onClick={() => { setShowPastConfirm(false); doSave(pendingGoCheckout); }}
+              style={{ flex:1, padding:'11px', background:'rgba(255,152,0,0.15)', border:'1px solid rgba(255,152,0,0.4)', borderRadius:'8px', color:'#ff9800', cursor:'pointer', fontSize:'0.82rem', fontWeight:'700' }}>
+              Yes, add it
+            </button>
+          </div>
         </div>
       )}
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(212,175,55,0.04)', flexShrink:0 }}>
