@@ -290,7 +290,9 @@ export default function Home({ tenantId, setActivePage, authUser }) {
     const s = new Set();
     clients.forEach(c => {
       if (c.isMember === true || c.isMember === 'true') {
-        s.add(String(c.name||'').trim().toLowerCase());
+        if (c.name)      s.add(String(c.name).trim().toLowerCase());
+        if (c._origName) s.add(String(c._origName).trim().toLowerCase());
+        (c._aliases || []).forEach(a => { if (a) s.add(String(a).trim().toLowerCase()); });
       }
     });
     return s;
