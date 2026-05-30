@@ -2,6 +2,31 @@
 
 ## 2026-05-30
 
+### barber-panel — Home.js header row + compact spacing
+- **Header** flex row'a çevrildi: greeting solda (1.5rem→1.1rem, date 0.62→0.58rem, marginTop 5px→3px), Walk-in + New Booking butonları sağda inline
+- **Summary strip** marginBottom: 14px → 8px
+- **App.js main** padding-top: 60px → 48px (ProfileBar ile hizalama)
+
+### barber-panel — Sign Out Sidebar → ProfileBar dropdown'a taşındı
+- **Sidebar.js**: `onLogout` prop kaldırıldı, Sign Out butonu (~20 satır) silindi
+- **ProfileBar.js**: `onLogout` prop eklendi; dropdown'un altına divider + kırmızı Sign Out butonu eklendi
+- **App.js**: Sidebar'dan `onLogout={handleLogout}` kaldırıldı, ProfileBar'a eklendi
+
+### barber-panel — Sidebar.js mini calendar kaldırıldı
+- `getDaysInMonth`, `getFirstDay` import'ları silindi
+- `CAL_MONTHS` sabiti silindi
+- `calMonth` / `setCalMonth` state silindi
+- Tüm `{/* MINI CALENDAR */}` bloğu (~40 satır) kaldırıldı
+- `nav` zaten `flex:1` taşıdığından oluşan boşluğu otomatik dolduruyor
+
+### barber-panel — Home.js CSS compact düzeltmeleri
+- **cHead** padding: `12px 16px` → `11px 14px` (tüm card header'lar)
+- **Header** marginBottom: `20px` → `12px` (sayfa başı boşluk azaltıldı)
+- **Summary strip** marginBottom: `20px` → `14px`
+- **Summary kartları** padding: `14px 16px` → `10px 14px`, icon `1.1rem` → `0.9rem`, value `1.5rem` → `1.3rem`, label `0.55rem` → `0.53rem`, sub `0.6rem` → `0.57rem`, progressBar marginTop `8px` → `6px`
+- **Ana grid** gap: `14px` → `10px`
+- **Today's Schedule kartı** `flex:1` eklendi (sağ kolonda tam yükseklik doldurur)
+
 ### SEO — Clerkenwell bölge eklendi (5 sayfa)
 - **index.html**: `<title>` → "Clerkenwell Barbershop | EC1Y London"; meta description, OG title, OG description, Twitter title, Twitter description, JSON-LD description'a "in Clerkenwell, EC1Y London" eklendi
 - **about.html**: `<title>`, meta description, OG title, OG description → Clerkenwell öne çıkarıldı

@@ -57,6 +57,20 @@ function bookingDate(b) {
   return null;
 }
 function pp(v) { return parseFloat(String(v||'0').replace(/[£,]/g,'').trim())||0; }
+function soldProductsTotal(b) {
+  return (Array.isArray(b?.soldProducts) ? b.soldProducts : [])
+    .reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty, 10) || 0), 0);
+}
+function bookingRev(b) {
+  const status = String(b.status||'').toUpperCase();
+  const paid = pp(b.paidAmount);
+  const tip  = pp(b.tip);
+  if (status === 'CHECKED_OUT') {
+    if (paid > 0) return Math.max(0, paid - tip);
+    return Math.max(0, pp(b.price) + pp(b.serviceCharge) + soldProductsTotal(b) - pp(b.discount));
+  }
+  return 0;
+}
 function pct(a,b) { return b===0?0:Math.round(a/b*100); }
 function trend(curr,prev) {
   if (!prev) return null;
@@ -205,17 +219,17 @@ export default function Marketing({ tenantId, isAdmin }) {
 
   // ── MoM metrics ─────────────────────────────────────────────
   const mom = useMemo(()=>{
-    const tmRev  = thisMonthBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
-    const lmRev  = lastMonthBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const tmRev  = thisMonthBks.reduce((s,b)=>s+bookingRev(b),0);
+    const lmRev  = lastMonthBks.reduce((s,b)=>s+bookingRev(b),0);
     const tmCount= thisMonthBks.length;
     const lmCount= lastMonthBks.length;
-    const lmFullRev = lastMonthFull.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const lmFullRev = lastMonthFull.reduce((s,b)=>s+bookingRev(b),0);
     // Same week last month — elapsed-matched and full week
-    const swElapsedRev   = sameWeekLastMonthElapsedBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const swElapsedRev   = sameWeekLastMonthElapsedBks.reduce((s,b)=>s+bookingRev(b),0);
     const swElapsedCount = sameWeekLastMonthElapsedBks.length;
-    const swFullRev      = sameWeekLastMonthBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const swFullRev      = sameWeekLastMonthBks.reduce((s,b)=>s+bookingRev(b),0);
     const swFullCount    = sameWeekLastMonthBks.length;
-    const twRev          = thisWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const twRev          = thisWeekBks.reduce((s,b)=>s+bookingRev(b),0);
     const twCount        = thisWeekBks.length;
     return {
       tmRev, lmRev, tmCount, lmCount, lmFullRev,
@@ -233,7 +247,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       const ms=new Date(now.getFullYear(),now.getMonth()-i,1);
       const me=new Date(now.getFullYear(),now.getMonth()-i+1,0,23,59,59);
       const bks=bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=ms&&d<=me; });
-      const rev=bks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+      const rev=bks.reduce((s,b)=>s+bookingRev(b),0);
       result.push({ label:`${MONTHS[ms.getMonth()]} ${ms.getFullYear()===now.getFullYear()?'':ms.getFullYear()}`.trim(), rev, count:bks.length, isCurrent:i===0 });
     }
     return result;
@@ -244,9 +258,9 @@ export default function Marketing({ tenantId, isAdmin }) {
     const twCount = thisWeekBks.length;
     const lwCount = lastWeekBks.length;        // elapsed-matched
     const lwFullCount = lastWeekFullBks.length; // full last week
-    const twRev   = thisWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
-    const lwRev   = lastWeekBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);   // elapsed
-    const lwFullRev = lastWeekFullBks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0); // full
+    const twRev   = thisWeekBks.reduce((s,b)=>s+bookingRev(b),0);
+    const lwRev   = lastWeekBks.reduce((s,b)=>s+bookingRev(b),0);   // elapsed
+    const lwFullRev = lastWeekFullBks.reduce((s,b)=>s+bookingRev(b),0); // full
     const daysSinceMonday = (now-thisWeekMon)/(1000*60*60*24);
     const workDaysElapsed = Math.max(1,Math.ceil(daysSinceMonday));
     const bCount = Math.max(1,barbers.length);
@@ -274,7 +288,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       const ws=new Date(thisWeekMon); ws.setDate(ws.getDate()-i*7);
       const we=new Date(ws); we.setDate(we.getDate()+7);
       const bks=bookings.filter(b=>{ const d=bookingDate(b); return d&&d>=ws&&d<we; });
-      const rev=bks.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+      const rev=bks.reduce((s,b)=>s+bookingRev(b),0);
       result.push({ label:`${ws.getDate()} ${MONTHS[ws.getMonth()]}`, rev, count:bks.length, isCurrent:i===0 });
     }
     return result;
@@ -290,7 +304,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       const name=normalize(b.barberName||b.barberId||'Unknown');
       if(!map[name]) map[name]={ name, count:0, rev:0, tips:0, tipsCount:0, addOns:0 };
       map[name].count++;
-      map[name].rev      += pp(b.paidAmount||b.price);
+      map[name].rev      += bookingRev(b);
       map[name].tips     += pp(b.tip);
       map[name].tipsCount+= pp(b.tip)>0?1:0;
       map[name].addOns   += (b.soldAddOns||[]).filter(x=>x.qty>0).length>0?1:0;
@@ -309,7 +323,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       const name=b.serviceName||b.service||b.serviceId||'Unknown';
       if(!map[name]) map[name]={ name, count:0, rev:0 };
       map[name].count++;
-      map[name].rev+=pp(b.paidAmount||b.price);
+      map[name].rev+=bookingRev(b);
     });
     return Object.values(map).sort((a,b)=>b.count-a.count).slice(0,8);
   },[filteredAll]);
@@ -323,7 +337,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       const src=normalizeSource(b.source);
       if(!map[src]) map[src]={ src, count:0, rev:0 };
       map[src].count++;
-      map[src].rev+=pp(b.paidAmount||b.price);
+      map[src].rev+=bookingRev(b);
     });
     return Object.values(map).sort((a,b)=>b.count-a.count);
   },[filteredAll]);
@@ -333,7 +347,7 @@ export default function Marketing({ tenantId, isAdmin }) {
   // ── Revenue quality ─────────────────────────────────────────
   const quality = useMemo(()=>{
     const total = filteredAll.length||1;
-    const rev   = filteredAll.reduce((s,b)=>s+pp(b.paidAmount||b.price),0);
+    const rev   = filteredAll.reduce((s,b)=>s+bookingRev(b),0);
     const tips  = filteredAll.reduce((s,b)=>s+pp(b.tip),0);
     const withTip   = filteredAll.filter(b=>pp(b.tip)>0).length;
     const withAddon = filteredAll.filter(b=>(b.soldAddOns||[]).some(x=>x.qty>0)).length;
@@ -551,7 +565,7 @@ export default function Marketing({ tenantId, isAdmin }) {
         const name = b.clientName || 'Walk-in';
         const key  = b.clientPhone || b.phone || b.clientEmail || b.email || name;
         if (!map[key]) map[key] = { name, spent: 0, visits: 0, services: [], barbers: new Set(), cash: 0, card: 0, tips: 0 };
-        const amt = pp(b.paidAmount || b.price);
+        const amt = bookingRev(b);
         const pm  = String(b.paymentMethod || '').toLowerCase();
         map[key].spent  += amt;
         map[key].visits += 1;
@@ -568,7 +582,7 @@ export default function Marketing({ tenantId, isAdmin }) {
       let cash = 0, card = 0, tips = 0;
       bks.forEach(b => {
         const pm = String(b.paymentMethod || '').toLowerCase();
-        const amt = pp(b.paidAmount || b.price);
+        const amt = bookingRev(b);
         if (pm === 'cash') cash += amt; else card += amt;
         tips += pp(b.tip);
       });
@@ -583,7 +597,7 @@ export default function Marketing({ tenantId, isAdmin }) {
     thisMonthBks.forEach(b => {
       const name = b.barberName || b.barberId || 'Unknown';
       if (!monthBarberMap[name]) monthBarberMap[name] = { rev: 0, count: 0, cash: 0, card: 0 };
-      const amt = pp(b.paidAmount || b.price);
+      const amt = bookingRev(b);
       const pm  = String(b.paymentMethod || '').toLowerCase();
       monthBarberMap[name].rev   += amt;
       monthBarberMap[name].count += 1;
@@ -598,7 +612,7 @@ export default function Marketing({ tenantId, isAdmin }) {
     thisMonthBks.forEach(b => {
       const svc = b.serviceId || b.service || 'Unknown';
       if (!monthSvcMap[svc]) monthSvcMap[svc] = { rev: 0, count: 0 };
-      monthSvcMap[svc].rev   += pp(b.paidAmount || b.price);
+      monthSvcMap[svc].rev   += bookingRev(b);
       monthSvcMap[svc].count += 1;
     });
     const monthSvcLines = Object.entries(monthSvcMap)
@@ -628,7 +642,7 @@ export default function Marketing({ tenantId, isAdmin }) {
         const d = bookingDate(b);
         const dateStr = d ? `${d.getDate()}/${d.getMonth()+1}` : '?';
         const pm = String(b.paymentMethod||'').toLowerCase();
-        return `${dateStr} | ${b.clientName||'Walk-in'} | ${b.serviceId||b.service||'?'} | ${b.barberName||b.barberId||'?'} | £${pp(b.paidAmount||b.price).toFixed(0)} ${pm==='cash'?'cash':'card'}${pp(b.tip)>0?` +tip£${pp(b.tip).toFixed(0)}`:''}`;
+        return `${dateStr} | ${b.clientName||'Walk-in'} | ${b.serviceId||b.service||'?'} | ${b.barberName||b.barberId||'?'} | £${bookingRev(b).toFixed(0)} ${pm==='cash'?'cash':'card'}${pp(b.tip)>0?` +tip£${pp(b.tip).toFixed(0)}`:''}`;
       });
 
     // ── Cancellations ──

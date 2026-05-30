@@ -335,7 +335,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const card  = { background:'var(--card)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden' };
-  const cHead = { padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' };
+  const cHead = { padding:'11px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' };
   const cTitle = { fontFamily:"'Cormorant Garamond',serif", fontSize:'1rem', fontWeight:'700', color:'var(--text)' };
   const bdg = (bg, color, border) => ({ padding:'3px 8px', borderRadius:'99px', fontSize:'0.55rem', fontWeight:'700', background:bg, color, border:`1px solid ${border||'transparent'}` });
 
@@ -349,17 +349,17 @@ export default function Home({ tenantId, setActivePage, authUser }) {
     <div style={{ padding:'8px 0', maxWidth:'1600px', margin:'0 auto' }}>
 
       {/* ── Header ── */}
-      <div style={{ marginBottom:'20px' }}>
+      <div style={{ marginBottom:'10px' }}>
         <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.5rem', fontWeight:'700', color:'var(--text)', lineHeight:1 }}>
           {greeting}, <span style={{ color:'var(--gold)' }}>{authUser?.displayName || authUser?.email?.split('@')[0] || 'there'}</span> 👋
         </div>
-        <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', marginTop:'5px', textTransform:'uppercase' }}>
+        <div style={{ fontSize:'0.58rem', color:'var(--muted)', letterSpacing:'1.5px', marginTop:'3px', textTransform:'uppercase' }}>
           {dateStr} · Whitecross Barbers
         </div>
       </div>
 
       {/* ── Summary Strip ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px', marginBottom:'20px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px', marginBottom:'8px' }}>
         {[
           { icon:'📅', val: todayKpi.total,           lbl:"Today's Bookings", sub:`${todayKpi.remaining} remaining`,   subColor:'var(--muted)',   prog: todayKpi.total > 0 ? (todayKpi.checkedOut/todayKpi.total)*100 : 0 },
           { icon:'💷', val: fmt(todayKpi.estRevenue), lbl:'Est. Revenue',      sub:'Based on today\'s bookings',        subColor:'var(--muted)',   prog: 80 },
@@ -367,13 +367,13 @@ export default function Home({ tenantId, setActivePage, authUser }) {
           { icon:'🎂', val: upcomingBirthdays.length,  lbl:'Birthdays (3 days)',sub: upcomingBirthdays[0]?.name || 'None this week', subColor:'#e91e63', prog: upcomingBirthdays.length > 0 ? 100 : 0, progColor:'linear-gradient(90deg,#ad1457,#e91e63)' },
           { icon:'⭐', val: totalClients,              lbl:'Total Clients',     sub:'All time',                          subColor:'var(--muted)',   prog: 68 },
         ].map((c,i) => (
-          <div key={i} style={{ ...card, padding:'14px 16px', position:'relative' }}>
+          <div key={i} style={{ ...card, padding:'10px 14px', position:'relative' }}>
             <div style={{ position:'absolute', top:0, left:0, right:0, height:'1.5px', background:'linear-gradient(90deg,transparent,var(--gold),transparent)', opacity:0.4 }} />
-            <div style={{ fontSize:'1.1rem', marginBottom:'8px' }}>{c.icon}</div>
-            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.5rem', fontWeight:'700', color:'var(--gold)', lineHeight:1 }}>{c.val}</div>
-            <div style={{ fontSize:'0.55rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'600', marginTop:'4px' }}>{c.lbl}</div>
-            <div style={{ fontSize:'0.6rem', fontWeight:'600', marginTop:'5px', color:c.subColor, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.sub}</div>
-            <div style={{ height:'3px', background:'var(--border2)', borderRadius:'99px', overflow:'hidden', marginTop:'8px' }}>
+            <div style={{ fontSize:'0.9rem', marginBottom:'6px' }}>{c.icon}</div>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.3rem', fontWeight:'700', color:'var(--gold)', lineHeight:1 }}>{c.val}</div>
+            <div style={{ fontSize:'0.53rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:'600', marginTop:'3px' }}>{c.lbl}</div>
+            <div style={{ fontSize:'0.57rem', fontWeight:'600', marginTop:'4px', color:c.subColor, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.sub}</div>
+            <div style={{ height:'3px', background:'var(--border2)', borderRadius:'99px', overflow:'hidden', marginTop:'6px' }}>
               <div style={{ height:'100%', borderRadius:'99px', background: c.progColor || 'linear-gradient(90deg,var(--gold-dark),var(--gold))', width:`${Math.min(100, c.prog||0)}%` }} />
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
       </div>
 
       {/* ── Main Grid ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr 270px', gap:'14px', alignItems:'start' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr 270px', gap:'10px', alignItems:'start' }}>
 
         {/* ── LEFT: Reminders + Quick Actions ── */}
         <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
@@ -576,7 +576,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
         {/* ── RIGHT: Today's Schedule + Top Clients ── */}
         <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
 
-          <div style={card}>
+          <div style={{ ...card, flex:1 }}>
             <div style={cHead}>
               <span style={cTitle}>📋 Today's Schedule</span>
               <span style={bdg('rgba(212,175,55,0.1)','var(--gold)','rgba(212,175,55,0.25)')}>{todayKpi.total} booked</span>

@@ -134,7 +134,6 @@ function App() {
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
-        onLogout={handleLogout}
         theme={theme}
         onToggleTheme={toggleTheme}
         isCollapsed={isCollapsed}
@@ -145,13 +144,13 @@ function App() {
         onDateSelect={handleSidebarDateSelect}
       />
       <div style={{ position: 'fixed', top: '12px', right: '76px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} />
+        <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} onLogout={handleLogout} />
         <NotificationBell tenantId={tenantId} />
       </div>
       <main style={{
         flex: 1,
         marginLeft: isCollapsed ? '74px' : '186px',
-        padding: '60px 20px 20px',
+        padding: '32px 20px 20px 36px',
         overflowY: activePage === 'dashboard' ? 'hidden' : 'auto',
         height: activePage === 'dashboard' ? '100vh' : 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
