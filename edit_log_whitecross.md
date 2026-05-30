@@ -1,5 +1,15 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-05-30
+
+### SEO — Clerkenwell bölge eklendi (5 sayfa)
+- **index.html**: `<title>` → "Clerkenwell Barbershop | EC1Y London"; meta description, OG title, OG description, Twitter title, Twitter description, JSON-LD description'a "in Clerkenwell, EC1Y London" eklendi
+- **about.html**: `<title>`, meta description, OG title, OG description → Clerkenwell öne çıkarıldı
+- **gallery.html**: `<title>`, meta description, keywords, OG title, OG description → Clerkenwell eklendi
+- **products.html**: `<title>` ve meta description → Clerkenwell eklendi
+- **announcements.html**: `<title>` ve meta description → Clerkenwell eklendi
+- Sebep: Whitecross Street EC1Y 8QJ adresinin Clerkenwell bölgesinde olmasına rağmen title/description taglarında hiç geçmiyordu; sadece keywords ve addressLocality'de vardı
+
 ## 2026-05-29
 
 ### WalkInForm.js + BookingForm.js — Geçmiş tarihe ekleme uyarısı
