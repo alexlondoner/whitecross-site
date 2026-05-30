@@ -162,7 +162,7 @@ function Sidebar({ activePage, setActivePage, onLogout, theme, onToggleTheme, is
           return (
             <div key={item.id} style={{ position: 'relative', marginBottom: '5px' }}>
               <button
-                onClick={() => setActivePage(item.id)}
+                onClick={() => { if (item.id === 'dashboard') { onDateSelect(new Date()); } else { setActivePage(item.id); } }}
                 onMouseEnter={(e) => {
                   setHoveredItem(item.id);
                   const r = e.currentTarget.getBoundingClientRect();
