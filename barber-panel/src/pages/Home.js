@@ -347,30 +347,12 @@ export default function Home({ tenantId, setActivePage, authUser }) {
     <div style={{ padding:'8px 0', maxWidth:'1600px', margin:'0 auto' }}>
 
       {/* ── Header ── */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
-        <div>
-          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.5rem', fontWeight:'700', color:'var(--text)', lineHeight:1 }}>
-            {greeting}, <span style={{ color:'var(--gold)' }}>{authUser?.displayName || authUser?.email?.split('@')[0] || 'there'}</span> 👋
-          </div>
-          <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', marginTop:'5px', textTransform:'uppercase' }}>
-            {dateStr} · Whitecross Barbers
-          </div>
+      <div style={{ marginBottom:'20px' }}>
+        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.5rem', fontWeight:'700', color:'var(--text)', lineHeight:1 }}>
+          {greeting}, <span style={{ color:'var(--gold)' }}>{authUser?.displayName || authUser?.email?.split('@')[0] || 'there'}</span> 👋
         </div>
-        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-          {[
-            { label:'🚶 Walk-in', page:'dashboard', primary:false },
-            { label:'📅 Bookings', page:'bookings', primary:false },
-            { label:'+ New Booking', page:'bookings', primary:true },
-          ].map(btn => (
-            <button key={btn.label} onClick={() => setActivePage(btn.page)}
-              style={{ padding:'7px 14px', borderRadius:'10px', fontSize:'0.72rem', fontWeight:'700', cursor:'pointer', transition:'all 0.15s',
-                border: btn.primary ? 'none' : '1px solid var(--border2)',
-                background: btn.primary ? 'var(--gold)' : 'var(--card)',
-                color: btn.primary ? '#080705' : 'var(--muted)',
-              }}>
-              {btn.label}
-            </button>
-          ))}
+        <div style={{ fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', marginTop:'5px', textTransform:'uppercase' }}>
+          {dateStr} · Whitecross Barbers
         </div>
       </div>
 
