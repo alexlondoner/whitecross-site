@@ -2,6 +2,15 @@
 
 ## 2026-05-30
 
+### barber-panel — Reports.js add-ons hesaplamaya eklendi
+- `soldAddOnsTotal(b)` helper fonksiyonu eklendi (`soldAddOns` array'ini hesaplar)
+- `addOnRevenueGross` memo eklendi, `grossRevenue`'ya dahil edildi
+- `financeGrouped`'a `addOnGross` eklendi; group header'da görünür (> 0 ise)
+- Breakdown tablo: 'Add-ons' sütunu eklendi (turuncu, 0 ise '—')
+- Satır toplamı: `service + addOn + products - disc + tip` olarak güncellendi
+- Özet kartlara 'Add-ons Gross' (turuncu) eklendi
+- CSV export'a 'Add-ons Gross' sütunu eklendi
+
 ### barber-panel — Home.js header row + compact spacing
 - **Header** flex row'a çevrildi: greeting solda (1.5rem→1.1rem, date 0.62→0.58rem, marginTop 5px→3px), Walk-in + New Booking butonları sağda inline
 - **Summary strip** marginBottom: 14px → 8px
