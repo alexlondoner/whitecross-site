@@ -34,11 +34,13 @@ function soldAddOnsTotal(b) {
   return list.reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty,10)||1), 0);
 }
 function effectiveRevenue(b) {
-  const paid = pp(b.paidAmount);
-  if (String(b?.status||'').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
-    return Math.max(0, paid - pp(b.tip));
-  }
-  return Math.max(0, serviceGross(b) + soldProductsTotal(b) + soldAddOnsTotal(b) - pp(b.discount));
+  return Math.max(0,
+    serviceGross(b)
+    + soldProductsTotal(b)
+    + soldAddOnsTotal(b)
+    - pp(b.discount)
+    - (pp(b.loyaltyPointsRedeemed) / 20)
+  );
 }
 function startOfWeek(d) {
   const x = new Date(d);

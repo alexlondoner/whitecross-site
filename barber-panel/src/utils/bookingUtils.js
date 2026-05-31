@@ -40,15 +40,18 @@ export function getProductsTotal(list) {
   return normalizeSoldProducts(list).reduce((sum, p) => sum + p.price * p.qty, 0);
 }
 
+const LOYALTY_REDEEM_RATE = 20; // 20 pts = £1
+
 export function bookingNetWithoutTip(booking) {
-  const paid = pp(booking?.paidAmount);
-  if (normalizeBookingStatus(booking?.status) === 'CHECKED_OUT' && paid > 0) {
-    return Math.max(0, paid - pp(booking?.tip));
-  }
-  const gross = pp(booking?.price) + pp(booking?.serviceCharge)
+  const src = String(booking?.source || '').trim().toLowerCase();
+  const isProductSale = src === 'product sale' || src === 'product_sale' || src === 'productsale';
+  const serviceGross = isProductSale ? 0 : pp(booking?.price) + pp(booking?.serviceCharge);
+  const gross = serviceGross
     + getProductsTotal(booking?.soldProducts)
-    + getProductsTotal(booking?.soldAddOns);
-  return Math.max(0, gross - pp(booking?.discount));
+    + getProductsTotal(booking?.soldAddOns)
+    - pp(booking?.discount)
+    - (pp(booking?.loyaltyPointsRedeemed) / LOYALTY_REDEEM_RATE);
+  return Math.max(0, gross);
 }
 
 export function normalizeServiceKey(value) {

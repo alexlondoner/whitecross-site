@@ -57,11 +57,13 @@ function serviceGross(b) {
 }
 
 function bookingNetWithoutTip(b) {
-  const paid = pp(b.paidAmount);
-  if (String(b?.status || '').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
-    return Math.max(0, paid - pp(b.tip));
-  }
-  return Math.max(0, serviceGross(b) + soldProductsTotal(b) + soldAddOnsTotal(b) - pp(b.discount));
+  return Math.max(0,
+    serviceGross(b)
+    + soldProductsTotal(b)
+    + soldAddOnsTotal(b)
+    - pp(b.discount)
+    - (pp(b.loyaltyPointsRedeemed) / 20)
+  );
 }
 
 function bookingCollectedTotal(b) {
