@@ -5,6 +5,7 @@ import {
   doc, getDoc, setDoc, query, Timestamp, orderBy,
 } from 'firebase/firestore';
 import { updateTipStatus } from '../firestoreActions';
+import { logAudit } from '../utils/auditLogger';
 
 const TENANT = 'whitecross';
 
@@ -679,9 +680,11 @@ export default function Finance() {
       const existing = expenses[dk];
       if (existing?.id) {
         await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, existing.id), data);
+        logAudit('EXPENSE_UPDATED', { date: dk, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       } else {
         const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
         data.id = ref.id;
+        logAudit('EXPENSE_ADDED', { date: dk, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       }
       setExpenses(prev => ({ ...prev, [dk]: { ...data } }));
       setEditingExpense(null);
@@ -701,6 +704,7 @@ export default function Finance() {
       };
       const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_payments`), docData);
       setPayments(prev => [{ id: ref.id, sourceType: 'finance_payments', ...docData }, ...prev]);
+      logAudit('PAYMENT_ADDED', { barberName: payForm.barberName, amount: parseFloat(payForm.amount), method: payForm.method, date: payForm.date, notes: payForm.notes });
       setPayForm({ date: '', barberName: '', amount: '', method: 'Cash', notes: '' });
     } catch (e) { console.error(e); }
     setPayLoading(false);
@@ -719,6 +723,7 @@ export default function Finance() {
       const data = { date: dk, month: dk.slice(0, 7), cashExpense: cashToAdd, bankExpense: bankToAdd, notes: notesToAdd };
       const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
       const entry = { ...data, id: ref.id };
+      logAudit('EXPENSE_ADDED', { date: dk, cashExpense: cashToAdd, bankExpense: bankToAdd, notes: notesToAdd });
       setExpenseList(prev => [entry, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
       setExpenses(prev => {
         const ex = prev[dk] || { cashExpense: 0, bankExpense: 0, notes: '' };
@@ -743,6 +748,7 @@ export default function Finance() {
     if (!window.confirm('Delete this expense entry?')) return;
     try {
       await deleteDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id));
+      logAudit('EXPENSE_DELETED', { date: entry.date, cashExpense: entry.cashExpense, bankExpense: entry.bankExpense, notes: entry.notes });
       setExpenseList(prev => prev.filter(e => e.id !== entry.id));
       setExpenses(prev => {
         const dk = entry.date;
@@ -766,6 +772,7 @@ export default function Finance() {
         notes: String(editExpEntryDraft.notes || '').trim(),
       };
       await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id), data);
+      logAudit('EXPENSE_UPDATED', { date: data.date, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       setExpenseList(prev => prev.map(e => e.id === entry.id ? { ...e, ...data } : e));
       setExpenses(prev => {
         const dk = entry.date;
@@ -783,6 +790,7 @@ export default function Finance() {
     if (!window.confirm('Delete this payment record?')) return;
     const col = payment.sourceType === 'advances' ? 'advances' : 'finance_payments';
     await deleteDoc(doc(db, `tenants/${TENANT}/${col}`, payment.id));
+    logAudit('PAYMENT_DELETED', { barberName: payment.barberName, amount: payment.amount, date: payment.date, method: payment.method });
     setPayments(prev => prev.filter(p => !(p.id === payment.id && p.sourceType === payment.sourceType)));
   };
 
@@ -799,6 +807,7 @@ export default function Finance() {
         createdAt: new Date().toISOString(),
       };
       const ref = await addDoc(collection(db, `tenants/${TENANT}/investment_transactions`), data);
+      logAudit('INVESTMENT_TX_ADDED', { partnerName: data.partnerName, amount: data.amount, date: data.date, description: data.description });
       setInvestmentTransactions(prev => [{ id: ref.id, ...data }, ...prev].sort((a, b) => String(b.date).localeCompare(String(a.date))));
       setInvTxForm({ date: '', partnerName: '', amount: '', description: '', notes: '' });
     } catch (e) { console.error(e); }
@@ -809,6 +818,7 @@ export default function Finance() {
     if (!window.confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
     try {
       await deleteDoc(doc(db, `tenants/${TENANT}/investment_transactions`, id));
+      logAudit('INVESTMENT_TX_DELETED', { id });
       setInvestmentTransactions(prev => prev.filter(t => t.id !== id));
     } catch (e) { console.error(e); }
   };

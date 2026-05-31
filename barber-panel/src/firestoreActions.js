@@ -1,5 +1,16 @@
-import { db } from './firebase';
-import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp, orderBy, increment } from 'firebase/firestore';
+import { db, auth } from './firebase';
+import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, deleteDoc, setDoc, Timestamp, orderBy, increment, serverTimestamp } from 'firebase/firestore';
+
+async function log(action, details = {}) {
+  const user = auth.currentUser;
+  try {
+    await addDoc(collection(db, 'tenants/whitecross/auditLogs'), {
+      action, ...details,
+      userId: user?.uid || '', userEmail: user?.email || '', userName: user?.displayName || user?.email || '',
+      timestamp: serverTimestamp(),
+    });
+  } catch (_) {}
+}
 
 const TENANT = 'tenants/whitecross';
 
@@ -272,6 +283,7 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
     ...(clientManualId ? { clientManualId } : {}),
     createdAt: Timestamp.fromDate(new Date()),
   });
+  log('WALK_IN_CREATED', { bookingId, clientName: name, barber, service, date, time, price: price || 0, source: source || 'Walk-in' });
   return bookingId;
 }
 
@@ -313,6 +325,7 @@ export async function createProductSale({ clientName, clientEmail, clientPhone, 
     createdAt: Timestamp.fromDate(saleDateObj),
   });
 
+  log('PRODUCT_SALE_CREATED', { bookingId, clientName: clientName || 'Walk-in', barber, total, paymentMethod, saleDate: saleDateObj.toISOString() });
   return bookingId;
 }
 
@@ -343,6 +356,7 @@ export async function blockTime({ date, startTime, endTime, barber, note }) {
     source: 'block',
     createdAt: Timestamp.fromDate(new Date()),
   });
+  log('BLOCK_TIME', { blockId, barber, date, startTime, endTime, note: note || '' });
   return blockId;
 }
 
@@ -405,6 +419,7 @@ export async function editBooking({ bookingId, name, email, phone, date, time, s
   }
 
   await updateDoc(docRef, updatePayload);
+  log('BOOKING_EDITED', { bookingId, clientName: name, barber, service, date, time, price });
 }
 
 // ── DELETE BOOKING ─────────────────────────────────────────────────────────
@@ -423,7 +438,9 @@ export async function deleteBooking(bookingId) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
+  const data = snap.docs[0].data();
   await deleteDoc(snap.docs[0].ref);
+  log('BOOKING_DELETED', { bookingId, clientName: data.clientName, barber: data.barberName, date: data.date, service: data.serviceId });
 }
 
 // ── CANCEL BOOKING ─────────────────────────────────────────────────────────
@@ -431,7 +448,9 @@ export async function cancelBooking(bookingId) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
+  const data = snap.docs[0].data();
   await updateDoc(snap.docs[0].ref, { status: 'CANCELLED', cancelledAt: Timestamp.fromDate(new Date()) });
+  log('BOOKING_CANCELLED', { bookingId, clientName: data.clientName, barber: data.barberName, date: data.date, service: data.serviceId });
 }
 
 // ── NO SHOW ────────────────────────────────────────────────────────────────
@@ -439,7 +458,9 @@ export async function markNoShow(bookingId) {
   const q = query(collection(db, `${TENANT}/bookings`), where('bookingId', '==', bookingId));
   const snap = await getDocs(q);
   if (snap.empty) throw new Error('Booking not found');
+  const data = snap.docs[0].data();
   await updateDoc(snap.docs[0].ref, { status: 'NO_SHOW', noShowAt: Timestamp.fromDate(new Date()) });
+  log('NO_SHOW', { bookingId, clientName: data.clientName, barber: data.barberName, date: data.date });
 }
 
 export async function updateTipStatus(bookingId, { tipTaken, tipTakenAsCash }) {
