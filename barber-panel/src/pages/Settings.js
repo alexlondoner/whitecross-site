@@ -308,7 +308,8 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
   // Staff management
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
-  const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '', role: 'admin' });
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'admin' });
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [staffCreating, setStaffCreating] = useState(false);
   const [staffResult, setStaffResult] = useState('');
   const [registeringMe, setRegisteringMe] = useState(false);
@@ -326,9 +327,17 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
   };
 
   const createStaff = async () => {
-    const { name, email, password, role } = staffForm;
+    const { name, email, password, confirmPassword, role } = staffForm;
     if (!name.trim() || !email.trim() || !password.trim()) {
       setStaffResult('Fill in name, email and password.');
+      return;
+    }
+    if (password.length < 6) {
+      setStaffResult('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setStaffResult('Passwords do not match.');
       return;
     }
     setStaffCreating(true);
@@ -338,7 +347,8 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
       const fn = httpsCallable(functions, 'createStaffUser');
       await fn({ name: name.trim(), email: email.trim(), password, role });
       setStaffResult(`✓ Account created for ${email.trim()}`);
-      setStaffForm({ name: '', email: '', password: '', role: 'staff' });
+      setStaffForm({ name: '', email: '', password: '', confirmPassword: '', role: 'staff' });
+      setShowStaffPassword(false);
       await loadStaff();
     } catch (e) {
       setStaffResult('Error: ' + (e.message || 'Unknown error'));
@@ -1129,8 +1139,29 @@ export default function Settings({ theme, onToggleTheme, isAdmin = true, authUse
                 </div>
                 <div>
                   <label style={labelStyle}>Password</label>
-                  <input type="password" value={staffForm.password} onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
-                    placeholder="Min 6 characters" style={inputStyle} />
+                  <div style={{ position: 'relative' }}>
+                    <input type={showStaffPassword ? 'text' : 'password'} value={staffForm.password}
+                      onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder="Min 6 characters" style={{ ...inputStyle, paddingRight: '36px' }} />
+                    <button type="button" onClick={() => setShowStaffPassword(v => !v)}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '1rem', padding: 0, lineHeight: 1 }}>
+                      {showStaffPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Confirm Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type={showStaffPassword ? 'text' : 'password'} value={staffForm.confirmPassword}
+                      onChange={e => setStaffForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                      placeholder="Repeat password"
+                      style={{ ...inputStyle, paddingRight: '36px', borderColor: staffForm.confirmPassword && staffForm.password !== staffForm.confirmPassword ? '#ff5252' : undefined }} />
+                    {staffForm.confirmPassword && (
+                      <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.9rem' }}>
+                        {staffForm.password === staffForm.confirmPassword ? '✅' : '❌'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label style={labelStyle}>Role</label>
