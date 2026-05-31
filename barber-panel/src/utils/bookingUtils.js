@@ -45,7 +45,9 @@ export function bookingNetWithoutTip(booking) {
   if (normalizeBookingStatus(booking?.status) === 'CHECKED_OUT' && paid > 0) {
     return Math.max(0, paid - pp(booking?.tip));
   }
-  const gross = pp(booking?.price) + pp(booking?.serviceCharge) + getProductsTotal(booking?.soldProducts);
+  const gross = pp(booking?.price) + pp(booking?.serviceCharge)
+    + getProductsTotal(booking?.soldProducts)
+    + getProductsTotal(booking?.soldAddOns);
   return Math.max(0, gross - pp(booking?.discount));
 }
 

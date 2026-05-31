@@ -29,12 +29,16 @@ function serviceGross(b) {
   return Math.max(0, pp(b.paidAmount) - pp(b.tip) - soldProductsTotal(b));
 }
 // matches Reports.js bookingNetWithoutTip exactly
+function soldAddOnsTotal(b) {
+  const list = Array.isArray(b?.soldAddOns) ? b.soldAddOns : [];
+  return list.reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty,10)||1), 0);
+}
 function effectiveRevenue(b) {
   const paid = pp(b.paidAmount);
   if (String(b?.status||'').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
     return Math.max(0, paid - pp(b.tip));
   }
-  return Math.max(0, serviceGross(b) + soldProductsTotal(b) - pp(b.discount));
+  return Math.max(0, serviceGross(b) + soldProductsTotal(b) + soldAddOnsTotal(b) - pp(b.discount));
 }
 function startOfWeek(d) {
   const x = new Date(d);

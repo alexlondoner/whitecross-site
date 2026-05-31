@@ -61,7 +61,7 @@ function bookingNetWithoutTip(b) {
   if (String(b?.status || '').toUpperCase() === 'CHECKED_OUT' && paid > 0) {
     return Math.max(0, paid - pp(b.tip));
   }
-  return Math.max(0, serviceGross(b) + soldProductsTotal(b) - pp(b.discount));
+  return Math.max(0, serviceGross(b) + soldProductsTotal(b) + soldAddOnsTotal(b) - pp(b.discount));
 }
 
 function bookingCollectedTotal(b) {
