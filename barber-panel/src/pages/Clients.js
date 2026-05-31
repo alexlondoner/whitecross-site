@@ -38,7 +38,7 @@ const SEGMENT_DEFS = [
   { key: 'birthdays',    label: 'Upcoming birthdays',     color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
-export default function Clients({ isAdmin = true }) {
+export default function Clients({ isAdmin = false }) {
   const [bookings, setBookings] = useState([]);
   const [manualClients, setManualClients] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -42,7 +42,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252', NO_SHOW: '#9c27b0' };
 
-export default function Dashboard({ isAdmin = true, initialDate }) {
+export default function Dashboard({ isAdmin = false, initialDate }) {
   // ...existing useState hooks...
   const [clientName, setClientName] = useState('Walk-in');
   const [clientPhone, setClientPhone] = useState('');

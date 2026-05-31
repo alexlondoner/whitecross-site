@@ -70,7 +70,7 @@ function getLocalDateKey(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-export default function Settings({ theme, onToggleTheme, isAdmin = true, authUser }) {
+export default function Settings({ theme, onToggleTheme, isAdmin = false, authUser }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
