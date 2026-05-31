@@ -14,7 +14,7 @@ const navItems = [
   { id: 'settings',       icon: '⚙️', label: 'Settings' },
 ];
 
-const OWNER_ONLY_PAGES = new Set(['reports', 'marketing', 'settings', 'barbers', 'online-profile', 'activity-log']);
+const OWNER_ONLY_PAGES = new Set(['home', 'reports', 'marketing', 'settings', 'barbers', 'online-profile', 'activity-log']);
 
 function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner, role, selectedDate, onDateSelect }) {
   const isLight = theme === 'light';
