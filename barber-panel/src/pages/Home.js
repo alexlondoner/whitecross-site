@@ -123,7 +123,8 @@ function ReminderItem({ icon, iconBg, iconBorder, name, sub, actionLabel, action
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function Home({ tenantId, setActivePage, authUser }) {
+export default function Home({ tenantId, setActivePage, authUser, role }) {
+  const isOwner = role === 'owner';
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
@@ -365,14 +366,14 @@ export default function Home({ tenantId, setActivePage, authUser }) {
       </div>
 
       {/* ── Summary Strip ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px', marginBottom:'8px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:`repeat(${isOwner ? 5 : 3},1fr)`, gap:'10px', marginBottom:'8px' }}>
         {[
           { icon:'📅', val: todayKpi.total,           lbl:"Today's Bookings", sub:`${todayKpi.remaining} remaining`,   subColor:'var(--muted)',   prog: todayKpi.total > 0 ? (todayKpi.checkedOut/todayKpi.total)*100 : 0 },
-          { icon:'💷', val: fmt(todayKpi.estRevenue), lbl:'Est. Revenue',      sub:'Based on today\'s bookings',        subColor:'var(--muted)',   prog: 80 },
+          isOwner && { icon:'💷', val: fmt(todayKpi.estRevenue), lbl:'Est. Revenue', sub:'Based on today\'s bookings', subColor:'var(--muted)', prog: 80 },
           { icon:'✅', val: todayKpi.checkedOut,       lbl:'Checked Out',       sub:`${todayKpi.remaining} to go`,       subColor:'#4caf50',        prog: todayKpi.total > 0 ? (todayKpi.checkedOut/todayKpi.total)*100 : 0, progColor:'linear-gradient(90deg,#388e3c,#4caf50)' },
           { icon:'🎂', val: upcomingBirthdays.length,  lbl:'Birthdays (3 days)',sub: upcomingBirthdays[0]?.name || 'None this week', subColor:'#e91e63', prog: upcomingBirthdays.length > 0 ? 100 : 0, progColor:'linear-gradient(90deg,#ad1457,#e91e63)' },
-          { icon:'⭐', val: totalClients,              lbl:'Total Clients',     sub:'All time',                          subColor:'var(--muted)',   prog: 68 },
-        ].map((c,i) => (
+          isOwner && { icon:'⭐', val: totalClients, lbl:'Total Clients', sub:'All time', subColor:'var(--muted)', prog: 68 },
+        ].filter(Boolean).map((c,i) => (
           <div key={i} style={{ ...card, padding:'10px 14px', position:'relative' }}>
             <div style={{ position:'absolute', top:0, left:0, right:0, height:'1.5px', background:'linear-gradient(90deg,transparent,var(--gold),transparent)', opacity:0.4 }} />
             <div style={{ fontSize:'0.9rem', marginBottom:'6px' }}>{c.icon}</div>
@@ -485,7 +486,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
         <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
 
           {/* Weekly Revenue */}
-          <div style={card}>
+          {isOwner && (<div style={card}>
             <div style={cHead}>
               <span style={cTitle}>📊 Weekly Revenue</span>
             </div>
@@ -523,10 +524,10 @@ export default function Home({ tenantId, setActivePage, authUser }) {
                 })}
               </div>
             </div>
-          </div>
+          </div>)}
 
           {/* Barber Performance */}
-          {barberPerf.length > 0 && (
+          {isOwner && barberPerf.length > 0 && (
             <div style={card}>
               <div style={cHead}>
                 <span style={cTitle}>✂️ Barber Performance</span>
@@ -557,7 +558,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
           )}
 
           {/* Booking Sources */}
-          {sourceCounts.length > 0 && (
+          {isOwner && sourceCounts.length > 0 && (
             <div style={card}>
               <div style={cHead}>
                 <span style={cTitle}>🔁 Booking Sources</span>
@@ -617,7 +618,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
             )}
           </div>
 
-          {topClients.length > 0 && (
+          {isOwner && topClients.length > 0 && (
             <div style={card}>
               <div style={cHead}>
                 <span style={cTitle}>👑 Top Clients</span>
@@ -629,7 +630,7 @@ export default function Home({ tenantId, setActivePage, authUser }) {
             </div>
           )}
 
-          {topMembers.length > 0 && (
+          {isOwner && topMembers.length > 0 && (
             <div style={{ ...card, border:'1px solid rgba(124,58,237,0.25)' }}>
               <div style={{ ...cHead, borderBottomColor:'rgba(124,58,237,0.2)' }}>
                 <span style={{ ...cTitle }}>◆ Top Members</span>

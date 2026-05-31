@@ -123,7 +123,7 @@ function App() {
       return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
     }
     switch (activePage) {
-      case 'home':          return <Home tenantId={tenantId} setActivePage={setActivePage} authUser={authUser} />;
+      case 'home':          return <Home tenantId={tenantId} setActivePage={setActivePage} authUser={authUser} role={role} />;
       case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
       case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
       case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
