@@ -161,7 +161,7 @@ function App() {
       <main style={{
         flex: 1,
         marginLeft: isCollapsed ? '74px' : '186px',
-        padding: '32px 20px 20px 36px',
+        padding: '55px 20px 20px 36px',
         overflowY: activePage === 'dashboard' ? 'hidden' : 'auto',
         height: activePage === 'dashboard' ? '100vh' : 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'

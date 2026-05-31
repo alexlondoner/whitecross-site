@@ -353,7 +353,7 @@ export default function Home({ tenantId, setActivePage, authUser, role }) {
   const reminderCount = upcomingBirthdays.length + Math.min(3, lapsedClients.length) + vipToday.length;
 
   return (
-    <div style={{ padding:'8px 0', maxWidth:'1600px', margin:'0 auto' }}>
+    <div style={{ padding:'8px 0', maxWidth:'1600px', margin:'-20px auto 0' }}>
 
       {/* ── Header ── */}
       <div style={{ marginBottom:'10px' }}>
