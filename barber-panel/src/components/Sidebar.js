@@ -14,7 +14,9 @@ const navItems = [
   { id: 'settings',       icon: '⚙️', label: 'Settings' },
 ];
 
-function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner, selectedDate, onDateSelect }) {
+const OWNER_ONLY_PAGES = new Set(['reports', 'marketing', 'settings', 'barbers', 'online-profile', 'activity-log']);
+
+function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner, role, selectedDate, onDateSelect }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipY, setTooltipY] = useState(0);
@@ -37,7 +39,11 @@ function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed,
     red:     isLight ? '#8b2a2a' : '#ff5252',
   };
 
-  const allItems = [...navItems, ...(isOwner ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : [])];
+  const isOwnerRole = role === 'owner';
+  const allItems = [
+    ...navItems.filter(item => isOwnerRole || !OWNER_ONLY_PAGES.has(item.id)),
+    ...(isOwnerRole ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : []),
+  ];
 
   return (
     <aside style={{

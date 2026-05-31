@@ -40,7 +40,8 @@ async function loadServicesIntoConfig() {
 function App() {
   const [authUser, setAuthUser] = useState(undefined); // undefined = still checking
   const [tenantId, setTenantId] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(true); // default true until role loaded
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState(null); // null = loading, 'owner' | 'admin' | 'staff'
   const [activePage, setActivePage] = useState('home');
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -59,22 +60,21 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setTenantId('whitecross');
-        // Fetch role from Firestore — no doc = admin (backwards compat for owner)
         try {
           const staffDoc = await getDoc(doc(db, 'tenants/whitecross/staff', firebaseUser.uid));
-          if (staffDoc.exists()) {
-            setIsAdmin(staffDoc.data().role === 'owner'); // only owner sees delete/cancel
-          } else {
-            setIsAdmin(true); // no doc = owner (backwards compat)
-          }
+          const r = staffDoc.exists() ? (staffDoc.data().role || 'staff') : 'owner';
+          setRole(r);
+          setIsAdmin(r === 'owner');
         } catch {
+          setRole('owner');
           setIsAdmin(true);
         }
         setAuthUser(firebaseUser);
       } else {
         setAuthUser(null);
         setTenantId(null);
-        setIsAdmin(true);
+        setRole(null);
+        setIsAdmin(false);
       }
     });
     return unsubscribe;
@@ -97,7 +97,7 @@ function App() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const handleLogout = () => auth.signOut();
 
-  if (authUser === undefined || !configReady) {
+  if (authUser === undefined || !configReady || (authUser && role === null)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a08', color: '#d4af37', fontSize: '0.9rem', letterSpacing: '2px' }}>
         Loading...
@@ -109,9 +109,18 @@ function App() {
     return <Login onLogin={() => {}} />;
   }
 
+  const canAccess = (page) => {
+    if (role === 'owner') return true;
+    const staffPages = ['home', 'dashboard', 'bookings', 'calendar', 'clients'];
+    return staffPages.includes(page);
+  };
+
   const renderPage = () => {
     if (showCart) {
       return <Cart cartItems={cart} onCheckout={() => alert('Ödeme entegrasyonu eklenecek!')} onRemove={(id) => setCart(cart => cart.filter(item => item.id !== id))} />;
+    }
+    if (!canAccess(activePage)) {
+      return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
     }
     switch (activePage) {
       case 'home':          return <Home tenantId={tenantId} setActivePage={setActivePage} authUser={authUser} />;
@@ -140,6 +149,7 @@ function App() {
         setIsCollapsed={setIsCollapsed}
         tenantId={tenantId}
         isOwner={isAdmin}
+        role={role}
         selectedDate={sidebarDate}
         onDateSelect={handleSidebarDateSelect}
       />
