@@ -155,7 +155,7 @@ function App() {
         onDateSelect={handleSidebarDateSelect}
       />
       <div style={{ position: 'fixed', top: '12px', right: '76px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} onLogout={handleLogout} />
+        <ProfileBar authUser={authUser} isAdmin={isAdmin} tenantId={tenantId} onLogout={handleLogout} userRole={role} />
         <NotificationBell tenantId={tenantId} />
       </div>
       <main style={{

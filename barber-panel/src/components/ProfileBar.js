@@ -42,7 +42,7 @@ const PLATFORMS = [
   },
 ];
 
-export default function ProfileBar({ authUser, isAdmin, tenantId, onLogout }) {
+export default function ProfileBar({ authUser, isAdmin, tenantId, onLogout, userRole }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [staffData, setStaffData] = useState(null);
@@ -123,7 +123,7 @@ export default function ProfileBar({ authUser, isAdmin, tenantId, onLogout }) {
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const color   = barberMatch?.color || '#d4af37';
   const photo   = barberMatch?.photo || null;
-  const role    = isAdmin ? 'Super Admin' : 'Admin';
+  const role    = userRole === 'owner' ? 'Owner' : userRole === 'admin' ? 'Admin' : 'Staff';
   const activeSocials = PLATFORMS.filter(p => staffData[p.key]);
 
   return (
