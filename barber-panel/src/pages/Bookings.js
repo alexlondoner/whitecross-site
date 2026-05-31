@@ -45,6 +45,22 @@ function soldProductsTotal(b) {
     return s + price * (parseInt(p?.qty, 10) || 0);
   }, 0);
 }
+function soldAddOnsTotal(b) {
+  const list = Array.isArray(b?.soldAddOns) ? b.soldAddOns : [];
+  return list.reduce((s, p) => {
+    const price = parseFloat(String(p?.price || '0').replace(/[£,]/g, '')) || 0;
+    return s + price * (parseInt(p?.qty, 10) || 1);
+  }, 0);
+}
+function bookingNet(b) {
+  const src = String(b.source || '').trim().toLowerCase();
+  const isProductSale = src === 'product sale' || src === 'product_sale' || src === 'productsale';
+  const serviceGross = isProductSale ? 0 : parsePrice(b.price) + parsePrice(b.serviceCharge);
+  return Math.max(0,
+    serviceGross + soldProductsTotal(b) + soldAddOnsTotal(b)
+    - parsePrice(b.discount) - (parsePrice(b.loyaltyPointsRedeemed) / 20)
+  );
+}
 
 function parsePrice(p) {
   return parseFloat(String(p || '0').replace(/[^0-9.]/g, '')) || 0;
@@ -286,7 +302,7 @@ export default function Bookings({ isAdmin }) {
 
   const stats = useMemo(() => ({
     total:   baseFiltered.length,
-    revenue: baseFiltered.filter(b => b.status === 'CHECKED_OUT').reduce((s, b) => s + parsePrice(b.paidAmount), 0),
+    revenue: baseFiltered.filter(b => b.status === 'CHECKED_OUT').reduce((s, b) => s + bookingNet(b), 0),
   }), [baseFiltered]);
 
   const exportCSV = () => {

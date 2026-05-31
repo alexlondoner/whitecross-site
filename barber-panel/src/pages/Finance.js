@@ -34,16 +34,24 @@ function parsePrice(val) {
   return parseFloat(String(val || '0').replace(/[£,]/g, '').replace('-', '').trim()) || 0;
 }
 
+const LOYALTY_REDEEM_RATE = 20;
+
+function soldAddOnsTotal(b) {
+  const list = Array.isArray(b?.soldAddOns) ? b.soldAddOns : [];
+  return list.reduce((s, p) => s + parsePrice(p?.price) * (parseInt(p?.qty, 10) || 1), 0);
+}
+
 function effectiveRevenue(b) {
-  // Tips are personal to the barber — never counted as company revenue
-  const tip = parsePrice(b.tip);
-  if (b.status === 'CHECKED_OUT') {
-    const paid = parsePrice(b.paidAmount);
-    if (paid > 0) return Math.max(0, paid - tip);
-  }
-  const p = parsePrice(b.price);
-  if (p > 0) return p;
-  return Math.max(0, parsePrice(b.paidAmount) - tip);
+  const src = String(b.source || '').trim().toLowerCase();
+  const isProductSale = src === 'product sale' || src === 'product_sale' || src === 'productsale';
+  const serviceGross = isProductSale ? 0 : parsePrice(b.price) + parsePrice(b.serviceCharge);
+  return Math.max(0,
+    serviceGross
+    + soldProductsTotal(b)
+    + soldAddOnsTotal(b)
+    - parsePrice(b.discount)
+    - (parsePrice(b.loyaltyPointsRedeemed) / LOYALTY_REDEEM_RATE)
+  );
 }
 
 function paymentMethod(b) {

@@ -61,15 +61,22 @@ function soldProductsTotal(b) {
   return (Array.isArray(b?.soldProducts) ? b.soldProducts : [])
     .reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty, 10) || 0), 0);
 }
+function soldAddOnsTotal(b) {
+  return (Array.isArray(b?.soldAddOns) ? b.soldAddOns : [])
+    .reduce((s, p) => s + pp(p?.price) * (parseInt(p?.qty, 10) || 1), 0);
+}
 function bookingRev(b) {
-  const status = String(b.status||'').toUpperCase();
-  const paid = pp(b.paidAmount);
-  const tip  = pp(b.tip);
-  if (status === 'CHECKED_OUT') {
-    if (paid > 0) return Math.max(0, paid - tip);
-    return Math.max(0, pp(b.price) + pp(b.serviceCharge) + soldProductsTotal(b) - pp(b.discount));
-  }
-  return 0;
+  if (String(b.status||'').toUpperCase() !== 'CHECKED_OUT') return 0;
+  const src = String(b.source||'').trim().toLowerCase();
+  const isProductSale = src === 'product sale' || src === 'product_sale' || src === 'productsale';
+  const serviceGross = isProductSale ? 0 : pp(b.price) + pp(b.serviceCharge);
+  return Math.max(0,
+    serviceGross
+    + soldProductsTotal(b)
+    + soldAddOnsTotal(b)
+    - pp(b.discount)
+    - (pp(b.loyaltyPointsRedeemed) / 20)
+  );
 }
 function pct(a,b) { return b===0?0:Math.round(a/b*100); }
 function trend(curr,prev) {
@@ -495,10 +502,9 @@ export default function Marketing({ tenantId, isAdmin }) {
       mBks.forEach(b => {
         const status = String(b.status || '').toUpperCase();
         if (['CANCELLED','BLOCKED','DELETED','NO_SHOW'].includes(status)) return;
-        const tip = pp(b.tip);
         let rev = 0;
-        if (status === 'CHECKED_OUT') { const paid = pp(b.paidAmount); rev = paid > 0 ? Math.max(0, paid - tip) : pp(b.price); }
-        else { rev = pp(b.price) || Math.max(0, pp(b.paidAmount) - tip); }
+        if (status === 'CHECKED_OUT') { rev = bookingRev(b); }
+        else { rev = pp(b.price); }
         grossRev += rev;
         const pm = String(b.paymentMethod || '').toLowerCase();
         if (pm === 'cash') cashRev += rev; else cardRev += rev;
