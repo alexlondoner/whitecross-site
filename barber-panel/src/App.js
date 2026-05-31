@@ -65,6 +65,7 @@ function App() {
           const r = staffDoc.exists() ? (staffDoc.data().role || 'staff') : 'owner';
           setRole(r);
           setIsAdmin(r === 'owner');
+          if (r !== 'owner') setActivePage('dashboard');
         } catch {
           setRole('owner');
           setIsAdmin(true);
@@ -111,7 +112,7 @@ function App() {
 
   const canAccess = (page) => {
     if (role === 'owner') return true;
-    const staffPages = ['home', 'dashboard', 'bookings', 'calendar', 'clients'];
+    const staffPages = ['dashboard', 'bookings', 'calendar', 'clients'];
     return staffPages.includes(page);
   };
 

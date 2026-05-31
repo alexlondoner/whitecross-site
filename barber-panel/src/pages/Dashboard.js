@@ -448,9 +448,9 @@ const activeBarbers = barberFilter === 'all'
         {!pillsCollapsed && visiblePills.has('pending') && pendingCount > 0 && <StatPill label="Pending" value={pendingCount} color="#ff9800" active={pillFilter==='pending'} onClick={()=>setPillFilter(pillFilter==='pending'?null:'pending')} />}
         {!pillsCollapsed && visiblePills.has('checkedout') && <StatPill label="Checked Out" value={checkedOutCount} color="#2196f3" active={pillFilter==='checkedout'} onClick={()=>setPillFilter(pillFilter==='checkedout'?null:'checkedout')} />}
         {!pillsCollapsed && unpaidCount > 0 && <StatPill label="Unpaid" value={unpaidCount} color="#ff5252" active={pillFilter==='unpaid'} onClick={()=>setPillFilter(pillFilter==='unpaid'?null:'unpaid')} />}
-        {!pillsCollapsed && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
-        {!pillsCollapsed && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
-        {!pillsCollapsed && visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
+        {!pillsCollapsed && isAdmin && visiblePills.has('revenue') && <StatPill label="Revenue" value={'£'+revenue.toFixed(2)} color="#d4af37" active={pillFilter==='revenue'} onClick={()=>setPillFilter(pillFilter==='revenue'?null:'revenue')} />}
+        {!pillsCollapsed && isAdmin && visiblePills.has('discount') && <StatPill label="Discount Given" value={'£'+discountGiven.toFixed(2)} color="#4caf50" active={pillFilter==='discount'} onClick={()=>setPillFilter(pillFilter==='discount'?null:'discount')} />}
+        {!pillsCollapsed && isAdmin && visiblePills.has('tips') && <StatPill label="Tips" value={'£'+tipsGiven.toFixed(2)} color="#ff9800" active={pillFilter==='tips'} onClick={()=>setPillFilter(pillFilter==='tips'?null:'tips')} />}
 
         {/* Gear button — fixed far right, same size as bell */}
         <div style={{ position:'fixed', top:'12px', right:'24px', zIndex:210 }}>
@@ -470,10 +470,10 @@ const activeBarbers = barberFilter === 'all'
                 {key:'confirmed',   label:'Confirmed',      color:'#4caf50'},
                 {key:'pending',     label:'Pending',        color:'#ff9800'},
                 {key:'checkedout',  label:'Checked Out',    color:'#2196f3'},
-                {key:'revenue',     label:'Revenue',        color:'#d4af37'},
-                {key:'discount',    label:'Discount Given', color:'#4caf50'},
-                {key:'tips',        label:'Tips',           color:'#ff9800'},
-              ].map(p => (
+                isAdmin && {key:'revenue',     label:'Revenue',        color:'#d4af37'},
+                isAdmin && {key:'discount',    label:'Discount Given', color:'#4caf50'},
+                isAdmin && {key:'tips',        label:'Tips',           color:'#ff9800'},
+              ].filter(Boolean).map(p => (
                 <label key={p.key} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'5px 0', cursor:'pointer', userSelect:'none' }}>
                   <div onClick={()=>togglePillVisibility(p.key)}
                     style={{ width:'32px', height:'18px', borderRadius:'9px', background: visiblePills.has(p.key) ? p.color : 'rgba(180,180,180,0.2)', position:'relative', transition:'background 0.2s', flexShrink:0, cursor:'pointer' }}>
