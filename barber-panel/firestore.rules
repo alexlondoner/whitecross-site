@@ -1,22 +1,75 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /tenants/{tenantId}/bookings/{docId} {
+
+    // ── Tenant data ───────────────────────────────────────────────────────────
+    match /tenants/{tenantId} {
+      // Public read for booking page (services, salon info)
       allow read: if true;
-      allow create: if true;
-      allow delete: if request.auth != null;
-      allow update: if request.auth != null
-        || (
+      // Only owner or superAdmin can write tenant doc
+      allow write: if request.auth != null && (
+        request.auth.token.superAdmin == true ||
+        request.auth.token.tenantId == tenantId
+      );
+
+      // Bookings
+      match /bookings/{docId} {
+        allow read: if true;
+        allow create: if true;
+        allow delete: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        );
+        // Unauthenticated can only update cancel/reschedule fields
+        allow update: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        ) || (
           resource.data.clientEmail != null
           && resource.data.clientEmail != ''
           && request.resource.data.clientEmail == resource.data.clientEmail
           && request.resource.data.bookingId == resource.data.bookingId
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'rescheduledTo', 'cancelledAt', 'cancelReason'])
         );
+      }
+
+      // Services, barbers, settings, notifications — tenant-scoped or public read
+      match /services/{docId} {
+        allow read: if true;
+        allow write: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        );
+      }
+
+      match /barbers/{docId} {
+        allow read: if true;
+        allow write: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        );
+      }
+
+      match /{subcollection}/{docId} {
+        allow read: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        );
+        allow write: if request.auth != null && (
+          request.auth.token.superAdmin == true ||
+          request.auth.token.tenantId == tenantId
+        );
+      }
     }
-    match /tenants/{tenantId}/{collection}/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // ── Super admin area ──────────────────────────────────────────────────────
+    match /superAdmin/{document=**} {
+      allow read, write: if request.auth != null &&
+        request.auth.token.superAdmin == true;
     }
+
+    // ── Fallback: authenticated users ─────────────────────────────────────────
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
