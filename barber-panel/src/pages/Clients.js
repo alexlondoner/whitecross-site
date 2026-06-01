@@ -38,7 +38,7 @@ const SEGMENT_DEFS = [
   { key: 'birthdays',    label: 'Upcoming birthdays',     color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
-export default function Clients({ isAdmin = false }) {
+export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
   const [bookings, setBookings] = useState([]);
   const [manualClients, setManualClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -970,7 +970,7 @@ export default function Clients({ isAdmin = false }) {
                       <button onClick={() => setSelectedClient(null)} style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>×</button>
                       <button onClick={() => openQuickBook(selectedClient)} style={{ padding: '3px 10px', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.5)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px' }}>✂ Cut Him</button>
                       <button onClick={() => openEditClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '5px', color: '#d4af37', cursor: 'pointer', fontSize: '0.65rem', fontWeight: '600' }}>Edit</button>
-                      {isAdmin && <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>}
+                      {isSuperAdmin && <button onClick={() => handleDeleteClient(selectedClient)} style={{ padding: '3px 8px', background: 'transparent', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '5px', color: '#ff5252', cursor: 'pointer', fontSize: '0.65rem' }}>Delete</button>}
                     </div>
                   </div>
 

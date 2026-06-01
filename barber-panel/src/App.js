@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, getIdTokenResult } from 'firebase/auth';
 import { auth, db } from './firebase';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
@@ -40,6 +40,7 @@ async function loadServicesIntoConfig() {
 function App() {
   const [authUser, setAuthUser] = useState(undefined); // undefined = still checking
   const [tenantId, setTenantId] = useState(null);
+  const [tenantName, setTenantName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [role, setRole] = useState(null); // null = loading, 'owner' | 'admin' | 'staff'
   const [activePage, setActivePage] = useState('home');
@@ -59,12 +60,20 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setTenantId('whitecross');
+        // Read tenantId from Firebase custom claim (falls back to 'whitecross' for existing users)
+        const tokenResult = await getIdTokenResult(firebaseUser, true);
+        const tid = tokenResult.claims.tenantId || 'whitecross';
+        setTenantId(tid);
+        // Load tenant name
         try {
-          const staffDoc = await getDoc(doc(db, 'tenants/whitecross/staff', firebaseUser.uid));
+          const tenantDoc = await getDoc(doc(db, 'tenants', tid));
+          if (tenantDoc.exists()) setTenantName(tenantDoc.data().name || '');
+        } catch {}
+        try {
+          const staffDoc = await getDoc(doc(db, `tenants/${tid}/staff`, firebaseUser.uid));
           const r = staffDoc.exists() ? (staffDoc.data().role || 'staff') : 'owner';
           setRole(r);
-          setIsAdmin(r === 'owner');
+          setIsAdmin(r === 'owner' || r === 'admin');
           if (r === 'staff') setActivePage('dashboard');
         } catch {
           setRole('owner');
@@ -123,16 +132,17 @@ function App() {
     if (!canAccess(activePage)) {
       return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
     }
+    const isSuperAdmin = role === 'owner';
     switch (activePage) {
       case 'home':          return <Home tenantId={tenantId} setActivePage={setActivePage} authUser={authUser} role={role} />;
       case 'dashboard':     return <Dashboard tenantId={tenantId} isAdmin={isAdmin} theme={theme} initialDate={sidebarDate} />;
       case 'bookings':      return <Bookings tenantId={tenantId} isAdmin={isAdmin} />;
-      case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'barbers':       return <Barbers tenantId={tenantId} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />;
       case 'online-profile':return <OnlineProfile tenantId={tenantId} isAdmin={isAdmin} />;
       case 'calendar':      return <Calendar tenantId={tenantId} isAdmin={isAdmin} />;
-      case 'clients':       return <Clients tenantId={tenantId} isAdmin={isAdmin} />;
+      case 'clients':       return <Clients tenantId={tenantId} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />;
       case 'reports':       return <Reports tenantId={tenantId} isAdmin={isAdmin} />;
-      case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} authUser={authUser} />;
+      case 'settings':      return <Settings theme={theme} onToggleTheme={toggleTheme} tenantId={tenantId} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} authUser={authUser} />;
       case 'marketing':     return <Marketing tenantId={tenantId} isAdmin={isAdmin} />;
       case 'activity-log':  return isAdmin ? <AuditLog tenantId={tenantId} /> : <Dashboard tenantId={tenantId} isAdmin={isAdmin} />;
       default:              return <Home tenantId={tenantId} setActivePage={setActivePage} />;
@@ -149,6 +159,7 @@ function App() {
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
         tenantId={tenantId}
+        tenantName={tenantName}
         isOwner={isAdmin}
         role={role}
         selectedDate={sidebarDate}

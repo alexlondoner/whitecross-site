@@ -70,7 +70,7 @@ function getLocalDateKey(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-export default function Settings({ theme, onToggleTheme, isAdmin = false, authUser }) {
+export default function Settings({ theme, onToggleTheme, isAdmin = false, isSuperAdmin = false, authUser }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -961,7 +961,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, authUs
       </div>
 
       {/* Owner-only sections */}
-      {isAdmin && (<>
+      {isSuperAdmin && (<>
 
       {/* Platform Settings */}
       <div style={cardStyle}>

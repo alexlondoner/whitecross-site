@@ -124,7 +124,7 @@ function ReminderItem({ icon, iconBg, iconBorder, name, sub, actionLabel, action
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Home({ tenantId, setActivePage, authUser, role }) {
-  const isOwner = role === 'owner';
+  const isOwner = role === 'owner' || role === 'admin';
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);

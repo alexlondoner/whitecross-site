@@ -16,7 +16,7 @@ const navItems = [
 
 const OWNER_ONLY_PAGES = new Set(['home', 'reports', 'marketing', 'settings', 'barbers', 'online-profile', 'activity-log']);
 
-function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, isOwner, role, selectedDate, onDateSelect }) {
+function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed, setIsCollapsed, tenantId, tenantName, isOwner, role, selectedDate, onDateSelect }) {
   const isLight = theme === 'light';
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipY, setTooltipY] = useState(0);
@@ -39,7 +39,7 @@ function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed,
     red:     isLight ? '#8b2a2a' : '#ff5252',
   };
 
-  const isOwnerRole = role === 'owner';
+  const isOwnerRole = role === 'owner' || role === 'admin';
   const allItems = [
     ...navItems.filter(item => isOwnerRole || !OWNER_ONLY_PAGES.has(item.id)),
     ...(isOwnerRole ? [{ id: 'activity-log', icon: '🗃️', label: 'Activity Log' }] : []),
@@ -97,57 +97,36 @@ function Sidebar({ activePage, setActivePage, theme, onToggleTheme, isCollapsed,
 
         <div style={{
           display: 'flex', flexDirection: 'column',
-          alignItems: 'center', gap: isCollapsed ? '0' : '8px',
+          alignItems: 'center', gap: isCollapsed ? '0' : '6px',
         }}>
-          <div style={{
-            width: isCollapsed ? '38px' : '56px',
-            height: isCollapsed ? '38px' : '56px',
-            borderRadius: isCollapsed ? '10px' : '14px',
-            background: t.card,
-            border: `1px solid ${t.border2}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', overflow: 'hidden',
-            transition: 'all 0.25s',
-          }}>
+          {/* sal+OWN logo */}
+          {isCollapsed ? (
             <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
-              background: `linear-gradient(90deg, transparent, ${t.gold2}, transparent)`,
-            }} />
-            <span style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize: isCollapsed ? '1.2rem' : '1.6rem',
-              fontWeight: '700', color: t.gold,
-              position: 'relative', zIndex: 1,
-            }}>W</span>
-          </div>
+              width: '38px', height: '38px', borderRadius: '10px',
+              background: '#534AB7',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: '14px', fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>sO</span>
+            </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', marginTop: '4px' }}>
+              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-1px', color: isLight ? '#0a0a0a' : '#f0f0f0', lineHeight: 1 }}>sal</span>
+              <div style={{ background: '#534AB7', padding: '1px 8px 3px', borderRadius: '6px', marginLeft: '4px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-1px', color: '#fff', lineHeight: 1 }}>OWN</span>
+              </div>
+            </div>
+          )}
 
-          {!isCollapsed && (
-            <>
-              <div style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: '1rem', color: t.gold,
-                letterSpacing: '3px', fontWeight: '700',
-                lineHeight: 1, textAlign: 'center',
-              }}>
-                WHITECROSS
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                width: '80%', margin: '0 auto',
-              }}>
-                <div style={{ flex: 1, height: '1px', background: t.border2 }} />
-                <div style={{ width: '3px', height: '3px', borderRadius: '50%', background: t.gold2 }} />
-                <div style={{ flex: 1, height: '1px', background: t.border2 }} />
-              </div>
-              <div style={{
-                fontSize: '0.68rem', color: t.gold2,
-                letterSpacing: '4px', textAlign: 'center',
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontWeight: '600',
-              }}>
-                BARBERS
-              </div>
-            </>
+          {!isCollapsed && tenantName && (
+            <div style={{
+              fontSize: '0.65rem', color: t.muted,
+              letterSpacing: '1px', textAlign: 'center',
+              textTransform: 'uppercase', fontWeight: 600,
+              maxWidth: '160px', overflow: 'hidden',
+              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {tenantName}
+            </div>
           )}
         </div>
       </div>
