@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import config from '../config';
-import { createWalkIn } from '../firestoreActions';
+import { createWalkIn, getActiveTenant } from '../firestoreActions';
 import { getAvailableBarbersForDate, normalizeSoldProducts } from '../utils/bookingUtils';
 import { convertTo24, minsToLabel, formatDateKey } from '../utils/timeUtils';
 import { getEffectiveDayHours } from '../utils/scheduleUtils';
@@ -63,7 +63,7 @@ export default function WalkInForm({ preBarber, preHour, preMins, preDate, barbe
         c.lastService = b.service || c.lastService;
       }
     });
-    getDocs(collection(db, 'tenants/whitecross/clients'))
+    getDocs(collection(db, `${getActiveTenant()}/clients`))
       .then(snap => {
         snap.docs.forEach(d => { const m = d.data(); if (m.hidden) return; const key = m.phone || m.email || m.name; if (!map[key]) map[key] = { name: m.name || '', phone: m.phone || '', email: m.email || '', visits: 0, totalSpent: 0, lastService: '' }; });
         setClients(Object.values(map));
@@ -138,8 +138,7 @@ export default function WalkInForm({ preBarber, preHour, preMins, preDate, barbe
       if (!goCheckout && onClose) onClose();
     } catch(err) {
       console.error('WalkIn error:', err);
-      if (onSaved) onSaved(bookingData, goCheckout);
-      if (!goCheckout && onClose) onClose();
+      alert('Walk-in kaydedilemedi: ' + (err?.message || 'Bilinmeyen hata'));
     } finally {
       setSaving(false);
     }

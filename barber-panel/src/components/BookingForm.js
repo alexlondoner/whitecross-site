@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import config from '../config';
-import { editBooking, createWalkIn } from '../firestoreActions';
+import { editBooking, createWalkIn, getActiveTenant } from '../firestoreActions';
 import { getAvailableBarbersForDate, findServiceByBookingValue } from '../utils/bookingUtils';
 import { convertTo24, minsToLabel } from '../utils/timeUtils';
 import { getEffectiveDayHours } from '../utils/scheduleUtils';
@@ -69,7 +69,7 @@ export default function BookingForm({ preBarber, preHour, preMins, preDate, preB
         c.totalSpent += b.source === 'Booksy' ? (b.status === 'CHECKED_OUT' ? _raw + _deposit : _deposit) : _raw;
       }
     });
-    getDocs(collection(db, 'tenants/whitecross/clients'))
+    getDocs(collection(db, `${getActiveTenant()}/clients`))
       .then(snap => {
         snap.docs.forEach(d => { const m = d.data(); if (m.hidden) return; const key = m.phone || m.email || m.name; if (!map[key]) map[key] = { name: m.name || '', phone: m.phone || '', email: m.email || '', visits: 0, totalSpent: 0 }; });
         setAllClients(Object.values(map));

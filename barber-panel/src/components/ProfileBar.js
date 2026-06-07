@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 
-const TENANT = 'whitecross';
+// TENANT is passed as prop — do not hardcode
 
 const PLATFORMS = [
   { key: 'instagram', label: 'Instagram', color: '#e1306c',
@@ -70,12 +70,12 @@ export default function ProfileBar({ authUser, isAdmin, tenantId, onLogout, user
     (async () => {
       try {
         const [staffSnap, barbersSnap] = await Promise.all([
-          getDoc(doc(db, `tenants/${TENANT}/staff`, authUser.uid)),
-          getDocs(collection(db, `tenants/${TENANT}/barbers`)),
+          getDoc(doc(db, `tenants/${tenantId}/staff`, authUser.uid)),
+          getDocs(collection(db, `tenants/${tenantId}/barbers`)),
         ]);
         const staff = staffSnap.exists()
           ? { uid: authUser.uid, ...staffSnap.data() }
-          : { uid: authUser.uid, name: authUser.displayName || 'Alex', email: authUser.email, role: 'owner' };
+          : { uid: authUser.uid, name: authUser.displayName || authUser.email?.split('@')[0] || 'Owner', email: authUser.email, role: 'owner' };
         setStaffData(staff);
         setSocialForm({
           instagram: staff.instagram || '',
@@ -101,7 +101,7 @@ export default function ProfileBar({ authUser, isAdmin, tenantId, onLogout, user
     if (!authUser || !staffData) return;
     setSaving(true);
     try {
-      const staffRef = doc(db, `tenants/${TENANT}/staff`, authUser.uid);
+      const staffRef = doc(db, `tenants/${tenantId}/staff`, authUser.uid);
       const snap = await getDoc(staffRef);
       if (snap.exists()) {
         await updateDoc(staffRef, socialForm);

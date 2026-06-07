@@ -12,14 +12,14 @@ const TABS = [
   { id: 'products', label: 'Products' },
 ];
 
-export default function OnlineProfile() {
+export default function OnlineProfile({ tenantId }) {
   const [activeTab, setActiveTab] = useState('services');
 
   const renderTab = function() {
-    if (activeTab === 'services') return <Services />;
-    if (activeTab === 'gallery') return <Gallery />;
-    if (activeTab === 'products') return <Products cart={[]} setCart={() => {}} onOpenCart={() => {}} />;
-    return <Announcements />;
+    if (activeTab === 'services') return <Services tenantId={tenantId} />;
+    if (activeTab === 'gallery') return <Gallery tenantId={tenantId} />;
+    if (activeTab === 'products') return <Products tenantId={tenantId} cart={[]} setCart={() => {}} onOpenCart={() => {}} />;
+    return <Announcements tenantId={tenantId} />;
   };
 
   return (

@@ -4,7 +4,7 @@ import PageHeader from '../components/PageHeader';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-const TENANT = 'whitecross';
+
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const COLORS = ['#d4af37', '#4caf50', '#2196f3', '#e91e63', '#ff9800', '#9c27b0', '#00bcd4'];
 const DEFAULT_WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -35,8 +35,18 @@ const defaultBarber = {
   dayHours: createDayHours(DEFAULT_HOURS),
 };
 
+const DAY_MAP = { monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday', thursday:'Thursday', friday:'Friday', saturday:'Saturday', sunday:'Sunday' };
 const normalizeBarberForm = function(barber) {
-  var workingDays = Array.isArray(barber && barber.workingDays) && barber.workingDays.length ? barber.workingDays : DEFAULT_WORKING_DAYS;
+  var rawDays = barber && barber.workingDays;
+  var workingDays;
+  if (Array.isArray(rawDays) && rawDays.length) {
+    workingDays = rawDays;
+  } else if (rawDays && typeof rawDays === 'object') {
+    // Convert Firestore map {monday: true, ...} → ['Monday', ...]
+    workingDays = Object.keys(rawDays).filter(k => rawDays[k]).map(k => DAY_MAP[k] || k);
+  } else {
+    workingDays = DEFAULT_WORKING_DAYS;
+  }
   var hours = Object.assign({}, DEFAULT_HOURS, barber && barber.hours ? barber.hours : {});
   var dayHours = createDayHours(hours);
   DAYS.forEach(function(day) {
@@ -47,7 +57,7 @@ const normalizeBarberForm = function(barber) {
   return Object.assign({}, defaultBarber, barber, { workingDays, hours, dayHours });
 };
 
-export default function Barbers({ isAdmin, isSuperAdmin }) {
+export default function Barbers({ tenantId, isAdmin, isSuperAdmin }) {
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -60,8 +70,15 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
   const fetchBarbers = async function() {
     try {
       setLoading(true);
-      var snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
-      var list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      var snap = await getDocs(collection(db, `tenants/${tenantId}/barbers`));
+      var list = snap.docs.map(d => {
+        var data = d.data();
+        // Normalize workingDays: Firestore map → array
+        if (data.workingDays && !Array.isArray(data.workingDays)) {
+          data.workingDays = Object.keys(data.workingDays).filter(k => data.workingDays[k]).map(k => DAY_MAP[k] || k);
+        }
+        return { id: d.id, ...data };
+      });
 
       list.sort(function(a, b) {
         var ao = typeof a.order === 'number' ? a.order : 999;
@@ -101,7 +118,7 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
       const barberId = form.id || 'barber-' + Date.now();
       var photoUrl = form.photo || '';
       if (photoFile) {
-        const storageRef = ref(storage, `tenants/${TENANT}/barbers/${barberId}/photo`);
+        const storageRef = ref(storage, `tenants/${tenantId}/barbers/${barberId}/photo`);
         await uploadBytes(storageRef, photoFile);
         photoUrl = await getDownloadURL(storageRef);
       }
@@ -111,7 +128,7 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
         ? form.dayHours[primaryDay]
         : Object.assign({}, DEFAULT_HOURS, form.hours || {});
       const orderVal = parseInt(form.order, 10);
-      await setDoc(doc(db, `tenants/${TENANT}/barbers`, barberId), {
+      await setDoc(doc(db, `tenants/${tenantId}/barbers`, barberId), {
         id: barberId,
         name: form.name,
         color: form.color,
@@ -129,7 +146,7 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
       setTimeout(function() { setSaved(false); }, 2000);
     } catch (err) {
       console.error('Save error:', err);
-      alert('Error saving team member.');
+      alert('Error saving team member: ' + (err?.message || err?.code || JSON.stringify(err)));
     } finally {
       setUploading(false);
     }
@@ -138,7 +155,7 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
   const handleDelete = async function(id) {
     if (!window.confirm('Remove this team member?')) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/barbers`, id));
+      await deleteDoc(doc(db, `tenants/${tenantId}/barbers`, id));
       await fetchBarbers();
     } catch (err) {
       alert('Error deleting team member.');
@@ -148,7 +165,7 @@ export default function Barbers({ isAdmin, isSuperAdmin }) {
   const toggleBarberActive = async function(barber) {
     try {
       const nextActive = barber.active === false ? true : false;
-      await updateDoc(doc(db, `tenants/${TENANT}/barbers`, barber.id), { active: nextActive });
+      await updateDoc(doc(db, `tenants/${tenantId}/barbers`, barber.id), { active: nextActive });
       await fetchBarbers();
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 1500);

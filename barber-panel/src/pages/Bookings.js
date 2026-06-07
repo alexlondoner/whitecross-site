@@ -4,7 +4,7 @@ import config from '../config';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
-import { deleteBooking } from '../firestoreActions';
+import { deleteBooking, getActiveTenant } from '../firestoreActions';
 import StatPill from '../components/StatPill';
 
 
@@ -152,7 +152,7 @@ export default function Bookings({ isAdmin }) {
     const gid = b.groupId;
     setExpandedGroupId(prev => prev === gid ? null : gid);
     if (!groupMembersCache[gid]) {
-      getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('groupId', '==', gid)))
+      getDocs(query(collection(db, `${getActiveTenant()}/bookings`), where('groupId', '==', gid)))
         .then(snap => {
           const members = snap.docs.map(d => d.data())
             .filter(m => m.bookingId !== b.bookingId)
@@ -191,7 +191,7 @@ export default function Bookings({ isAdmin }) {
     setLoading(true);
     try {
       const [barbersSnap] = await Promise.all([
-        getDocs(collection(db, 'tenants/whitecross/barbers')),
+        getDocs(collection(db, `${getActiveTenant()}/barbers`)),
       ]);
       const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
       setBarbers(fetchedBarbers);
@@ -205,7 +205,7 @@ export default function Bookings({ isAdmin }) {
       // Fetch all bookings with no Firestore ordering/filtering — any orderBy/where
       // silently excludes docs where that field is missing or wrong type (XLS imports).
       // All sorting and period filtering happens client-side.
-      const bookingsSnap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
+      const bookingsSnap = await getDocs(collection(db, `${getActiveTenant()}/bookings`));
       setTotalFetched(bookingsSnap.size);
 
       const fetchedBookings = bookingsSnap.docs.map(doc => {
@@ -349,7 +349,7 @@ export default function Bookings({ isAdmin }) {
               setAddClientSaving(true); setAddClientError('');
               try {
                 if (!addClientForm.name.trim()) throw new Error('Name is required');
-                const docRef = await addDoc(collection(db, 'tenants/whitecross/clients'), {
+                const docRef = await addDoc(collection(db, `${getActiveTenant()}/clients`), {
                   ...addClientForm,
                   createdAt: serverTimestamp(),
                 });

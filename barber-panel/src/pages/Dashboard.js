@@ -42,7 +42,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STATUS_COLORS = { CONFIRMED: '#4caf50', PENDING: '#ff9800', CHECKED_OUT: '#2196f3', CANCELLED: '#ff5252', NO_SHOW: '#9c27b0' };
 
-export default function Dashboard({ isAdmin = false, initialDate }) {
+export default function Dashboard({ tenantId, isAdmin = false, initialDate }) {
   // ...existing useState hooks...
   const [clientName, setClientName] = useState('Walk-in');
   const [clientPhone, setClientPhone] = useState('');
@@ -74,7 +74,7 @@ export default function Dashboard({ isAdmin = false, initialDate }) {
   const [showLeftCardSettings, setShowLeftCardSettings] = useState(false);
   const ALL_PILLS = ['total','confirmed','pending','checkedout','revenue','discount','tips'];
   const ALL_LEFT_CARDS = ['clients','revenue','discount','tips','barbers'];
-  const PREFS_DOC = doc(db, 'tenants/whitecross/settings/dashboardPrefs');
+  const PREFS_DOC = doc(db, `tenants/${tenantId}/settings/dashboardPrefs`);
   const [visiblePills, setVisiblePills] = useState(new Set(ALL_PILLS));
   const [visibleLeftCards, setVisibleLeftCards] = useState(new Set(ALL_LEFT_CARDS));
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -159,7 +159,7 @@ useEffect(() => {
   const s1 = new Date(selectedDate); s1.setHours(23,59,59,999);
   let first = true;
   dayListenerRef.current = onSnapshot(
-    query(collection(db, 'tenants/whitecross/bookings'), where('startTime', '>=', Timestamp.fromDate(s0)), where('startTime', '<=', Timestamp.fromDate(s1))),
+    query(collection(db, `tenants/${tenantId}/bookings`), where('startTime', '>=', Timestamp.fromDate(s0)), where('startTime', '<=', Timestamp.fromDate(s1))),
     () => { if (first) { first = false; return; } fetchAll(); },
     () => {}
   );
@@ -179,9 +179,9 @@ useEffect(() => {
   const fetchAll = async () => {
     try {
       const [snapshot, barbersSnap, settingsSnap, productsList] = await Promise.all([
-        getDocs(query(collection(db, 'tenants/whitecross/bookings'), orderBy('startTime', 'desc'))),
-        getDocs(collection(db, 'tenants/whitecross/barbers')),
-        getDoc(doc(db, 'tenants/whitecross/settings/settings')).catch(() => null),
+        getDocs(query(collection(db, `tenants/${tenantId}/bookings`), orderBy('startTime', 'desc'))),
+        getDocs(collection(db, `tenants/${tenantId}/barbers`)),
+        getDoc(doc(db, `tenants/${tenantId}/settings/settings`)).catch(() => null),
         getProductsAction().catch(() => []),
       ]);
 

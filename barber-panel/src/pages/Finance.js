@@ -7,7 +7,7 @@ import {
 import { updateTipStatus } from '../firestoreActions';
 import { logAudit } from '../utils/auditLogger';
 
-const TENANT = 'whitecross';
+
 
 // ── Partner / employee config ────────────────────────────────────────────────
 // Stored in localStorage so admin can adjust if needed
@@ -181,7 +181,7 @@ const resolveBarberName = (rawName, canonMap) => {
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function Finance() {
+export default function Finance({ tenantId }) {
   const now = new Date();
   const [activeTab, setActiveTab] = useState('daily');
   const [showEmptyDays, setShowEmptyDays] = useState(false);
@@ -247,13 +247,13 @@ export default function Finance() {
     setLoading(true);
     try {
       const [bookSnap, barberSnap, expSnap, paySnap, advSnap, legacyExpSnap, invTxSnap] = await Promise.all([
-        getDocs(collection(db, `tenants/${TENANT}/bookings`)),
-        getDocs(collection(db, `tenants/${TENANT}/barbers`)),
-        getDocs(collection(db, `tenants/${TENANT}/finance_expenses`)),
-        getDocs(query(collection(db, `tenants/${TENANT}/finance_payments`), orderBy('date', 'desc'))),
-        getDocs(collection(db, `tenants/${TENANT}/advances`)),
-        getDocs(collection(db, `tenants/${TENANT}/expenses`)),
-        getDocs(query(collection(db, `tenants/${TENANT}/investment_transactions`), orderBy('date', 'desc'))),
+        getDocs(collection(db, `tenants/${tenantId}/bookings`)),
+        getDocs(collection(db, `tenants/${tenantId}/barbers`)),
+        getDocs(collection(db, `tenants/${tenantId}/finance_expenses`)),
+        getDocs(query(collection(db, `tenants/${tenantId}/finance_payments`), orderBy('date', 'desc'))),
+        getDocs(collection(db, `tenants/${tenantId}/advances`)),
+        getDocs(collection(db, `tenants/${tenantId}/expenses`)),
+        getDocs(query(collection(db, `tenants/${tenantId}/investment_transactions`), orderBy('date', 'desc'))),
       ]);
 
       // Barbers
@@ -375,7 +375,7 @@ export default function Finance() {
   useEffect(() => {
     const loadFinanceConfig = async () => {
       try {
-        const snap = await getDoc(doc(db, `tenants/${TENANT}/settings`, 'finance_config'));
+        const snap = await getDoc(doc(db, `tenants/${tenantId}/settings`, 'finance_config'));
         if (snap.exists()) {
           const data = snap.data();
           if (data.partnerConfig) {
@@ -679,10 +679,10 @@ export default function Finance() {
       };
       const existing = expenses[dk];
       if (existing?.id) {
-        await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, existing.id), data);
+        await updateDoc(doc(db, `tenants/${tenantId}/finance_expenses`, existing.id), data);
         logAudit('EXPENSE_UPDATED', { date: dk, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       } else {
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
+        const ref = await addDoc(collection(db, `tenants/${tenantId}/finance_expenses`), data);
         data.id = ref.id;
         logAudit('EXPENSE_ADDED', { date: dk, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       }
@@ -702,7 +702,7 @@ export default function Finance() {
         barberName: payForm.barberName, amount: parseFloat(payForm.amount),
         method: payForm.method, notes: payForm.notes || '',
       };
-      const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_payments`), docData);
+      const ref = await addDoc(collection(db, `tenants/${tenantId}/finance_payments`), docData);
       setPayments(prev => [{ id: ref.id, sourceType: 'finance_payments', ...docData }, ...prev]);
       logAudit('PAYMENT_ADDED', { barberName: payForm.barberName, amount: parseFloat(payForm.amount), method: payForm.method, date: payForm.date, notes: payForm.notes });
       setPayForm({ date: '', barberName: '', amount: '', method: 'Cash', notes: '' });
@@ -721,7 +721,7 @@ export default function Finance() {
     try {
       const dk = expenseForm.date;
       const data = { date: dk, month: dk.slice(0, 7), cashExpense: cashToAdd, bankExpense: bankToAdd, notes: notesToAdd };
-      const ref = await addDoc(collection(db, `tenants/${TENANT}/finance_expenses`), data);
+      const ref = await addDoc(collection(db, `tenants/${tenantId}/finance_expenses`), data);
       const entry = { ...data, id: ref.id };
       logAudit('EXPENSE_ADDED', { date: dk, cashExpense: cashToAdd, bankExpense: bankToAdd, notes: notesToAdd });
       setExpenseList(prev => [entry, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
@@ -747,7 +747,7 @@ export default function Finance() {
   const deleteExpenseEntry = async entry => {
     if (!window.confirm('Delete this expense entry?')) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id));
+      await deleteDoc(doc(db, `tenants/${tenantId}/finance_expenses`, entry.id));
       logAudit('EXPENSE_DELETED', { date: entry.date, cashExpense: entry.cashExpense, bankExpense: entry.bankExpense, notes: entry.notes });
       setExpenseList(prev => prev.filter(e => e.id !== entry.id));
       setExpenses(prev => {
@@ -771,7 +771,7 @@ export default function Finance() {
         bankExpense: parseFloat(editExpEntryDraft.bankExpense) || 0,
         notes: String(editExpEntryDraft.notes || '').trim(),
       };
-      await updateDoc(doc(db, `tenants/${TENANT}/finance_expenses`, entry.id), data);
+      await updateDoc(doc(db, `tenants/${tenantId}/finance_expenses`, entry.id), data);
       logAudit('EXPENSE_UPDATED', { date: data.date, cashExpense: data.cashExpense, bankExpense: data.bankExpense, notes: data.notes });
       setExpenseList(prev => prev.map(e => e.id === entry.id ? { ...e, ...data } : e));
       setExpenses(prev => {
@@ -789,7 +789,7 @@ export default function Finance() {
   const deletePayment = async payment => {
     if (!window.confirm('Delete this payment record?')) return;
     const col = payment.sourceType === 'advances' ? 'advances' : 'finance_payments';
-    await deleteDoc(doc(db, `tenants/${TENANT}/${col}`, payment.id));
+    await deleteDoc(doc(db, `tenants/${tenantId}/${col}`, payment.id));
     logAudit('PAYMENT_DELETED', { barberName: payment.barberName, amount: payment.amount, date: payment.date, method: payment.method });
     setPayments(prev => prev.filter(p => !(p.id === payment.id && p.sourceType === payment.sourceType)));
   };
@@ -806,7 +806,7 @@ export default function Finance() {
         notes: String(invTxForm.notes || '').trim(),
         createdAt: new Date().toISOString(),
       };
-      const ref = await addDoc(collection(db, `tenants/${TENANT}/investment_transactions`), data);
+      const ref = await addDoc(collection(db, `tenants/${tenantId}/investment_transactions`), data);
       logAudit('INVESTMENT_TX_ADDED', { partnerName: data.partnerName, amount: data.amount, date: data.date, description: data.description });
       setInvestmentTransactions(prev => [{ id: ref.id, ...data }, ...prev].sort((a, b) => String(b.date).localeCompare(String(a.date))));
       setInvTxForm({ date: '', partnerName: '', amount: '', description: '', notes: '' });
@@ -817,7 +817,7 @@ export default function Finance() {
   const deleteInvTx = async id => {
     if (!window.confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/investment_transactions`, id));
+      await deleteDoc(doc(db, `tenants/${tenantId}/investment_transactions`, id));
       logAudit('INVESTMENT_TX_DELETED', { id });
       setInvestmentTransactions(prev => prev.filter(t => t.id !== id));
     } catch (e) { console.error(e); }
@@ -832,7 +832,7 @@ export default function Finance() {
     localStorage.setItem('financeFixedRate', String(settingsDraft.fixedDailyRate));
     localStorage.setItem('financeTipSettings', JSON.stringify(settingsDraft.tipSettings));
     try {
-      await setDoc(doc(db, `tenants/${TENANT}/settings`, 'finance_config'), {
+      await setDoc(doc(db, `tenants/${tenantId}/settings`, 'finance_config'), {
         partnerConfig: settingsDraft.partnerConfig,
         fixedDailyRate: settingsDraft.fixedDailyRate,
         tipSettings: settingsDraft.tipSettings,

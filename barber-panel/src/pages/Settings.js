@@ -5,9 +5,10 @@ import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, Timestamp, writeBatch, updateDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getActiveTenant } from '../firestoreActions';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const TENANT = 'whitecross';
+
 
 const defaultSettings = {
   shopName: config.shopName,
@@ -71,6 +72,7 @@ function getLocalDateKey(d) {
 }
 
 export default function Settings({ theme, onToggleTheme, isAdmin = false, isSuperAdmin = false, authUser }) {
+  const tenantId = getActiveTenant().split('/')[1];
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -88,7 +90,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
 
   const fetchSettings = async function() {
     try {
-      const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
+      const snap = await getDoc(doc(db, `tenants/${tenantId}/settings/settings`));
       if (snap.exists()) {
         const data = snap.data();
         setSettings({
@@ -120,7 +122,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
           const start = new Date(d); start.setHours(0,0,0,0);
           const end = new Date(d); end.setHours(23,59,59,999);
           const q = query(
-            collection(db, `tenants/${TENANT}/bookings`),
+            collection(db, `tenants/${tenantId}/bookings`),
             where('startTime', '>=', Timestamp.fromDate(start)),
             where('startTime', '<=', Timestamp.fromDate(end)),
             where('status', '==', 'CONFIRMED')
@@ -139,7 +141,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
   // Tüm barber'ların o günkü dayHours'unu güncelle
   const updateAllBarbersDay = async function(dayName, newHours) {
     try {
-      const snap = await getDocs(collection(db, `tenants/${TENANT}/barbers`));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/barbers`));
       const updates = snap.docs.map(async barberDoc => {
         const barber = barberDoc.data();
         const currentDayHours = barber.dayHours || {};
@@ -154,7 +156,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
         } else {
           if (!workingDays.includes(dayName)) workingDays.push(dayName);
         }
-        await setDoc(doc(db, `tenants/${TENANT}/barbers`, barberDoc.id), {
+        await setDoc(doc(db, `tenants/${tenantId}/barbers`, barberDoc.id), {
           ...barber,
           dayHours: updatedDayHours,
           workingDays,
@@ -191,7 +193,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     setSettings(newSettings);
 
     // Firestore'a kaydet
-    await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), newSettings);
+    await setDoc(doc(db, `tenants/${tenantId}/settings/settings`), newSettings);
     // Tüm barber'ları güncelle
     await updateAllBarbersDay(day, newHours);
 
@@ -240,7 +242,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
         })
       };
       // Auto-save to Firestore immediately so public site reflects removal
-      setDoc(doc(db, `tenants/${TENANT}/settings/settings`), updated).catch(function() {});
+      setDoc(doc(db, `tenants/${tenantId}/settings/settings`), updated).catch(function() {});
       return updated;
     });
   };
@@ -259,7 +261,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
       setSettings(function(current) {
         return { ...current, specialHours: kept };
       });
-      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { specialHours: kept }, { merge: true });
+      await setDoc(doc(db, `tenants/${tenantId}/settings/settings`), { specialHours: kept }, { merge: true });
       setSaved(true);
       setTimeout(function() { setSaved(false); }, 3000);
     } catch (err) {
@@ -317,7 +319,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
   const loadStaff = async () => {
     setStaffLoading(true);
     try {
-      const snap = await getDocs(collection(db, `tenants/${TENANT}/staff`));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/staff`));
       setStaffList(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     } catch (e) {
       console.error('loadStaff:', e);
@@ -345,7 +347,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     try {
       const functions = getFunctions();
       const fn = httpsCallable(functions, 'createStaffUser');
-      await fn({ name: name.trim(), email: email.trim(), password, role });
+      await fn({ name: name.trim(), email: email.trim(), password, role, tenantId });
       setStaffResult(`✓ Account created for ${email.trim()}`);
       setStaffForm({ name: '', email: '', password: '', confirmPassword: '', role: 'staff' });
       setShowStaffPassword(false);
@@ -359,7 +361,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
 
   const updateStaffRole = async (uid, newRole) => {
     try {
-      await updateDoc(doc(db, `tenants/${TENANT}/staff`, uid), { role: newRole });
+      await updateDoc(doc(db, `tenants/${tenantId}/staff`, uid), { role: newRole });
       setStaffList(prev => prev.map(s => s.uid === uid ? { ...s, role: newRole } : s));
     } catch (e) {
       alert('Error: ' + e.message);
@@ -369,7 +371,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
   const deleteStaff = async (uid, email) => {
     if (!window.confirm(`Remove staff account for ${email}? They will no longer be able to log in.`)) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/staff`, uid));
+      await deleteDoc(doc(db, `tenants/${tenantId}/staff`, uid));
       setStaffList(prev => prev.filter(s => s.uid !== uid));
     } catch (e) {
       alert('Error: ' + e.message);
@@ -381,7 +383,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     if (!window.confirm(`Register your account (${authUser.email}) as Admin? This lets the panel recognise you as owner.`)) return;
     setRegisteringMe(true);
     try {
-      await setDoc(doc(db, `tenants/${TENANT}/staff`, authUser.uid), {
+      await setDoc(doc(db, `tenants/${tenantId}/staff`, authUser.uid), {
         name: authUser.displayName || 'Alex',
         email: authUser.email,
         role: 'owner',
@@ -405,8 +407,8 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     setCleanupResult('Running...');
     try {
       const db2 = db;
-      const clientsRef = collection(db2, `tenants/${TENANT}/clients`);
-      const bookingsRef = collection(db2, `tenants/${TENANT}/bookings`);
+      const clientsRef = collection(db2, `tenants/${tenantId}/clients`);
+      const bookingsRef = collection(db2, `tenants/${tenantId}/bookings`);
       const isEmail = raw.includes('@');
       const batch = writeBatch(db2);
       let clientCount = 0, bookingCount = 0;
@@ -442,7 +444,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     setCleanupRunning(true);
     setCleanupResult('Running...');
     try {
-      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const clientsRef = collection(db, `tenants/${tenantId}/clients`);
       const hiddenSnap = await getDocs(query(clientsRef, where('hidden', '==', true)));
       const batch = writeBatch(db);
       let count = 0;
@@ -462,7 +464,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     setMigrating(true);
     setMigrateResult('');
     try {
-      const snap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/bookings`));
       let updated = 0;
       const batch = writeBatch(db);
       let batchCount = 0;
@@ -522,7 +524,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     try {
       const batch = writeBatch(db);
       for (const entry of EXCEL_EXPENSES) {
-        const ref = doc(db, `tenants/whitecross/finance_expenses`, entry.date);
+        const ref = doc(db, `tenants/${tenantId}/finance_expenses`, entry.date);
         batch.set(ref, {
           date: entry.date,
           month: entry.date.slice(0, 7),
@@ -544,7 +546,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     setDiagResult(null);
     setOnlineBkList(null);
     try {
-      const snap = await getDocs(collection(db, 'tenants/whitecross/bookings'));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/bookings`));
       const parsePrice = v => parseFloat(String(v || '0').replace(/[£,]/g, '').replace('-', '').trim()) || 0;
       const getDate = b => b.startTime?.toDate?.() ?? (b.startTime?.seconds ? new Date(b.startTime.seconds * 1000) : null);
       const toDK = st => st ? `${st.getFullYear()}-${String(st.getMonth()+1).padStart(2,'0')}-${String(st.getDate()).padStart(2,'0')}` : null;
@@ -593,7 +595,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
     if (!window.confirm('Delete this booking from Firestore?')) return;
     setDeletingIds(prev => new Set([...prev, docId]));
     try {
-      await deleteDoc(doc(db, 'tenants/whitecross/bookings', docId));
+      await deleteDoc(doc(db, `tenants/${tenantId}/bookings`, docId));
       setOnlineBkList(prev => prev.filter(b => b.docId !== docId));
     } catch (err) {
       alert('Error: ' + err.message);
@@ -605,7 +607,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
   const runSetBarberOrder = async () => {
     const ORDER = { alex: 1, arda: 2, manoj: 3, kadim: 4 };
     try {
-      const snap = await getDocs(collection(db, 'tenants/whitecross/barbers'));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/barbers`));
       const batch = writeBatch(db);
       let updated = 0;
       snap.docs.forEach(d => {
@@ -651,7 +653,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
         ...settings,
         specialHours,
       };
-      await setDoc(doc(db, `tenants/${TENANT}/settings/settings`), payload);
+      await setDoc(doc(db, `tenants/${tenantId}/settings/settings`), payload);
       // Propagate all hours to every barber
       if (payload.hours) {
         await Promise.all(
@@ -766,7 +768,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
             onClick={() => {
               const next = settings.emailConfirmationEnabled === false ? true : false;
               setSettings(s => ({ ...s, emailConfirmationEnabled: next }));
-              setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { emailConfirmationEnabled: next }, { merge: true }).catch(() => {});
+              setDoc(doc(db, `tenants/${tenantId}/settings/settings`), { emailConfirmationEnabled: next }, { merge: true }).catch(() => {});
             }}
             style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.emailConfirmationEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '4px', left: settings.emailConfirmationEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
@@ -787,7 +789,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
             onClick={() => {
               const next = settings.checkoutEmailEnabled === false ? true : false;
               setSettings(s => ({ ...s, checkoutEmailEnabled: next }));
-              setDoc(doc(db, `tenants/${TENANT}/settings/settings`), { checkoutEmailEnabled: next }, { merge: true }).catch(() => {});
+              setDoc(doc(db, `tenants/${tenantId}/settings/settings`), { checkoutEmailEnabled: next }, { merge: true }).catch(() => {});
             }}
             style={{ width: '52px', height: '28px', borderRadius: '14px', cursor: 'pointer', background: settings.checkoutEmailEnabled !== false ? '#4caf50' : 'var(--muted)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '4px', left: settings.checkoutEmailEnabled !== false ? '27px' : '4px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
@@ -842,6 +844,9 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
           </div>
         </div>
       </div>
+
+      {/* Owner-only sections */}
+      {isSuperAdmin && (<>
 
       {/* Opening Hours */}
       <div style={cardStyle}>
@@ -960,9 +965,6 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
         )}
       </div>
 
-      {/* Owner-only sections */}
-      {isSuperAdmin && (<>
-
       {/* Platform Settings */}
       <div style={cardStyle}>
         <h2 style={sectionTitle}>Platform Settings</h2>
@@ -1019,8 +1021,8 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
         </div>
       </div>
 
-      {/* One-time migrations */}
-      <div style={{ ...cardStyle, borderColor: 'rgba(212,175,55,0.2)' }}>
+      {/* One-time migrations — whitecross only */}
+      {tenantId === 'whitecross' && <div style={{ ...cardStyle, borderColor: 'rgba(212,175,55,0.2)' }}>
         <h2 style={sectionTitle}>Maintenance</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <button onClick={runServiceMigration} disabled={migrating}
@@ -1073,7 +1075,7 @@ export default function Settings({ theme, onToggleTheme, isAdmin = false, isSupe
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
 
       {/* Staff Accounts */}

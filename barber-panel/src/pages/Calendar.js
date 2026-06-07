@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
 
-const TENANT = 'whitecross';
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const SKIP_STATUSES = new Set(['CANCELLED','BLOCKED','DELETED','NO_SHOW']);
@@ -232,7 +232,7 @@ function DetailPanel({ selectedDay, bookingsByDay, barberColorMap, onClose }) {
   );
 }
 
-export default function Calendar() {
+export default function Calendar({ tenantId }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings]       = useState([]);
   const [barbers, setBarbers]         = useState([]);
@@ -248,8 +248,8 @@ export default function Calendar() {
       setLoading(true);
       try {
         const [bkSnap, barberSnap] = await Promise.all([
-          getDocs(collection(db, `tenants/${TENANT}/bookings`)),
-          getDocs(collection(db, `tenants/${TENANT}/barbers`)),
+          getDocs(collection(db, `tenants/${tenantId}/bookings`)),
+          getDocs(collection(db, `tenants/${tenantId}/barbers`)),
         ]);
         setBarbers(barberSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 99) - (b.order ?? 99)));
         setBookings(

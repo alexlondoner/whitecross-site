@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { deleteBooking, cancelBooking, markNoShow, getClientLoyaltyPoints } from '../firestoreActions';
+import { deleteBooking, cancelBooking, markNoShow, getClientLoyaltyPoints, getActiveTenant } from '../firestoreActions';
 import { logAudit } from '../utils/auditLogger';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
@@ -157,7 +157,7 @@ export default function BookingDetail({
   useEffect(() => {
     setGroupMembers([]);
     if (!booking?.groupId) return;
-    getDocs(query(collection(db, 'tenants/whitecross/bookings'), where('groupId', '==', booking.groupId)))
+    getDocs(query(collection(db, `${getActiveTenant()}/bookings`), where('groupId', '==', booking.groupId)))
       .then(snap => {
         const members = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
@@ -385,7 +385,7 @@ export default function BookingDetail({
                       if (sendingLoyalty || loyaltySent) return;
                       setSendingLoyalty(true);
                       try {
-                        const _q = query(collection(db, 'tenants/whitecross/bookings'), where('bookingId', '==', booking.bookingId));
+                        const _q = query(collection(db, `${getActiveTenant()}/bookings`), where('bookingId', '==', booking.bookingId));
                         const _snap = await getDocs(_q);
                         if (_snap.empty) throw new Error('Booking not found in database');
                         await updateDoc(_snap.docs[0].ref, {

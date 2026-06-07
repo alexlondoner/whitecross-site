@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { db } from '../firebase';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 
-const TENANT = 'whitecross';
+
 
 const inp = {
   width: '100%',
@@ -41,7 +41,7 @@ const blankForm = {
   active: true,
 };
 
-export default function Announcements() {
+export default function Announcements({ tenantId }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -63,9 +63,9 @@ export default function Announcements() {
     try {
       var snap;
       try {
-        snap = await getDocs(query(collection(db, `tenants/${TENANT}/announcements`), orderBy('order', 'asc')));
+        snap = await getDocs(query(collection(db, `tenants/${tenantId}/announcements`), orderBy('order', 'asc')));
       } catch (_) {
-        snap = await getDocs(collection(db, `tenants/${TENANT}/announcements`));
+        snap = await getDocs(collection(db, `tenants/${tenantId}/announcements`));
       }
       var list = snap.docs.map(function(d) { return { docId: d.id, ...d.data() }; });
       list.sort(function(a, b) {
@@ -120,10 +120,10 @@ export default function Announcements() {
       if (editingId === 'new') {
         payload.order = itemsRef.current.length;
         payload.createdAt = new Date().toISOString();
-        var ref = await addDoc(collection(db, `tenants/${TENANT}/announcements`), payload);
+        var ref = await addDoc(collection(db, `tenants/${tenantId}/announcements`), payload);
         syncItems([...itemsRef.current, { docId: ref.id, ...payload }]);
       } else {
-        await updateDoc(doc(db, `tenants/${TENANT}/announcements`, editingId), payload);
+        await updateDoc(doc(db, `tenants/${tenantId}/announcements`, editingId), payload);
         syncItems(itemsRef.current.map(function(it) {
           return it.docId === editingId ? { ...it, ...payload } : it;
         }));
@@ -140,7 +140,7 @@ export default function Announcements() {
   const removeItem = async function(item) {
     if (!window.confirm(`Delete announcement "${item.title}"?`)) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/announcements`, item.docId));
+      await deleteDoc(doc(db, `tenants/${tenantId}/announcements`, item.docId));
       syncItems(itemsRef.current.filter(function(it) { return it.docId !== item.docId; }));
     } catch (err) {
       alert('Could not delete announcement.');
@@ -150,7 +150,7 @@ export default function Announcements() {
   const toggleActive = async function(item) {
     var next = item.active === false;
     try {
-      await updateDoc(doc(db, `tenants/${TENANT}/announcements`, item.docId), { active: next, updatedAt: new Date().toISOString() });
+      await updateDoc(doc(db, `tenants/${tenantId}/announcements`, item.docId), { active: next, updatedAt: new Date().toISOString() });
       syncItems(itemsRef.current.map(function(it) {
         return it.docId === item.docId ? { ...it, active: next } : it;
       }));

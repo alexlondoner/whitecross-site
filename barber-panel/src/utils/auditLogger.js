@@ -1,12 +1,12 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
-const TENANT = 'tenants/whitecross';
+import { getActiveTenant } from '../firestoreActions';
 
 export async function logAudit(action, details = {}) {
   const user = auth.currentUser;
   try {
-    await addDoc(collection(db, `${TENANT}/auditLogs`), {
+    await addDoc(collection(db, `${getActiveTenant()}/auditLogs`), {
       action,
       userId: user?.uid || '',
       userEmail: user?.email || '',

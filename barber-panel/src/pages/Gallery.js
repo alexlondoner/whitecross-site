@@ -3,9 +3,9 @@ import { db, storage } from '../firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-const TENANT = 'whitecross';
 
-export default function Gallery() {
+
+export default function Gallery({ tenantId }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,9 +40,9 @@ export default function Gallery() {
       setLoading(true);
       let snap;
       try {
-        snap = await getDocs(query(collection(db, `tenants/${TENANT}/gallery`), orderBy('order', 'asc')));
+        snap = await getDocs(query(collection(db, `tenants/${tenantId}/gallery`), orderBy('order', 'asc')));
       } catch (_) {
-        snap = await getDocs(collection(db, `tenants/${TENANT}/gallery`));
+        snap = await getDocs(collection(db, `tenants/${tenantId}/gallery`));
       }
       setImages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {
@@ -72,7 +72,7 @@ export default function Gallery() {
 
   const saveToFirestore = async function(url, storagePath) {
     const id = 'gallery-' + Date.now();
-    await setDoc(doc(db, `tenants/${TENANT}/gallery`, id), {
+    await setDoc(doc(db, `tenants/${tenantId}/gallery`, id), {
       id,
       url,
       caption: caption.trim(),
@@ -87,7 +87,7 @@ export default function Gallery() {
 
   const handleUploadDone = async function() {
     if (uploadedDocId && caption.trim()) {
-      await updateDoc(doc(db, `tenants/${TENANT}/gallery`, uploadedDocId), { caption: caption.trim() });
+      await updateDoc(doc(db, `tenants/${tenantId}/gallery`, uploadedDocId), { caption: caption.trim() });
       await fetchImages();
     }
     setSaved(true);
@@ -111,7 +111,7 @@ export default function Gallery() {
 
     try {
       const id = 'gallery-' + Date.now();
-      const storagePath = `tenants/${TENANT}/gallery/${id}_${file.name}`;
+      const storagePath = `tenants/${tenantId}/gallery/${id}_${file.name}`;
       const storageRef = ref(storage, storagePath);
 
       const snapshot = await uploadBytes(storageRef, file);
@@ -156,7 +156,7 @@ export default function Gallery() {
       if (image.storagePath) {
         try { await deleteObject(ref(storage, image.storagePath)); } catch (_) {}
       }
-      await deleteDoc(doc(db, `tenants/${TENANT}/gallery`, image.id));
+      await deleteDoc(doc(db, `tenants/${tenantId}/gallery`, image.id));
       await fetchImages();
     } catch (err) {
       alert('Error deleting image.');
@@ -174,7 +174,7 @@ export default function Gallery() {
     if (!editImage) return;
     setEditSaving(true);
     try {
-      await updateDoc(doc(db, `tenants/${TENANT}/gallery`, editImage.id), {
+      await updateDoc(doc(db, `tenants/${tenantId}/gallery`, editImage.id), {
         caption: editCaption.trim(),
         order: Number(editOrder),
       });
@@ -209,7 +209,7 @@ export default function Gallery() {
     try {
       await Promise.all(
         images.map(function(img, i) {
-          return updateDoc(doc(db, `tenants/${TENANT}/gallery`, img.id), { order: i });
+          return updateDoc(doc(db, `tenants/${tenantId}/gallery`, img.id), { order: i });
         })
       );
     } catch (err) {

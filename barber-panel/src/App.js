@@ -7,6 +7,7 @@ import NotificationBell from './components/NotificationBell';
 import ProfileBar from './components/ProfileBar';
 import Login from './pages/Login';
 import config from './config';
+import { setActiveTenant } from './firestoreActions';
 import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import './App.css';
 
@@ -23,16 +24,36 @@ const Cart = lazy(() => import('./pages/Cart'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const Marketing = lazy(() => import('./pages/Marketing'));
 
-async function loadServicesIntoConfig() {
+async function loadServicesIntoConfig(tenantId) {
   try {
-    const snap = await getDocs(query(collection(db, 'tenants/whitecross/services'), orderBy('order', 'asc')));
-    if (!snap.empty) {
-      config.services = snap.docs
-        .map((d) => {
-          const data = d.data() || {};
-          return { ...data, id: String(data.id || d.id || '').trim() };
-        })
-        .filter((s) => !!s.id);
+    const snap = await getDocs(query(collection(db, `tenants/${tenantId}/services`), orderBy('order', 'asc')));
+    // Always reset — even if empty, clear whitecross defaults
+    config.services = snap.empty ? [] : snap.docs
+      .map((d) => {
+        const data = d.data() || {};
+        return { ...data, id: String(data.id || d.id || '').trim() };
+      })
+      .filter((s) => !!s.id);
+  } catch { config.services = []; }
+}
+
+async function loadTenantConfig(tenantId) {
+  try {
+    const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+    if (tenantDoc.exists()) {
+      const t = tenantDoc.data();
+      config.shopName    = t.name        || '';
+      config.shopAddress = t.address     || '';
+      config.shopPhone   = t.phone       || '';
+      config.shopEmail   = t.ownerEmail  || '';
+      config.shopWhatsApp = t.whatsapp   || '';
+    }
+    // Load barbers from Firestore
+    const barbersSnap = await getDocs(collection(db, `tenants/${tenantId}/barbers`));
+    if (!barbersSnap.empty) {
+      config.barbers = barbersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      config.barbers = [];
     }
   } catch {}
 }
@@ -61,9 +82,26 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Read tenantId from Firebase custom claim (falls back to 'whitecross' for existing users)
-        const tokenResult = await getIdTokenResult(firebaseUser, true);
-        const tid = tokenResult.claims.tenantId || 'whitecross';
+        // Retry claim fetch — provisionTenant may take a moment to propagate
+        let tokenResult;
+        let tid = null;
+        for (let i = 0; i < 4; i++) {
+          tokenResult = await getIdTokenResult(firebaseUser, true);
+          tid = tokenResult.claims.tenantId;
+          if (tid) break;
+          if (i < 3) await new Promise(r => setTimeout(r, 1500));
+        }
+        // Fallback to 'whitecross' only on the whitecrossbarbers-admin domain
+        if (!tid && window.location.hostname.includes('whitecrossbarbers')) {
+          tid = 'whitecross';
+        }
+        if (!tid) {
+          setAuthUser(firebaseUser);
+          setTenantId('__pending__');
+          return;
+        }
         setTenantId(tid);
+        setActiveTenant(tid);
         // Load tenant name
         try {
           const tenantDoc = await getDoc(doc(db, 'tenants', tid));
@@ -76,8 +114,8 @@ function App() {
           setIsAdmin(r === 'owner' || r === 'admin');
           if (r === 'staff') setActivePage('dashboard');
         } catch {
-          setRole('owner');
-          setIsAdmin(true);
+          setRole('staff');
+          setIsAdmin(false);
         }
         setAuthUser(firebaseUser);
       } else {
@@ -90,16 +128,17 @@ function App() {
     return unsubscribe;
   }, []);
 
-  // Load services on startup
+  // Load tenant config + services once tenantId is known
   useEffect(() => {
-    loadServicesIntoConfig().finally(() => setConfigReady(true));
-  }, []);
-
-  // Reload services when Services page saves changes
-  useEffect(() => {
-    window.addEventListener('services-updated', loadServicesIntoConfig);
-    return () => window.removeEventListener('services-updated', loadServicesIntoConfig);
-  }, []);
+    if (!tenantId || tenantId === '__pending__') return;
+    Promise.all([
+      loadTenantConfig(tenantId),
+      loadServicesIntoConfig(tenantId),
+    ]).finally(() => setConfigReady(true));
+    const handler = () => loadServicesIntoConfig(tenantId);
+    window.addEventListener('services-updated', handler);
+    return () => window.removeEventListener('services-updated', handler);
+  }, [tenantId]);
 
   const [sidebarDate, setSidebarDate] = useState(new Date());
   const handleSidebarDateSelect = (date) => { setSidebarDate(date); setActivePage('dashboard'); };
@@ -107,10 +146,27 @@ function App() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const handleLogout = () => auth.signOut();
 
-  if (authUser === undefined || !configReady || (authUser && role === null)) {
+  if (authUser === undefined || (authUser && tenantId && tenantId !== '__pending__' && (!configReady || role === null))) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a08', color: '#d4af37', fontSize: '0.9rem', letterSpacing: '2px' }}>
         Loading...
+      </div>
+    );
+  }
+
+  if (tenantId === '__pending__') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a', gap: 16 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '-1px', color: '#f0f0f0' }}>sal</span>
+          <div style={{ background: '#534AB7', padding: '2px 10px 4px', borderRadius: '7px', marginLeft: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '-1px', color: '#fff' }}>OWN</span>
+          </div>
+        </div>
+        <div style={{ color: '#888', fontSize: 14 }}>Setting up your panel...</div>
+        <button onClick={() => window.location.reload()} style={{ marginTop: 8, padding: '8px 20px', background: '#534AB7', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, cursor: 'pointer' }}>
+          Refresh
+        </button>
       </div>
     );
   }
@@ -177,12 +233,32 @@ function App() {
         height: activePage === 'dashboard' ? '100vh' : 'auto',
         transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
-        <Suspense fallback={<div style={{ color: '#888', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
-          {renderPage()}
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div style={{ color: '#888', padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+            {renderPage()}
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 40, color: '#f87171', fontFamily: 'monospace', fontSize: 13 }}>
+          <strong>Panel error:</strong><br />{this.state.error?.message}<br /><br />
+          <button onClick={() => this.setState({ error: null })} style={{ padding: '8px 16px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default App;

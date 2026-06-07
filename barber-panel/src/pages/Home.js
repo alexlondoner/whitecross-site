@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
-const TENANT = 'whitecross';
+
 const BARBER_COLORS = {
   Alex: '#d4af37', Arda: '#2196f3', Kadim: '#ff9800', Manoj: '#e91e63', Tuncay: '#b39ddb',
 };
@@ -139,8 +139,8 @@ export default function Home({ tenantId, setActivePage, authUser, role }) {
       setLoading(true);
       try {
         const [bookSnap, clientSnap] = await Promise.all([
-          getDocs(collection(db, `tenants/${TENANT}/bookings`)),
-          getDocs(collection(db, `tenants/${TENANT}/clients`)),
+          getDocs(collection(db, `tenants/${tenantId}/bookings`)),
+          getDocs(collection(db, `tenants/${tenantId}/clients`)),
         ]);
         const fetchedClients = clientSnap.docs.map(d => ({ id:d.id, ...d.data() }));
         setClients(fetchedClients);

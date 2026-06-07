@@ -66,9 +66,14 @@ function Login({ onLogin }) {
           backdropFilter: 'blur(12px)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <img src="/logo.png" alt="Whitecross Barbers" style={{ width: '132px', height: '132px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
-            <div style={{ marginTop: '16px', fontFamily: 'Georgia, serif', fontSize: '1.2rem', color: '#d4af37', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: '700', lineHeight: 1.4 }}>
-              I CUT WHITECROSS
+            <div style={{ display: 'inline-flex', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-1.5px', color: '#f0f0f0', lineHeight: 1 }}>sal</span>
+              <div style={{ background: '#534AB7', padding: '2px 12px 5px', borderRadius: '8px', marginLeft: '5px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-1.5px', color: '#fff', lineHeight: 1 }}>OWN</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '11px', color: '#555', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '6px' }}>
+              Salon Panel
             </div>
           </div>
 

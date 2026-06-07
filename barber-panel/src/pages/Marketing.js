@@ -4,7 +4,7 @@ import PageHeader from '../components/PageHeader';
 import { collection, getDocs, getDoc, doc, setDoc, query, orderBy } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-const TENANT  = 'tenants/whitecross';
+// TENANT is set dynamically from tenantId prop — see usage below
 const HOURS   = [9,10,11,12,13,14,15,16,17,18];
 const DAYS    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_F  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -143,13 +143,13 @@ export default function Marketing({ tenantId, isAdmin }) {
       setLoading(true);
       try {
         const [bkSnap, barberSnap, clientSnap, settSnap, expSnap, paySnap, finCfgSnap] = await Promise.all([
-          getDocs(collection(db, `${TENANT}/bookings`)),
-          getDocs(collection(db, `${TENANT}/barbers`)),
-          getDocs(collection(db, `${TENANT}/clients`)),
-          getDoc(doc(db, `${TENANT}/settings/settings`)),
-          getDocs(collection(db, `${TENANT}/finance_expenses`)),
-          getDocs(query(collection(db, `${TENANT}/finance_payments`), orderBy('date', 'desc'))),
-          getDoc(doc(db, `${TENANT}/settings`, 'finance_config')),
+          getDocs(collection(db, `tenants/${tenantId}/bookings`)),
+          getDocs(collection(db, `tenants/${tenantId}/barbers`)),
+          getDocs(collection(db, `tenants/${tenantId}/clients`)),
+          getDoc(doc(db, `tenants/${tenantId}/settings/settings`)),
+          getDocs(collection(db, `tenants/${tenantId}/finance_expenses`)),
+          getDocs(query(collection(db, `tenants/${tenantId}/finance_payments`), orderBy('date', 'desc'))),
+          getDoc(doc(db, `tenants/${tenantId}/settings`, 'finance_config')),
         ]);
         setBarbers(barberSnap.docs.map(d=>({id:d.id,...d.data()})).filter(b=>b.active!==false).sort((a,b)=>(a.order||99)-(b.order||99)));
         const allBks = bkSnap.docs.map(d=>({...d.data(),_id:d.id}));
@@ -457,7 +457,7 @@ export default function Marketing({ tenantId, isAdmin }) {
   const saveCamp = async()=>{
     setSaving(true);
     try{
-      await setDoc(doc(db,`${TENANT}/settings/settings`),{ doublePointsCampaign:camp, weeklyTarget },{ merge:true });
+      await setDoc(doc(db,`tenants/${tenantId}/settings/settings`),{ doublePointsCampaign:camp, weeklyTarget },{ merge:true });
       setSaved(true); setTimeout(()=>setSaved(false),2500);
     } catch(e){ console.error(e); }
     setSaving(false);
@@ -467,7 +467,7 @@ export default function Marketing({ tenantId, isAdmin }) {
     const n = parseFloat(val)||0;
     setWeeklyTarget(n);
     setEditingTarget(false);
-    try { await setDoc(doc(db,`${TENANT}/settings/settings`),{ weeklyTarget: n },{ merge:true }); } catch{}
+    try { await setDoc(doc(db,`tenants/${tenantId}/settings/settings`),{ weeklyTarget: n },{ merge:true }); } catch{}
   };
 
   const today   = now.toISOString().slice(0,10);
@@ -1386,7 +1386,7 @@ export default function Marketing({ tenantId, isAdmin }) {
           {/* Header */}
           <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
             <div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.2rem',fontWeight:700,color:'var(--gold)',letterSpacing:'1.5px'}}>✦ Ask Whitecross AI</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.2rem',fontWeight:700,color:'var(--gold)',letterSpacing:'1.5px'}}>{tenantId === 'whitecross' ? '✦ Ask Whitecross AI' : '✦ Ask Salown AI'}</div>
               <div style={{fontSize:'0.58rem',color:'var(--muted)',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:'2px'}}>Powered by Claude Sonnet</div>
             </div>
             <button onClick={()=>setAiOpen(false)} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'1.2rem',cursor:'pointer',padding:'4px 8px',borderRadius:'8px'}}>✕</button>

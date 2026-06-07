@@ -9,7 +9,7 @@ import { createWalkIn } from '../firestoreActions';
 import { convertTo24, minsToLabel, formatDateKey } from '../utils/timeUtils';
 import { hasTimeConflict } from '../utils/conflictUtils';
 
-const TENANT = 'whitecross';
+
 
 function getBColor(barber) {
   const map = { alex: '#d4af37', arda: '#4caf50', manoj: '#9c27b0' };
@@ -38,7 +38,7 @@ const SEGMENT_DEFS = [
   { key: 'birthdays',    label: 'Upcoming birthdays',     color: '#e91e63', desc: 'Clients with birthdays in the next 30 days' },
 ];
 
-export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
+export default function Clients({ tenantId, isAdmin = false, isSuperAdmin = false }) {
   const [bookings, setBookings] = useState([]);
   const [manualClients, setManualClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,9 +82,9 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     const fetchData = async () => {
       try {
         const [bookingsSnap, barbersSnap, clientsSnap] = await Promise.all([
-          getDocs(query(collection(db, `tenants/${TENANT}/bookings`), orderBy('startTime', 'desc'))),
-          getDocs(collection(db, `tenants/${TENANT}/barbers`)),
-          getDocs(collection(db, `tenants/${TENANT}/clients`)).catch(() => ({ docs: [] })),
+          getDocs(query(collection(db, `tenants/${tenantId}/bookings`), orderBy('startTime', 'desc'))),
+          getDocs(collection(db, `tenants/${tenantId}/barbers`)),
+          getDocs(collection(db, `tenants/${tenantId}/clients`)).catch(() => ({ docs: [] })),
         ]);
 
         const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -319,7 +319,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     setAddSaving(true);
     try {
       const data = { name: addForm.name.trim(), phone: addForm.phone.trim(), email: addForm.email.trim(), birthday: addForm.birthday, notes: addForm.notes.trim(), createdAt: serverTimestamp() };
-      const ref = await addDoc(collection(db, `tenants/${TENANT}/clients`), data);
+      const ref = await addDoc(collection(db, `tenants/${tenantId}/clients`), data);
       setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
       setAddForm({ name: '', phone: '', email: '', birthday: '', notes: '' });
       setShowAddForm(false);
@@ -337,7 +337,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     if (!selectedClient) return;
     setNoteSaving(true);
     try {
-      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const clientsRef = collection(db, `tenants/${tenantId}/clients`);
       const noteVal = noteInput.trim();
       const normalizePhone = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
 
@@ -360,7 +360,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
       }
 
       if (targetId) {
-        await updateDoc(doc(db, `tenants/${TENANT}/clients`, targetId), { notes: noteVal });
+        await updateDoc(doc(db, `tenants/${tenantId}/clients`, targetId), { notes: noteVal });
         setManualClients(prev => prev.map(m => m.id === targetId ? { ...m, notes: noteVal } : m));
       } else {
         const ref = await addDoc(clientsRef, {
@@ -376,7 +376,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
 
   const resolveMemberDocId = async (client) => {
     if (client.manualId) return client.manualId;
-    const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+    const clientsRef = collection(db, `tenants/${tenantId}/clients`);
     const norm = (p) => String(p || '').replace(/[\s\-().+]/g, '').toLowerCase();
     const snap = await getDocs(clientsRef);
     let found = null;
@@ -397,7 +397,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     setPointsLogLoading(true);
     try {
       const snap = await getDocs(query(
-        collection(db, `tenants/${TENANT}/auditLogs`),
+        collection(db, `tenants/${tenantId}/auditLogs`),
         where('clientId', '==', clientId),
         where('action', '==', 'manual_points_adjustment')
       ));
@@ -424,7 +424,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     if (!clientId) return;
     setAdjustSaving(true);
     try {
-      await updateDoc(doc(db, `tenants/${TENANT}/clients`, clientId), {
+      await updateDoc(doc(db, `tenants/${tenantId}/clients`, clientId), {
         loyaltyPoints: increment(amount),
       });
       await logAudit('manual_points_adjustment', {
@@ -460,7 +460,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     setMemberSaving(true);
     try {
       const docId = await resolveMemberDocId(client);
-      await updateDoc(doc(db, `tenants/${TENANT}/clients`, docId), {
+      await updateDoc(doc(db, `tenants/${tenantId}/clients`, docId), {
         isMember: true, membershipTier: tier, memberSince: serverTimestamp(), loyaltyPoints: 0,
       });
       const update = { isMember: true, membershipTier: tier, memberSince: new Date(), loyaltyPoints: 0, manualId: docId };
@@ -475,7 +475,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     setMemberSaving(true);
     try {
       const docId = await resolveMemberDocId(client);
-      await updateDoc(doc(db, `tenants/${TENANT}/clients`, docId), { isMember: false, membershipTier: '' });
+      await updateDoc(doc(db, `tenants/${tenantId}/clients`, docId), { isMember: false, membershipTier: '' });
       const update = { isMember: false, membershipTier: '' };
       setManualClients(prev => prev.map(m => m.id === docId ? { ...m, ...update } : m));
       setSelectedClient(prev => prev ? { ...prev, ...update } : null);
@@ -489,7 +489,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
     setQrGenerating(true);
     try {
       const token = crypto.randomUUID();
-      await updateDoc(doc(db, `tenants/${TENANT}/clients`, client.manualId), { loyaltyToken: token });
+      await updateDoc(doc(db, `tenants/${tenantId}/clients`, client.manualId), { loyaltyToken: token });
       setManualClients(prev => prev.map(m => m.id === client.manualId ? { ...m, loyaltyToken: token } : m));
       setSelectedClient(prev => prev ? { ...prev, loyaltyToken: token } : null);
       return token;
@@ -536,11 +536,11 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
       const existingAliases = targetDocLocal?._aliases || [];
       const mergedAliases = [...new Set([...existingAliases, ...newAliases])];
 
-      await updateDoc(doc(db, `tenants/${TENANT}/clients`, targetManualId), { _aliases: mergedAliases });
+      await updateDoc(doc(db, `tenants/${tenantId}/clients`, targetManualId), { _aliases: mergedAliases });
 
       // Delete the source's manual doc if it's a separate one
       if (source.manualId && source.manualId !== targetManualId) {
-        await deleteDoc(doc(db, `tenants/${TENANT}/clients`, source.manualId));
+        await deleteDoc(doc(db, `tenants/${tenantId}/clients`, source.manualId));
         setManualClients(prev => prev.filter(m => m.id !== source.manualId));
       }
 
@@ -643,11 +643,11 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
         notes: (editForm.notes || '').trim(),
         ...(effectiveOrig ? { _origName: effectiveOrig } : {}),
       };
-      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const clientsRef = collection(db, `tenants/${tenantId}/clients`);
 
       if (editingClient.manualId) {
         // Already have the doc ID — update directly
-        await updateDoc(doc(db, `tenants/${TENANT}/clients`, editingClient.manualId), data);
+        await updateDoc(doc(db, `tenants/${tenantId}/clients`, editingClient.manualId), data);
         setManualClients(prev => prev.map(m => m.id === editingClient.manualId ? { ...m, ...data } : m));
       } else {
         // Booking-only client — search by ORIGINAL values to find any existing doc
@@ -668,13 +668,46 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
           else if (origName  && docName  && origName  === docName)  { foundId = docSnap.id; }
         });
         if (foundId) {
-          await updateDoc(doc(db, `tenants/${TENANT}/clients`, foundId), data);
+          await updateDoc(doc(db, `tenants/${tenantId}/clients`, foundId), data);
           setManualClients(prev => prev.map(m => m.id === foundId ? { ...m, ...data } : m));
         } else {
           const ref = await addDoc(clientsRef, { ...data, createdAt: serverTimestamp() });
           setManualClients(prev => [...prev, { id: ref.id, ...data, createdAt: new Date() }]);
         }
       }
+
+      // ── Backfill bookings ────────────────────────────────────────────────
+      // Find all bookings belonging to this client (old phone / old email / old name)
+      // and update clientName + clientPhone + clientEmail to the new values.
+      {
+        const bookingsRef = collection(db, `tenants/${tenantId}/bookings`);
+        const oldPhone = (editingClient._origPhone || '').trim();
+        const oldEmail = (editingClient._origEmail || '').trim();
+        const oldNames = [
+          editingClient._origName,
+          ...(editingClient._aliases || []),
+        ].filter(Boolean).map(n => n.trim()).filter(Boolean);
+
+        const matchedRefs = new Map(); // docId → ref
+        const collect = (snap) => snap.forEach(d => matchedRefs.set(d.id, d.ref));
+
+        if (oldPhone) collect(await getDocs(query(bookingsRef, where('clientPhone', '==', oldPhone))));
+        if (oldEmail) collect(await getDocs(query(bookingsRef, where('clientEmail', '==', oldEmail))));
+        for (const n of oldNames) collect(await getDocs(query(bookingsRef, where('clientName', '==', n))));
+
+        if (matchedRefs.size > 0) {
+          const batch = writeBatch(db);
+          const newPhone = (editForm.phone || '').trim();
+          const newEmail = (editForm.email || '').trim();
+          matchedRefs.forEach(ref => batch.update(ref, {
+            clientName: newName,
+            clientPhone: newPhone,
+            clientEmail: newEmail,
+          }));
+          await batch.commit();
+        }
+      }
+
       setSelectedClient(prev => prev ? { ...prev, ...data } : null);
       setShowEditForm(false);
       setEditingClient(null);
@@ -685,7 +718,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
   const handleDeleteClient = async (client) => {
     if (!window.confirm(`Delete "${client.name}" permanently?\n\nThis will delete:\n• The client record\n• ALL their bookings\n\nThis cannot be undone.`)) return;
     try {
-      const bookingsRef = collection(db, `tenants/${TENANT}/bookings`);
+      const bookingsRef = collection(db, `tenants/${tenantId}/bookings`);
       const batch = writeBatch(db);
 
       // Find and delete all bookings matching by phone or email
@@ -701,7 +734,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
       matchedBookingRefs.forEach(ref => batch.delete(ref));
 
       // Delete the client doc (active + any lingering hidden docs with same phone/email)
-      const clientsRef = collection(db, `tenants/${TENANT}/clients`);
+      const clientsRef = collection(db, `tenants/${tenantId}/clients`);
       const clientDocRefs = new Set();
       if (client.manualId) clientDocRefs.add(client.manualId);
       if (client.phone) {
@@ -712,7 +745,7 @@ export default function Clients({ isAdmin = false, isSuperAdmin = false }) {
         const byEmail = await getDocs(query(clientsRef, where('email', '==', client.email)));
         byEmail.forEach(d => clientDocRefs.add(d.id));
       }
-      clientDocRefs.forEach(id => batch.delete(doc(db, `tenants/${TENANT}/clients`, id)));
+      clientDocRefs.forEach(id => batch.delete(doc(db, `tenants/${tenantId}/clients`, id)));
 
       await batch.commit();
 

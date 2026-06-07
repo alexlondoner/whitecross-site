@@ -112,8 +112,15 @@ function extractHtmlAsText(payload) {
     return '';
 }
 
-async function fetchUnreadMessages(gmail, query) {
-    const res = await gmail.users.messages.list({ userId: 'me', q: query, maxResults: 50 });
+function sinceDate7Days() {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function fetchRecentMessages(gmail, query) {
+    const fullQuery = `${query} after:${sinceDate7Days()}`;
+    const res = await gmail.users.messages.list({ userId: 'me', q: fullQuery, maxResults: 50 });
     if (!res.data.messages || res.data.messages.length === 0) return [];
     return Promise.all(
         res.data.messages.map(m =>
@@ -122,12 +129,12 @@ async function fetchUnreadMessages(gmail, query) {
     );
 }
 
-async function markRead(gmail, messageId) {
-    await gmail.users.messages.modify({
-        userId: 'me',
-        id: messageId,
-        requestBody: { removeLabelIds: ['UNREAD'] },
-    });
+async function hasExternalId(db, tenantPath, externalId) {
+    const snap = await db.collection(`${tenantPath}/bookings`)
+        .where('externalId', '==', externalId)
+        .limit(1)
+        .get();
+    return !snap.empty;
 }
 
 async function isDuplicateBooking(db, name, date, time) {
@@ -142,7 +149,7 @@ async function isDuplicateBooking(db, name, date, time) {
 // Subject format: "John Smith: 15 January 2026 14:30"
 // Body:  Standard Packages: Skin Fade | with Alex | £32.00 | phone
 async function parseBooksyConfirmations(gmail, db) {
-    const messages = await fetchUnreadMessages(gmail, 'from:no-reply@booksy.com subject:"new booking" is:unread');
+    const messages = await fetchRecentMessages(gmail, 'from:no-reply@booksy.com subject:"new booking"');
     for (const msg of messages) {
         try {
             const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
@@ -151,10 +158,17 @@ async function parseBooksyConfirmations(gmail, db) {
             const nameMatch = subject.match(/^(.+?):/);
             const name      = nameMatch ? nameMatch[1].trim() : '';
             const dateMatch = subject.match(/(\d{1,2})\s(\w+)\s(\d{4})\s(\d{1,2}):(\d{2})/);
-            if (!name || !dateMatch) { await markRead(gmail, msg.id); continue; }
+            if (!name || !dateMatch) continue;
 
             const bookingDate = `${dateMatch[1]} ${dateMatch[2]} ${dateMatch[3]}`;
             const bookingTime = `${dateMatch[4]}:${dateMatch[5]}`;
+
+            const refMatch  = body.match(/Booking\s*#\s*(\d+)/i) || body.match(/\bID[:\s]+(\d{5,})/i);
+            const externalId = refMatch
+                ? `BOOKSY-${refMatch[1]}`
+                : `BOOKSY-${name.replace(/\s+/g,'-')}-${bookingDate.replace(/\s+/g,'-')}-${bookingTime}`;
+
+            if (await hasExternalId(db, 'tenants/whitecross', externalId)) continue;
 
             const serviceMatch = body.match(/(?:Standard Packages?|Exclusive[^:]*):?\s*([^\n£\d]+)/i);
             const service      = serviceMatch ? serviceMatch[1].trim() : '';
@@ -172,14 +186,13 @@ async function parseBooksyConfirmations(gmail, db) {
             const barberMatch = body.match(/with\s+(\w+)/i);
             const barber      = barberMatch ? barberMatch[1].toLowerCase() : 'alex';
 
-            if (await isDuplicateBooking(db, name, bookingDate, bookingTime)) {
-                await markRead(gmail, msg.id); continue;
-            }
-
-            const bookingId = `BOOKSY-${Date.now()}`;
+            const bookingId = externalId;
             const booksyStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
+                externalId,
+                rawEmailSubject: subject,
+                parsedAt: admin.firestore.FieldValue.serverTimestamp(),
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, serviceId: service, price,
                 paidAmount: 10, platformDepositAmount: 10, paymentType: 'DEPOSIT', status: 'CONFIRMED', source: 'Booksy',
@@ -189,7 +202,6 @@ async function parseBooksyConfirmations(gmail, db) {
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             console.log(`Booksy confirmation: ${bookingId} ${name}`);
-            await markRead(gmail, msg.id);
         } catch (err) {
             console.error('Booksy confirm error', msg.id, err.message);
         }
@@ -200,7 +212,7 @@ async function parseBooksyConfirmations(gmail, db) {
 // Subject format: "John Smith: Monday, 15 January 2026 14:30"
 // Finds existing CONFIRMED booking and marks CANCELLED; creates record if not found.
 async function parseBooksyCancellations(gmail, db) {
-    const messages = await fetchUnreadMessages(gmail, 'from:no-reply@booksy.com subject:"cancelled appointment" is:unread');
+    const messages = await fetchRecentMessages(gmail, 'from:no-reply@booksy.com subject:"cancelled appointment"');
     for (const msg of messages) {
         try {
             const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
@@ -209,48 +221,59 @@ async function parseBooksyCancellations(gmail, db) {
             const nameMatch = subject.match(/^(.+?):/);
             const name      = nameMatch ? nameMatch[1].trim() : '';
             const dateMatch = subject.match(/(\w+),\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}):(\d{2})/);
-            if (!name || !dateMatch) { await markRead(gmail, msg.id); continue; }
+            if (!name || !dateMatch) continue;
 
             const bookingDate = `${dateMatch[2]} ${dateMatch[3]} ${dateMatch[4]}`;
             const bookingTime = `${dateMatch[5]}:${dateMatch[6]}`;
 
-            const snap = await db.collection('tenants/whitecross/bookings')
-                .where('name',   '==', name)
-                .where('date',   '==', bookingDate)
-                .where('time',   '==', bookingTime)
-                .where('source', '==', 'Booksy')
-                .get();
+            const refMatch   = body.match(/Booking\s*#\s*(\d+)/i) || body.match(/\bID[:\s]+(\d{5,})/i);
+            const externalId = refMatch
+                ? `BOOKSY-${refMatch[1]}`
+                : `BOOKSY-CANCEL-${name.replace(/\s+/g,'-')}-${bookingDate.replace(/\s+/g,'-')}-${bookingTime}`;
 
-            if (!snap.empty) {
-                for (const doc of snap.docs) {
-                    if (doc.data().status !== 'CANCELLED') {
-                        await doc.ref.update({
-                            status: 'CANCELLED',
-                            cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
-                        });
-                        console.log(`Booksy cancellation: updated ${doc.id} for ${name}`);
+            // Try to cancel existing booking by externalId first, then by name+date+time
+            const byRef = refMatch
+                ? await db.collection('tenants/whitecross/bookings').doc(`BOOKSY-${refMatch[1]}`).get()
+                : null;
+
+            const snap = (!byRef || !byRef.exists)
+                ? await db.collection('tenants/whitecross/bookings')
+                    .where('clientName', '==', name).where('date', '==', bookingDate)
+                    .where('time', '==', bookingTime).where('source', '==', 'Booksy').get()
+                : null;
+
+            if (byRef && byRef.exists) {
+                if (byRef.data().status !== 'CANCELLED') {
+                    await byRef.ref.update({ status: 'CANCELLED', cancelledAt: admin.firestore.FieldValue.serverTimestamp() });
+                    console.log(`Booksy cancellation: updated ${byRef.id} for ${name}`);
+                }
+            } else if (snap && !snap.empty) {
+                for (const d of snap.docs) {
+                    if (d.data().status !== 'CANCELLED') {
+                        await d.ref.update({ status: 'CANCELLED', cancelledAt: admin.firestore.FieldValue.serverTimestamp() });
+                        console.log(`Booksy cancellation: updated ${d.id} for ${name}`);
                     }
                 }
-            } else {
+            } else if (!await hasExternalId(db, 'tenants/whitecross', externalId)) {
                 const barberMatch  = body.match(/with\s+(\w+)/i);
                 const serviceMatch = body.match(/Standard Packages?:\s*([^\n£\d,]+)/i);
                 const priceMatch   = body.match(/£([\d.]+)/);
-                const bookingId    = `BOOKSY-${Date.now()}`;
-                await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
-                    bookingId,
+                await db.collection('tenants/whitecross/bookings').doc(externalId).set({
+                    bookingId: externalId, externalId,
+                    rawEmailSubject: subject,
+                    parsedAt: admin.firestore.FieldValue.serverTimestamp(),
                     clientName: name,
-                    barberId:  barberMatch  ? barberMatch[1].toLowerCase()  : 'alex',
-                    serviceId: serviceMatch ? serviceMatch[1].trim()         : '',
-                    price:     priceMatch   ? `£${priceMatch[1]}`           : '',
+                    barberId:  barberMatch  ? barberMatch[1].toLowerCase() : 'alex',
+                    serviceId: serviceMatch ? serviceMatch[1].trim()        : '',
+                    price:     priceMatch   ? `£${priceMatch[1]}`          : '',
                     status: 'CANCELLED', source: 'Booksy',
                     date: bookingDate, time: bookingTime,
                     startTime: toStartTime(bookingDate, bookingTime),
                     cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
                     createdAt:   admin.firestore.FieldValue.serverTimestamp(),
                 });
-                console.log(`Booksy cancellation: new CANCELLED record ${bookingId} for ${name}`);
+                console.log(`Booksy cancellation: new CANCELLED record ${externalId} for ${name}`);
             }
-            await markRead(gmail, msg.id);
         } catch (err) {
             console.error('Booksy cancel error', msg.id, err.message);
         }
@@ -261,7 +284,7 @@ async function parseBooksyCancellations(gmail, db) {
 // Body: "Customer details: John Smith" | "Skin Fade with Alex" |
 //       "Sunday, 12 Apr 2026, 1:30pm"
 async function parseFreshaConfirmations(gmail, db) {
-    const messages = await fetchUnreadMessages(gmail, 'from:fresha.com is:unread');
+    const messages = await fetchRecentMessages(gmail, 'from:fresha.com');
     for (const msg of messages) {
         try {
             const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
@@ -271,7 +294,7 @@ async function parseFreshaConfirmations(gmail, db) {
             // Only process appointment notifications, skip marketing/receipts
             const lsubj = subject.toLowerCase();
             if (!lsubj.includes('appointment') && !lsubj.includes('booking') && !lsubj.includes('reservation')) {
-                await markRead(gmail, msg.id); continue;
+                continue;
             }
 
             // Name: try several Fresha body formats
@@ -296,7 +319,7 @@ async function parseFreshaConfirmations(gmail, db) {
             // Date/time: "Sunday, 12 Apr 2026, 1:30pm"  OR  "12 Apr 2026 at 1:30pm"  OR  "12/04/2026 13:30"
             const dtMatch = body.match(/(\w+),?\s*(\d{1,2})\s+(\w+)\s+(\d{4}),?\s+(\d{1,2}):(\d{2})\s*(am|pm)/i)
                          || body.match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s+at\s+(\d{1,2}):(\d{2})\s*(am|pm)/i);
-            if (!dtMatch) { console.log(`Fresha: no date match in email ${msg.id}, skipping`); await markRead(gmail, msg.id); continue; }
+            if (!dtMatch) { console.log(`Fresha: no date match in email ${msg.id}, skipping`); continue; }
 
             // Handle both regex formats: with day-of-week prefix (7 groups) or without (6 groups)
             let day, month, year, rawH, rawM, ampm;
@@ -330,15 +353,22 @@ async function parseFreshaConfirmations(gmail, db) {
             const emailMatch = body.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
             const email      = emailMatch ? emailMatch[0] : '';
 
-            if (await isDuplicateBooking(db, name, bookingDate, bookingTime)) {
-                await markRead(gmail, msg.id); continue;
-            }
+            const freshaRefMatch = body.match(/[Rr]ef(?:erence)?[:\s#]+([A-Z0-9-]{4,20})/i)
+                                || body.match(/[Cc]onfirmation[:\s#]+([A-Z0-9-]{4,20})/i)
+                                || body.match(/Order\s*(?:ref|#|number)[:\s]+([A-Z0-9-]{4,20})/i);
+            const externalId = freshaRefMatch
+                ? `FRESHA-${freshaRefMatch[1]}`
+                : `FRESHA-${name.replace(/\s+/g,'-')}-${bookingDate.replace(/\s+/g,'-')}-${bookingTime}`;
 
-            const bookingId = `FRESHA-${Date.now()}`;
-            const priceNum = parseFloat(String(price).replace(/[£,]/g, '')) || 0;
+            if (await hasExternalId(db, 'tenants/whitecross', externalId)) continue;
+
+            const bookingId = externalId;
             const freshaStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
+                externalId,
+                rawEmailSubject: subject,
+                parsedAt: admin.firestore.FieldValue.serverTimestamp(),
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, barberName: barber,
                 serviceId: service, serviceName: service, price,
@@ -349,7 +379,6 @@ async function parseFreshaConfirmations(gmail, db) {
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             console.log(`Fresha confirmation: ${bookingId} ${name}`);
-            await markRead(gmail, msg.id);
         } catch (err) {
             console.error('Fresha confirm error', msg.id, err.message);
         }
@@ -370,9 +399,9 @@ async function parseFreshaConfirmations(gmail, db) {
 //   Guest Tel.:    +44 7440 160204
 //   Order ref #: T2182596753   (body, not subject)
 async function parseTreatwell(gmail, db) {
-    const messages = await fetchUnreadMessages(
+    const messages = await fetchRecentMessages(
         gmail,
-        'from:noreply@treatwell.co.uk (subject:"new Treatwell booking" OR subject:"via Treatwell" OR subject:"new customer") is:unread'
+        'from:noreply@treatwell.co.uk (subject:"new Treatwell booking" OR subject:"via Treatwell" OR subject:"new customer" OR subject:"rescheduled")'
     );
     for (const msg of messages) {
         try {
@@ -383,10 +412,12 @@ async function parseTreatwell(gmail, db) {
             if (!body) body = extractHtmlAsText(msg.payload);
             console.log(`Treatwell email found — subject: "${subject}" bodyLen: ${body.length} body[:200]: ${body.slice(0,200).replace(/\n/g,' ')}`);
 
+            const isReschedule = /has been rescheduled/i.test(body);
+
             // Skip non-booking emails (receipts, newsletters, etc.) that slip through
-            if (!body.includes('Guest name') && !body.includes('Product Name')) {
+            if (!body.includes('Guest name') && !body.includes('Product Name') && !isReschedule) {
                 console.log('Treatwell: skipping — no Guest name or Product Name in body');
-                await markRead(gmail, msg.id); continue;
+                continue;
             }
 
             // Order ref: old format in subject "Our Ref. T123", new format in body "Order ref #: T123"
@@ -395,11 +426,11 @@ async function parseTreatwell(gmail, db) {
             const bookingId = `TREATWELL-${orderRef}`;
 
             const existing = await db.collection('tenants/whitecross/bookings').doc(bookingId).get();
-            if (existing.exists) { await markRead(gmail, msg.id); continue; }
+            if (existing.exists && !isReschedule) continue;
 
             // Date/time: "Date/time    25 May 2026 at 9:00 am"
             const dtMatch = body.match(/Date\/time\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+at\s+(\d{1,2}):(\d{2})\s*(am|pm)/i);
-            if (!dtMatch) { await markRead(gmail, msg.id); continue; }
+            if (!dtMatch) continue;
 
             const bookingDate = `${dtMatch[1]} ${dtMatch[2]} ${dtMatch[3]}`;
             let h = parseInt(dtMatch[4]), m = parseInt(dtMatch[5]);
@@ -427,8 +458,9 @@ async function parseTreatwell(gmail, db) {
             const status      = statusRaw === 'unpaid' ? 'UNPAID' : 'CONFIRMED';
             const paymentType = statusRaw === 'unpaid' ? 'UNPAID' : 'FULL';
 
-            // "Guest name    Juan David Mejia Alvarez New" — strip Treatwell's "Repeat"/"New" label
-            const nameMatch = body.match(/Guest name\s+(.+?)(?:\s+Repeat|\s+New customer|\s+New)?\s*(?:\r?\n|$)/im);
+            const nameMatch = body.match(/Guest name[:\s]+(.+?)(?:\s+Repeat|\s+New customer|\s+New)?\s*(?:\r?\n|$)/im)
+                           || body.match(/Customer(?:\s+name)?[:\s]+(.+?)(?:\r?\n|$)/im)
+                           || body.match(/Booking(?:\s+for)?[:\s]+(.+?)(?:\r?\n|$)/im);
             const name      = nameMatch ? nameMatch[1].replace(/\s+(Repeat|New customer|New)$/i, '').trim() : 'Guest';
 
             const emailMatch = body.match(/Guest Email:\s*([\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,})/i);
@@ -436,20 +468,41 @@ async function parseTreatwell(gmail, db) {
             const phoneMatch = body.match(/Guest Tel\.:\s*([+\d][\d\s]+)/i);
             const phone      = phoneMatch ? phoneMatch[1].trim() : '';
 
-            if (await isDuplicateBooking(db, name, bookingDate, bookingTime)) {
-                await markRead(gmail, msg.id); continue;
-            }
-
-            let twDuration = 30;
-            const twServiceLower = service.toLowerCase();
-            for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
-                if (twServiceLower.includes(key)) { twDuration = BOOKSY_DURATION_MAP[key]; break; }
+            // Duration: try "(15 minutes)" in body first, then service name map
+            const bodyDurMatch = body.match(/\((\d+)\s+minutes?\s*\)/i);
+            let twDuration = bodyDurMatch ? parseInt(bodyDurMatch[1]) : 30;
+            if (!bodyDurMatch) {
+                const twServiceLower = service.toLowerCase();
+                for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
+                    if (twServiceLower.includes(key)) { twDuration = BOOKSY_DURATION_MAP[key]; break; }
+                }
             }
 
             const priceNumTW = parseFloat(String(price).replace(/[£,]/g, '')) || 0;
             const treatwellStart = toStartTime(bookingDate, bookingTime);
+
+            // ── Reschedule: update existing booking ───────────────────────────
+            if (isReschedule && existing.exists) {
+                const existingData = existing.data();
+                if (existingData.status !== 'CANCELLED' && existingData.status !== 'CHECKED_OUT') {
+                    await existing.ref.update({
+                        date: bookingDate, time: bookingTime,
+                        startTime: treatwellStart,
+                        endTime: addMins(treatwellStart, twDuration),
+                        ...(barber && { barberId: barber }),
+                        rescheduledAt: admin.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    console.log(`Treatwell reschedule updated: ${bookingId} → ${bookingDate} ${bookingTime}`);
+                }
+                continue;
+            }
+
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
+                externalId: bookingId,
+                rawEmailSubject: subject,
+                parsedAt: admin.firestore.FieldValue.serverTimestamp(),
                 clientName: name, clientEmail: email, clientPhone: phone,
                 barberId: barber, serviceId: service, price,
                 paidAmount: statusRaw === 'unpaid' ? 0 : priceNumTW,
@@ -461,7 +514,6 @@ async function parseTreatwell(gmail, db) {
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             console.log(`Treatwell: ${bookingId} ${name} ${status}`);
-            await markRead(gmail, msg.id);
         } catch (err) {
             console.error('Treatwell error', msg.id, err.message);
         }

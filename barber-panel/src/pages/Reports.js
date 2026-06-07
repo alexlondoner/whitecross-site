@@ -161,7 +161,7 @@ const SOURCE_COLORS = { Booksy: '#9c27b0', Fresha: '#2196f3', Treatwell: '#ff704
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Reports() {
+export default function Reports({ tenantId }) {
   const [bookings, setBookings] = useState([]);
   const [barbers,  setBarbers]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -178,8 +178,8 @@ export default function Reports() {
     (async () => {
       try {
         const [bookingsSnap, barbersSnap] = await Promise.all([
-          getDocs(collection(db, 'tenants/whitecross/bookings')),
-          getDocs(collection(db, 'tenants/whitecross/barbers')),
+          getDocs(collection(db, `tenants/${tenantId}/bookings`)),
+          getDocs(collection(db, `tenants/${tenantId}/barbers`)),
         ]);
         const fetchedBarbers = barbersSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
         setBarbers(fetchedBarbers);

@@ -3,7 +3,7 @@ import config, { seedServices } from '../config';
 import { db } from '../firebase';
 import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
-const TENANT = 'whitecross';
+
 const CATEGORIES = ['Exclusive Bundles', 'Standard', 'Extras'];
 const inp = { width:'100%', padding:'10px 12px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', outline:'none', boxSizing:'border-box' };
 const lbl = { display:'block', fontSize:'0.62rem', color:'var(--muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'5px', fontWeight:'600' };
@@ -17,7 +17,7 @@ function toNameKey(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '').trim();
 }
 
-export default function Services() {
+export default function Services({ tenantId }) {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null); // docId or 'new'
@@ -36,7 +36,7 @@ export default function Services() {
 
   const fetchServices = async () => {
     try {
-      const snap = await getDocs(collection(db, `tenants/${TENANT}/services`));
+      const snap = await getDocs(collection(db, `tenants/${tenantId}/services`));
       if (!snap.empty) {
         let svcs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
         svcs.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
@@ -50,7 +50,7 @@ export default function Services() {
             if (!s.stripeUrl && seed.stripeUrl) updates.stripeUrl = seed.stripeUrl;
             if (s.depositUrl === undefined && seed.depositUrl !== undefined) updates.depositUrl = seed.depositUrl;
             if (!s.category && seed.category) updates.category = seed.category;
-            if (Object.keys(updates).length > 0) return updateDoc(doc(db, `tenants/${TENANT}/services`, s.docId), updates);
+            if (Object.keys(updates).length > 0) return updateDoc(doc(db, `tenants/${tenantId}/services`, s.docId), updates);
             return Promise.resolve();
           }));
           needsBackfill.forEach(s => {
@@ -68,7 +68,7 @@ export default function Services() {
       } else {
         const seeded = await Promise.all(
           seedServices.map(async (s, i) => {
-            const ref = await addDoc(collection(db, `tenants/${TENANT}/services`), { ...s, order: i, active: true });
+            const ref = await addDoc(collection(db, `tenants/${tenantId}/services`), { ...s, order: i, active: true });
             return { docId: ref.id, ...s, order: i, active: true };
           })
         );
@@ -118,10 +118,10 @@ export default function Services() {
       let updated;
       if (editingId === 'new') {
         data.order = servicesRef.current.length;
-        const ref = await addDoc(collection(db, `tenants/${TENANT}/services`), data);
+        const ref = await addDoc(collection(db, `tenants/${tenantId}/services`), data);
         updated = [...servicesRef.current, { docId: ref.id, ...data }];
       } else {
-        await updateDoc(doc(db, `tenants/${TENANT}/services`, editingId), data);
+        await updateDoc(doc(db, `tenants/${tenantId}/services`, editingId), data);
         updated = servicesRef.current.map(s => s.docId === editingId ? { ...s, ...data } : s);
       }
       syncServices(updated);
@@ -135,7 +135,7 @@ export default function Services() {
   const handleDelete = async (svc) => {
     if (!window.confirm(`Delete "${svc.name}"? This won't affect existing bookings.`)) return;
     try {
-      await deleteDoc(doc(db, `tenants/${TENANT}/services`, svc.docId));
+      await deleteDoc(doc(db, `tenants/${tenantId}/services`, svc.docId));
       const updated = servicesRef.current.filter(s => s.docId !== svc.docId);
       syncServices(updated);
       config.services = updated.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
@@ -171,7 +171,7 @@ export default function Services() {
     syncServices(ordered);
     config.services = ordered.map(s => ({ id: s.id || s.docId, name: s.name, price: s.price, duration: s.duration, category: s.category, description: s.description || '', stripeUrl: s.stripeUrl || '', depositUrl: s.depositUrl || '' }));
     await Promise.all(
-      ordered.map((s, i) => updateDoc(doc(db, `tenants/${TENANT}/services`, s.docId), { order: i }))
+      ordered.map((s, i) => updateDoc(doc(db, `tenants/${tenantId}/services`, s.docId), { order: i }))
     );
     window.dispatchEvent(new Event('services-updated'));
   };

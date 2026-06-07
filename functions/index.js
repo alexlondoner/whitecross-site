@@ -41,7 +41,12 @@ async function writeNotification(db, tenantId, type, title, body, bookingId) {
 }
 
 
-// For security, use Firebase Functions config for Gmail password
+// TO ENABLE EMAIL: Google Account → Security → 2FA → App passwords
+// Generate password for "Mail" → add as Firebase secret GMAIL_PASS
+if (!process.env.GMAIL_PASS) {
+    console.error('⚠️  WARNING: GMAIL_PASS not set — email confirmations disabled');
+}
+
 function getTransporter() {
     return nodemailer.createTransport({
         service: 'gmail',
@@ -1117,6 +1122,10 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 // Only fires for Booksy / Fresha / Website bookings.
 // Walk-ins, historical imports, and blocked slots are explicitly skipped so a
 // bulk import never floods the bot again.
+// TODO [EeKurt]: When adding EeKurt Telegram, add a parallel function using
+//   secrets: ['EEK_TELEGRAM_TOKEN', 'EEK_TELEGRAM_CHAT_IDS']
+//   document: 'tenants/eekurt/bookings/{bookingId}'
+//   Then set EEK_TELEGRAM_TOKEN and EEK_TELEGRAM_CHAT_IDS in Firebase Console → Functions → Secrets
 exports.notifyNewBooking = onDocumentCreated(
     {
         document: 'tenants/whitecross/bookings/{bookingId}',
@@ -1411,17 +1420,20 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const db = getAdminDb();
 
         // Check if checkout emails are enabled in settings
-        try {
-            const settingsSnap = await db.doc('tenants/whitecross/settings/settings').get();
-            if (settingsSnap.exists) {
-                const s = settingsSnap.data();
-                if (s.checkoutEmailEnabled === false) {
-                    console.log('Checkout emails disabled — skipping.');
-                    return;
+        // loyaltyEmailBypassSettings: user explicitly confirmed from panel despite setting being off
+        if (!after.loyaltyEmailBypassSettings) {
+            try {
+                const settingsSnap = await db.doc('tenants/whitecross/settings/settings').get();
+                if (settingsSnap.exists) {
+                    const s = settingsSnap.data();
+                    if (s.checkoutEmailEnabled === false) {
+                        console.log('Checkout emails disabled — skipping.');
+                        return;
+                    }
                 }
+            } catch (err) {
+                console.warn('Could not read settings, sending email anyway:', err.message);
             }
-        } catch (err) {
-            console.warn('Could not read settings, sending email anyway:', err.message);
         }
 
         // Fetch client doc for loyalty points + member status
@@ -1802,13 +1814,16 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
 
         const db = getAdminDb();
 
-        const callerDoc = await db.doc(`tenants/whitecross/staff/${callerUid}`).get();
-        const isOwner = !callerDoc.exists || callerDoc.data().role === 'owner';
-        console.log('callerDoc exists:', callerDoc.exists, 'isOwner:', isOwner);
+        const { tenantId: callerTenantId } = request.data || {};
+        const callerTenant = callerTenantId || 'whitecross';
+        const callerDoc = await db.doc(`tenants/${callerTenant}/staff/${callerUid}`).get();
+        const isOwner = callerDoc.exists && ['owner', 'admin'].includes(callerDoc.data().role);
+        console.log('callerDoc exists:', callerDoc.exists, 'isOwner:', isOwner, 'tenant:', callerTenant);
         if (!isOwner) throw new HttpsError('permission-denied', 'Only owners can create staff accounts.');
 
-        const { name, email, password, role } = request.data || {};
-        console.log('Creating user:', email, 'role:', role);
+        const { name, email, password, role, tenantId: reqTenantId } = request.data || {};
+        const tenantId = reqTenantId || 'whitecross';
+        console.log('Creating user:', email, 'role:', role, 'tenant:', tenantId);
         if (!name || !email || !password) throw new HttpsError('invalid-argument', 'name, email and password are required.');
         if (!['owner', 'admin', 'staff'].includes(role)) throw new HttpsError('invalid-argument', 'role must be "owner", "admin" or "staff".');
 
@@ -1823,15 +1838,15 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
         }
 
         try {
-            await admin.auth().setCustomUserClaims(userRecord.uid, { tenantId: 'whitecross' });
-            console.log('Custom claims set for:', userRecord.uid);
+            await admin.auth().setCustomUserClaims(userRecord.uid, { tenantId });
+            console.log('Custom claims set for:', userRecord.uid, 'tenantId:', tenantId);
         } catch (err) {
             console.error('setCustomUserClaims error:', err.message);
             throw new HttpsError('internal', 'Claim hatası: ' + err.message);
         }
 
         try {
-            await db.doc(`tenants/whitecross/staff/${userRecord.uid}`).set({
+            await db.doc(`tenants/${tenantId}/staff/${userRecord.uid}`).set({
                 name,
                 email,
                 role,
@@ -2010,6 +2025,34 @@ const {
     parseTreatwell,
 } = require('./emailParsers');
 
+async function parseBounceEmails(gmail, db) {
+    const messages = await fetchRecentMessages(gmail, 'from:mailer-daemon@googlemail.com');
+    for (const msg of messages) {
+        try {
+            const body = extractPlainText(msg.payload) || extractHtmlAsText(msg.payload);
+            // Extract the bounced email address from the delivery failure notification
+            const m = body.match(/wasn't delivered to\s+([\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,})/i)
+                   || body.match(/Delivery to the following recipient[^:]*:\s*([\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,})/i)
+                   || body.match(/Final-Recipient:[^\n]*?;\s*([\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,})/i);
+            if (!m) continue;
+            const bouncedEmail = m[1].toLowerCase().trim();
+
+            // Find bookings with this clientEmail that had loyalty email sent but not yet marked bounced
+            const snap = await db.collection('tenants/whitecross/bookings')
+                .where('clientEmail', '==', bouncedEmail)
+                .where('loyaltyEmailSent', '==', true)
+                .get();
+            for (const docSnap of snap.docs) {
+                if (docSnap.data().loyaltyEmailBounced) continue;
+                await docSnap.ref.update({ loyaltyEmailBounced: true, loyaltyEmailBouncedAt: admin.firestore.Timestamp.now() });
+                console.log(`Bounce detected: ${bouncedEmail} → booking ${docSnap.id}`);
+            }
+        } catch (err) {
+            console.error('parseBounceEmails error:', err.message);
+        }
+    }
+}
+
 exports.parseBookingEmails = onSchedule(
     {
         schedule: 'every 5 minutes',
@@ -2024,6 +2067,7 @@ exports.parseBookingEmails = onSchedule(
             parseBooksyCancellations(gmail, db),
             parseFreshaConfirmations(gmail, db),
             parseTreatwell(gmail, db),
+            parseBounceEmails(gmail, db),
         ]);
         console.log('parseBookingEmails: completed');
     }
@@ -2291,8 +2335,10 @@ exports.icalFeed = onRequest({ cors: false }, async (req, res) => {
     ].join('\r\n');
 
     res.set('Content-Type', 'text/calendar; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="${barberFilter || 'whitecross'}.ics"`);
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    if (req.query.download === '1') {
+        res.set('Content-Disposition', `attachment; filename="${barberFilter || 'whitecross'}.ics"`);
+    }
     res.send(ical);
 });
 
@@ -2600,3 +2646,329 @@ exports.syncClientsToSheet = onSchedule({
 
     console.log(`Synced ${rows.length - 1} clients to Google Sheet`);
 });
+
+// ── Salown waitlist ───────────────────────────────────────────────────────────
+exports.addToWaitlist = onRequest(
+    { region: 'europe-west2', cors: true },
+    async (req, res) => {
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        const email = (req.body.email || '').trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            res.status(400).json({ error: 'Invalid email' });
+            return;
+        }
+        const db = getAdminDb();
+        await db
+            .collection('superAdmin')
+            .doc('waitlist')
+            .collection('emails')
+            .doc(email)
+            .set({
+                email,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                source: req.body.source || 'landing',
+            }, { merge: true });
+        res.json({ success: true });
+    }
+);
+
+// ── Phase 3: Provision new tenant on self-signup ──────────────────────────────
+exports.provisionTenant = onCall(
+    {
+        region: 'europe-west2',
+        secrets: ['GMAIL_USER', 'GMAIL_PASS'],
+    },
+    async (request) => {
+        if (!request.auth) throw new HttpsError('unauthenticated', 'Must be logged in');
+
+        const { salonName, businessType, city, ownerName } = request.data;
+        if (!salonName || !businessType || !ownerName) {
+            throw new HttpsError('invalid-argument', 'salonName, businessType, ownerName required');
+        }
+
+        const uid = request.auth.uid;
+        const ownerEmail = request.auth.token.email;
+        const db = getAdminDb();
+
+        // 1. Generate unique tenantId
+        const base = salonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        let tenantId = base;
+        let suffix = 2;
+        while ((await db.collection('tenants').doc(tenantId).get()).exists) {
+            tenantId = `${base}-${suffix++}`;
+        }
+
+        // 2. Create tenant document
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 90);
+
+        await db.collection('tenants').doc(tenantId).set({
+            name: salonName,
+            ownerName,
+            ownerEmail,
+            ownerUID: uid,
+            businessType,
+            city: city || '',
+            domain: null,
+            plan: 'free',
+            status: 'trial',
+            trialEndsAt: admin.firestore.Timestamp.fromDate(trialEndsAt),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            onboardingComplete: false,
+            features: {
+                stripe: false,
+                telegram: false,
+                booksyParser: false,
+                freshaParser: false,
+                treatwellParser: false,
+                cancelReschedule: true,
+                emailConfirmation: false,
+                loyaltySystem: false,
+                personalizedAI: false,
+            },
+        });
+
+        // 3. Create initial barber doc (owner)
+        await db.collection('tenants').doc(tenantId).collection('barbers').doc(uid).set({
+            name: ownerName,
+            email: ownerEmail,
+            color: '#534AB7',
+            active: true,
+            isOwner: true,
+            services: [],
+            workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        });
+
+        // 4. Set custom claim
+        await admin.auth().setCustomUserClaims(uid, { tenantId });
+
+        // 5. Audit log
+        await db.collection('superAdmin').doc('auditLog').collection('entries').add({
+            action: 'tenant_self_signup',
+            tenantId,
+            ownerEmail,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            details: `${salonName} — self-signup via salown.com`,
+        });
+
+        // 6. Welcome email
+        try {
+            const transporter = getTransporter();
+            await transporter.sendMail({
+                from: `"Salown" <${process.env.GMAIL_USER}>`,
+                to: ownerEmail,
+                subject: 'Welcome to Salown — your panel is ready',
+                html: `
+                <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#fff;">
+                  <div style="display:inline-flex;align-items:center;margin-bottom:28px;">
+                    <span style="font-size:22px;font-weight:900;letter-spacing:-1px;color:#0a0a0a">sal</span>
+                    <div style="background:#534AB7;padding:1px 10px 3px;border-radius:6px;margin-left:4px">
+                      <span style="font-size:22px;font-weight:900;letter-spacing:-1px;color:#fff">OWN</span>
+                    </div>
+                  </div>
+                  <h2 style="font-size:22px;font-weight:800;color:#0a0a0a;margin-bottom:8px;">Hi ${ownerName}, your panel is ready.</h2>
+                  <p style="color:#6b7280;font-size:15px;line-height:1.7;margin-bottom:24px;">Welcome to Salown! Your ${salonName} panel has been set up.</p>
+                  <a href="https://salown.com/app" style="display:inline-block;background:#534AB7;color:#fff;padding:13px 28px;border-radius:9px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:28px;">Open my panel →</a>
+                  <p style="color:#6b7280;font-size:14px;line-height:1.8;"><strong>Plan:</strong> Free (90-day trial on all features)<br>
+                  <strong>Salon:</strong> ${salonName}<br>
+                  <strong>Booking page:</strong> salown.com/book/${tenantId}</p>
+                  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+                  <p style="color:#6b7280;font-size:13px;line-height:1.8;"><strong>Next steps:</strong><br>
+                  1. Add your services and pricing<br>
+                  2. Set your working hours<br>
+                  3. Connect Treatwell/Booksy if you use them</p>
+                  <p style="color:#9ca3af;font-size:13px;margin-top:24px;">Questions? WhatsApp us: <a href="https://wa.me/442036215929" style="color:#534AB7;">+44 20 3621 5929</a></p>
+                </div>`,
+            });
+        } catch (emailErr) {
+            console.error('provisionTenant: welcome email failed', emailErr.message);
+        }
+
+        return { success: true, tenantId };
+    }
+);
+
+// ── Set tenant claim for existing user (superAdmin only) ──────────────────────
+exports.setTenantClaim = onCall(
+    { region: 'europe-west2' },
+    async (request) => {
+        if (!request.auth?.token?.superAdmin) {
+            throw new HttpsError('permission-denied', 'superAdmin only');
+        }
+        const { uid, tenantId, superAdmin } = request.data;
+        if (!uid) throw new HttpsError('invalid-argument', 'uid required');
+        // Merge with existing claims — setCustomUserClaims replaces, so read first
+        const existingUser = await admin.auth().getUser(uid);
+        const existing = existingUser.customClaims || {};
+        const claims = { ...existing };
+        if (tenantId) claims.tenantId = tenantId;
+        if (superAdmin != null) claims.superAdmin = superAdmin;
+        await admin.auth().setCustomUserClaims(uid, claims);
+        return { success: true, uid, claims };
+    }
+);
+
+// ── Salown: Telegram notification on new booking (all tenants) ────────────────
+// Reads token + chatIds from tenant Firestore doc — no secrets needed.
+// Skips whitecross (has its own dedicated function above).
+exports.salownNotifyNewBooking = onDocumentCreated(
+    { document: 'tenants/{tenantId}/bookings/{bookingId}', region: 'europe-west2' },
+    async (event) => {
+        const tenantId = event.params.tenantId;
+        if (tenantId === 'whitecross') return; // handled by notifyNewBooking
+
+        const data = event.data?.data();
+        if (!data) return;
+
+        const source = String(data.source || '').trim().toLowerCase();
+        const status = String(data.status || '').trim().toUpperCase();
+
+        // Skip blocked slots and bulk imports
+        if (status === 'BLOCKED') return;
+        if (['historical', 'manual'].includes(source)) return;
+
+        const tenantSnap = await getAdminDb().doc(`tenants/${tenantId}`).get();
+        const tenantData = tenantSnap.data() || {};
+        const token = tenantData.telegramToken;
+        const chatIdsRaw = tenantData.telegramChatIds;
+        if (!token || !chatIdsRaw) return;
+
+        const name = data.clientName || data.name || 'Guest';
+        const service = data.service || data.serviceId || 'Service';
+        const barber = data.barber || data.barberName || '';
+        const bookingId = event.params.bookingId;
+        const srcLabel = source ? source.charAt(0).toUpperCase() + source.slice(1) : 'Direct';
+
+        let dateStr = 'TBC', timeStr = 'TBC';
+        if (data.startTime) {
+            const d = data.startTime.toDate();
+            dateStr = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London' });
+            timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' });
+        } else if (data.date && data.time) {
+            dateStr = data.date;
+            timeStr = data.time;
+        }
+
+        const phone = data.clientPhone || data.phone ? `\n📞 ${data.clientPhone || data.phone}` : '';
+        const barberLine = barber ? `\n💈 ${barber}` : '';
+        const priceLine = data.price ? `\n💳 £${data.price}` : '';
+
+        const msg = `📅 <b>New Booking</b> · ${srcLabel}\n👤 ${name}${phone}\n✂️ ${service}${barberLine}\n🕐 ${dateStr} at ${timeStr}${priceLine}\n🆔 <code>${bookingId}</code>`;
+
+        try {
+            await sendTelegramMessage(token, chatIdsRaw, msg);
+            console.log(`[salown] Telegram sent for ${tenantId}/${bookingId}`);
+        } catch (err) {
+            console.error(`[salown] Telegram error for ${tenantId}:`, err);
+        }
+    }
+);
+
+// ── Salown: send test Telegram message (callable) ─────────────────────────────
+exports.salownSendTestTelegram = onCall(
+    { region: 'europe-west2' },
+    async (request) => {
+        const tenantId = request.auth?.token?.tenantId;
+        if (!tenantId) throw new HttpsError('unauthenticated', 'No tenant claim');
+
+        const tenantSnap = await getAdminDb().doc(`tenants/${tenantId}`).get();
+        const td = tenantSnap.data() || {};
+        const token = td.telegramToken;
+        const chatIdsRaw = td.telegramChatIds;
+        if (!token || !chatIdsRaw) throw new HttpsError('failed-precondition', 'Telegram not configured — save bot token and chat ID first');
+
+        await sendTelegramMessage(token, chatIdsRaw, `✅ <b>Test notification from Salown</b>\n\nYour Telegram notifications are working correctly.\n🏪 Salon: ${td.salonName || tenantId}`);
+        return { success: true };
+    }
+);
+
+// ── Salown: iCal sync — fetch Treatwell iCal for all tenants every 5 min ──────
+// Parses VEVENT blocks and upserts bookings keyed by iCal UID.
+function parseIcal(text) {
+    const events = [];
+    const blocks = text.split('BEGIN:VEVENT');
+    for (let i = 1; i < blocks.length; i++) {
+        const block = blocks[i];
+        function val(key) {
+            const m = block.match(new RegExp(`${key}[^:]*:([^\\r\\n]+)`));
+            return m ? m[1].trim() : '';
+        }
+        function parseIcalDate(str) {
+            if (!str) return null;
+            // Handle TZID or Z suffix: 20260601T100000Z or 20260601T100000
+            const clean = str.replace(/Z$/, '');
+            const m = clean.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/);
+            if (!m) return null;
+            return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+        }
+        const uid = val('UID');
+        const summary = val('SUMMARY');
+        const dtstart = parseIcalDate(val('DTSTART'));
+        const dtend = parseIcalDate(val('DTEND'));
+        const description = val('DESCRIPTION');
+        if (uid && dtstart) {
+            events.push({ uid, summary, dtstart, dtend, description });
+        }
+    }
+    return events;
+}
+
+exports.salownSyncTreatwellIcal = onSchedule(
+    { schedule: 'every 5 minutes', region: 'europe-west2', timeoutSeconds: 120 },
+    async () => {
+        const db = getAdminDb();
+        const tenantsSnap = await db.collection('tenants').get();
+
+        for (const tenantDoc of tenantsSnap.docs) {
+            const tenantId = tenantDoc.id;
+            const icalUrl = tenantDoc.data().treatwellIcal;
+            if (!icalUrl) continue;
+
+            try {
+                const resp = await fetch(icalUrl, { signal: AbortSignal.timeout(15000) });
+                if (!resp.ok) { console.warn(`[ical] ${tenantId}: HTTP ${resp.status}`); continue; }
+                const text = await resp.text();
+                const events = parseIcal(text);
+
+                const batch = db.batch();
+                let count = 0;
+                for (const ev of events) {
+                    const docId = `tw_${ev.uid.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+                    const ref = db.doc(`tenants/${tenantId}/bookings/${docId}`);
+                    const dateStr = ev.dtstart.toISOString().split('T')[0];
+                    const timeStr = ev.dtstart.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+                    batch.set(ref, {
+                        source: 'treatwell',
+                        status: 'CONFIRMED',
+                        icalUid: ev.uid,
+                        summary: ev.summary,
+                        service: ev.summary,
+                        date: dateStr,
+                        time: timeStr,
+                        startTime: admin.firestore.Timestamp.fromDate(ev.dtstart),
+                        endTime: ev.dtend ? admin.firestore.Timestamp.fromDate(ev.dtend) : null,
+                        description: ev.description,
+                        updatedAt: admin.firestore.Timestamp.now(),
+                    }, { merge: true });
+                    count++;
+                }
+                await batch.commit();
+                await db.doc(`tenants/${tenantId}`).update({
+                    treatwellLastSync: admin.firestore.Timestamp.now(),
+                    treatwellSyncError: null,
+                });
+                console.log(`[ical] ${tenantId}: synced ${count} events`);
+            } catch (err) {
+                console.error(`[ical] ${tenantId} sync error:`, err.message);
+                try {
+                    await db.doc(`tenants/${tenantId}`).update({ treatwellSyncError: err.message });
+                } catch {}
+            }
+        }
+    }
+);
+
+

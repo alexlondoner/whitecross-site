@@ -1,6 +1,7 @@
 import React from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getActiveTenant } from '../firestoreActions';
 
 export default function AddClientModal({ open, onClose, onAdd }) {
   const [form, setForm] = React.useState({ name: '', phone: '', email: '', birthday: '', notes: '' });
@@ -14,7 +15,7 @@ export default function AddClientModal({ open, onClose, onAdd }) {
     if (!form.phone.trim() && !form.email.trim()) return setError('Please enter at least a phone number or email.');
     setSaving(true);
     try {
-      const docRef = await addDoc(collection(db, 'tenants/whitecross/clients'), {
+      const docRef = await addDoc(collection(db, `${getActiveTenant()}/clients`), {
         ...form,
         createdAt: serverTimestamp(),
       });

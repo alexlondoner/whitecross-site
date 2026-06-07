@@ -4,7 +4,7 @@ import { collection, doc, getDoc, query, where, getDocs, addDoc, updateDoc, dele
 async function log(action, details = {}) {
   const user = auth.currentUser;
   try {
-    await addDoc(collection(db, 'tenants/whitecross/auditLogs'), {
+    await addDoc(collection(db, `${TENANT}/auditLogs`), {
       action, ...details,
       userId: user?.uid || '', userEmail: user?.email || '', userName: user?.displayName || user?.email || '',
       timestamp: serverTimestamp(),
@@ -12,7 +12,9 @@ async function log(action, details = {}) {
   } catch (_) {}
 }
 
-const TENANT = 'tenants/whitecross';
+let TENANT = 'tenants/whitecross';
+export function setActiveTenant(tenantId) { TENANT = `tenants/${tenantId}`; }
+export function getActiveTenant() { return TENANT; }
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────
 export async function checkoutBooking({ bookingId, paymentMethod, total, discount, tip, tipPaymentMethod, note, splitSecond, splitAmount, soldProducts, soldAddOns, serviceCharge, loyaltyPointsRedeemed, sendLoyaltyEmail }) {
@@ -256,7 +258,7 @@ export async function createWalkIn({ name, email, phone, date, time, service, ba
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
   await addDoc(collection(db, `${TENANT}/bookings`), {
     bookingId,
-    tenantId: 'whitecross',
+    tenantId: TENANT.split('/')[1],
     clientName: name,
     clientEmail: email || '',
     clientPhone: phone || '',
@@ -303,7 +305,7 @@ export async function createProductSale({ clientName, clientEmail, clientPhone, 
 
   await addDoc(collection(db, `${TENANT}/bookings`), {
     bookingId,
-    tenantId: 'whitecross',
+    tenantId: TENANT.split('/')[1],
     clientName: clientName || 'Walk-in',
     clientEmail: clientEmail || '',
     clientPhone: clientPhone || '',
@@ -347,7 +349,7 @@ export async function blockTime({ date, startTime, endTime, barber, note }) {
   const end = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]), et.h, et.min, 0);
   await addDoc(collection(db, `${TENANT}/bookings`), {
     bookingId: blockId,
-    tenantId: 'whitecross',
+    tenantId: TENANT.split('/')[1],
     barberId: barber,
     status: 'BLOCKED',
     startTime: Timestamp.fromDate(start),
@@ -478,7 +480,7 @@ export async function seedBarbers() {
     { id: 'arda', name: 'Arda', color: '#4caf50', active: true, order: 2 },
   ];
   for (const barber of barbers) {
-    await setDoc(doc(db, 'tenants/whitecross/barbers', barber.id), barber);
+    await setDoc(doc(db, 'tenants/${tenantId}/barbers', barber.id), barber);
   }
 }
 
