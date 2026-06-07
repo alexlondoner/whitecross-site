@@ -2675,6 +2675,51 @@ exports.addToWaitlist = onRequest(
     }
 );
 
+exports.sendProInterest = onRequest(
+    { region: 'europe-west2', cors: true, secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+    async (req, res) => {
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        const email = (req.body.email || '').trim().toLowerCase();
+        const phone = (req.body.phone || '').trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            res.status(400).json({ error: 'Invalid email' });
+            return;
+        }
+
+        const db = getAdminDb();
+        await db.collection('superAdmin').doc('proInterest').collection('leads').add({
+            email, phone,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        try {
+            const transporter = getTransporter();
+            await transporter.sendMail({
+                from: `"Salown" <${process.env.GMAIL_USER}>`,
+                to: ['whitecrossbarbers@gmail.com', 'aerulas@gmail.com'],
+                subject: '🚀 New Pro+ Interest — Salown',
+                html: `
+                    <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fff;border-radius:12px;border:1px solid #e5e7eb;">
+                        <div style="background:#534AB7;color:#fff;padding:12px 20px;border-radius:8px;margin-bottom:24px;">
+                            <strong style="font-size:16px;">New Pro+ Interest</strong>
+                        </div>
+                        <p style="margin:0 0 12px;font-size:15px;color:#111;"><strong>Email:</strong> ${email}</p>
+                        <p style="margin:0 0 24px;font-size:15px;color:#111;"><strong>Phone:</strong> ${phone || '—'}</p>
+                        <p style="font-size:12px;color:#9ca3af;">Submitted via salown.com Pro+ interest form</p>
+                    </div>
+                `,
+            });
+        } catch (err) {
+            console.error('sendProInterest email failed:', err.message);
+        }
+
+        res.json({ success: true });
+    }
+);
+
 // ── Phase 3: Provision new tenant on self-signup ──────────────────────────────
 exports.provisionTenant = onCall(
     {
