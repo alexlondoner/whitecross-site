@@ -25,7 +25,7 @@ async function sendTelegramMessage(token, chatIdsRaw, text) {
 }
 
 // ── Firestore notification writer ────────────────────────────────────────────
-async function writeNotification(db, tenantId, type, title, body, bookingId) {
+async function writeNotification(db, tenantId, type, title, body, bookingId, extra = {}) {
     try {
         await db.collection(`tenants/${tenantId}/notifications`).add({
             type,
@@ -34,6 +34,7 @@ async function writeNotification(db, tenantId, type, title, body, bookingId) {
             bookingId: bookingId || null,
             read: false,
             createdAt: admin.firestore.Timestamp.now(),
+            ...extra,
         });
     } catch (err) {
         console.error('writeNotification error:', err);
@@ -1264,6 +1265,11 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         // Only fire when transitioning INTO CONFIRMED (not already confirmed)
         if (newStatus !== 'CONFIRMED' || prevStatus === 'CONFIRMED') return;
 
+        // Skip if this is a reschedule update re-activating a booking — rescheduled notification handles it
+        const prevRescheduled = before.rescheduledAt?.seconds ?? before.rescheduledAt?._seconds ?? null;
+        const newRescheduled  = after.rescheduledAt?.seconds  ?? after.rescheduledAt?._seconds  ?? null;
+        if (newRescheduled && newRescheduled !== prevRescheduled) return;
+
         // For group bookings: only notify once (for the lead)
         if (after.groupId && after.groupLead === false) return;
 
@@ -1349,7 +1355,16 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram reschedule error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'rescheduled', 'Booking Rescheduled', `${name} – ${service} → ${newDateTime}`, bookingId);
+        await writeNotification(getAdminDb(), 'whitecross', 'rescheduled', 'Booking Rescheduled', `${name} – ${service} → ${newDateTime}`, bookingId, {
+            beforeDate:   before.date   || oldDateTime,
+            beforeTime:   before.time   || '',
+            beforeBarber: (before.barberName || before.barberId || '').toUpperCase(),
+            beforeService: SERVICE_NAMES[before.serviceId] || before.serviceId || before.serviceName || '',
+            afterDate:    after.date    || newDateTime,
+            afterTime:    after.time    || '',
+            afterBarber:  (after.barberName  || after.barberId  || '').toUpperCase(),
+            afterService: SERVICE_NAMES[after.serviceId]  || after.serviceId  || after.serviceName  || '',
+        });
     }
 );
 
@@ -2021,7 +2036,7 @@ const {
     getGmailClient,
     parseBooksyConfirmations,
     parseBooksyCancellations,
-    parseFreshaConfirmations,
+    // parseFreshaConfirmations disabled (2026-06-08) — salownParseEmails handles Fresha parsing now
     parseTreatwell,
 } = require('./emailParsers');
 
@@ -2065,8 +2080,8 @@ exports.parseBookingEmails = onSchedule(
         await Promise.all([
             parseBooksyConfirmations(gmail, db),
             parseBooksyCancellations(gmail, db),
-            parseFreshaConfirmations(gmail, db),
-            parseTreatwell(gmail, db),
+            // parseFreshaConfirmations disabled (2026-06-08) — salownParseEmails handles Fresha parsing now
+            // parseTreatwell disabled — salownParseEmails handles Treatwell parsing now
             parseBounceEmails(gmail, db),
         ]);
         console.log('parseBookingEmails: completed');

@@ -1438,6 +1438,11 @@ var todayStr = now.getFullYear() + '-' +
 
         function getBarberScheduleForDay(b, day) {
             if (!b) return null;
+            var shift = b.shiftChanges && b.shiftChanges[date];
+            if (shift) {
+                if (shift.closed) return null;
+                return { open: shift.open || '09:00', close: shift.close || '19:00' };
+            }
             var workingDays = Array.isArray(b.workingDays) ? b.workingDays : [];
             if (!workingDays.includes(day)) return null;
             var dh = b.dayHours && b.dayHours[day] ? b.dayHours[day] : (b.hours || { open: '09:00', close: '19:00' });
