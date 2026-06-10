@@ -308,7 +308,7 @@
 
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, updateDoc, Timestamp }
+    import { getFirestore, collection, query, where, getDocs, limit, updateDoc, Timestamp }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -374,7 +374,8 @@
     async function lookupByParams(id, email) {
         const snap = await getDocs(query(
             collection(db, `tenants/${TENANT}/bookings`),
-            where('bookingId', '==', id)
+            where('bookingId', '==', id),
+            limit(1)
         ));
         if (snap.empty) return null;
         const docSnap = snap.docs[0];

@@ -352,7 +352,7 @@
 
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, getDoc, doc, updateDoc, Timestamp }
+    import { getFirestore, collection, query, where, getDocs, getDoc, doc, limit, updateDoc, Timestamp }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -529,7 +529,8 @@
         const snap = await getDocs(query(
             collection(db, `tenants/${TENANT}/bookings`),
             where('startTime', '>=', Timestamp.fromDate(start)),
-            where('startTime', '<=', Timestamp.fromDate(end))
+            where('startTime', '<=', Timestamp.fromDate(end)),
+            limit(50)
         ));
         const busy = [];
         snap.forEach(docSnap => {
@@ -701,7 +702,8 @@
     async function lookupByParams(id, email) {
         const snap = await getDocs(query(
             collection(db, `tenants/${TENANT}/bookings`),
-            where('bookingId', '==', id)
+            where('bookingId', '==', id),
+            limit(1)
         ));
         if (snap.empty) return null;
         const normalizedEmail = email.trim().toLowerCase();

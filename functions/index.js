@@ -2858,7 +2858,7 @@ exports.setTenantClaim = onCall(
         if (!request.auth?.token?.superAdmin) {
             throw new HttpsError('permission-denied', 'superAdmin only');
         }
-        const { uid, tenantId, superAdmin } = request.data;
+        const { uid, tenantId, superAdmin, tenantRole } = request.data;
         if (!uid) throw new HttpsError('invalid-argument', 'uid required');
         // Merge with existing claims — setCustomUserClaims replaces, so read first
         const existingUser = await admin.auth().getUser(uid);
@@ -2866,6 +2866,7 @@ exports.setTenantClaim = onCall(
         const claims = { ...existing };
         if (tenantId) claims.tenantId = tenantId;
         if (superAdmin != null) claims.superAdmin = superAdmin;
+        if (tenantRole != null) claims.tenantRole = tenantRole;
         await admin.auth().setCustomUserClaims(uid, claims);
         return { success: true, uid, claims };
     }
