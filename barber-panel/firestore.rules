@@ -35,7 +35,8 @@ service cloud.firestore {
           request.resource.data.bookingId == resource.data.bookingId &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'rescheduledTo', 'cancelledAt', 'cancelReason',
-                      'date', 'time', 'startTime', 'endTime', 'rescheduledAt'])
+                      'date', 'time', 'startTime', 'endTime', 'rescheduledAt',
+                      'barberName', 'barberId', 'updatedAt'])
         );
 
         allow delete: if isSuperAdmin() || isAdmin(tenantId);
