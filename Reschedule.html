@@ -560,25 +560,37 @@
             day.closed = !!specialDay.closed;
         }
 
-        function isWorkingDay(list, targetDay) {
-            if (!Array.isArray(list)) return false;
-            return list.some(function(d) {
-                return String(d).toLowerCase() === String(targetDay).toLowerCase();
-            });
+        function isWorkingDay(workingDays, targetDay) {
+            if (Array.isArray(workingDays)) {
+                return workingDays.some(function(d) {
+                    return String(d).toLowerCase() === String(targetDay).toLowerCase();
+                });
+            } else if (workingDays && typeof workingDays === 'object') {
+                // object format: { monday: true, tuesday: false, ... }
+                return workingDays[targetDay.toLowerCase()] === true;
+            }
+            return false;
+        }
+
+        function hasWorkingDaysData(workingDays) {
+            if (Array.isArray(workingDays)) return workingDays.length > 0;
+            if (workingDays && typeof workingDays === 'object') return Object.keys(workingDays).length > 0;
+            return false;
         }
 
         // Prefer selected barber schedule; if barber is off, auto-switch to another available barber.
-        const selectedBarberData = activeBarbers.find(b => b.id === selectedBarber);
+        // selectedBarber may be a name or an id — match both
+        const selectedBarberData = activeBarbers.find(b => b.id === selectedBarber || b.name === selectedBarber);
         if (selectedBarberData) {
-            const workingDays = Array.isArray(selectedBarberData.workingDays) ? selectedBarberData.workingDays : [];
+            const workingDays = selectedBarberData.workingDays || [];
             const dayHours = selectedBarberData.dayHours && selectedBarberData.dayHours[dayName];
-            const isOff = (workingDays.length > 0 && !isWorkingDay(workingDays, dayName)) || (dayHours && dayHours.closed);
+            const isOff = (hasWorkingDaysData(workingDays) && !isWorkingDay(workingDays, dayName)) || (dayHours && dayHours.closed);
 
             if (isOff) {
                 const fallback = activeBarbers.find(function(b) {
-                    if (b.id === selectedBarber) return false;
-                    const wd = Array.isArray(b.workingDays) ? b.workingDays : [];
-                    if (wd.length > 0 && !isWorkingDay(wd, dayName)) return false;
+                    if (b.id === selectedBarber || b.name === selectedBarber) return false;
+                    const wd = b.workingDays || [];
+                    if (hasWorkingDaysData(wd) && !isWorkingDay(wd, dayName)) return false;
                     const dh = b.dayHours && b.dayHours[dayName];
                     if (dh && dh.closed) return false;
                     return true;
