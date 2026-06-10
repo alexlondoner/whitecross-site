@@ -465,13 +465,13 @@
     }
 
     async function loadSpecialHours() {
-        const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
-        if (!snap.exists()) {
+        try {
+            const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
+            if (!snap.exists()) { SPECIAL_HOURS = []; return; }
+            SPECIAL_HOURS = normalizeSpecialHours(snap.data().specialHours);
+        } catch {
             SPECIAL_HOURS = [];
-            return;
         }
-        const data = snap.data();
-        SPECIAL_HOURS = normalizeSpecialHours(data.specialHours);
     }
 
     function formatTimestamp(ts) {
