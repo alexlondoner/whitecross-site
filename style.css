@@ -1688,6 +1688,34 @@ section, .card, .booking-form, .social-buttons, .hours-widget, .reviews-section,
     font-size: 0.78rem;
     padding: 12px 18px;
   }
+
+  #manageFloater {
+    bottom: 74px !important;
+    right: 12px !important;
+    gap: 7px !important;
+  }
+
+  #manageBtn {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  #manageBtnIcon {
+    font-size: 1rem !important;
+  }
+
+  #managePanel a {
+    padding: 7px 12px !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 1px !important;
+    gap: 7px !important;
+  }
+
+  .whatsapp-float {
+    width: 44px;
+    bottom: 16px;
+    right: 12px;
+  }
 }
 .logo-wrapper {
     position: relative;
