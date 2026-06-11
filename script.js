@@ -1453,7 +1453,7 @@ var todayStr = now.getFullYear() + '-' +
             var slots = [];
             var openMins = timeToMins(open);
             var closeMins = timeToMins(close);
-            var step = duration <= 20 ? 15 : 30;
+            var step = 15;
             for (var mins = openMins; mins + duration <= closeMins; mins += step) {
                 if (isToday && mins <= nowMins + 15) continue;
                 var h = Math.floor(mins / 60);

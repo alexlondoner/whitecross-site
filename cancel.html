@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Cancel Booking | I CUT Whitecross Barbers</title>
+    <title>Manage My Booking | I CUT Whitecross Barbers</title>
     <link rel="icon" type="image/png" href="img/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -243,7 +243,7 @@
     </nav>
 
     <div class="page-header">
-        <h1>Cancel Booking</h1>
+        <h1>Manage My Booking</h1>
         <p>I CUT Whitecross Barbers · EC1Y 8QJ</p>
     </div>
 
@@ -268,7 +268,7 @@
             <p style="color:#d4af37; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;">Your Booking</p>
             <div id="bookingDetails"></div>
             <div id="policyMsg"></div>
-            <a id="btnReschedule" href="Reschedule.html" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#2e7d32); border-color:transparent; margin-top:20px;">🔄 Reschedule Instead</a>
+            <a id="btnReschedule" href="Reschedule.html" class="btn-keep" style="background:linear-gradient(135deg,#4caf50,#2e7d32); border-color:transparent; margin-top:20px;">🔄 Reschedule</a>
             <button class="btn-cancel-confirm" onclick="confirmCancel()">✕ Cancel This Booking</button>
             <a href="index.html" class="btn-keep">✓ Keep My Booking</a>
         </div>
@@ -392,7 +392,7 @@
             <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value gold">${date}</span></div>
             <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${time}</span></div>
             <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${SERVICE_NAMES[data.serviceId] || data.serviceId || '—'}</span></div>
-            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberId || 'TBC').toUpperCase()}</span></div>
+            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberName || data.barberId || 'TBC').toUpperCase()}</span></div>
             <div class="detail-row"><span class="detail-label">Booking ID</span><span class="detail-value" style="font-size:0.78rem; color:#888;">${data.bookingId}</span></div>
         `;
 
