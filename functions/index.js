@@ -833,9 +833,17 @@ exports.sendBookingConfirmation = onDocumentCreated(
                 <span style="color:#666;">Please arrive 5 minutes before your scheduled time.</span>
             </p>
 
-            <div style="margin-bottom:40px;">
+            <div style="margin-bottom:24px;">
                 <a href="${rescheduleUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:#d4af37;color:#000;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Reschedule</a>
                 <a href="${cancelUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:transparent;border:1px solid #444;color:#666;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Cancel</a>
+            </div>
+
+            <!-- Policy -->
+            <div style="margin-bottom:40px;padding:14px 18px;background:rgba(255,255,255,0.03);border:1px solid #2a2a2a;border-radius:8px;text-align:left;">
+                <p style="margin:0 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.5px;">Cancellation &amp; Reschedule Policy</p>
+                <p style="margin:0 0 4px;font-size:12px;color:#aaa;line-height:1.7;">✅ <strong style="color:#ccc;">Cancel free</strong> up to <strong style="color:#fff;">8 hours</strong> before your appointment.</p>
+                <p style="margin:0 0 4px;font-size:12px;color:#aaa;line-height:1.7;">🔄 <strong style="color:#ccc;">Reschedule</strong> up to <strong style="color:#fff;">2 hours</strong> before your appointment.</p>
+                <p style="margin:0;font-size:12px;color:#aaa;line-height:1.7;">⚠️ Cancellations within 8 hours will result in <strong style="color:#fff;">loss of deposit</strong>.</p>
             </div>
 
             <!-- Review CTA -->
@@ -947,9 +955,15 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
 Old Street · Barbican · Moorgate<br>
 <span style="color:#666;">Please arrive 5 minutes before your new scheduled time.</span>
 </p>
-<div style="margin-bottom:40px;">
+<div style="margin-bottom:24px;">
 <a href="${rescheduleUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:#d4af37;color:#000;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Reschedule</a>
 <a href="${cancelUrl}" style="display:inline-block;width:180px;margin:5px;padding:15px 0;background:transparent;border:1px solid #444;color:#666;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Cancel</a>
+</div>
+<div style="margin-bottom:40px;padding:14px 18px;background:rgba(255,255,255,0.03);border:1px solid #2a2a2a;border-radius:8px;text-align:left;">
+<p style="margin:0 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.5px;">Cancellation &amp; Reschedule Policy</p>
+<p style="margin:0 0 4px;font-size:12px;color:#aaa;line-height:1.7;">✅ <strong style="color:#ccc;">Cancel free</strong> up to <strong style="color:#fff;">8 hours</strong> before your appointment.</p>
+<p style="margin:0 0 4px;font-size:12px;color:#aaa;line-height:1.7;">🔄 <strong style="color:#ccc;">Reschedule</strong> up to <strong style="color:#fff;">2 hours</strong> before your appointment.</p>
+<p style="margin:0;font-size:12px;color:#aaa;line-height:1.7;">⚠️ Cancellations within 8 hours will result in <strong style="color:#fff;">loss of deposit</strong>.</p>
 </div>
 <div style="border-top:1px solid #222;padding-top:30px;">
 <p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
@@ -973,6 +987,74 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
                 console.log(`Reschedule email sent to ${email}`);
             } catch (err) {
                 console.error('Reschedule email error:', err);
+            }
+            return;
+        }
+
+        // ── Cancellation email ───────────────────────────────────────────────────
+        const isCancellation = newStatus === 'CANCELLED' && prevStatus !== 'CANCELLED';
+        if (isCancellation) {
+            const emailC = after.clientEmail || after.email;
+            if (!emailC) return;
+
+            const nameC    = after.clientName || after.name || 'Guest';
+            const serviceC = lookupServiceName(after.serviceId || after.service);
+            const barberC  = (after.barberName || after.barberId || '').toUpperCase();
+            const bookingIdC = after.bookingId || event.params.bookingId;
+            const baseUrl  = 'https://whitecrossbarbers.com';
+
+            let cancelledDateStr = after.date || '';
+            let cancelledTimeStr = after.time || '';
+            if (after.startTime && !cancelledDateStr) {
+                const d = after.startTime.toDate();
+                cancelledDateStr = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Europe/London' });
+                cancelledTimeStr = d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Europe/London' });
+            }
+
+            const cancelHtml = `<!DOCTYPE html><html><head><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');</style></head>
+<body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
+<div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+<div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
+<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+<h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
+</div>
+<div style="padding:45px 40px;text-align:center;">
+<p style="color:#888;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-bottom:15px;font-weight:700;">Booking Cancelled</p>
+<h2 style="margin:0 0 30px 0;font-size:26px;font-weight:300;color:#fff;line-height:1.2;">We've received your cancellation,<br><span style="font-weight:700;">${nameC}</span></h2>
+<div style="background:#161616;border:1px solid #222;padding:30px;border-radius:2px;margin-bottom:35px;text-align:left;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Service</td><td style="padding:8px 0;color:#aaa;font-size:15px;text-align:right;text-decoration:line-through;">${serviceC}</td></tr>
+${cancelledDateStr ? `<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Date</td><td style="padding:8px 0;color:#aaa;font-size:15px;text-align:right;text-decoration:line-through;">${cancelledDateStr}</td></tr>` : ''}
+${cancelledTimeStr ? `<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Time</td><td style="padding:8px 0;color:#aaa;font-size:15px;text-align:right;text-decoration:line-through;">${cancelledTimeStr}</td></tr>` : ''}
+${barberC ? `<tr><td style="padding:8px 0;color:#888;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Barber</td><td style="padding:8px 0;color:#aaa;font-size:15px;text-align:right;">${barberC}</td></tr>` : ''}
+</table>
+<p style="margin:20px 0 0 0;font-size:11px;color:#444;text-align:center;letter-spacing:1px;">ID: ${bookingIdC}</p>
+</div>
+<p style="color:#aaa;font-size:14px;line-height:1.8;margin-bottom:35px;">We hope to see you again soon. Book your next appointment whenever you're ready.</p>
+<a href="${baseUrl}/#booking" style="display:inline-block;padding:16px 40px;background:#d4af37;color:#000;border-radius:2px;text-decoration:none;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;">Book Again</a>
+<div style="border-top:1px solid #222;padding-top:30px;">
+<p style="color:#555;font-size:11px;letter-spacing:1px;line-height:2;">
+CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;">020 3621 5929</a><br>
+<a href="${baseUrl}" style="color:#444;text-decoration:none;">whitecrossbarbers.com</a>
+</p>
+</div>
+</div>
+<div style="padding:30px;text-align:center;">
+<p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+</div>
+</div>
+</body></html>`;
+
+            try {
+                await getTransporter().sendMail({
+                    from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
+                    to: emailC,
+                    subject: `Booking Cancelled — ${serviceC} | I CUT Whitecross`,
+                    html: cancelHtml,
+                });
+                console.log(`Cancellation email sent to ${emailC}`);
+            } catch (err) {
+                console.error('Cancellation email error:', err);
             }
             return;
         }
