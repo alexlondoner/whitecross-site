@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 document.querySelectorAll('.barber-btn').forEach(function(b) { b.classList.remove('selected'); });
                 btn.classList.add('selected');
                 if (barberHidden) barberHidden.value = btn.dataset.value;
+                renderServiceDropdown(null, btn.dataset.value);
                 var d = document.getElementById('date').value;
                 if (d) checkAvailability(d);
             });
@@ -240,8 +241,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    function renderServiceDropdown(freshSvcs) {
+    function renderServiceDropdown(freshSvcs, selectedBarberId) {
         var _svcs = freshSvcs || window.SERVICES || SERVICES;
+        var barberId = selectedBarberId || (document.getElementById('barber') && document.getElementById('barber').value) || 'no-preference';
+        if (barberId && barberId !== 'no-preference') {
+            _svcs = _svcs.filter(function(s) { return !s.barbers || !s.barbers.length || s.barbers.indexOf(barberId) !== -1; });
+        }
         var select = document.getElementById('service');
         if (!select || !_svcs.length) return;
         var current = select.value;
