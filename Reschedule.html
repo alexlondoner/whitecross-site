@@ -352,8 +352,10 @@
 
 <script type="module">
     import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, getDoc, doc, limit, updateDoc, Timestamp }
+    import { getFirestore, collection, getDocs }
         from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getFunctions, httpsCallable }
+        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
     const firebaseConfig = {
         apiKey:            "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -364,73 +366,17 @@
         appId:             "1:1050766582653:web:7ddaa5acb3bec5ef122214"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const fns  = getFunctions(app, 'europe-west2');
     const TENANT = 'whitecross';
 
-    const SERVICE_NAMES = {
-        'full-experience':              'The Full Experience',
-        'the-full-experience':          'The Full Experience',
-        'full-skinfade-beard-luxury':   'Full Skin Fade & Beard Luxury',
-        'full-skin-fade-beard-luxury':  'Full Skin Fade & Beard Luxury',
-        'i-cut-deluxe':                 'I CUT Deluxe',
-        'i-cut-royal':                  'I CUT Royal',
-        'senior-full-experience':       'Senior Full Experience',
-        'skin-fade':                    'Skin Fade Cut',
-        'scissor-cut':                  'Scissor Cut',
-        'classic-sbs':                  'Classic Short Back & Sides',
-        'hot-towel-shave':              'Hot Towel Shave',
-        'clipper-cut':                  'Clipper Cut',
-        'senior-haircut':               'Senior Haircut (65+)',
-        'young-gents':                  'Young Gents (0-12)',
-        'young-gents-skin-fade':        'Young Gents Skin Fade',
-        'full-facial':                  'Full Facial Treatment',
-        'beard-dyeing':                 'Beard Dyeing',
-        'face-mask':                    'Face Mask',
-        'face-steam':                   'Face Steam',
-        'threading':                    'Threading',
-        'waxing':                       'Waxing',
-        'shape-up-clean-up':            'Shape Up & Clean Up',
-        'wash-hot-towel':               'Wash, Style & Hot Towel',
-    };
-
-    function lookupServiceName(id) {
-        if (!id) return '—';
-        return SERVICE_NAMES[id]
-            || SERVICE_NAMES[id.replace(/skin-fade/g, 'skinfade')]
-            || SERVICE_NAMES[id.replace(/skinfade/g, 'skin-fade')]
-            || id;
-    }
-
-    const DURATION_MAP = {
-        'i-cut-royal': 60, 'i-cut-deluxe': 50, 'full-skinfade-beard-luxury': 40,
-        'full-experience': 30, 'senior-full-experience': 30, 'skin-fade': 30,
-        'scissor-cut': 30, 'classic-sbs': 20, 'hot-towel-shave': 15,
-        'clipper-cut': 15, 'senior-haircut': 20, 'young-gents': 20,
-        'young-gents-skin-fade': 25, 'full-facial': 10, 'beard-dyeing': 20,
-        'face-mask': 10, 'face-steam': 10, 'threading': 5,
-        'waxing': 10, 'shape-up-clean-up': 15, 'wash-hot-towel': 10
-    };
-
-    const SCHEDULE = [
-        { open: '09:00', close: '19:00', closed: false }, // Mon
-        { open: '09:00', close: '19:00', closed: false }, // Tue
-        { open: '09:00', close: '19:00', closed: false }, // Wed
-        { open: '09:00', close: '19:00', closed: false }, // Thu
-        { open: '09:00', close: '19:00', closed: false }, // Fri
-        { open: '09:00', close: '19:00', closed: false }, // Sat
-        { open: '10:00', close: '16:00', closed: false }, // Sun
-    ];
-    const JS_TO_SCHEDULE = [6, 0, 1, 2, 3, 4, 5];
-    let SPECIAL_HOURS = [];
-
-    let currentDocRef = null;
     let currentBookingData = null;
     let currentBookingId   = '';
     let currentEmail       = '';
     let selectedBarber     = '';
-    let selectedTime       = '';
-    let selectedDate       = '';
+    let selectedTime       = '';  // stored as 24h "HH:MM"
+    let selectedDate       = '';  // stored as "YYYY-MM-DD"
     let activeBarbers      = [];
 
     function showState(id) {
@@ -448,51 +394,24 @@
         return h * 60 + m;
     }
 
-    function normalizeSpecialHours(list) {
-        return (Array.isArray(list) ? list : [])
-            .filter(item => item && item.date)
-            .map(item => ({
-                date: item.date,
-                open: item.open || '09:00',
-                close: item.close || '19:00',
-                closed: !!item.closed,
-                note: item.note || ''
-            }));
-    }
-
-    function getSpecialHours(dateStr) {
-        return SPECIAL_HOURS.find(item => item.date === dateStr) || null;
-    }
-
-    async function loadSpecialHours() {
-        try {
-            const snap = await getDoc(doc(db, `tenants/${TENANT}/settings/settings`));
-            if (!snap.exists()) { SPECIAL_HOURS = []; return; }
-            SPECIAL_HOURS = normalizeSpecialHours(snap.data().specialHours);
-        } catch {
-            SPECIAL_HOURS = [];
-        }
-    }
-
-    function formatTimestamp(ts) {
-        if (!ts) return { date: 'N/A', time: 'N/A' };
-        const d = ts.toDate();
-        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    function formatDate(ms) {
+        if (!ms) return { date: 'N/A', time: 'N/A' };
+        const d = new Date(ms);
+        const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const h = d.getHours(), m = d.getMinutes();
         const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
+        const h12  = h % 12 || 12;
         return {
             date: `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
-            time: `${h12}:${String(m).padStart(2,'0')} ${ampm}`
+            time: `${h12}:${String(m).padStart(2,'0')} ${ampm}`,
         };
     }
 
     function toFriendlyError(err) {
         const code = (err && err.code) ? String(err.code) : '';
-        if (code.includes('permission-denied')) return 'Permission denied while updating this booking.';
-        if (code.includes('not-found')) return 'This booking could not be found anymore.';
-        if (code.includes('failed-precondition')) return 'Booking update is currently blocked by a data rule.';
+        if (code.includes('not-found'))           return 'Booking not found.';
+        if (code.includes('failed-precondition')) return err.message || 'Booking cannot be rescheduled.';
         return 'Unable to update your booking right now.';
     }
 
@@ -513,7 +432,7 @@
             btn.textContent = '✂ ' + (b.name || b.id);
             btn.onclick = () => {
                 selectedBarber = b.name;
-                selectedTime = '';
+                selectedTime   = '';
                 document.getElementById('btnConfirm').disabled = true;
                 document.querySelectorAll('.barber-btn').forEach(x => x.classList.remove('selected'));
                 btn.classList.add('selected');
@@ -523,51 +442,35 @@
         });
     }
 
-    async function getBusySlotsForDate(dateStr) {
-        const start = getLocalDate(dateStr, 0, 0);
-        const end   = getLocalDate(dateStr, 23, 59);
-        const snap = await getDocs(query(
-            collection(db, `tenants/${TENANT}/bookings`),
-            where('startTime', '>=', Timestamp.fromDate(start)),
-            where('startTime', '<=', Timestamp.fromDate(end)),
-            limit(50)
-        ));
-        const busy = [];
-        snap.forEach(docSnap => {
-            const d = docSnap.data();
-            if (d.status === 'CANCELLED') return;
-            if (docSnap.ref.id === currentDocRef?.id) return;
-            if (!d.startTime || !d.endTime) return;
-            busy.push({ barberName: (d.barberName || d.barberId || '').toLowerCase(), start: d.startTime.toMillis(), end: d.endTime.toMillis() });
-        });
-        return busy;
-    }
-
     async function loadSlots() {
         const container = document.getElementById('slotsContainer');
         container.innerHTML = '<div class="slots-status"><span class="spinner" style="vertical-align:middle; display:inline-block; width:16px; height:16px; border-width:2px;"></span> Checking availability…</div>';
 
-        const dateStr = selectedDate;
-        const selDate = getLocalDate(dateStr);
-        const dayIdx  = JS_TO_SCHEDULE[selDate.getDay()];
-        let day       = Object.assign({}, SCHEDULE[dayIdx]);
-        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayName = DAY_NAMES[selDate.getDay()];
-        const specialDay = getSpecialHours(dateStr);
+        const dateStr   = selectedDate;
+        const selDate   = getLocalDate(dateStr);
+        const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const dayName   = DAY_NAMES[selDate.getDay()];
 
-        if (specialDay) {
-            day.open = specialDay.open || day.open;
-            day.close = specialDay.close || day.close;
-            day.closed = !!specialDay.closed;
+        // Get busy slots + shop hours from server (replaces hardcoded SCHEDULE + SPECIAL_HOURS)
+        let shopHours = { open: '09:00', close: '19:00', closed: false };
+        let busy = [];
+        try {
+            const r = await httpsCallable(fns, 'salownGetBusySlots')({ tenantId: TENANT, dateStr });
+            if (r.data?.shopHours) shopHours = r.data.shopHours;
+            busy = (r.data?.slots || []).map(s => ({
+                barberId:   (s.barberId   || '').toLowerCase(),
+                barberName: (s.barberName || '').toLowerCase(),
+                start: s.startMs,
+                end:   s.endMs,
+            }));
+        } catch(e) {
+            console.warn('[Reschedule] salownGetBusySlots failed, conflicts may be missed', e);
         }
 
         function isWorkingDay(workingDays, targetDay) {
             if (Array.isArray(workingDays)) {
-                return workingDays.some(function(d) {
-                    return String(d).toLowerCase() === String(targetDay).toLowerCase();
-                });
+                return workingDays.some(d => String(d).toLowerCase() === String(targetDay).toLowerCase());
             } else if (workingDays && typeof workingDays === 'object') {
-                // object format: { monday: true, tuesday: false, ... }
                 return workingDays[targetDay.toLowerCase()] === true;
             }
             return false;
@@ -579,38 +482,35 @@
             return false;
         }
 
-        // Prefer selected barber schedule; if barber is off, auto-switch to another available barber.
-        // selectedBarber may be a name or an id — match both
+        // Apply barber-specific schedule on top of shop hours
+        let day = { open: shopHours.open, close: shopHours.close, closed: shopHours.closed };
         const selectedBarberData = activeBarbers.find(b => b.id === selectedBarber || b.name === selectedBarber);
-        if (selectedBarberData) {
+
+        if (selectedBarberData && !day.closed) {
             const workingDays = selectedBarberData.workingDays || [];
-            const dayHours = selectedBarberData.dayHours && selectedBarberData.dayHours[dayName];
-            const isOff = (hasWorkingDaysData(workingDays) && !isWorkingDay(workingDays, dayName)) || (dayHours && dayHours.closed);
+            const dayHours    = selectedBarberData.dayHours?.[dayName];
+            const isOff       = (hasWorkingDaysData(workingDays) && !isWorkingDay(workingDays, dayName))
+                             || (dayHours && dayHours.closed);
 
             if (isOff) {
-                const fallback = activeBarbers.find(function(b) {
+                const fallback = activeBarbers.find(b => {
                     if (b.id === selectedBarber || b.name === selectedBarber) return false;
                     const wd = b.workingDays || [];
                     if (hasWorkingDaysData(wd) && !isWorkingDay(wd, dayName)) return false;
-                    const dh = b.dayHours && b.dayHours[dayName];
-                    if (dh && dh.closed) return false;
-                    return true;
+                    const dh = b.dayHours?.[dayName];
+                    return !(dh && dh.closed);
                 });
 
                 if (fallback) {
-                    selectedBarber = fallback.id;
-                    selectedTime = '';
+                    selectedBarber = fallback.name || fallback.id;
+                    selectedTime   = '';
                     document.getElementById('btnConfirm').disabled = true;
-                    document.querySelectorAll('.barber-btn').forEach(function(x) { x.classList.remove('selected'); });
+                    document.querySelectorAll('.barber-btn').forEach(x => x.classList.remove('selected'));
                     const fallbackBtn = Array.from(document.querySelectorAll('.barber-btn'))
-                        .find(function(btn) { return btn.textContent.includes(fallback.name || fallback.id); });
+                        .find(btn => btn.textContent.includes(fallback.name || fallback.id));
                     if (fallbackBtn) fallbackBtn.classList.add('selected');
-
-                    container.innerHTML = '<div class="slots-status" style="color:#ff9800;">' +
-                        (selectedBarberData.name || selectedBarberData.id) + ' is off today - switched to ' + (fallback.name || fallback.id) + ' automatically.' +
-                    '</div>';
-
-                    setTimeout(function() { loadSlots(); }, 1200);
+                    container.innerHTML = `<div class="slots-status" style="color:#ff9800;">${selectedBarberData.name || selectedBarberData.id} is off today — switched to ${fallback.name || fallback.id} automatically.</div>`;
+                    setTimeout(() => loadSlots(), 1200);
                     return;
                 }
 
@@ -618,29 +518,20 @@
                 return;
             }
 
-            const barberDayHours = dayHours || selectedBarberData.hours;
-
-            if (barberDayHours && barberDayHours.open && barberDayHours.close) {
-                day.open = barberDayHours.open;
-                day.close = barberDayHours.close;
+            if (dayHours?.open && dayHours?.close) {
+                day.open  = dayHours.open;
+                day.close = dayHours.close;
             }
         }
 
-        if (specialDay) {
-            day.open = specialDay.open || day.open;
-            day.close = specialDay.close || day.close;
-            day.closed = !!specialDay.closed;
-        }
-
         if (day.closed) {
-            container.innerHTML = '<div class="slots-status">We are closed on this day' + (specialDay && specialDay.note ? ' - ' + specialDay.note : '') + '. Please pick another date.</div>';
+            container.innerHTML = `<div class="slots-status">We are closed on this day${shopHours.note ? ' — ' + shopHours.note : ''}. Please pick another date.</div>`;
             return;
         }
 
-        const service  = currentBookingData?.serviceId || 'skin-fade';
-        const duration = DURATION_MAP[service] || 30;
-        const openH    = parseInt(day.open.split(':')[0]);
-        const closeH   = parseInt(day.close.split(':')[0]);
+        const duration  = parseInt(currentBookingData?.duration) || 30;
+        const openH     = parseInt(day.open.split(':')[0]);
+        const closeH    = parseInt(day.close.split(':')[0]);
         const closeMins = timeMins(day.close);
 
         const now      = new Date();
@@ -650,29 +541,30 @@
 
         const slots = [];
         for (let h = openH; h < closeH; h++) {
-            for (const m of [0, 30]) {
+            for (const m of [0, 15, 30, 45]) {
                 const mins = h * 60 + m;
                 if (isToday && mins <= nowMins + 15) continue;
                 if (mins + duration > closeMins) continue;
-                const h12 = h % 12 || 12;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                slots.push({ h, m, label: `${h12}:${String(m).padStart(2,'0')} ${ampm}` });
+                const h12   = h % 12 || 12;
+                const ampm  = h >= 12 ? 'PM' : 'AM';
+                const time24 = `${h < 10 ? '0' + h : h}:${String(m).padStart(2, '0')}`;
+                slots.push({ h, m, label: `${h12}:${String(m).padStart(2,'0')} ${ampm}`, time24 });
             }
         }
-
-        let busy = [];
-        try { busy = await getBusySlotsForDate(dateStr); } catch(e) { console.warn('Slot fetch error:', e); }
 
         const grid = document.createElement('div');
         grid.className = 'slots-grid';
         let available = 0;
+        const selBarberLow = selectedBarber.toLowerCase();
 
         slots.forEach(slot => {
             const slotStart = getLocalDate(dateStr, slot.h, slot.m).getTime();
             const slotEnd   = slotStart + duration * 60 * 1000;
-            const isBusy = busy
-                .filter(b => b.barberName === selectedBarber.toLowerCase())
-                .some(b => slotStart < b.end && slotEnd > b.start);
+            const isBusy = busy.some(b => {
+                const match = (b.barberName && b.barberName === selBarberLow)
+                           || (b.barberId   && b.barberId   === selBarberLow);
+                return match && slotStart < b.end && slotEnd > b.start;
+            });
 
             const btn = document.createElement('button');
             btn.className = 'slot-btn';
@@ -684,7 +576,7 @@
                 btn.onclick = () => {
                     document.querySelectorAll('.slot-btn').forEach(x => x.classList.remove('selected'));
                     btn.classList.add('selected');
-                    selectedTime = slot.label;
+                    selectedTime = slot.time24;  // 24h format for callable
                     document.getElementById('btnConfirm').disabled = false;
                 };
             }
@@ -699,44 +591,28 @@
         }
     }
 
-    async function lookupByParams(id, email) {
-        const snap = await getDocs(query(
-            collection(db, `tenants/${TENANT}/bookings`),
-            where('bookingId', '==', id),
-            limit(1)
-        ));
-        if (snap.empty) return null;
-        const normalizedEmail = email.trim().toLowerCase();
-        const matchingDoc = snap.docs.find(d => {
-            const data = d.data();
-            return (data.clientEmail || '').toLowerCase() === normalizedEmail && data.status !== 'CANCELLED';
-        });
-        if (!matchingDoc) return null;
-        return { ref: matchingDoc.ref, data: matchingDoc.data() };
-    }
-
     function renderCurrentBooking(data) {
-        const { date, time } = formatTimestamp(data.startTime);
+        const { date, time } = formatDate(data.startTimeMs);
+        const barberDisplay  = activeBarbers.find(b => b.id === data.barberId)?.name
+            || data.barberName || data.barberId || 'TBC';
         document.getElementById('currentBookingDetails').innerHTML = `
             <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${data.clientName || '—'}</span></div>
             <div class="detail-row"><span class="detail-label">Current Date</span><span class="detail-value gold">${date}</span></div>
             <div class="detail-row"><span class="detail-label">Current Time</span><span class="detail-value">${time}</span></div>
-            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${lookupServiceName(data.serviceId || data.service)}</span></div>
-            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(activeBarbers.find(b => b.id === data.barberId)?.name || data.barberName || data.barberId || 'TBC')}</span></div>
+            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${data.service || data.serviceId || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${barberDisplay}</span></div>
         `;
     }
 
     async function init(id, email) {
         try {
             await loadBarbers();
-            await loadSpecialHours();
-            const result = await lookupByParams(id, email);
-            if (!result) { showState('stateNotFound'); return; }
-            currentDocRef      = result.ref;
-            currentBookingData = result.data;
+            const result = await httpsCallable(fns, 'salownGetBookingByToken')({ tenantId: TENANT, bookingId: id, email });
+            const data   = result.data;
+            if (!data || data.status === 'CANCELLED') { showState('stateNotFound'); return; }
+            currentBookingData = data;
 
-            const apptMs = result.data.startTime ? result.data.startTime.toMillis() : 0;
-            const hoursUntil = (apptMs - Date.now()) / 3600000;
+            const hoursUntil = data.startTimeMs ? (data.startTimeMs - Date.now()) / 3600000 : 0;
             if (hoursUntil < 2 && hoursUntil > -1) {
                 const errDiv = document.getElementById('notFoundMsg');
                 if (errDiv) errDiv.innerHTML = 'Rescheduling is only available up to 2 hours before your appointment. To change, please call us on <a href="tel:02036215929" style="color:#d4af37;">020 3621 5929</a>.';
@@ -744,8 +620,8 @@
                 return;
             }
 
-            selectedBarber = result.data.barberName || result.data.barberId || activeBarbers[0]?.name || '';
-            renderCurrentBooking(result.data);
+            selectedBarber = data.barberName || data.barberId || activeBarbers[0]?.name || '';
+            renderCurrentBooking(data);
             renderBarberGrid();
 
             const input = document.getElementById('newDate');
@@ -766,7 +642,7 @@
         } catch(e) {
             console.error('Reschedule init error:', e);
             const errDiv = document.getElementById('notFoundMsg');
-            if (errDiv) errDiv.innerHTML = 'Error: ' + (e?.message || e?.code || 'Unknown error') + '<br><small style="color:#555">Check browser console for details.</small>';
+            if (errDiv) errDiv.innerHTML = 'Error loading your booking. Please call us on <a href="tel:02036215929" style="color:#d4af37;">020 3621 5929</a>.';
             showState('stateNotFound');
         }
     }
@@ -776,7 +652,7 @@
         const email = document.getElementById('inputEmail').value.trim();
         if (!id || !email) return;
         currentBookingId = id;
-        currentEmail = email;
+        currentEmail     = email;
         document.getElementById('lookupError').style.display = 'none';
         showState('stateLoading');
         await init(id, email);
@@ -784,66 +660,27 @@
 
     window.confirmReschedule = async function() {
         if (!selectedDate || !selectedTime || !selectedBarber) return;
-        if (!currentDocRef) {
-            alert('Booking session expired. Please look up your booking again.');
-            showState('stateLookup');
-            return;
-        }
-
-        const match = selectedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) {
-            alert('Invalid time selected. Please choose another slot.');
-            document.getElementById('btnConfirm').disabled = true;
-            return;
-        }
-        let h = parseInt(match[1]), m = parseInt(match[2]);
-        if (match[3].toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
-
-        const service  = currentBookingData?.serviceId || 'skin-fade';
-        const duration = DURATION_MAP[service] || 30;
-        const newStart = getLocalDate(selectedDate, h, m);
-        const newEnd   = new Date(newStart.getTime() + duration * 60 * 1000);
-
-        let busy = [];
-        try { busy = await getBusySlotsForDate(selectedDate); } catch(e) {}
-        const hasOverlap = busy
-            .filter(b => b.barberName === selectedBarber.toLowerCase())
-            .some(b => newStart.getTime() < b.end && newEnd.getTime() > b.start);
-        if (hasOverlap) {
-            alert('Sorry, that slot was just taken. Please pick another time.');
-            loadSlots();
-            return;
-        }
 
         showState('stateProcessing');
         try {
-            const fresh = await getDoc(currentDocRef);
-            if (!fresh.exists() || fresh.data()?.status === 'CANCELLED') {
-                alert('This booking is no longer available to reschedule.');
-                showState('stateNotFound');
-                return;
-            }
-
-            const barberDoc = activeBarbers.find(b => b.name === selectedBarber);
-            await updateDoc(currentDocRef, {
-                barberName:  selectedBarber,
-                barberId:    barberDoc?.id || selectedBarber,
-                startTime:   Timestamp.fromDate(newStart),
-                endTime:     Timestamp.fromDate(newEnd),
-                status:      'CONFIRMED',
-                clientEmail: currentBookingData.clientEmail || '',
-                bookingId:   currentBookingData.bookingId || currentBookingId,
-                rescheduledAt: Timestamp.fromDate(new Date()),
-                updatedAt:   Timestamp.fromDate(new Date()),
+            await httpsCallable(fns, 'salownRescheduleByToken')({
+                tenantId:   TENANT,
+                bookingId:  currentBookingId,
+                email:      currentEmail,
+                newDateStr: selectedDate,
+                newTime:    selectedTime,
             });
 
-            const newDateFmt = newStart.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            const newDateDisplay = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-GB', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+            });
+            const barberDisplay = activeBarbers.find(b => b.name === selectedBarber || b.id === selectedBarber)?.name
+                || selectedBarber;
             document.getElementById('successDetails').innerHTML = `
-                <p><strong style="color:#d4af37;">📅 New Date:</strong> ${newDateFmt}</p>
+                <p><strong style="color:#d4af37;">📅 New Date:</strong> ${newDateDisplay}</p>
                 <p><strong style="color:#d4af37;">⏰ New Time:</strong> ${selectedTime}</p>
-                <p><strong style="color:#d4af37;">💈 Barber:</strong> ${selectedBarber.toUpperCase()}</p>
-                <p><strong style="color:#d4af37;">✂️ Service:</strong> ${SERVICE_NAMES[service] || service}</p>
+                <p><strong style="color:#d4af37;">💈 Barber:</strong> ${barberDisplay.toUpperCase()}</p>
+                <p><strong style="color:#d4af37;">✂️ Service:</strong> ${currentBookingData?.service || currentBookingData?.serviceId || ''}</p>
             `;
             showState('stateSuccess');
         } catch(e) {
@@ -859,7 +696,7 @@
         const email = params.get('email');
         if (id && email) {
             currentBookingId = id;
-            currentEmail = email;
+            currentEmail     = email;
             init(id, email);
         } else {
             showState('stateLookup');

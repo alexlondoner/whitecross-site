@@ -307,9 +307,9 @@
 </div>
 
 <script type="module">
-    import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, limit, updateDoc, Timestamp }
-        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFunctions, httpsCallable }
+        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
     const firebaseConfig = {
         apiKey:            "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -320,89 +320,50 @@
         appId:             "1:1050766582653:web:7ddaa5acb3bec5ef122214"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const app  = initializeApp(firebaseConfig);
+    const fns  = getFunctions(app, 'europe-west2');
     const TENANT = 'whitecross';
 
-    const SERVICE_NAMES = {
-        'full-experience': 'The Full Experience',
-        'full-skinfade-beard-luxury': 'Full Skin Fade & Beard Luxury',
-        'i-cut-deluxe': 'I CUT Deluxe',
-        'i-cut-royal': 'I CUT Royal',
-        'senior-full-experience': 'Senior Full Experience',
-        'skin-fade': 'Skin Fade Cut',
-        'scissor-cut': 'Scissor Cut',
-        'classic-sbs': 'Classic Short Back & Sides',
-        'hot-towel-shave': 'Hot Towel Shave',
-        'clipper-cut': 'Clipper Cut',
-        'senior-haircut': 'Senior Haircut (65+)',
-        'young-gents': 'Young Gents (0-12)',
-        'young-gents-skin-fade': 'Young Gents Skin Fade',
-        'full-facial': 'Full Facial Treatment',
-        'beard-dyeing': 'Beard Dyeing',
-        'face-mask': 'Face Mask',
-        'face-steam': 'Face Steam',
-        'threading': 'Threading',
-        'waxing': 'Waxing',
-        'shape-up-clean-up': 'Shape Up & Clean Up',
-        'wash-hot-towel': 'Wash, Style & Hot Towel'
-    };
-
-    let currentDocRef = null;
     let currentBookingData = null;
-    let currentBookingId = '';
-    let currentEmail = '';
+    let currentBookingId   = '';
+    let currentEmail       = '';
 
     function showState(id) {
         document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
     }
 
-    function formatTimestamp(ts) {
-        if (!ts) return { date: 'N/A', time: 'N/A' };
-        const d = ts.toDate();
-        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    function formatDate(ms) {
+        if (!ms) return { date: 'N/A', time: 'N/A' };
+        const d = new Date(ms);
+        const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const h = d.getHours(), m = d.getMinutes();
         const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
-        const time = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
-        const date = `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-        return { date, time };
-    }
-
-    async function lookupByParams(id, email) {
-        const snap = await getDocs(query(
-            collection(db, `tenants/${TENANT}/bookings`),
-            where('bookingId', '==', id),
-            limit(1)
-        ));
-        if (snap.empty) return null;
-        const docSnap = snap.docs[0];
-        const data = docSnap.data();
-        if ((data.clientEmail || '').toLowerCase() !== email.toLowerCase()) return null;
-        if (data.status === 'CANCELLED') return null;
-        return { ref: docSnap.ref, data };
+        const h12  = h % 12 || 12;
+        return {
+            date: `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
+            time: `${h12}:${String(m).padStart(2,'0')} ${ampm}`,
+        };
     }
 
     function renderBooking(data) {
-        const { date, time } = formatTimestamp(data.startTime);
+        const { date, time } = formatDate(data.startTimeMs);
         document.getElementById('bookingDetails').innerHTML = `
             <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${data.clientName || '—'}</span></div>
             <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value gold">${date}</span></div>
             <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${time}</span></div>
-            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${SERVICE_NAMES[data.serviceId] || data.serviceId || '—'}</span></div>
-            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberName || data.barberId || 'TBC').toUpperCase()}</span></div>
+            <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${data.service || data.serviceId || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Barber</span><span class="detail-value">${(data.barberName || 'TBC').toUpperCase()}</span></div>
             <div class="detail-row"><span class="detail-label">Booking ID</span><span class="detail-value" style="font-size:0.78rem; color:#888;">${data.bookingId}</span></div>
         `;
 
-        const apptMs = data.startTime ? data.startTime.toMillis() : 0;
-        const hoursUntil = (apptMs - Date.now()) / 3600000;
+        const hoursUntil = data.startTimeMs ? (data.startTimeMs - Date.now()) / 3600000 : 0;
         const policyEl = document.getElementById('policyMsg');
         if (hoursUntil >= 8) {
             policyEl.innerHTML = `<div class="policy-ok">✅ Free cancellation — your appointment is more than 8 hours away.</div>`;
         } else if (hoursUntil > 0) {
-            policyEl.innerHTML = `<div class="policy-warn">⚠️ Your appointment is in less than 8 hours. Late cancellations are not eligible for a refund — deposit is forfeited.</div>`;
+            policyEl.innerHTML = `<div class="policy-warn">⚠️ Your appointment is in less than 8 hours. Cancellations within this window are not accepted — please call us on 020 3621 5929.</div>`;
         } else {
             policyEl.innerHTML = `<div class="policy-warn">⚠️ This appointment has already passed.</div>`;
         }
@@ -411,20 +372,26 @@
             `Reschedule.html?id=${encodeURIComponent(currentBookingId)}&email=${encodeURIComponent(currentEmail)}`;
     }
 
+    async function doLookup(id, email) {
+        const result = await httpsCallable(fns, 'salownGetBookingByToken')({ tenantId: TENANT, bookingId: id, email });
+        const data = result.data;
+        if (!data || data.status === 'CANCELLED') return null;
+        return data;
+    }
+
     window.lookupBooking = async function() {
         const id    = document.getElementById('inputId').value.trim();
         const email = document.getElementById('inputEmail').value.trim();
         if (!id || !email) return;
         currentBookingId = id;
-        currentEmail = email;
+        currentEmail     = email;
         document.getElementById('lookupError').style.display = 'none';
         showState('stateLoading');
         try {
-            const result = await lookupByParams(id, email);
-            if (!result) { showState('stateNotFound'); return; }
-            currentDocRef = result.ref;
-            currentBookingData = result.data;
-            renderBooking(result.data);
+            const data = await doLookup(id, email);
+            if (!data) { showState('stateNotFound'); return; }
+            currentBookingData = data;
+            renderBooking(data);
             showState('stateFound');
         } catch(e) {
             console.error(e);
@@ -436,14 +403,17 @@
         if (!confirm('Are you sure you want to cancel this booking? This cannot be undone.')) return;
         showState('stateProcessing');
         try {
-            await updateDoc(currentDocRef, { status: 'CANCELLED', cancelledAt: Timestamp.fromDate(new Date()) });
-            const name = (currentBookingData.clientName || '').split(' ')[0];
+            await httpsCallable(fns, 'salownCancelByToken')({ tenantId: TENANT, bookingId: currentBookingId, email: currentEmail });
+            const name = (currentBookingData?.clientName || '').split(' ')[0];
             document.getElementById('successText').textContent =
                 `Your booking has been cancelled${name ? ', ' + name : ''}. We hope to see you again soon.`;
             showState('stateSuccess');
         } catch(e) {
             console.error(e);
-            alert('Something went wrong. Please call us on 020 3621 5929.');
+            const msg = e?.code === 'functions/failed-precondition'
+                ? e.message
+                : 'Something went wrong. Please call us on 020 3621 5929.';
+            alert(msg);
             showState('stateFound');
         }
     };
@@ -454,13 +424,12 @@
         const email = params.get('email');
         if (id && email) {
             currentBookingId = id;
-            currentEmail = email;
+            currentEmail     = email;
             try {
-                const result = await lookupByParams(id, email);
-                if (!result) { showState('stateNotFound'); return; }
-                currentDocRef = result.ref;
-                currentBookingData = result.data;
-                renderBooking(result.data);
+                const data = await doLookup(id, email);
+                if (!data) { showState('stateNotFound'); return; }
+                currentBookingData = data;
+                renderBooking(data);
                 showState('stateFound');
             } catch(e) {
                 showState('stateNotFound');

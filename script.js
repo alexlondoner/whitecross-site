@@ -222,7 +222,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         cats.forEach(function(cat) {
             var content = document.getElementById(cat.contentId);
             if (!content) return;
-            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat.key; });
+            var catSlug = cat.key.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat.key || s.categoryId === catSlug; });
+            if (!catSvcs.length) return;
             content.innerHTML = catSvcs.map(function(svc, idx) {
                 var isHighlight = cat.key === 'Exclusive Bundles' && idx === 0;
                 var detailsBtn = svc.description
@@ -236,7 +238,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     '</div></div>';
             }).join('');
             if (content.classList.contains('open')) {
-                content.style.maxHeight = content.scrollHeight + 'px';
+                content.style.maxHeight = '1200px';
             }
         });
     }
@@ -254,7 +256,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         var catOrder = ['Standard', 'Exclusive Bundles', 'Extras'];
         var catLabels = { 'Exclusive Bundles': 'Exclusive Bundle Packages', 'Standard': 'Standard Packages', 'Extras': 'Extras' };
         catOrder.forEach(function(cat) {
-            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat; });
+            var catSlug2 = cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            var catSvcs = _svcs.filter(function(s) { return (s.category || 'Standard') === cat || s.categoryId === catSlug2; });
             if (!catSvcs.length) return;
             var group = document.createElement('optgroup');
             group.label = catLabels[cat] || cat;
@@ -614,7 +617,7 @@ var todayStr = now.getFullYear() + '-' +
         _groupExtraMembers.push({ serviceId: '', duration: 30, price: 0 });
 
         var svcs = window.SERVICES || [];
-        var opts = svcs.filter(function(s) { return s.category !== 'Extras'; }).map(function(s) {
+        var opts = svcs.filter(function(s) { return s.category !== 'Extras' && s.categoryId !== 'extras'; }).map(function(s) {
             return '<option value="' + s.id + '">' + s.name + (s.price ? ' — £' + s.price : '') + '</option>';
         }).join('');
 
@@ -971,10 +974,8 @@ var todayStr = now.getFullYear() + '-' +
             }
 
             var _svcObj = (window.SERVICES || []).find(function(s) { return s.id === service; });
-            var _stripeUrl = (_svcObj && _svcObj.stripeUrl) ? _svcObj.stripeUrl : '';
-            var _depositUrl = (_svcObj && _svcObj.depositUrl) ? _svcObj.depositUrl : 'https://buy.stripe.com/6oU9AVgFXglr6aJ1Rxg360o';
-            var _isExtra = _svcObj ? _svcObj.category === 'Extras' : false;
-            var _hasDeposit = _depositUrl && !_isExtra;
+            var _isExtra = _svcObj ? (_svcObj.category === 'Extras' || _svcObj.categoryId === 'extras') : false;
+            var _hasDeposit = !_isExtra;
 
             var barberVal = document.getElementById('barber').value || 'no-preference';
             var selectedBtn = document.querySelector('.time-slot-btn.selected');
@@ -1109,17 +1110,6 @@ var todayStr = now.getFullYear() + '-' +
         });
     }
 
-    function getServiceDuration(serviceId) {
-        var durMap = {
-            "i-cut-royal":60,"i-cut-deluxe":50,"full-skinfade-beard-luxury":40,"full-experience":30,
-            "senior-full-experience":30,"skin-fade":30,"scissor-cut":30,"classic-sbs":20,
-            "hot-towel-shave":15,"clipper-cut":15,"senior-haircut":20,"young-gents":20,
-            "young-gents-skin-fade":25,"full-facial":10,"beard-dyeing":20,"face-mask":10,
-            "face-steam":10,"threading":5,"waxing":10,"shape-up-clean-up":15,"wash-hot-towel":10
-        };
-        return durMap[serviceId] || 30;
-    }
-
     function toStartAndEnd(dateStr, timeStr, serviceId) {
         var timeMatch = (timeStr || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (!timeMatch) return null;
@@ -1128,10 +1118,11 @@ var todayStr = now.getFullYear() + '-' +
         var ap = timeMatch[3].toUpperCase();
         if (ap === 'PM' && h !== 12) h += 12;
         if (ap === 'AM' && h === 12) h = 0;
+        var svcDur = ((window.SERVICES || []).find(function(s) { return s.id === serviceId; }) || {}).duration || 30;
         var startTime = new Date(dateStr + 'T00:00:00');
         startTime.setHours(h, m, 0, 0);
-        var endTime = new Date(startTime.getTime() + getServiceDuration(serviceId) * 60 * 1000);
-        return { startTime: startTime, endTime: endTime };
+        var endTime = new Date(startTime.getTime() + svcDur * 60 * 1000);
+        return { startTime: startTime, endTime: endTime, duration: svcDur };
     }
 
     function writeBookingStatus(bookingData, status, paymentState) {
@@ -1150,12 +1141,15 @@ var todayStr = now.getFullYear() + '-' +
                 barberId: bookingData.barber,
                 barberName: bookingData.barberName || '',
                 serviceId: bookingData.service,
+                duration: range.duration,
+                date: bookingData.date,
+                time: bookingData.time,
                 startTime: firebase.Timestamp.fromDate(range.startTime),
                 endTime: firebase.Timestamp.fromDate(range.endTime),
                 status: status,
                 paymentType: bookingData.paymentType,
                 paymentState: paymentState,
-                source: 'website',
+                source: 'Website',
                 updatedAt: firebase.Timestamp.fromDate(new Date()),
             };
 
@@ -1205,7 +1199,7 @@ var todayStr = now.getFullYear() + '-' +
         var data = window._pendingFormData;
         data.paymentType = paymentType;
         data.status = 'PENDING';
-        data.bookingId = 'WCB-' + Date.now();
+        data.bookingId = 'WCB-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         var popup = document.getElementById('successPopup');
@@ -1459,7 +1453,7 @@ var todayStr = now.getFullYear() + '-' +
             var openMins = timeToMins(open);
             var closeMins = timeToMins(close);
             var step = 15;
-            for (var mins = openMins; mins + duration <= closeMins; mins += step) {
+            for (var mins = openMins; mins + step <= closeMins; mins += step) {
                 if (isToday && mins <= nowMins + 15) continue;
                 var h = Math.floor(mins / 60);
                 var m = mins % 60;
@@ -1534,41 +1528,25 @@ var todayStr = now.getFullYear() + '-' +
         }
 
         function getFirestoreSlots() {
-            var db = window._db;
-            var firebase = window._firebase;
-            var startOfDay = getLocalDate(date, 0, 0);
-            var endOfDay = getLocalDate(date, 23, 59);
-            var q = firebase.query(
-                firebase.collection(db, 'tenants/whitecross/bookings'),
-                firebase.where('startTime', '>=', firebase.Timestamp.fromDate(startOfDay)),
-                firebase.where('startTime', '<=', firebase.Timestamp.fromDate(endOfDay))
-            );
-            return firebase.getDocs(q).then(function(snap) {
-                var busyMap = {};
-                ACTIVE_BARBERS.forEach(function(b) {
-                    busyMap[b.id] = [];
-                    // also index by lowercase name so Booksy/Fresha bookings match
-                    if (b.name) busyMap[b.name.toLowerCase()] = busyMap[b.id];
+            var fns    = window._fns;
+            var callFn = window._httpsCallable;
+            if (!fns || !callFn) return Promise.resolve({});
+            return callFn(fns, 'salownGetBusySlots')({ tenantId: TENANT, dateStr: date })
+                .then(function(result) {
+                    var slots = (result.data && result.data.slots) || [];
+                    var busyMap = {};
+                    ACTIVE_BARBERS.forEach(function(b) {
+                        var idKey = b.id.toLowerCase();
+                        busyMap[idKey] = [];
+                        if (b.name) busyMap[b.name.toLowerCase()] = busyMap[idKey];
+                    });
+                    slots.forEach(function(s) {
+                        var slot = { start: s.startMs, end: s.endMs };
+                        var bKey = s.barberId ? s.barberId.toLowerCase() : (s.barberName ? s.barberName.toLowerCase() : '');
+                        if (bKey && busyMap[bKey] !== undefined) busyMap[bKey].push(slot);
+                    });
+                    return busyMap;
                 });
-                snap.forEach(function(doc) {
-                    var d = doc.data();
-                    var st = String(d.status || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
-                    if (st === 'CHECKEDOUT' || st === 'PAID' || st === 'DONE' || st === 'COMPLETE') st = 'CHECKED_OUT';
-                    if (st === 'CANCELED') st = 'CANCELLED';
-                    if (st === 'NOSHOW') st = 'NO_SHOW';
-                    if (st === 'CANCELLED' || st === 'NO_SHOW' || st === 'DELETED' || st === 'CHECKED_OUT' || st === 'COMPLETED') return;
-                    // Skip expired PENDING website bookings — they no longer hold the slot
-                    if (st === 'PENDING' && String(d.source || '').toLowerCase() === 'website') {
-                        var exp = d.expiresAt;
-                        if (exp && exp.toMillis && exp.toMillis() < Date.now()) return;
-                    }
-                    if (!d.startTime || !d.endTime) return;
-                    var slot = { start: d.startTime.toMillis(), end: d.endTime.toMillis() };
-                    var bKey = (d.barberId != null && d.barberId !== '') ? d.barberId : (d.barberName ? d.barberName.toLowerCase() : '');
-                    if (busyMap[bKey] !== undefined) busyMap[bKey].push(slot);
-                });
-                return busyMap;
-            });
         }
 
         function renderSlots(busyMap) {
@@ -1588,7 +1566,7 @@ var todayStr = now.getFullYear() + '-' +
                     if (!sch) return false;
                     var schOpen = getLocalDate(date, parseInt(sch.open.split(':')[0]), parseInt(sch.open.split(':')[1])).getTime();
                     var schClose = getLocalDate(date, parseInt(sch.close.split(':')[0]), parseInt(sch.close.split(':')[1])).getTime();
-                    return slotStart >= schOpen && slotEnd <= schClose;
+                    return slotStart >= schOpen && slotStart < schClose;
                 }
 
                 var busy = false;
@@ -1675,22 +1653,6 @@ var todayStr = now.getFullYear() + '-' +
         });
     });
 
-    /* ACCORDION */
-    document.querySelectorAll(".accordion-toggle").forEach(function(t) {
-        t.addEventListener("click", function() {
-            var target = document.querySelector('.' + t.dataset.target + '-content');
-            var arrow = document.querySelector('.arrow-' + t.dataset.target);
-            if (target.classList.contains("open")) {
-                target.style.maxHeight = "0px";
-                target.classList.remove("open");
-                arrow.classList.remove("rotate");
-            } else {
-                target.classList.add("open");
-                target.style.maxHeight = target.scrollHeight + "px";
-                arrow.classList.add("rotate");
-            }
-        });
-    });
 
     /* STRIPE SUCCESS CHECK */
     var isStripeSuccess = new URLSearchParams(window.location.search).get('booking') === 'success';

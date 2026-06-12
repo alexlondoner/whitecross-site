@@ -1460,7 +1460,6 @@ exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
     const snap = await db
         .collection('tenants/whitecross/bookings')
         .where('status',  '==', 'PENDING')
-        .where('source',  '==', 'website')
         .where('expiresAt', '<=', now)
         .get();
 

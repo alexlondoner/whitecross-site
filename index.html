@@ -205,7 +205,16 @@
         Extras
         <span class="arrow arrow-extras">▼</span>
       </h2>
-      <div class="accordion-content extras-content" id="extras-items" style="max-height:0px;"></div>
+      <div class="accordion-content extras-content" id="extras-items" style="max-height:0px;">
+        <div class="service-item"><div class="s-info"><strong>Full Facial Treatment</strong><button class="details-btn" onclick="openServiceStory('full-facial')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£24</span><button class="details-btn" onclick="selectService('full-facial')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Beard Dyeing</strong><button class="details-btn" onclick="openServiceStory('beard-dyeing')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£24</span><button class="details-btn" onclick="selectService('beard-dyeing')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Shape Up &amp; Clean Up</strong><button class="details-btn" onclick="openServiceStory('shape-up-clean-up')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£20</span><button class="details-btn" onclick="selectService('shape-up-clean-up')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Face Mask</strong><button class="details-btn" onclick="openServiceStory('face-mask')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£12</span><button class="details-btn" onclick="selectService('face-mask')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Face Steam</strong><button class="details-btn" onclick="openServiceStory('face-steam')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£12</span><button class="details-btn" onclick="selectService('face-steam')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Threading</strong><button class="details-btn" onclick="openServiceStory('threading')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('threading')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Waxing (Nose &amp; Ears)</strong><button class="details-btn" onclick="openServiceStory('waxing')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('waxing')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+        <div class="service-item"><div class="s-info"><strong>Wash, Style &amp; Hot Towel</strong><button class="details-btn" onclick="openServiceStory('wash-hot-towel')">Service Details</button></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="price">£10</span><button class="details-btn" onclick="selectService('wash-hot-towel')" style="background:#d4af37;color:#000;border-color:#d4af37;">Select ✓</button></div></div>
+      </div>
     </section>
 
     <h2 class="form-header" id="booking">Fast & Secure Booking</h2>
@@ -514,6 +523,7 @@
     import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
     import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
+    import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
     var app = getApps().length ? getApps()[0] : initializeApp({
         apiKey: "AIzaSyA16eMVtA4ZOIu3ixCg8y8RUh-EAjMev3A",
@@ -530,6 +540,9 @@
     var db = getFirestore(app);
     window._db = db;
     window._firebase = { collection, addDoc, getDocs, getDoc, setDoc, doc, query, where, updateDoc, Timestamp, onSnapshot };
+    var fns = getFunctions(app, 'europe-west2');
+    window._fns = fns;
+    window._httpsCallable = httpsCallable;
 
     /* Shop link — show/hide based on settings */
     function applyShopLink(enabled) {
@@ -564,7 +577,11 @@
             cats.forEach(function(cat) {
                 var el = document.getElementById(cat.id);
                 if (!el) return;
-                var list = svcs.filter(function(s) { return (s.category || 'Standard') === cat.key; });
+                var catSlug = cat.key.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                var list = svcs.filter(function(s) {
+                    return (s.category || 'Standard') === cat.key || s.categoryId === catSlug;
+                });
+                if (!list.length) return;
                 el.innerHTML = list.map(function(s, i) {
                     var nm = s.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                     var detBtn = s.description ? '<button class="details-btn" onclick="openServiceStory(\''+s.id+'\')">'+cat.btn+'</button>' : '';
@@ -576,7 +593,7 @@
                         +'</div></div>';
                 }).join('');
                 if (el.classList.contains('open')) {
-                    el.style.maxHeight = el.scrollHeight + 'px';
+                    el.style.maxHeight = '1200px';
                 }
             });
             /* Render booking dropdown */
@@ -585,7 +602,8 @@
             var cur = sel.value;
             sel.innerHTML = '<option value="" disabled selected>Select Service</option>';
             [['Exclusive Bundles','Exclusive Bundle Packages'],['Standard','Standard Packages'],['Extras','Extras']].forEach(function(c) {
-                var list = svcs.filter(function(s) { return (s.category || 'Standard') === c[0]; });
+                var catSlug = c[0].toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                var list = svcs.filter(function(s) { return (s.category || 'Standard') === c[0] || s.categoryId === catSlug; });
                 if (!list.length) return;
                 var grp = document.createElement('optgroup');
                 grp.label = c[1];
@@ -630,23 +648,18 @@
     );
 </script>
 
-<script src="script.js?v=3"></script>
+<script src="script.js?v=5"></script>
 <script>
     document.querySelectorAll('.accordion-toggle').forEach(function(toggle) {
         toggle.addEventListener('click', function() {
-            var target = toggle.getAttribute('data-target');
-            var content = document.querySelector('.' + target + '-content');
-            var arrow = toggle.querySelector('.arrow');
-            var isOpen = content && content.style.maxHeight && content.style.maxHeight !== '0px';
-            if (content) {
-                if (isOpen) {
-                    content.style.maxHeight = '0px';
-                    if (arrow) arrow.classList.remove('rotated');
-                } else {
-                    content.style.maxHeight = content.scrollHeight + 'px';
-                    if (arrow) arrow.classList.add('rotated');
-                }
-            }
+            var key     = toggle.getAttribute('data-target');
+            var content = document.querySelector('.' + key + '-content');
+            var arrow   = document.querySelector('.arrow-' + key);
+            if (!content) return;
+            var opening = !content.classList.contains('open');
+            content.classList.toggle('open', opening);
+            content.style.maxHeight = opening ? '1200px' : '0px';
+            if (arrow) arrow.classList.toggle('rotate', opening);
         });
     });
 </script>
