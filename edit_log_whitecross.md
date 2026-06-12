@@ -1,5 +1,23 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-06-12 (follow-up) — script.js: window.ACTIVE_BARBERS dead-code fix
+
+### whitecross-site/script.js
+- **Bug**: `window.ACTIVE_BARBERS` was always `undefined` (ACTIVE_BARBERS is a closure-scoped `let`, not on window). The all-blocked no-preference race check therefore had `allAB = []` → condition was always false → slot silently accepted regardless of barbers' calendars.
+- **Fix**: changed `window.ACTIVE_BARBERS` to `ACTIVE_BARBERS` (direct closure reference).
+- **Proof log**: added `console.log('[race-check] no-preference, checking N barbers')` — verify N > 0 in browser console on a real no-preference booking attempt.
+
+## 2026-06-12 — script.js + Reschedule.html fixes
+
+### whitecross-site/script.js
+- **`isUkDst(y,m,d,h)` added** (last-Sunday-of-March/October helper, same as BookingPage.jsx + functions/index.js)
+- **`toStartAndEnd` rewritten** — uses `Date.UTC + BST offset` instead of browser-local `new Date() + setHours()`. A 14:00 booking from a UTC+2 browser now writes 13:00 UTC (UK BST), same as from a UK browser. Old code produced 12:00 UTC — 1 hour shifted.
+- **No-preference race check fixed** (`proceedToPayment`): when `bId` + `bNm` both empty, marks taken only if EVERY active barber has a conflict. Previously silently passed for any no-preference booking.
+- **No-preference slot assignment** (`renderSlots`): uses `reduce` to find least-busy barber (fewest busy-range entries in busyMap), instead of always picking first available.
+
+### whitecross-site/Reschedule.html
+- `confirmReschedule()`: detects when user selected a different barber (`selectedBarberObj.id !== currentBookingData.barberId`); sends `newBarberId`+`newBarberName` to `salownRescheduleByToken` only in that case. Success screen already showed chosen barber name — now it will be accurate.
+
 ## 2026-05-30
 
 ### barber-panel — Reports.js add-ons hesaplamaya eklendi
