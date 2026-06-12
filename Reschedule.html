@@ -661,15 +661,27 @@
     window.confirmReschedule = async function() {
         if (!selectedDate || !selectedTime || !selectedBarber) return;
 
+        // Detect barber change: include new barber fields only when different from booking's current barber
+        const selectedBarberObj = activeBarbers.find(b => b.name === selectedBarber || b.id === selectedBarber);
+        const barberChanged = selectedBarberObj
+            && selectedBarberObj.id
+            && currentBookingData?.barberId
+            && selectedBarberObj.id !== currentBookingData.barberId;
+
         showState('stateProcessing');
         try {
-            await httpsCallable(fns, 'salownRescheduleByToken')({
+            const payload = {
                 tenantId:   TENANT,
                 bookingId:  currentBookingId,
                 email:      currentEmail,
                 newDateStr: selectedDate,
                 newTime:    selectedTime,
-            });
+            };
+            if (barberChanged) {
+                payload.newBarberId   = selectedBarberObj.id;
+                payload.newBarberName = selectedBarberObj.name || '';
+            }
+            await httpsCallable(fns, 'salownRescheduleByToken')(payload);
 
             const newDateDisplay = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-GB', {
                 weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',

@@ -1110,6 +1110,14 @@ var todayStr = now.getFullYear() + '-' +
         });
     }
 
+    // UK DST helper — same algorithm as BookingPage.jsx / functions/index.js
+    function isUkDst(y, m, d, h) {
+        function lastSun(mo) { var x = new Date(Date.UTC(y, mo, 31)); return 31 - x.getUTCDay(); }
+        var t = Date.UTC(y, m - 1, d, h);
+        return t >= Date.UTC(y, 2, lastSun(2), 1) && t < Date.UTC(y, 9, lastSun(9), 1);
+    }
+
+    // UK wall-clock Timestamps — never browser-local (guards against UTC+N browsers writing shifted times)
     function toStartAndEnd(dateStr, timeStr, serviceId) {
         var timeMatch = (timeStr || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (!timeMatch) return null;
@@ -1119,10 +1127,10 @@ var todayStr = now.getFullYear() + '-' +
         if (ap === 'PM' && h !== 12) h += 12;
         if (ap === 'AM' && h === 12) h = 0;
         var svcDur = ((window.SERVICES || []).find(function(s) { return s.id === serviceId; }) || {}).duration || 30;
-        var startTime = new Date(dateStr + 'T00:00:00');
-        startTime.setHours(h, m, 0, 0);
-        var endTime = new Date(startTime.getTime() + svcDur * 60 * 1000);
-        return { startTime: startTime, endTime: endTime, duration: svcDur };
+        var parts = dateStr.split('-');
+        var yr = parseInt(parts[0], 10), mo = parseInt(parts[1], 10), dy = parseInt(parts[2], 10);
+        var startMs = Date.UTC(yr, mo - 1, dy, h, m) + (isUkDst(yr, mo, dy, h) ? -3600000 : 0);
+        return { startTime: new Date(startMs), endTime: new Date(startMs + svcDur * 60000), duration: svcDur };
     }
 
     function writeBookingStatus(bookingData, status, paymentState) {
@@ -1203,52 +1211,103 @@ var todayStr = now.getFullYear() + '-' +
         sessionStorage.setItem('pendingBooking', JSON.stringify(data));
 
         var popup = document.getElementById('successPopup');
-        if (popup) {
-            document.getElementById('popup-icon').innerText = '⏳';
-            document.getElementById('popup-title').innerText = 'Securing your slot...';
-            document.getElementById('popup-text').innerText = 'Please wait while we prepare your payment.';
-            popup.style.display = 'flex';
-        }
-
         var svcObj = (window.SERVICES || []).find(function(s) { return s.id === data.service; });
 
-        writeBookingStatus(data, 'PENDING', 'PENDING').then(function(ok) {
-            if (!ok) {
-                showPopupError('Could not save your booking. Please check your connection and try again.');
-                return;
+        function _goAhead() {
+            if (popup) {
+                document.getElementById('popup-icon').innerText = '⏳';
+                document.getElementById('popup-title').innerText = 'Securing your slot...';
+                document.getElementById('popup-text').innerText = 'Please wait while we prepare your payment.';
+                popup.style.display = 'flex';
             }
-            return fetch(CREATE_SESSION_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bookingId:   data.bookingId,
-                    serviceId:   data.service,
-                    serviceName: svcObj ? svcObj.name : data.service,
-                    price:       svcObj ? svcObj.price : 0,
-                    barberId:    data.barber,
-                    barberName:  data.barberName,
-                    date:        data.date,
-                    time:        data.time,
-                    clientName:  data.name,
-                    clientEmail: data.email,
-                    clientPhone: data.phone,
-                    paymentType: paymentType,
-                    testMode:    IS_TEST_MODE || undefined,
-                }),
-            }).then(function(r) {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            }).then(function(result) {
-                if (result.url) {
-                    setTimeout(function() { window.location.href = result.url; }, 400);
-                } else {
-                    showPopupError('Payment setup failed. Please try again.');
+            writeBookingStatus(data, 'PENDING', 'PENDING').then(function(ok) {
+                if (!ok) {
+                    showPopupError('Could not save your booking. Please check your connection and try again.');
+                    return;
                 }
+                return fetch(CREATE_SESSION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookingId:   data.bookingId,
+                        serviceId:   data.service,
+                        serviceName: svcObj ? svcObj.name : data.service,
+                        price:       svcObj ? svcObj.price : 0,
+                        barberId:    data.barber,
+                        barberName:  data.barberName,
+                        date:        data.date,
+                        time:        data.time,
+                        clientName:  data.name,
+                        clientEmail: data.email,
+                        clientPhone: data.phone,
+                        paymentType: paymentType,
+                        testMode:    IS_TEST_MODE || undefined,
+                    }),
+                }).then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                }).then(function(result) {
+                    if (result.url) {
+                        setTimeout(function() { window.location.href = result.url; }, 400);
+                    } else {
+                        showPopupError('Payment setup failed. Please try again.');
+                    }
+                });
+            }).catch(function(err) {
+                console.error('proceedToPayment error:', err);
+                showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
             });
-        }).catch(function(err) {
-            console.error('proceedToPayment error:', err);
-            showPopupError('Payment setup failed. Please try again or call us on 020 3621 5929.');
-        });
+        }
+
+        // Last-second race check: re-verify slot is still free before writing
+        var _fns = window._fns, _hc = window._httpsCallable;
+        ((_fns && _hc)
+            ? _hc(_fns, 'salownGetBusySlots')({ tenantId: TENANT, dateStr: data.date })
+                .then(function(r) { return (r.data && r.data.slots) || []; })
+                .catch(function() { return null; })
+            : Promise.resolve(null)
+        ).then(function(slots) {
+            if (slots !== null) {
+                var range = toStartAndEnd(data.date, data.time, data.service);
+                if (range) {
+                    var dur = (svcObj && svcObj.duration) || 30;
+                    var ns  = range.startTime.getTime(), ne = ns + dur * 60000;
+                    var bId = (data.barber && data.barber !== 'no-preference') ? data.barber.toLowerCase() : '';
+                    var bNm = (data.barberName || '').toLowerCase();
+                    var taken;
+                    if (!bId && !bNm) {
+                        // no-preference: taken only when every service-eligible barber is blocked
+                        var allAB = (svcObj && svcObj.barbers && svcObj.barbers.length > 0)
+                            ? (ACTIVE_BARBERS || []).filter(function(ab) { return svcObj.barbers.indexOf(ab.id) !== -1 || svcObj.barbers.indexOf(ab.name) !== -1; })
+                            : (ACTIVE_BARBERS || []);
+                        console.log('[race-check] no-preference, checking', allAB.length, 'eligible barbers for service', data.service);
+                        taken = allAB.length > 0 && allAB.every(function(ab) {
+                            var abId = (ab.id   || '').toLowerCase();
+                            var abNm = (ab.name || '').toLowerCase();
+                            return slots.some(function(sl) {
+                                var slId = (sl.barberId   || '').toLowerCase();
+                                var slNm = (sl.barberName || '').toLowerCase();
+                                var sameB = (abId && slId && abId === slId) || (abNm && slNm && abNm === slNm);
+                                return sameB && ns < sl.endMs && ne > sl.startMs;
+                            });
+                        });
+                    } else {
+                        taken = slots.some(function(sl) {
+                            var slId = (sl.barberId   || '').toLowerCase();
+                            var slNm = (sl.barberName || '').toLowerCase();
+                            var same = (bId && slId && bId === slId) || (bNm && slNm && bNm === slNm);
+                            return same && ns < sl.endMs && ne > sl.startMs;
+                        });
+                    }
+                    if (taken) {
+                        showPopupError('This time was just taken by another customer — please choose a different slot.');
+                        checkAvailability(data.date);
+                        return;
+                    }
+                }
+            }
+            _goAhead();
+        }).catch(function() { _goAhead(); }); // fail-open on network error
     }
 
     function proceedToGroupPayment(paymentType) {
@@ -1277,13 +1336,14 @@ var todayStr = now.getFullYear() + '-' +
             return sum + (a.price > 0 ? a.price : (svc ? parseFloat(svc.price || 0) : 0));
         }, 0);
 
-        var popup = document.getElementById('successPopup');
-        if (popup) {
-            document.getElementById('popup-icon').innerText  = '⏳';
-            document.getElementById('popup-title').innerText = 'Securing your slots...';
-            document.getElementById('popup-text').innerText  = 'Please wait while we prepare your group payment.';
-            popup.style.display = 'flex';
-        }
+        function _goGroup() {
+            var popup = document.getElementById('successPopup');
+            if (popup) {
+                document.getElementById('popup-icon').innerText  = '⏳';
+                document.getElementById('popup-title').innerText = 'Securing your slots...';
+                document.getElementById('popup-text').innerText  = 'Please wait while we prepare your group payment.';
+                popup.style.display = 'flex';
+            }
 
         // Create PENDING bookings for all group members
         var bookingIds = [];
@@ -1394,6 +1454,33 @@ var todayStr = now.getFullYear() + '-' +
             console.error('proceedToGroupPayment error:', err);
             showPopupError('Group payment setup failed. Please try again or call us on 020 3621 5929.');
         });
+        } // end _goGroup
+
+        // Last-second race check for all group members
+        var _fns = window._fns, _hc = window._httpsCallable;
+        ((_fns && _hc)
+            ? _hc(_fns, 'salownGetBusySlots')({ tenantId: TENANT, dateStr: data.date })
+                .then(function(r) { return (r.data && r.data.slots) || []; })
+                .catch(function() { return null; })
+            : Promise.resolve(null)
+        ).then(function(slots) {
+            if (slots !== null) {
+                var taken = allAssignments.some(function(a) {
+                    return slots.some(function(sl) {
+                        var aId  = (a.barberId   || '').toLowerCase(), slId = (sl.barberId   || '').toLowerCase();
+                        var aNm  = (a.barberName || '').toLowerCase(), slNm = (sl.barberName || '').toLowerCase();
+                        var same = (aId && slId && aId === slId) || (aNm && slNm && aNm === slNm);
+                        return same && a.startMs < sl.endMs && a.endMs > sl.startMs;
+                    });
+                });
+                if (taken) {
+                    showPopupError('One or more group slots were just taken — please go back and choose different times.');
+                    checkAvailability(data.date);
+                    return;
+                }
+            }
+            _goGroup();
+        }).catch(function() { _goGroup(); }); // fail-open
     }
 
     function checkAvailability(date) {
@@ -1473,8 +1560,12 @@ var todayStr = now.getFullYear() + '-' +
         }
 
         var barbersToCheck = [];
+        var eligibleBarbers = (_svcForDuration && _svcForDuration.barbers && _svcForDuration.barbers.length > 0)
+            ? ACTIVE_BARBERS.filter(function(b) { return _svcForDuration.barbers.indexOf(b.id) !== -1 || _svcForDuration.barbers.indexOf(b.name) !== -1; })
+            : ACTIVE_BARBERS;
+        console.log('[eligibility] service', service, '— eligible barbers:', eligibleBarbers.map(function(b) { return b.name; }));
         if (barber === 'no-preference') {
-            barbersToCheck = ACTIVE_BARBERS;
+            barbersToCheck = eligibleBarbers;
         } else {
             var found = ACTIVE_BARBERS.find(function(b) { return b.id === barber; });
             if (found) barbersToCheck = [found];
@@ -1594,8 +1685,14 @@ var todayStr = now.getFullYear() + '-' +
                         .filter(function(b) { return isInSchedule(b) && !isBusy(b.id); });
                     busy = available.length === 0;
                     if (!busy) {
-                        assignedBarber = available[0].id;
-                        assignedBarberName = available[0].name || '';
+                        // Assign to barber with fewest existing bookings today (lowest occupancy)
+                        var leastBusy = available.reduce(function(best, b) {
+                            var bCount    = (busyMap[b.id.toLowerCase()]    || []).length;
+                            var bestCount = (busyMap[best.id.toLowerCase()] || []).length;
+                            return bCount < bestCount ? b : best;
+                        });
+                        assignedBarber = leastBusy.id;
+                        assignedBarberName = leastBusy.name || '';
                     }
                 } else {
                     var foundB = ACTIVE_BARBERS.find(function(b) { return b.id === barber; });

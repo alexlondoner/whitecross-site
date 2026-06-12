@@ -74,6 +74,13 @@ service cloud.firestore {
         allow write: if isSuperAdmin() || isAdmin(tenantId);
       }
 
+      // ── Parser tombstones: written on panel delete, immutable after ──────────
+      match /parserTombstones/{docId} {
+        allow create: if isSuperAdmin() || isTenantAny(tenantId);
+        allow read:   if isSuperAdmin() || isTenantAny(tenantId);
+        allow update, delete: if isSuperAdmin();
+      }
+
       // ── Everything else: tenant-scoped auth required ────────────────────────
       match /{subcollection}/{docId} {
         allow read:  if isSuperAdmin() || isTenantAny(tenantId);
