@@ -1547,11 +1547,19 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                 if (!snap.empty) clientData = snap.docs[0].data();
             }
             if (clientData) {
-                loyaltyPoints = clientData.loyaltyPoints || 0;
+                // Prefer loyaltyPointsTotal written to the booking doc at checkout
+                // (avoids race where trigger fires before client doc is updated)
+                loyaltyPoints = (after.loyaltyPointsTotal != null)
+                    ? after.loyaltyPointsTotal
+                    : (clientData.loyaltyPoints || 0);
                 isMember = clientData.isMember || false;
             }
         } catch (err) {
             console.warn('sendLoyaltyCardEmail: could not fetch client doc', err.message);
+        }
+        // Fallback: if no client doc found but booking carries the total, use it
+        if (loyaltyPoints === 0 && after.loyaltyPointsTotal != null) {
+            loyaltyPoints = after.loyaltyPointsTotal;
         }
 
         // Members don't earn points — send a simpler receipt, no card

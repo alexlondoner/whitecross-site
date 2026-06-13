@@ -1,5 +1,16 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-06-13 — New Google reviews added (Ian Uvas, Anthony Lamont, Jamie Marshall)
+
+### whitecross-site/index.html
+- **Carousel testimonials** — 3 new reviews added to both sets (first + duplicate) for infinite scroll
+- **LD+JSON schema** — 3 new Review objects added with `datePublished` (Ian Uvas: 2026-06-13, Anthony/Jamie: 2026-05-30)
+
+### whitecross-site/london-barbers.html
+- New 3 reviews placed at top of testimonials grid with month/year labels
+
+---
+
 ## 2026-06-13 — SEO foundations for London / Central London ranking
 
 ### Goal
