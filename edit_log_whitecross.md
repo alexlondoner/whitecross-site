@@ -1,5 +1,30 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-06-13 — SEO foundations for London / Central London ranking
+
+### Goal
+Lay groundwork for organic ranking on broad London searches ("london barbers", "barbers central london", "best barbers london") — white-hat only, no penalty risk.
+
+### whitecross-site/index.html
+- **Title** shortened + rewritten — was 92 chars (Google truncates at ~60) and buried "London". Now: `Barbers London EC1 | I CUT Whitecross Barbers, Clerkenwell` (59 chars, leads with target keyword)
+- **Meta description** updated — now leads with "Award-winning London barbers in Central London"
+- **Meta keywords** expanded — added "barbers london", "london barbers", "central london barbers", "barbershop london", etc.
+- **OG/Twitter tags** updated to match new title/description
+- **Schema `areaServed`** added to Barbershop LD+JSON — lists London, Central London, Clerkenwell, City of London, Islington, Shoreditch, Old Street, Barbican, Moorgate, Holborn, Farringdon
+- **FAQ schema added** — new `FAQPage` LD+JSON block targeting "where is", "how much", "walk-ins", "best barbers london", "nearest tube" queries (helps appear in People Also Ask)
+- **SEO content section added** to body — visible paragraph block above footer with natural "barbers London / Central London barbers" keyword usage; links to `/london-barbers.html`
+
+### whitecross-site/london-barbers.html (NEW FILE)
+- Dedicated landing page targeting "london barbers", "barbers london", "central london barbers", "best barbers london"
+- Full Barbershop + FAQPage LD+JSON
+- Visible content: hero, services grid with prices, tube station pills, testimonials, CTA to book
+- Canonical URL set; links back to homepage booking form
+- Google Analytics tag included
+
+### whitecross-site/sitemap.xml
+- Added `/london-barbers.html` with priority 0.9 (second only to homepage)
+- Refreshed all `lastmod` dates to 2026-06-13
+
 ## 2026-06-12 (follow-up) — script.js: window.ACTIVE_BARBERS dead-code fix
 
 ### whitecross-site/script.js
