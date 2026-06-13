@@ -1437,16 +1437,8 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram reschedule error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'rescheduled', 'Booking Rescheduled', `${name} – ${service} → ${newDateTime}`, bookingId, {
-            beforeDate:   before.date   || oldDateTime,
-            beforeTime:   before.time   || '',
-            beforeBarber: (before.barberName || before.barberId || '').toUpperCase(),
-            beforeService: SERVICE_NAMES[before.serviceId] || before.serviceId || before.serviceName || '',
-            afterDate:    after.date    || newDateTime,
-            afterTime:    after.time    || '',
-            afterBarber:  (after.barberName  || after.barberId  || '').toUpperCase(),
-            afterService: SERVICE_NAMES[after.serviceId]  || after.serviceId  || after.serviceName  || '',
-        });
+        // In-app notification is written by salownNotifyBookingUpdated (salown-app functions)
+        // which fires on the same document update — writing it here too caused duplicate notifications.
     }
 );
 
