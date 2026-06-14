@@ -1279,7 +1279,7 @@ exports.notifyNewBooking = onDocumentCreated(
         } catch (err) {
             console.error('Telegram error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'new_booking', 'New Booking', `${name}${data.groupId ? ` (Group ×${data.groupSize})` : ''} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
+        // In-app notification handled by salownNotifyBookingCreated (salown-app/functions)
     }
 );
 
@@ -1326,7 +1326,7 @@ exports.notifyBookingCancelled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram cancellation error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'cancelled', 'Booking Cancelled', `${name} – ${service} · ${dateStr} at ${timeStr}`, bookingId);
+        // In-app notification handled by salownNotifyBookingUpdated (salown-app/functions)
     }
 );
 
@@ -1386,7 +1386,7 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram confirmation error:', err);
         }
-        await writeNotification(getAdminDb(), 'whitecross', 'confirmed', 'Booking Confirmed', `${name} – ${service} · ${dateStr} at ${timeStr}${paid}`, bookingId);
+        // In-app notification handled by salownNotifyBookingUpdated (salown-app/functions)
     }
 );
 
@@ -1437,8 +1437,7 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
         } catch (err) {
             console.error('Telegram reschedule error:', err);
         }
-        // In-app notification is written by salownNotifyBookingUpdated (salown-app functions)
-        // which fires on the same document update — writing it here too caused duplicate notifications.
+        // In-app notification handled by salownNotifyBookingUpdated (salown-app/functions) for all tenants.
     }
 );
 
@@ -1929,8 +1928,8 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
             console.log('Auth user created:', userRecord.uid);
         } catch (err) {
             console.error('createUser error:', err.code, err.message);
-            if (err.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'Bu email zaten kayıtlı.');
-            throw new HttpsError('internal', 'Kullanıcı oluşturulamadı: ' + err.message);
+            if (err.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'This email is already registered.');
+            throw new HttpsError('internal', 'Could not create user: ' + err.message);
         }
 
         try {
@@ -1938,7 +1937,7 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
             console.log('Custom claims set for:', userRecord.uid, 'tenantId:', tenantId);
         } catch (err) {
             console.error('setCustomUserClaims error:', err.message);
-            throw new HttpsError('internal', 'Claim hatası: ' + err.message);
+            throw new HttpsError('internal', 'Claims error: ' + err.message);
         }
 
         try {
@@ -1952,14 +1951,52 @@ exports.createStaffUser = onCall({ cors: true }, async (request) => {
             console.log('Staff doc written for:', userRecord.uid);
         } catch (err) {
             console.error('Firestore write error:', err.message);
-            throw new HttpsError('internal', 'Firestore yazma hatası: ' + err.message);
+            throw new HttpsError('internal', 'Firestore write error: ' + err.message);
         }
 
         return { uid: userRecord.uid };
     } catch (err) {
         if (err instanceof HttpsError) throw err;
         console.error('createStaffUser unhandled error:', err);
-        throw new HttpsError('internal', err.message || 'Bilinmeyen hata');
+        throw new HttpsError('internal', err.message || 'Unknown error');
+    }
+});
+
+// ── Delete staff user — removes from Auth AND Firestore ───────────────────────
+exports.deleteStaffUser = onCall({ cors: true }, async (request) => {
+    try {
+        const callerUid = request.auth?.uid;
+        if (!callerUid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+
+        const db = getAdminDb();
+        const { uid, tenantId: reqTenantId } = request.data || {};
+        const tenantId = reqTenantId || 'whitecross';
+
+        if (!uid) throw new HttpsError('invalid-argument', 'uid is required.');
+
+        // Only owners/admins can delete
+        const callerDoc = await db.doc(`tenants/${tenantId}/staff/${callerUid}`).get();
+        const isOwner = callerDoc.exists && ['owner', 'admin'].includes(callerDoc.data().role);
+        if (!isOwner) throw new HttpsError('permission-denied', 'Only owners can remove staff accounts.');
+
+        // Delete from Firebase Auth
+        try {
+            await admin.auth().deleteUser(uid);
+            console.log('Auth user deleted:', uid);
+        } catch (err) {
+            if (err.code !== 'auth/user-not-found') throw new HttpsError('internal', 'Auth delete failed: ' + err.message);
+            console.warn('deleteStaffUser: user not in Auth (already gone):', uid);
+        }
+
+        // Delete from Firestore
+        await db.doc(`tenants/${tenantId}/staff/${uid}`).delete();
+        console.log('Staff doc deleted for:', uid);
+
+        return { deleted: true };
+    } catch (err) {
+        if (err instanceof HttpsError) throw err;
+        console.error('deleteStaffUser error:', err);
+        throw new HttpsError('internal', err.message || 'Unknown error');
     }
 });
 
