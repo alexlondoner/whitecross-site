@@ -2630,6 +2630,24 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
                 </div>
             </div>
 
+            <!-- Book Direct CTA -->
+            <div style="background:linear-gradient(135deg,#1a1200,#0d0900);border:1px solid #2e2000;border-radius:4px;overflow:hidden;margin:0 0 28px;">
+                <div style="padding:28px 28px 22px;text-align:center;">
+                    <p style="margin:0 0 8px 0;color:#d4af37;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:700;">Next Visit</p>
+                    <h3 style="margin:0 0 12px 0;color:#fff;font-size:21px;font-weight:700;line-height:1.3;">Book directly with us.<br><span style="color:#d4af37;">Earn points. Get money off.</span></h3>
+                    <p style="margin:0 0 22px 0;color:#888;font-size:13px;line-height:1.8;">
+                        Every £1 you spend earns 1 loyalty point.<br>
+                        <strong style="color:#ccc;">20 pts = £1 off</strong> — just tell your barber at checkout.<br>
+                        No app, no fuss. Your points never expire.
+                    </p>
+                    <a href="https://whitecrossbarbers.com" style="display:inline-block;background:#d4af37;color:#000;font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;padding:15px 36px;border-radius:2px;text-decoration:none;">Book Your Next Cut →</a>
+                    <p style="margin:12px 0 0 0;color:#3d3000;font-size:11px;letter-spacing:1px;">whitecrossbarbers.com</p>
+                </div>
+                <div style="background:#080600;border-top:1px solid #1e1400;padding:13px 24px;text-align:center;">
+                    <p style="margin:0;color:#5a4a00;font-size:11px;letter-spacing:0.5px;">⭐ You have ${newTotal} pts · £${redeemable} ready to redeem on your next visit</p>
+                </div>
+            </div>
+
             <!-- Footer contact -->
             <div style="border-top:1px solid #1e1e1e;padding-top:24px;text-align:center;">
                 <p style="color:#555;font-size:11px;line-height:2;letter-spacing:0.5px;">

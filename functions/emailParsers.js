@@ -173,16 +173,19 @@ async function parseBooksyConfirmations(gmail, db) {
             const serviceMatch = body.match(/(?:Standard Packages?|Exclusive[^:]*):?\s*([^\n£\d]+)/i);
             const service      = serviceMatch ? serviceMatch[1].trim() : '';
             let duration = 30;
+            let price = '';
             for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
-                if (service.toLowerCase().includes(key)) { duration = BOOKSY_DURATION_MAP[key]; break; }
+                if (service.toLowerCase().includes(key)) { duration = BOOKSY_DURATION_MAP[key].d; price = BOOKSY_DURATION_MAP[key].p; break; }
+            }
+            if (!price) {
+                const priceMatch = body.match(/£([\d.]+)/);
+                price = priceMatch ? `£${priceMatch[1]}` : '';
             }
 
             const phoneMatch  = body.match(/0[\d\s]{9,12}/);
             const phone       = phoneMatch ? phoneMatch[0].trim() : '';
             const emailMatch  = body.match(/[\w.-]+@[\w.-]+\.\w+/);
             const email       = emailMatch ? emailMatch[0] : '';
-            const priceMatch  = body.match(/£([\d.]+)/);
-            const price       = priceMatch ? `£${priceMatch[1]}` : '';
             const barberMatch = body.match(/with\s+(\w+)/i);
             const barber      = barberMatch ? barberMatch[1].toLowerCase() : 'alex';
 
