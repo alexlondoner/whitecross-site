@@ -2196,8 +2196,8 @@ exports.parseBookingEmails = onSchedule(
         const db     = getAdminDb();
         const gmail  = getGmailClient();
         await Promise.all([
-            parseBooksyConfirmations(gmail, db),
-            parseBooksyCancellations(gmail, db),
+            // parseBooksyConfirmations disabled (2026-06-17) — migrated to salown-app/functions salownParseEmails
+            // parseBooksyCancellations disabled (2026-06-17) — migrated to salown-app/functions salownParseEmails
             // parseFreshaConfirmations disabled (2026-06-08) — salownParseEmails handles Fresha parsing now
             // parseTreatwell disabled — salownParseEmails handles Treatwell parsing now
             parseBounceEmails(gmail, db),

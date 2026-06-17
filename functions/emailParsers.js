@@ -146,24 +146,34 @@ async function isDuplicateBooking(db, name, date, time) {
 }
 
 // ── Booksy: new booking confirmations ────────────────────────────────────────
-// Subject format: "John Smith: 15 January 2026 14:30"
-// Body:  Standard Packages: Skin Fade | with Alex | £32.00 | phone
+// Subject: old format "John Smith: 17 June 2026 15:00" OR new format "John Smith: new booking"
+// Body:  Wednesday, 17 June 2026, 15:00 - 15:25 / Standard Packages: Classic Short Back and Side / with Alex
 async function parseBooksyConfirmations(gmail, db) {
     const messages = await fetchRecentMessages(gmail, 'from:no-reply@booksy.com subject:"new booking"');
     for (const msg of messages) {
         try {
             const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
-            const body    = extractPlainText(msg.payload);
+            const body    = extractPlainText(msg.payload) || extractHtmlAsText(msg.payload);
 
             const nameMatch = subject.match(/^(.+?):/);
             const name      = nameMatch ? nameMatch[1].trim() : '';
-            const dateMatch = subject.match(/(\d{1,2})\s(\w+)\s(\d{4})\s(\d{1,2}):(\d{2})/);
-            if (!name || !dateMatch) continue;
+            if (!name) continue;
 
-            const bookingDate = `${dateMatch[1]} ${dateMatch[2]} ${dateMatch[3]}`;
-            const bookingTime = `${dateMatch[4]}:${dateMatch[5]}`;
+            // Old format: date in subject. New format: parse date from body.
+            let bookingDate, bookingTime;
+            const subjDate = subject.match(/(\d{1,2})\s(\w+)\s(\d{4})\s(\d{1,2}):(\d{2})/);
+            if (subjDate) {
+                bookingDate = `${subjDate[1]} ${subjDate[2]} ${subjDate[3]}`;
+                bookingTime = `${subjDate[4]}:${subjDate[5]}`;
+            } else {
+                // "Wednesday, 17 June 2026, 15:00 - 15:25"
+                const bodyDate = body.match(/\w+,\s+(\d{1,2})\s+(\w+)\s+(\d{4}),\s+(\d{1,2}):(\d{2})/);
+                if (!bodyDate) continue;
+                bookingDate = `${bodyDate[1]} ${bodyDate[2]} ${bodyDate[3]}`;
+                bookingTime = `${bodyDate[4]}:${bodyDate[5]}`;
+            }
 
-            const refMatch  = body.match(/Booking\s*#\s*(\d+)/i) || body.match(/\bID[:\s]+(\d{5,})/i);
+            const refMatch   = body.match(/Booking\s*#\s*(\d+)/i) || body.match(/\bID[:\s]+(\d{5,})/i);
             const externalId = refMatch
                 ? `BOOKSY-${refMatch[1]}`
                 : `BOOKSY-${name.replace(/\s+/g,'-')}-${bookingDate.replace(/\s+/g,'-')}-${bookingTime}`;
@@ -172,11 +182,34 @@ async function parseBooksyConfirmations(gmail, db) {
 
             const serviceMatch = body.match(/(?:Standard Packages?|Exclusive[^:]*):?\s*([^\n£\d]+)/i);
             const service      = serviceMatch ? serviceMatch[1].trim() : '';
+
+            // Duration: derive from time range in body, fall back to map
             let duration = 30;
-            let price = '';
-            for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
-                if (service.toLowerCase().includes(key)) { duration = BOOKSY_DURATION_MAP[key].d; price = BOOKSY_DURATION_MAP[key].p; break; }
+            const timeRange = body.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+            if (timeRange) {
+                const startM = parseInt(timeRange[1]) * 60 + parseInt(timeRange[2]);
+                const endM   = parseInt(timeRange[3]) * 60 + parseInt(timeRange[4]);
+                if (endM > startM) duration = endM - startM;
+            } else {
+                for (const key of Object.keys(BOOKSY_DURATION_MAP)) {
+                    if (service.toLowerCase().includes(key)) { duration = BOOKSY_DURATION_MAP[key]; break; }
+                }
             }
+
+            // Price: look up from Firestore services (single source of truth)
+            let price = '';
+            if (service) {
+                try {
+                    const svcSnap = await db.collection('tenants/whitecross/services')
+                        .where('name', '==', service).limit(1).get();
+                    if (!svcSnap.empty) {
+                        const svcData = svcSnap.docs[0].data();
+                        const p = svcData.price || (svcData.variations && svcData.variations[0]?.price) || 0;
+                        if (p) price = `£${parseFloat(p).toFixed(2)}`;
+                    }
+                } catch {}
+            }
+            // Fallback: extract from email body
             if (!price) {
                 const priceMatch = body.match(/£([\d.]+)/);
                 price = priceMatch ? `£${priceMatch[1]}` : '';
@@ -189,7 +222,7 @@ async function parseBooksyConfirmations(gmail, db) {
             const barberMatch = body.match(/with\s+(\w+)/i);
             const barber      = barberMatch ? barberMatch[1].toLowerCase() : 'alex';
 
-            const bookingId = externalId;
+            const bookingId   = externalId;
             const booksyStart = toStartTime(bookingDate, bookingTime);
             await db.collection('tenants/whitecross/bookings').doc(bookingId).set({
                 bookingId,
@@ -204,7 +237,7 @@ async function parseBooksyConfirmations(gmail, db) {
                 endTime: addMins(booksyStart, duration),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            console.log(`Booksy confirmation: ${bookingId} ${name}`);
+            console.log(`Booksy confirmation: ${bookingId} ${name} service:${service} price:${price}`);
         } catch (err) {
             console.error('Booksy confirm error', msg.id, err.message);
         }
@@ -219,7 +252,7 @@ async function parseBooksyCancellations(gmail, db) {
     for (const msg of messages) {
         try {
             const subject = (msg.payload.headers.find(h => h.name === 'Subject') || {}).value || '';
-            const body    = extractPlainText(msg.payload);
+            const body    = extractPlainText(msg.payload) || extractHtmlAsText(msg.payload);
 
             const nameMatch = subject.match(/^(.+?):/);
             const name      = nameMatch ? nameMatch[1].trim() : '';
