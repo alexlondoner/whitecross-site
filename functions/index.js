@@ -1592,7 +1592,8 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         if (!pointsEarned && !isMember && !after.discount) {
             pointsEarned = Math.floor(todayPaid || fullPrice);
         }
-        const redeemed    = after.loyaltyPointsRedeemed || 0;
+        const redeemed       = after.loyaltyPointsRedeemed || 0;
+        const redeemedValue  = parseFloat(after.loyaltyRedeemedValue || 0) || (redeemed > 0 ? redeemed / REDEEM_RATE : 0);
         const discount    = parseFloat(String(after.discount || '0').replace('£', '')) || 0;
         const tipAmount   = parseFloat(String(after.tip || '0').replace('£', '')) || 0;
 
@@ -1701,7 +1702,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                         ` : ''}
                         ${redeemed > 0 ? `
                         <tr>
-                            <td colspan="2" style="padding:3px 0 0 0;color:#4caf50;font-size:12px;">− ${redeemed} points redeemed (£${(redeemed / REDEEM_RATE).toFixed(2)} off)</td>
+                            <td colspan="2" style="padding:3px 0 0 0;color:#4caf50;font-size:12px;">− ${redeemed} points redeemed (£${redeemedValue.toFixed(2)} off)</td>
                         </tr>
                         ` : ''}
                         ${discount > 0 && pointsEarned === 0 ? `
@@ -1765,7 +1766,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
                     ${redeemed > 0 ? `
                     <tr>
                         <td style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;">Points Redeemed</td>
-                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">-£${(redeemed / REDEEM_RATE).toFixed(2)} (${redeemed} pts)</td>
+                        <td style="color:#4caf50;font-size:14px;font-weight:700;text-align:right;padding-bottom:8px;">-£${redeemedValue.toFixed(2)} (${redeemed} pts)</td>
                     </tr>
                     ` : ''}
                     ${isDeposit ? `
