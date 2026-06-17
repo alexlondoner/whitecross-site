@@ -1476,6 +1476,9 @@ exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
 exports.sendLoyaltyCardEmail = onDocumentUpdated(
     { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownSendLoyaltyEmail
+        // Enable features.salownLoyaltyEmail: true on whitecross tenant doc to activate.
+        return;
         const before = event.data.before.data();
         const after  = event.data.after.data();
         if (!before || !after) return;
