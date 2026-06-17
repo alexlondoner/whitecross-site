@@ -42,13 +42,35 @@ async function writeNotification(db, tenantId, type, title, body, bookingId, ext
 }
 
 
-// TO ENABLE EMAIL: Google Account → Security → 2FA → App passwords
-// Generate password for "Mail" → add as Firebase secret GMAIL_PASS
-if (!process.env.GMAIL_PASS) {
-    console.error('⚠️  WARNING: GMAIL_PASS not set — email confirmations disabled');
+// All transactional emails now go via Brevo (noreply@salown.com).
+// Migrated 2026-06-17 — Gmail/nodemailer no longer used for outbound email.
+async function sendBrevoEmail({ to, subject, html, senderName = 'I CUT Whitecross Barbers' }) {
+    const https   = require('https');
+    const apiKey  = (process.env.BREVO_API_KEY || '').trim();
+    if (!apiKey) { console.error('BREVO_API_KEY not set'); return; }
+    const body = JSON.stringify({
+        sender:      { name: senderName, email: 'noreply@salown.com' },
+        to:          [{ email: to }],
+        subject,
+        htmlContent: html,
+    });
+    return new Promise((resolve, reject) => {
+        const req = https.request({
+            hostname: 'api.brevo.com', path: '/v3/smtp/email', method: 'POST',
+            headers: { 'api-key': apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        }, res => {
+            let data = '';
+            res.on('data', d => data += d);
+            res.on('end', () => res.statusCode < 300 ? resolve() : reject(new Error(`Brevo ${res.statusCode}: ${data}`)));
+        });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
 }
 
 function getTransporter() {
+    // Legacy — kept for reference only. Use sendBrevoEmail() instead.
     return nodemailer.createTransport({
         service: 'gmail',
         auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS }
@@ -714,7 +736,7 @@ exports.stripeWebhook = onRequest(
 );
 
 exports.sendBookingConfirmation = onDocumentCreated(
-    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
         const data = event.data.data();
         if (!data) return;
@@ -870,12 +892,7 @@ exports.sendBookingConfirmation = onDocumentCreated(
 </html>`;
 
         try {
-            await getTransporter().sendMail({
-                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-                to: email,
-                subject: `✅ Booking Confirmed – ${dateStr} | I CUT Whitecross`,
-                html: htmlBody,
-            });
+            await sendBrevoEmail({ to: email, subject: `✅ Booking Confirmed – ${dateStr} | I CUT Whitecross`, html: htmlBody });
             console.log(`Confirmation email sent to ${email}`);
         } catch (err) {
             console.error('Email send error:', err);
@@ -884,7 +901,7 @@ exports.sendBookingConfirmation = onDocumentCreated(
 );
 
 exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
-    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
         const before = event.data.before.data();
         const after  = event.data.after.data();
@@ -978,12 +995,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 </div></body></html>`;
 
             try {
-                await getTransporter().sendMail({
-                    from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-                    to: email,
-                    subject: `🔄 Booking Rescheduled — ${newDateFormatted} | I CUT Whitecross`,
-                    html: rescheduleHtml,
-                });
+                await sendBrevoEmail({ to: email, subject: `🔄 Booking Rescheduled — ${newDateFormatted} | I CUT Whitecross`, html: rescheduleHtml });
                 console.log(`Reschedule email sent to ${email}`);
             } catch (err) {
                 console.error('Reschedule email error:', err);
@@ -1046,12 +1058,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 </body></html>`;
 
             try {
-                await getTransporter().sendMail({
-                    from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-                    to: emailC,
-                    subject: `Booking Cancelled — ${serviceC} | I CUT Whitecross`,
-                    html: cancelHtml,
-                });
+                await sendBrevoEmail({ to: emailC, subject: `Booking Cancelled — ${serviceC} | I CUT Whitecross`, html: cancelHtml });
                 console.log(`Cancellation email sent to ${emailC}`);
             } catch (err) {
                 console.error('Cancellation email error:', err);
@@ -1188,12 +1195,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 </html>`;
 
         try {
-            await getTransporter().sendMail({
-                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-                to: email,
-                subject: `✅ Booking Confirmed – ${dateStr} | I CUT Whitecross`,
-                html: htmlBody,
-            });
+            await sendBrevoEmail({ to: email, subject: `✅ Booking Confirmed – ${dateStr} | I CUT Whitecross`, html: htmlBody });
             console.log(`Confirmation email (update trigger) sent to ${email}`);
         } catch (err) {
             console.error('Email send error:', err);
@@ -1215,6 +1217,8 @@ exports.notifyNewBooking = onDocumentCreated(
         secrets: ['WC_TELEGRAM_TOKEN', 'WC_TELEGRAM_CHAT_IDS'],
     },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownNotifyBookingCreated
+        return;
         const data = event.data?.data();
         if (!data) return;
 
@@ -1290,6 +1294,8 @@ exports.notifyBookingCancelled = onDocumentUpdated(
         secrets: ['WC_TELEGRAM_TOKEN', 'WC_TELEGRAM_CHAT_IDS'],
     },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownNotifyBookingUpdated
+        return;
         const before = event.data.before.data();
         const after  = event.data.after.data();
         if (!before || !after) return;
@@ -1337,6 +1343,8 @@ exports.notifyBookingConfirmed = onDocumentUpdated(
         secrets: ['WC_TELEGRAM_TOKEN', 'WC_TELEGRAM_CHAT_IDS'],
     },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownNotifyBookingUpdated
+        return;
         const before = event.data.before.data();
         const after  = event.data.after.data();
         if (!before || !after) return;
@@ -1397,6 +1405,8 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
         secrets: ['WC_TELEGRAM_TOKEN', 'WC_TELEGRAM_CHAT_IDS'],
     },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownNotifyBookingUpdated
+        return;
         const before = event.data.before.data();
         const after  = event.data.after.data();
         if (!before || !after) return;
@@ -1474,7 +1484,7 @@ exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
 
 // ── Loyalty card email: fires when a booking is checked out ──────────────────
 exports.sendLoyaltyCardEmail = onDocumentUpdated(
-    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+    { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
         // When features.salownLoyaltyEmail=true, salown-app/functions handles this instead.
         // Toggle in Super Admin → Tenants → whitecross → "Loyalty email (Salown)"
@@ -1831,12 +1841,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
             const subject = isMember
                 ? `Receipt – ${service} · ${dateStr} | I CUT Whitecross`
                 : `Receipt + Your Loyalty Card · ⭐ ${loyaltyPoints} pts | I CUT Whitecross`;
-            await getTransporter().sendMail({
-                from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-                to: email,
-                subject,
-                html: htmlBody,
-            });
+            await sendBrevoEmail({ to: email, subject, html: htmlBody });
             console.log(`Loyalty card email sent to ${email} · ${loyaltyPoints} pts`);
             // Mark booking so the panel can show email-sent indicator
             try {
@@ -2009,7 +2014,7 @@ exports.deleteStaffUser = onCall({ cors: true }, async (request) => {
 exports.sendReceipt = onRequest(
     {
         cors: true,
-        secrets: ['GMAIL_USER', 'GMAIL_PASS'],
+        secrets: ['BREVO_API_KEY'],
     },
     async (req, res) => {
         if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
@@ -2139,12 +2144,7 @@ exports.sendReceipt = onRequest(
 </html>`;
 
         try {
-            await getTransporter().sendMail({
-                from: `"${BRAND.from}" <${process.env.GMAIL_USER}>`,
-                to: email,
-                subject: `Receipt – ${serviceLabel} | ${BRAND.name}`,
-                html: htmlBody,
-            });
+            await sendBrevoEmail({ to: email, subject: `Receipt – ${serviceLabel} | ${BRAND.name}`, html: htmlBody, senderName: BRAND.from });
             console.log(`sendReceipt: sent to ${email} for booking ${bookingId}`);
             res.json({ success: true });
         } catch (err) {
@@ -2557,7 +2557,7 @@ exports.backfillClientStats = onRequest({ timeoutSeconds: 540, memory: '512MiB' 
 
 // ── Manual loyalty adjustment email ──────────────────────────────────────────
 exports.sendManualLoyaltyAdjustmentEmail = onCall(
-    { secrets: ['GMAIL_USER', 'GMAIL_PASS'], cors: true },
+    { secrets: ['BREVO_API_KEY'], cors: true },
     async (req) => {
         const { clientEmail, clientName, points, reason, newTotal } = req.data || {};
         if (!clientEmail) throw new HttpsError('invalid-argument', 'clientEmail required');
@@ -2672,12 +2672,7 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
 </html>`;
 
         const subject = `Your loyalty points have been ${isAdd ? 'updated' : 'adjusted'} · ⭐ ${newTotal} pts | I CUT Whitecross`;
-        await getTransporter().sendMail({
-            from: `"I CUT Whitecross Barbers" <${process.env.GMAIL_USER}>`,
-            to: clientEmail,
-            subject,
-            html: htmlBody,
-        });
+        await sendBrevoEmail({ to: clientEmail, subject, html: htmlBody });
         console.log(`Manual loyalty adjustment email sent to ${clientEmail} · ${isAdd ? '+' : ''}${points} pts · reason: ${reason}`);
         return { success: true };
     }
@@ -3019,6 +3014,8 @@ exports.setTenantClaim = onCall(
 exports.salownNotifyNewBooking = onDocumentCreated(
     { document: 'tenants/{tenantId}/bookings/{bookingId}', region: 'europe-west2' },
     async (event) => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownNotifyBookingCreated
+        return;
         const tenantId = event.params.tenantId;
         if (tenantId === 'whitecross') return; // handled by notifyNewBooking
 
@@ -3121,6 +3118,8 @@ function parseIcal(text) {
 exports.salownSyncTreatwellIcal = onSchedule(
     { schedule: 'every 5 minutes', region: 'europe-west2', timeoutSeconds: 120 },
     async () => {
+        // Disabled 2026-06-17 — migrated to salown-app/functions salownParseEmails (treatwellIcalSync)
+        return;
         const db = getAdminDb();
         const tenantsSnap = await db.collection('tenants').get();
 
