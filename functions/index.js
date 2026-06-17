@@ -818,7 +818,7 @@ exports.sendBookingConfirmation = onDocumentCreated(
     <div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
 
         <div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
-            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:70px;margin-bottom:20px;">
             <h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
         </div>
 
@@ -871,7 +871,8 @@ exports.sendBookingConfirmation = onDocumentCreated(
             <!-- Review CTA -->
             <div style="text-align:center;margin:20px 0;padding:16px;background:rgba(212,175,55,0.04);border:1px solid rgba(212,175,55,0.12);border-radius:10px;">
                 <p style="margin:0 0 8px;font-size:18px;">⭐⭐⭐⭐⭐</p>
-                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <p style="margin:0 0 4px;font-size:13px;color:#d4af37;font-weight:700;">Loving your cuts?</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Leave a Google review and earn <strong style="color:#fff;">+100 loyalty points</strong> — just mention it on your next visit and we'll add them.</p>
                 <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
             </div>
 
@@ -885,6 +886,7 @@ exports.sendBookingConfirmation = onDocumentCreated(
 
         <div style="padding:30px;text-align:center;">
             <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
             <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
@@ -950,7 +952,7 @@ exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
 <body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
 <div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
 <div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
-<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:70px;margin-bottom:20px;">
 <h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
 </div>
 <div style="padding:45px 40px;text-align:center;">
@@ -991,6 +993,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 </div>
 <div style="padding:30px;text-align:center;">
 <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
 </div>
 </div></body></html>`;
 
@@ -1027,7 +1030,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 <body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
 <div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
 <div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
-<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+<img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:70px;margin-bottom:20px;">
 <h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
 </div>
 <div style="padding:45px 40px;text-align:center;">
@@ -1053,6 +1056,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 </div>
 <div style="padding:30px;text-align:center;">
 <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
 </div>
 </div>
 </body></html>`;
@@ -1135,7 +1139,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
 <body style="font-family:'Inter',Arial,sans-serif;background-color:#0a0a0a;margin:0;padding:40px 20px;">
     <div style="max-width:550px;margin:0 auto;background:#111111;color:#ffffff;border-radius:4px;border:1px solid #222;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);">
         <div style="padding:40px 20px;text-align:center;background:#000000;border-bottom:1px solid #1a1a1a;">
-            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:70px;margin-bottom:20px;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:70px;margin-bottom:20px;">
             <h1 style="margin:0;color:#d4af37;font-size:18px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
         </div>
         <div style="padding:45px 40px;text-align:center;">
@@ -1175,7 +1179,8 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
             <!-- Review CTA -->
             <div style="text-align:center;margin:20px 0;padding:16px;background:rgba(212,175,55,0.04);border:1px solid rgba(212,175,55,0.12);border-radius:10px;">
                 <p style="margin:0 0 8px;font-size:18px;">⭐⭐⭐⭐⭐</p>
-                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <p style="margin:0 0 4px;font-size:13px;color:#d4af37;font-weight:700;">Loving your cuts?</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Leave a Google review and earn <strong style="color:#fff;">+100 loyalty points</strong> — just mention it on your next visit and we'll add them.</p>
                 <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
             </div>
 
@@ -1188,6 +1193,7 @@ CONTACT US: <a href="tel:+442036215929" style="color:#888;text-decoration:none;"
         </div>
         <div style="padding:30px;text-align:center;">
             <p style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
             <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
@@ -1729,7 +1735,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
 
         <!-- Header -->
         <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
-            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:60px;margin-bottom:16px;">
             <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
         </div>
 
@@ -1807,8 +1813,9 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
 
             <!-- Review CTA -->
             <div style="text-align:center;margin:16px 0;padding:16px;background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.15);border-radius:10px;">
-                <p style="margin:0 0 10px;font-size:18px;">⭐⭐⭐⭐⭐</p>
-                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Enjoyed your visit? A quick Google review helps us grow and means a lot to the team.</p>
+                <p style="margin:0 0 8px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                <p style="margin:0 0 4px;font-size:13px;color:#d4af37;font-weight:700;">Enjoyed today's visit?</p>
+                <p style="margin:0 0 12px;font-size:12px;color:#aaa;line-height:1.5;">Leave a Google review and earn <strong style="color:#fff;">+100 loyalty points</strong> — just mention it on your next visit and we'll add them.</p>
                 <a href="https://g.page/r/CUSLYyi8-N-lEBM/review" style="display:inline-block;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;padding:10px 22px;border-radius:6px;text-decoration:none;">★ Leave a Google Review</a>
             </div>
 
@@ -1831,6 +1838,7 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         <!-- Footer -->
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
             <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
@@ -2137,6 +2145,7 @@ exports.sendReceipt = onRequest(
         </div>
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 ${BRAND.name}</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 8px;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
             <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
@@ -2578,7 +2587,7 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
 
         <!-- Header -->
         <div style="background:#000;border:1px solid #1a1a1a;border-radius:4px 4px 0 0;padding:36px 20px 28px;text-align:center;border-bottom:1px solid #1a1a1a;">
-            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="I CUT" style="width:60px;margin-bottom:16px;">
+            <img src="https://whitecrossbarbers.com/whitecross-logo.png" alt="" style="width:60px;margin-bottom:16px;">
             <h1 style="margin:0;color:#d4af37;font-size:16px;letter-spacing:5px;text-transform:uppercase;font-weight:300;">I CUT WHITECROSS</h1>
         </div>
 
@@ -2665,6 +2674,7 @@ exports.sendManualLoyaltyAdjustmentEmail = onCall(
         <!-- Footer -->
         <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-top:none;border-radius:0 0 4px 4px;padding:20px;text-align:center;">
             <p style="margin:0;color:#2a2a2a;font-size:10px;letter-spacing:2px;text-transform:uppercase;">© 2026 I CUT Whitecross Barbers</p>
+            <p style="color:#2a2a2a;font-size:10px;margin:6px 0 0;">Powered by <a href="https://salown.com" style="color:#534AB7;text-decoration:none;font-weight:700;">Salown</a></p>
             <p style="color:#2a2a2a;font-size:10px;line-height:1.7;margin-top:8px;">You received this because you are a client of I CUT Whitecross Barbers. We use your email for booking confirmations, loyalty updates and personalised marketing. To unsubscribe, reply to this email with "unsubscribe". · <a href="https://whitecrossbarbers.com/terms.html" style="color:#333;text-decoration:underline;">Privacy &amp; Terms</a></p>
         </div>
     </div>
