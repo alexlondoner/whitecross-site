@@ -1852,3 +1852,32 @@ var todayStr = now.getFullYear() + '-' +
         }
     }, 500);
 });
+
+// Double Points Campaign Banner — reads from Firestore tenants/whitecross/public/campaign
+(function initDoublePointsBanner() {
+    var attempts = 0;
+    var poll = setInterval(function() {
+        attempts++;
+        if (attempts > 30) { clearInterval(poll); return; }
+        var db = window._db;
+        var firebase = window._firebase;
+        if (!db || !firebase || typeof firebase.getDoc !== 'function' || typeof firebase.doc !== 'function') return;
+        clearInterval(poll);
+        firebase.getDoc(firebase.doc(db, 'tenants', 'whitecross', 'public', 'campaign')).then(function(snap) {
+            if (!snap.exists()) return;
+            var data = snap.data();
+            if (!data.active) return;
+            var today = new Date();
+            var todayKey = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            if (!data.startDate || !data.endDate) return;
+            if (todayKey < data.startDate || todayKey > data.endDate) return;
+            var banner = document.getElementById('doublePointsBanner');
+            if (banner) banner.style.display = 'block';
+            var datesEl = document.getElementById('doublePointsDates');
+            if (datesEl) {
+                var fmt = function(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); };
+                datesEl.textContent = 'Campaign: ' + fmt(data.startDate) + ' → ' + fmt(data.endDate) + ' · Points added automatically at checkout';
+            }
+        }).catch(function() {});
+    }, 300);
+})();

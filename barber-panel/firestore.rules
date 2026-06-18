@@ -63,6 +63,10 @@ service cloud.firestore {
         allow read:  if true;
         allow write: if isSuperAdmin() || isTenantAny(tenantId);
       }
+      match /public/{doc} {
+        allow read:  if true;
+        allow write: if false;
+      }
 
       // ── Staff doc: readable by the staff member themselves ──────────────────
       match /staff/{uid} {
