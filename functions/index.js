@@ -738,6 +738,8 @@ exports.stripeWebhook = onRequest(
 exports.sendBookingConfirmation = onDocumentCreated(
     { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
+        // Disabled 2026-06-19 — migrated to salown-app/functions salownBookingConfirmationTrigger
+        return;
         const data = event.data.data();
         if (!data) return;
 
@@ -905,6 +907,8 @@ exports.sendBookingConfirmation = onDocumentCreated(
 exports.sendBookingConfirmationOnUpdate = onDocumentUpdated(
     { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
+        // Disabled 2026-06-19 — cancel/reschedule emails now sent from salownCancelByToken + salownRescheduleByToken
+        return;
         const before = event.data.before.data();
         const after  = event.data.after.data();
         if (!before || !after) return;
@@ -1461,6 +1465,8 @@ exports.notifyBookingRescheduled = onDocumentUpdated(
 // Prevents ghost-blocked slots on the public booking page when customers
 // start checkout but never pay and never return to complete it.
 exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
+    // Disabled 2026-06-19 — migrated to salown-app/functions salownCleanupExpiredPending (multi-tenant)
+    return;
     const db  = getAdminDb();
     const now = admin.firestore.Timestamp.now();
 
@@ -1492,8 +1498,9 @@ exports.cleanupExpiredPending = onSchedule('every 5 minutes', async () => {
 exports.sendLoyaltyCardEmail = onDocumentUpdated(
     { document: 'tenants/whitecross/bookings/{bookingId}', secrets: ['BREVO_API_KEY'] },
     async (event) => {
-        // When features.salownLoyaltyEmail=true, salown-app/functions handles this instead.
-        // Toggle in Super Admin → Tenants → whitecross → "Loyalty email (Salown)"
+        // Disabled 2026-06-19 — migrated to salown-app/functions salownSendLoyaltyEmail
+        // Requires features.salownLoyaltyEmail: true on whitecross tenant doc (set via Super Admin)
+        return;
         const tenantSnap = await getAdminDb().doc('tenants/whitecross').get();
         if (tenantSnap.data()?.features?.salownLoyaltyEmail) return;
 
@@ -1582,11 +1589,13 @@ exports.sendLoyaltyCardEmail = onDocumentUpdated(
         const service     = SERVICE_NAMES[after.serviceId] || after.serviceId || 'Service';
         const barber      = (after.barberName || after.barberId || 'TBC').toUpperCase();
         const isWalkIn    = ['Walk-in', 'walk-in', 'walkin', 'Walk_in'].includes(after.source || '');
-        const todayPaid   = parseFloat(String(after.paidAmount || '0').replace('£', '')) || 0;
-        const fullPrice   = parseFloat(String(after.price || '0').replace('£', '')) || todayPaid;
-        const isDeposit   = after.paymentType === 'DEPOSIT' && fullPrice > todayPaid;
-        const depositPaid = isDeposit ? (DEPOSIT_AMOUNTS[after.serviceId] || DEPOSIT_AMOUNTS[after.service] || 10) : 0;
-        const paidAmount  = isDeposit ? fullPrice : todayPaid;  // show full service value as total
+        const todayPaid       = parseFloat(String(after.paidAmount || '0').replace('£', '')) || 0;
+        const platformDeposit = parseFloat(String(after.platformDepositAmount || '0')) || 0;
+        const fullPrice       = parseFloat(String(after.price || '0').replace('£', '')) || todayPaid;
+        const isDeposit       = after.paymentType === 'DEPOSIT' && fullPrice > todayPaid;
+        const depositPaid     = isDeposit ? (DEPOSIT_AMOUNTS[after.serviceId] || DEPOSIT_AMOUNTS[after.service] || 10) : 0;
+        // For platform bookings (Booksy etc.), platformDeposit was collected upfront — add to total
+        const paidAmount      = isDeposit ? fullPrice : (todayPaid + platformDeposit);
         let pointsEarned = after.loyaltyPointsEarned || 0;
         // Safety net: if not pre-calculated (old mobile code / race condition), derive from paid amount
         if (!pointsEarned && !isMember && !after.discount) {
@@ -2341,6 +2350,8 @@ async function sendBookingPush(booking, bookingId) {
 exports.onNewBookingPush = onDocumentCreated(
     'tenants/whitecross/bookings/{bookingId}',
     async event => {
+        // Disabled 2026-06-19 — migrated to salown-app/functions salownNotifyBookingPush
+        return;
         const booking = event.data?.data();
         if (!booking) return;
         if ((booking.status || '').toUpperCase() !== 'CONFIRMED') return;
@@ -2352,6 +2363,8 @@ exports.onNewBookingPush = onDocumentCreated(
 exports.onBookingConfirmedPush = onDocumentUpdated(
     'tenants/whitecross/bookings/{bookingId}',
     async event => {
+        // Disabled 2026-06-19 — migrated to salown-app/functions salownNotifyBookingConfirmedPush
+        return;
         const before = event.data?.before?.data();
         const after  = event.data?.after?.data();
         if (!before || !after) return;
