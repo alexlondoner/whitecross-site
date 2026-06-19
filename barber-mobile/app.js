@@ -190,6 +190,8 @@ function _fireNotif(docId, data){
 }
 
 async function initPush(){
+  // Disabled 2026-06-19 — FCM push migrated to Salown Staff App (salown-staff.web.app)
+  return;
   if(!('Notification' in window)||!('serviceWorker' in navigator)) return;
   try{
     const permission=await Notification.requestPermission();
