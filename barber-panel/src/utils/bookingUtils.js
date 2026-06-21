@@ -55,7 +55,9 @@ export function bookingNetWithoutTip(booking) {
 }
 
 export function normalizeServiceKey(value) {
-  return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+  return String(value || '').trim().toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[\s_]+/g, '-');
 }
 
 export function findServiceByBookingValue(value) {
