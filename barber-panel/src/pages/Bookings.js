@@ -5,6 +5,7 @@ import PageHeader from '../components/PageHeader';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { deleteBooking, getActiveTenant } from '../firestoreActions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import StatPill from '../components/StatPill';
 
 
@@ -146,6 +147,21 @@ export default function Bookings({ isAdmin }) {
   const [deletingId, setDeletingId] = useState(null);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [groupMembersCache, setGroupMembersCache] = useState({});
+  const [paymentChecks, setPaymentChecks] = useState({});      // bookingId -> Stripe diagnosis
+  const [checkingPaymentId, setCheckingPaymentId] = useState(null);
+
+  const checkPayment = async (bookingId) => {
+    setCheckingPaymentId(bookingId);
+    try {
+      const fn = httpsCallable(getFunctions(), 'checkBookingPayment');
+      const res = await fn({ bookingId, tenantId: getActiveTenant().split('/')[1] || 'whitecross' });
+      setPaymentChecks(prev => ({ ...prev, [bookingId]: res.data }));
+    } catch (err) {
+      setPaymentChecks(prev => ({ ...prev, [bookingId]: { result: 'ERROR', detail: err.message || 'Lookup failed' } }));
+    } finally {
+      setCheckingPaymentId(null);
+    }
+  };
 
   const toggleGroupExpand = (b) => {
     if (!b.groupId) return;
@@ -563,6 +579,19 @@ export default function Bookings({ isAdmin }) {
                     )}
                   </div>
 
+                  {/* Stripe payment diagnosis for unpaid online bookings */}
+                  {(isCancelled || b.status === 'PENDING') && b.source === 'Website' && isAdmin && !isConfirming && (
+                    <div style={{ position: 'absolute', right: isCancelled ? '42px' : '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                      <button
+                        onClick={() => checkPayment(b.bookingId)}
+                        disabled={checkingPaymentId === b.bookingId}
+                        title="Why no payment? (check Stripe)"
+                        style={{ padding: '3px 7px', background: 'transparent', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '5px', color: '#d4af37', cursor: checkingPaymentId === b.bookingId ? 'wait' : 'pointer', fontSize: '0.68rem', fontWeight: '700', lineHeight: 1 }}>
+                        {checkingPaymentId === b.bookingId ? '…' : '💳'}
+                      </button>
+                    </div>
+                  )}
+
                   {isCancelled && isAdmin && (
                     <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       {isConfirming ? (
@@ -590,6 +619,24 @@ export default function Bookings({ isAdmin }) {
                     </div>
                   )}
                 </div>
+                {paymentChecks[b.bookingId] && (() => {
+                  const pc = paymentChecks[b.bookingId];
+                  const palette = {
+                    PAID:      { c: '#4caf50', bg: 'rgba(76,175,80,0.08)',  icon: '✅', label: 'Paid' },
+                    DECLINED:  { c: '#ff5252', bg: 'rgba(255,82,82,0.08)',  icon: '❌', label: 'Card declined' },
+                    ABANDONED: { c: '#ff9800', bg: 'rgba(255,152,0,0.08)',  icon: '🚪', label: 'Left without paying' },
+                    NOT_FOUND: { c: 'var(--muted)', bg: 'rgba(136,136,136,0.06)', icon: 'ℹ️', label: 'No Stripe record' },
+                    ERROR:     { c: '#ff5252', bg: 'rgba(255,82,82,0.08)',  icon: '⚠️', label: 'Lookup failed' },
+                  }[pc.result] || { c: 'var(--muted)', bg: 'rgba(136,136,136,0.06)', icon: 'ℹ️', label: pc.result };
+                  return (
+                    <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: palette.bg, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: '700', color: palette.c, whiteSpace: 'nowrap' }}>{palette.icon} {palette.label}</span>
+                      {pc.mode === 'test' && <span style={{ fontSize: '0.55rem', fontWeight: '700', color: 'var(--muted)', border: '1px solid var(--border)', borderRadius: '4px', padding: '1px 5px' }}>TEST</span>}
+                      <span style={{ fontSize: '0.68rem', color: 'var(--muted)', lineHeight: 1.4 }}>{pc.detail}</span>
+                      {pc.attempts > 0 && <span style={{ fontSize: '0.62rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>· {pc.attempts} attempt(s)</span>}
+                    </div>
+                  );
+                })()}
                 {b.groupId && expandedGroupId === b.groupId && (
                   <div style={{ padding: '8px 16px 10px 28px', borderBottom: '1px solid var(--border)', background: 'rgba(212,175,55,0.03)' }}>
                     {(groupMembersCache[b.groupId] || []).length === 0 ? (

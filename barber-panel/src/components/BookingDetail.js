@@ -3,6 +3,7 @@ import { deleteBooking, cancelBooking, markNoShow, getClientLoyaltyPoints, getAc
 import { logAudit } from '../utils/auditLogger';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   getBColor,
   getBookingServiceLabel,
@@ -142,6 +143,8 @@ export default function BookingDetail({
   const [clientPoints, setClientPoints] = useState(null);
   const [clientIsMember, setClientIsMember] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentCheck, setPaymentCheck] = useState(null);
 
   useEffect(() => {
     if (!booking) return;
@@ -578,6 +581,70 @@ export default function BookingDetail({
               label="No show"
               bg={`${T.purple}06`} border={`${T.purple}20`} color="#ba68c8" hoverBg={`${T.purple}15`}
             />
+          </div>
+        )}
+
+        {/* Payment diagnosis — why an online booking wasn't paid */}
+        {(status === 'CANCELLED' || status === 'PENDING') && booking.source === 'Website' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button
+              disabled={checkingPayment}
+              onClick={async () => {
+                setCheckingPayment(true);
+                setPaymentCheck(null);
+                try {
+                  const fn = httpsCallable(getFunctions(), 'checkBookingPayment');
+                  const res = await fn({
+                    bookingId: booking.bookingId,
+                    tenantId: getActiveTenant().split('/')[1] || 'whitecross',
+                  });
+                  setPaymentCheck(res.data);
+                } catch (err) {
+                  setPaymentCheck({ result: 'ERROR', detail: err.message || 'Lookup failed' });
+                } finally {
+                  setCheckingPayment(false);
+                }
+              }}
+              style={{
+                width: '100%', padding: '11px',
+                background: T.goldFaint, border: `1px solid ${T.border}`,
+                borderRadius: '8px', color: T.gold,
+                fontSize: '0.78rem', fontWeight: '700',
+                cursor: checkingPayment ? 'not-allowed' : 'pointer',
+                opacity: checkingPayment ? 0.6 : 1, transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { if (!checkingPayment) e.currentTarget.style.background = `${T.gold}18`; }}
+              onMouseLeave={e => e.currentTarget.style.background = T.goldFaint}
+            >{checkingPayment ? 'Checking Stripe…' : '💳 Why no payment?'}</button>
+
+            {paymentCheck && (() => {
+              const r = paymentCheck.result;
+              const palette = {
+                PAID:      { c: T.green,  bg: `${T.green}10`,  bd: `${T.green}30`,  icon: '✅', label: 'Paid' },
+                DECLINED:  { c: '#ff7070', bg: `${T.red}10`,   bd: `${T.red}30`,    icon: '❌', label: 'Card declined' },
+                ABANDONED: { c: T.orange, bg: `${T.orange}10`, bd: `${T.orange}30`, icon: '🚪', label: 'Left without paying' },
+                NOT_FOUND: { c: T.muted,  bg: `${T.muted}10`,  bd: T.border,        icon: 'ℹ️', label: 'No Stripe record' },
+                ERROR:     { c: '#ff7070', bg: `${T.red}10`,   bd: `${T.red}30`,    icon: '⚠️', label: 'Lookup failed' },
+              }[r] || { c: T.muted, bg: `${T.muted}10`, bd: T.border, icon: 'ℹ️', label: r };
+              return (
+                <div style={{
+                  padding: '12px 14px', background: palette.bg,
+                  border: `1px solid ${palette.bd}`, borderRadius: '10px',
+                  display: 'flex', flexDirection: 'column', gap: '6px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: '700', color: palette.c }}>
+                    <span>{palette.icon}</span><span>{palette.label}</span>
+                    {paymentCheck.mode === 'test' && (
+                      <span style={{ fontSize: '0.6rem', fontWeight: '700', color: T.muted, border: `1px solid ${T.border}`, borderRadius: '4px', padding: '1px 5px' }}>TEST</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', lineHeight: 1.45, color: T.muted }}>{paymentCheck.detail}</div>
+                  {typeof paymentCheck.attempts === 'number' && paymentCheck.attempts > 0 && (
+                    <div style={{ fontSize: '0.68rem', color: T.faint }}>Card attempts: {paymentCheck.attempts}</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

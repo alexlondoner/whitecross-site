@@ -296,11 +296,160 @@ exports.createCheckoutSession = onRequest(
                 });
             }
 
+            // Best-effort: store the Stripe session id on the booking doc(s) so we can
+            // later diagnose (card declined vs page abandoned) for unpaid bookings.
+            try {
+                const adb = getAdminDb();
+                if (isGroup) {
+                    for (const m of groupMembers) {
+                        if (m.bookingId) {
+                            await adb.doc(`tenants/whitecross/bookings/${m.bookingId}`)
+                                .set({ stripeSessionId: session.id }, { merge: true });
+                        }
+                    }
+                } else if (bookingId) {
+                    await adb.doc(`tenants/whitecross/bookings/${bookingId}`)
+                        .set({ stripeSessionId: session.id }, { merge: true });
+                }
+            } catch (e) {
+                console.warn('createCheckoutSession: could not store sessionId:', e.message);
+            }
+
             res.json({ url: session.url, sessionId: session.id });
         } catch (err) {
             console.error('createCheckoutSession error:', err.message);
             res.status(500).json({ error: err.message });
         }
+    }
+);
+
+// ── Diagnose an unpaid booking: card declined vs page abandoned ───────────────
+// Given a bookingId, finds its Stripe Checkout Session and inspects the
+// PaymentIntent to tell whether the customer's card was declined or they simply
+// left the payment page without ever entering card details.
+exports.checkBookingPayment = onCall(
+    { secrets: ['STRIPE_SECRET_KEY', 'STRIPE_TEST_SECRET_KEY'], cors: true },
+    async (request) => {
+        const callerUid = request.auth?.uid;
+        if (!callerUid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+
+        const { bookingId, tenantId: reqTenantId } = request.data || {};
+        const tenantId = reqTenantId || 'whitecross';
+        if (!bookingId) throw new HttpsError('invalid-argument', 'bookingId is required.');
+
+        const db = getAdminDb();
+        const staffDoc = await db.doc(`tenants/${tenantId}/staff/${callerUid}`).get();
+        if (!staffDoc.exists) throw new HttpsError('permission-denied', 'Not a staff member of this tenant.');
+
+        // Pull any stored stripeSessionId for a direct lookup
+        let storedSessionId = null;
+        try {
+            const bSnap = await db.collection(`tenants/${tenantId}/bookings`)
+                .where('bookingId', '==', bookingId).limit(1).get();
+            if (!bSnap.empty) storedSessionId = bSnap.docs[0].data().stripeSessionId || null;
+        } catch (e) { /* non-fatal */ }
+
+        const keys = [
+            { key: process.env.STRIPE_SECRET_KEY,      mode: 'live' },
+            { key: process.env.STRIPE_TEST_SECRET_KEY, mode: 'test' },
+        ].filter(k => k.key);
+
+        for (const { key, mode } of keys) {
+            const stripe = new Stripe(key);
+            let session = null;
+
+            // 1. Direct retrieve when we stored the session id (new bookings)
+            if (storedSessionId) {
+                try {
+                    session = await stripe.checkout.sessions.retrieve(storedSessionId, { expand: ['payment_intent'] });
+                } catch (e) { session = null; }
+            }
+
+            // 2. Fallback: scan recent sessions for matching metadata.bookingId (old bookings)
+            if (!session) {
+                try {
+                    let startingAfter;
+                    scan:
+                    for (let page = 0; page < 5; page++) {
+                        const list = await stripe.checkout.sessions.list({
+                            limit: 100,
+                            ...(startingAfter ? { starting_after: startingAfter } : {}),
+                            expand: ['data.payment_intent'],
+                        });
+                        for (const s of list.data) {
+                            if (s.metadata && s.metadata.bookingId === bookingId) { session = s; break scan; }
+                        }
+                        if (!list.has_more || !list.data.length) break;
+                        startingAfter = list.data[list.data.length - 1].id;
+                    }
+                } catch (e) { /* try next key */ }
+            }
+
+            if (!session) continue;
+
+            const base = {
+                found: true, mode, sessionId: session.id,
+                amount: (session.amount_total || 0) / 100,
+                currency: (session.currency || 'gbp').toUpperCase(),
+                createdAt: session.created ? session.created * 1000 : null,
+            };
+
+            if (session.payment_status === 'paid') {
+                return { ...base, result: 'PAID', detail: 'Payment completed successfully.' };
+            }
+
+            const pi = (session.payment_intent && typeof session.payment_intent === 'object')
+                ? session.payment_intent : null;
+
+            if (!pi) {
+                const expired = session.status === 'expired';
+                return {
+                    ...base, result: 'ABANDONED', attempts: 0,
+                    detail: expired
+                        ? 'Checkout session expired. The customer opened the payment page but never entered card details.'
+                        : 'The customer opened the payment page but never entered card details (closed/left the page).',
+                };
+            }
+
+            // Inspect card attempts via charges on the PaymentIntent
+            let failedCharges = [];
+            try {
+                const charges = await stripe.charges.list({ payment_intent: pi.id, limit: 20 });
+                failedCharges = charges.data.filter(c => c.status === 'failed');
+            } catch (e) { /* fall back to last_payment_error below */ }
+
+            const lastErr = pi.last_payment_error || (failedCharges[0] && {
+                code: failedCharges[0].failure_code,
+                decline_code: failedCharges[0].outcome ? failedCharges[0].outcome.reason : null,
+                message: failedCharges[0].failure_message,
+            });
+
+            if (lastErr || failedCharges.length) {
+                const declineCode = (lastErr && (lastErr.decline_code || lastErr.code))
+                    || (failedCharges[0] && failedCharges[0].outcome && failedCharges[0].outcome.reason)
+                    || 'unknown';
+                const msg = (lastErr && lastErr.message)
+                    || (failedCharges[0] && failedCharges[0].failure_message)
+                    || 'Card was declined.';
+                return {
+                    ...base, result: 'DECLINED',
+                    attempts: failedCharges.length || 1,
+                    declineCode,
+                    detail: `Card declined (${declineCode}): ${msg}`,
+                };
+            }
+
+            // PI exists, no failures, not paid → reached card form but didn't submit
+            return {
+                ...base, result: 'ABANDONED', attempts: 0,
+                detail: 'The customer reached the card form but did not complete payment — no card was charged or declined.',
+            };
+        }
+
+        return {
+            found: false, result: 'NOT_FOUND',
+            detail: 'No Stripe checkout session found for this booking. It may predate Stripe\'s session retention window, or the customer never reached the payment page.',
+        };
     }
 );
 
