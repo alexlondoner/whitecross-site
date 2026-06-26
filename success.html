@@ -641,6 +641,17 @@
     // Timestamps when present, else falls back to startTime + duration.
     function buildCalendarUrl(data) {
         let start = (data.startTime && typeof data.startTime.toDate === 'function') ? data.startTime.toDate() : null;
+        // Fallback for session data (no startTime Timestamp): parse date + time strings.
+        if (!start && data.date && data.time) {
+            const m = String(data.time).match(/(\d+):(\d+)\s*(AM|PM)?/i);
+            if (m) {
+                let h = parseInt(m[1], 10); const min = parseInt(m[2], 10); const ap = (m[3] || '').toUpperCase();
+                if (ap === 'PM' && h !== 12) h += 12;
+                if (ap === 'AM' && h === 12) h = 0;
+                const parts = String(data.date).split('-').map(Number);
+                if (parts.length === 3 && parts[0]) start = new Date(parts[0], parts[1] - 1, parts[2], h, min);
+            }
+        }
         if (!start || isNaN(start.getTime())) return '';
         let end = (data.endTime && typeof data.endTime.toDate === 'function') ? data.endTime.toDate() : null;
         if (!end || isNaN(end.getTime())) {
@@ -736,6 +747,29 @@
             await new Promise(r => setTimeout(r, 1000));
         }
 
+        // Public read of a booking is blocked by Firestore rules (auth-only), so on the
+        // public success page the query above returns nothing. Fall back to the booking
+        // the customer just made, stashed in sessionStorage before the Stripe redirect —
+        // same browser session, no privileged read needed.
+        let fromSession = false;
+        if (!data) {
+            try {
+                const ss = JSON.parse(sessionStorage.getItem('pendingBooking') || 'null');
+                if (ss && (!bookingId || !ss.bookingId || ss.bookingId === bookingId)) {
+                    data = {
+                        clientName:  ss.clientName  || ss.name   || '',
+                        clientEmail: ss.clientEmail || ss.email  || '',
+                        clientPhone: ss.clientPhone || ss.phone  || '',
+                        barberName:  ss.barberName  || ss.barber || '',
+                        serviceId:   ss.serviceId   || ss.service || '',
+                        date:        ss.date || '',
+                        time:        ss.time || '',
+                    };
+                    fromSession = true;
+                }
+            } catch (_) {}
+        }
+
         if (data) {
             // Check for missing fields
             const missing = [];
@@ -754,7 +788,7 @@
                 row('Barber',  (data.barberName || data.barber)),
             ];
             let warning = '';
-            if (missing.length) {
+            if (missing.length && !fromSession) {
                 warning = `<div style=\"color:#ff9800;font-size:0.9rem;margin-bottom:10px;\">Some booking details are missing: <b>${missing.join(', ')}</b>. If this is a recent booking, please refresh in a few seconds.</div>`;
             }
             // Insert payment row(s) after barber
