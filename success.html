@@ -134,6 +134,27 @@
             margin-top: 20px;
         }
         .btn-gold:hover { filter: brightness(1.1); }
+        .btn-cal {
+            display: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #d4af37;
+            background: transparent;
+            color: #d4af37;
+            font-family: 'Cinzel', serif;
+            font-size: 0.82rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            text-decoration: none;
+            text-align: center;
+            transition: background 0.2s, color 0.2s;
+            margin-top: 18px;
+            box-sizing: border-box;
+        }
+        .btn-cal:hover { background: #d4af37; color: #000; }
 
         .spinner {
             display: inline-block;
@@ -548,6 +569,8 @@
             </div>
 
 
+            <a id="addToCalBtn" class="btn-cal" target="_blank" rel="noopener">📅 Add to Calendar</a>
+
             <a href="index.html" class="btn-gold">← Back to Home</a>
 
             <p class="booking-id" id="bookingIdLabel"></p>
@@ -610,6 +633,31 @@
     function lookupServiceName(id) {
         if (!id) return '';
         return SERVICE_NAMES[id] || SERVICE_NAMES[id.replace(/skin-fade/g, 'skinfade')] || SERVICE_NAMES[id.replace(/skinfade/g, 'skin-fade')] || id;
+    }
+
+    // Build a Google Calendar "add event" URL from the confirmed booking.
+    // Mirrors _googleCalendarUrl in salown-app/functions so the success page
+    // matches the confirmation email. Uses the booking's startTime/endTime
+    // Timestamps when present, else falls back to startTime + duration.
+    function buildCalendarUrl(data) {
+        let start = (data.startTime && typeof data.startTime.toDate === 'function') ? data.startTime.toDate() : null;
+        if (!start || isNaN(start.getTime())) return '';
+        let end = (data.endTime && typeof data.endTime.toDate === 'function') ? data.endTime.toDate() : null;
+        if (!end || isNaN(end.getTime())) {
+            const dur = parseInt(data.duration, 10) || 30;
+            end = new Date(start.getTime() + dur * 60000);
+        }
+        const fmt = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        const svcName = lookupServiceName(data.service || data.serviceId) || 'Appointment';
+        const barber = data.barberName || data.barber || '';
+        const p = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: svcName + ' · I CUT Whitecross Barbers',
+            dates: `${fmt(start)}/${fmt(end)}`,
+            location: '136 Whitecross Street, Clerkenwell, London EC1Y 8QJ',
+            details: barber ? `With ${barber}` : '',
+        });
+        return `https://calendar.google.com/calendar/render?${p.toString()}`;
     }
 
 
@@ -712,6 +760,14 @@
             // Insert payment row(s) after barber
             const html = warning + rows.join('') + paymentRow(data);
             document.getElementById('detailRows').innerHTML = html;
+
+            // ── Add to Calendar button (mirrors confirmation email) ──
+            const calUrl = buildCalendarUrl(data);
+            if (calUrl) {
+                const calBtn = document.getElementById('addToCalBtn');
+                calBtn.href = calUrl;
+                calBtn.style.display = 'block';
+            }
 
             // ── Double points campaign banner ──────────────────────
             try {
