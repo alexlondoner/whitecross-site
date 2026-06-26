@@ -24,6 +24,41 @@ const stories = {
     wash_style_hot_towel: { title: "Wash, Style & Hot Towel", content: `<p><strong>A grooming service that combines hair washing, styling, and relaxation.</strong></p><p>Your hair is washed, professionally styled, and finished with a soothing hot towel treatment. Perfect before an event, meeting, or night out when you want to feel fresh and well-presented.</p>` }
 };
 
+/* --- SERVICE MODAL META (price + duration), keyed by serviceId --- */
+const WC_PRICE = {
+    'i-cut-royal':'£65','i-cut-deluxe':'£55','full-skinfade-beard-luxury':'£48','full-experience':'£40','senior-full-experience':'£35',
+    'skin-fade':'£32','scissor-cut':'£30','classic-sbs':'£28','hot-towel-shave':'£22','clipper-cut':'£22','senior-haircut':'£23','young-gents':'£20','young-gents-skin-fade':'£24',
+    'full-facial':'£24','beard-dyeing':'£24','shape-up-clean-up':'£20','face-mask':'£12','face-steam':'£12','threading':'£10','waxing':'£10','wash-hot-towel':'£10'
+};
+const WC_DUR = {
+    'i-cut-royal':'75 min','i-cut-deluxe':'60 min','full-skinfade-beard-luxury':'55 min','full-experience':'45 min','senior-full-experience':'45 min',
+    'skin-fade':'40 min','scissor-cut':'40 min','classic-sbs':'35 min','hot-towel-shave':'30 min','clipper-cut':'25 min','senior-haircut':'30 min','young-gents':'25 min','young-gents-skin-fade':'30 min',
+    'full-facial':'30 min','beard-dyeing':'30 min','shape-up-clean-up':'20 min','face-mask':'15 min','face-steam':'15 min','threading':'15 min','waxing':'10 min','wash-hot-towel':'20 min'
+};
+
+// Inject a "What's included" label before the first <ul> (premium chrome; hidden in original theme via CSS)
+function wcRichDesc(html) {
+    return String(html).replace('<ul>', '<div class="sm-inc-title">What\'s included</div><ul>');
+}
+
+// Fill the premium modal meta row + wire the in-modal Select & Book button. Harmless in original theme (chrome hidden via CSS).
+function wcFillModalMeta(serviceId) {
+    var price = WC_PRICE[serviceId] || '';
+    var dur = WC_DUR[serviceId] || '';
+    var meta = document.getElementById('modal-meta');
+    var pEl = document.getElementById('modal-price');
+    var dEl = document.getElementById('modal-duration');
+    var dot = document.querySelector('#modal-meta .sm-dot');
+    if (pEl) pEl.textContent = price;
+    if (dEl) dEl.innerHTML = dur
+        ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4l3 2"></path></svg>' + dur
+        : '';
+    if (dot) dot.style.display = (price && dur) ? 'inline' : 'none';
+    if (meta) meta.style.display = price ? 'flex' : 'none';
+    var cta = document.getElementById('modalSelectBtn');
+    if (cta) cta.onclick = function () { if (window.selectService) selectService(serviceId); };
+}
+
 /* --- MODAL FUNCTIONS --- */
 function selectService(value) {
     const serviceEl = document.getElementById('service');
@@ -87,7 +122,8 @@ function openServiceStory(serviceId) {
     var key = storyMap[serviceId];
     if (key && stories[key]) {
         title.innerHTML = stories[key].title;
-        desc.innerHTML = stories[key].content;
+        desc.innerHTML = wcRichDesc(stories[key].content);
+        wcFillModalMeta(serviceId);
         modal.style.display = 'flex';
         return;
     }
@@ -96,6 +132,7 @@ function openServiceStory(serviceId) {
     if (svc && svc.description) {
         title.innerHTML = escapeHtml(svc.name);
         desc.innerHTML = '<p>' + escapeHtml(svc.description) + '</p>';
+        wcFillModalMeta(serviceId);
         modal.style.display = 'flex';
     }
 }
@@ -1133,6 +1170,24 @@ var todayStr = now.getFullYear() + '-' +
         return { startTime: new Date(startMs), endTime: new Date(startMs + svcDur * 60000), duration: svcDur };
     }
 
+    // Build a Google Calendar "add event" URL — mirrors _googleCalendarUrl in
+    // salown-app/functions so the success page matches the confirmation email.
+    function buildCalendarUrl(bookingData) {
+        var range = toStartAndEnd(bookingData.date, bookingData.time, bookingData.service);
+        if (!range) return '';
+        var fmt = function(d) { return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); };
+        var svc = (window.SERVICES || []).find(function(s) { return s.id === bookingData.service; });
+        var svcName = (svc && svc.name) ? svc.name : 'Appointment';
+        var p = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: svcName + ' · I CUT Whitecross Barbers',
+            dates: fmt(range.startTime) + '/' + fmt(range.endTime),
+            location: '136 Whitecross Street, Clerkenwell, London EC1Y 8QJ',
+            details: bookingData.barberName ? ('With ' + bookingData.barberName) : '',
+        });
+        return 'https://calendar.google.com/calendar/render?' + p.toString();
+    }
+
     function writeBookingStatus(bookingData, status, paymentState) {
         try {
             var db = window._db;
@@ -1788,6 +1843,24 @@ var todayStr = now.getFullYear() + '-' +
             document.getElementById('popup-icon').innerText = "\u2702\uFE0F";
             document.getElementById('popup-title').innerText = "You're all booked, " + name + "!";
             document.getElementById('popup-text').innerText = "See you at I CUT Whitecross Barbers on " + bDate + " at " + bTime + ". Check your email for confirmation!";
+
+            // Add-to-Calendar button (matches the confirmation email)
+            var existingCal = document.getElementById('addToCalBtn');
+            if (existingCal) existingCal.remove();
+            if (bookingData && bookingData.date && bookingData.time) {
+                var calUrl = buildCalendarUrl(bookingData);
+                if (calUrl) {
+                    var calBtn = document.createElement('a');
+                    calBtn.id = 'addToCalBtn';
+                    calBtn.href = calUrl;
+                    calBtn.target = '_blank';
+                    calBtn.rel = 'noopener';
+                    calBtn.textContent = 'Add to Calendar';
+                    calBtn.style.cssText = 'display:inline-block; margin-top:6px; padding:11px 22px; background:linear-gradient(135deg,#d4af37,#b8860b); color:#000; font-weight:800; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; border-radius:6px; text-decoration:none; font-family:\'Inter\',sans-serif;';
+                    document.getElementById('popup-text').insertAdjacentElement('afterend', calBtn);
+                }
+            }
+
             popup.style.display = 'flex';
             // Google Ads + Firebase Analytics conversion
             if (typeof gtag === 'function') {
