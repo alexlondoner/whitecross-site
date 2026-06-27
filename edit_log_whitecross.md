@@ -180,3 +180,10 @@ Lay groundwork for organic ranking on broad London searches ("london barbers", "
 - **whitecross-icon-180.png**: SVG'den yeniden üretildi (Apple/eski tarayıcı + Google).
 - Commit 7c6bc3cc, push origin/main. GitHub Pages yayınlar; Google favicon önbelleği gecikmeli güncellenir.
 - Panel uygulamaları (barber-panel/client-app/barber-mobile) DOKUNULMADI — legacy, Whitecross artık salown-app kullanıyor.
+
+## 2026-06-27 — SEO title güncellemesi (CTR + "Old Street" alaka)
+- **Neden**: "barbers near old street" aramasında Huckles/Murdock'tan sonra çıkmaya başladık; title'a hem hook hem "Old Street" eklendi.
+- **Eski**: "Barbers London EC1 | I CUT Whitecross Barbers, Clerkenwell"
+- **Yeni**: "Barbers near Old Street | Book in Seconds – Whitecross EC1" (58 karakter, Google kesmez)
+- `<title>` + `og:title` + `twitter:title` üçü de güncellendi (tutarlılık).
+- Not: title sıralamayı Huckles/Murdock üstüne taşımaz (domain otoritesi/GMB/yorum işi); alaka + CTR içindir.
