@@ -1,5 +1,50 @@
 # Whitecross Barbers — Edit Log
 
+## 2026-06-27 — Push öncesi finalize (toggle kaldırıldı, modal revert, noscript fix)
+
+Owner kararı: "site logic'i tamamen aynı kalsın, premium altyapı gitsin ama toggle siteden kalksın (panele eklenecek), logo değişmesin". Buna göre 2026-06-25 tema işi şu şekilde ship edildi:
+- **Theme toggle butonu KALDIRILDI** (`#themeToggle` + script). Premium hâlâ `?theme=premium` / localStorage ile önizlenir; canlı geçiş UI'ı ileride Salown paneline taşınacak. Default `original`.
+- **Service modal REVERT** → orijinal (`modal-content` + `modal-title` + `modal-desc`). Sebep: 2026-06-25 kaydındaki `script.js` modal wiring (`WC_PRICE`/`WC_DUR`/`wcFillModalMeta`/`modalSelectBtn`) **gerçekte kaydedilmemiş** (commit'li script.js'te yok) → zengin modal ship edilseydi ölü "Select & Book" butonu + boş fiyat/süre satırı olurdu. Zengin modal ileride script.js wiring'i ile yapılacak.
+- **`<noscript>` fallback** `premium` → `original` (JS-kapalı ziyaretçi de canlı görünümle aynı kalsın).
+- **Logo DEĞİŞMEDİ:** `whitecross-logo.png` korundu; `whitecross-logo.svg`/`whitecross-icon.svg` orphan kaldı, push'a dahil edilmedi.
+- **Cancellation kontrol:** `cancel.html` zaten `salownCancelByToken` + `salownGetBookingByToken` kullanıyor; politika penceresi 8h = salown enforcement (functions `salownCancelByToken` "at least 8 hours") ile birebir aynı → değişiklik gerekmedi.
+- **Push seti:** `index.html`, `style.original.css`, `style.premium.css`, `edit_log_whitecross.md`. HARİÇ: `functions/index.js` (ilgisiz makbuz-deposit backend fix, ayrı `firebase deploy` ister), orphan SVG'ler.
+- Kalan görünür fark (her iki tema): manage floater ikonları emoji→SVG (davranış aynı).
+
+## 2026-06-25 — Premium tema + canlı theme toggle (original korunarak)
+
+Kaynak: `Desktop/alex/design_handoff_whitecross_refresh/` (luxury visual refresh, drop-in style.css + SVG marka marks). Eski CSS'teki 125 class'ın hepsi yeni CSS'te mevcut (superset, +11 shop-* class) → markup'sız drop-in.
+
+### Yeni dosyalar (whitecross-site/)
+- `style.original.css` — eski tema (git HEAD'den birebir), açık isimli kopya
+- `style.premium.css` — yeni champagne-gold premium tema (handoff deliverable)
+- `whitecross-logo.svg`, `whitecross-icon.svg` — yeni dairesel madalyon marka + favicon (henüz markup'a bağlanmadı, opsiyonel)
+
+### style.css
+- DOKUNULMADI / orijinaline geri alındı → style.css'e direkt bağlı diğer 8 sayfa (about, gallery, products, success, terms, manage, london-barbers, products-success) eskisi gibi bozulmadan çalışıyor
+
+### index.html
+- `<head>`: bare `<link href="style.css">` yerine **theme loader** — `DEFAULT_THEME='original'` (per-tenant), `?theme=` + localStorage override, `document.write` ile `style.<theme>.css` yükler; `<noscript>` fallback premium
+- Font link: Oswald 300;400;500;600;700 + Inter 400;500;600;700 (premium ağırlıkları için genişletildi; Great Vibes korundu, Cormorant premium CSS içinde @import)
+- `</body>` öncesi: **#themeToggle** floating buton (sol-alt) — premium ↔ original anında href swap, glyph localStorage'a göre (✨ premium / ◆ original). Per-tenant gizlemek için display:none
+- Default original → canlı görünüm değişmedi; premium toggle/`?theme=premium` ile önizlenir
+
+### Service detail modal — reference'taki zengin görünüm (premium), original korunarak
+Sorun: handoff deliverable modal'ı sadece basit p/ul/li boyuyordu; reference prototype'taki "THE SERVICE / £ · MIN / WHAT'S INCLUDED / SELECT & BOOK" zengin hali ship edilmemişti (sm-* stilleri reference HTML'de inline'dı).
+- `index.html` #infoModal: `.sm-label` eyebrow, `.sm-meta` (#modal-price + .sm-dot + #modal-duration), `.sm-divider`, `<button class="submit-btn sm-cta" id="modalSelectBtn">` eklendi; modal-content'e `service-modal` class
+- `script.js`: WC_PRICE + WC_DUR map'leri (21 servis, markup'tan), `wcRichDesc()` ("What's included" etiketi <ul> öncesi enjekte), `wcFillModalMeta()` (price/dur doldur + CTA'yı selectService'e bağla); openServiceStory iki dalı da güncellendi
+- `style.premium.css`: `.service-modal/.sm-label/.sm-meta/.sm-price/.sm-dot/.sm-dur/.sm-divider/.sm-inc-title/.sm-cta` (reference'tan port) + service-modal'da başlık alt-çizgisi kaldırıldı (sm-divider ayırıyor)
+- `style.original.css`: `.sm-label,#modal-meta,.sm-divider,.sm-inc-title,.sm-cta{display:none!important}` → original modal birebir eskisi gibi
+- Süreler (WC_DUR) tahmini; owner doğrular. Fiyatlar markup'tan kesin.
+
+### Manage-booking floater (sağ-alt) — premium reskin
+Floater markup'ı inline-styled (legacy altın) olduğu için premium CSS onu ezemiyordu → premium'da eski kalıyordu.
+- `style.premium.css`: `#manageBtn` (yumuşak gold gradient + premium gölge), `#managePanel a` (#16130e zemin, gold hairline, --gold metin, 0.66rem/0.14em), Book Now pill `[href*="bookingForm"]` primary gold, `#managePanel a span{display:none}` (pill emoji'leri kaldırıldı) — hepsi `!important` ile inline'ı ezer
+- Sadece premium.css'te → toggle'a basınca (CSS href swap) anında yenilenir; original theme inline görünümünü korur
+- Trigger butonu ikonu hâlâ 📋 emoji (JS textContent ile değişiyor); istenirse line-icon'a çevrilir
+  → **YAPILDI (her iki temada):** owner "ikon line-icon olsun + bu temizliği eski whitecross temasında da olsun, daha prof" dedi. Markup değişti (her iki temayı etkiler): pill emoji'leri (📋📞✂) kaldırıldı (düz tracked metin), trigger ikonu **clipboard SVG** (stroke #0a0907, gold daire her iki temada). JS: `WC_ICON_MENU`/`WC_ICON_CLOSE` SVG sabitleri, toggle + dışarı-tıklama artık `innerHTML` ile clipboard↔X swap (eski `textContent` emoji yerine). Renkler tema bazında: original gold (#d4af37 inline), premium champagne override.
+
+
 ## 2026-06-13 — New Google reviews added (Ian Uvas, Anthony Lamont, Jamie Marshall)
 
 ### whitecross-site/index.html
@@ -127,3 +172,11 @@ Lay groundwork for organic ranking on broad London searches ("london barbers", "
 - **Pending pill**: now hides when count=0 (`&& pendingCount > 0`), shows only when there are actual pending bookings (or settings override via visiblePills)
 - **Source pills** (Booksy, Fresha, Treatwell, Website, Walk-in, App): removed `&& sourceCount.X > 0` condition — now purely settings-controlled. Enabling in settings always shows them (faded when 0). Previously settings override was broken.
 - **Total, Confirmed, Checked Out**: unchanged — always show when settings enabled, faded when 0.
+
+## 2026-06-27 — Favicon değişimi (whitecrossbarbers.com / GitHub Pages)
+- **Sorun**: Eski `favicon.png` tüm detaylı logoydu (beyaz zemin + minik yazılar) → 16px sekme/Google sonucunda okunmaz, soluk leke. Kullanıcı Google'da "barbers near old street" aramasında fark etti.
+- **Çözüm**: `whitecross-icon.svg` → kalın makas-içinde-daire varyantına güncellendi (koyu #0a0907 zemin, altın #c9a24b kenar/#e6cd8b makas, stroke 3.6, ince iç dekoratif halka atıldı). 32px+ boyutlarda net.
+- **index.html** head: `favicon.png` referansları kaldırıldı → `rel="icon"` SVG + 180px PNG fallback + apple-touch-icon.
+- **whitecross-icon-180.png**: SVG'den yeniden üretildi (Apple/eski tarayıcı + Google).
+- Commit 7c6bc3cc, push origin/main. GitHub Pages yayınlar; Google favicon önbelleği gecikmeli güncellenir.
+- Panel uygulamaları (barber-panel/client-app/barber-mobile) DOKUNULMADI — legacy, Whitecross artık salown-app kullanıyor.
