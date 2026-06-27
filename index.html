@@ -212,8 +212,19 @@
     }
     </script>
 
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
+    <!-- THEME SWITCH — premium (new) <-> original. Per-tenant default below; ?theme= and localStorage override. -->
+    <script>
+      (function () {
+        var DEFAULT_THEME = 'original';            // sold per tenant: 'premium' or 'original'
+        localStorage.removeItem('wcTheme');        // Clear old theme on load
+        var q = new URLSearchParams(location.search).get('theme');
+        if (q === 'premium' || q === 'original') localStorage.setItem('wcTheme', q);
+        var t = localStorage.getItem('wcTheme') || DEFAULT_THEME;
+        document.write('<link id="siteTheme" rel="stylesheet" href="style.' + t + '.css">');
+      })();
+    </script>
+    <noscript><link rel="stylesheet" href="style.original.css"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 
     <style>
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -580,35 +591,41 @@
     <!-- PANEL -->
     <div id="managePanel" style="display:none; flex-direction:column; gap:8px; align-items:flex-end;">
         <a href="cancel.html" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(212,175,55,0.5); color:#d4af37; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>📋</span> Manage My Booking
+            Manage My Booking
         </a>
         <a href="tel:+442036215929" style="display:flex; align-items:center; gap:10px; background:#111; border:1px solid rgba(212,175,55,0.5); color:#d4af37; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <span>📞</span> Call Us
+            Call Us
         </a>
         <a href="index.html#bookingForm" style="display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; color:#000; padding:10px 16px; border-radius:50px; text-decoration:none; font-family:Oswald,sans-serif; font-size:0.75rem; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; box-shadow:0 4px 15px rgba(212,175,55,0.3); font-weight:700;">
-            <span>✂</span> Book Now
+            Book Now
         </a>
     </div>
 
     <!-- TRIGGER BUTTON -->
-    <button onclick="toggleManagePanel()" id="manageBtn" style="width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(212,175,55,0.4); transition:transform 0.2s ease;" title="Manage My Booking">
-        <span id="manageBtnIcon" style="font-size:1.3rem;">📋</span>
+    <button onclick="toggleManagePanel(event)" id="manageBtn" style="width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#d4af37,#b8860b); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(212,175,55,0.4); transition:transform 0.2s ease;" title="Manage My Booking">
+        <span id="manageBtnIcon" style="display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0a0907" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span>
     </button>
 </div>
 
 <script>
-    function toggleManagePanel() {
+    var WC_ICON_MENU = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0a0907" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>';
+    var WC_ICON_CLOSE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a0907" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    function toggleManagePanel(e) {
+        // Stop the click reaching the document "click-outside-to-close" listener below.
+        // The icon innerHTML swap detaches the clicked <svg> from the DOM, so that
+        // listener's floater.contains(e.target) would read false and instantly re-close.
+        if (e) e.stopPropagation();
         var panel = document.getElementById('managePanel');
         var icon = document.getElementById('manageBtnIcon');
         var isOpen = panel.style.display === 'flex';
         panel.style.display = isOpen ? 'none' : 'flex';
-        icon.textContent = isOpen ? '📋' : '✕';
+        icon.innerHTML = isOpen ? WC_ICON_MENU : WC_ICON_CLOSE;
     }
     document.addEventListener('click', function(e) {
         var floater = document.getElementById('manageFloater');
         if (!floater.contains(e.target)) {
             document.getElementById('managePanel').style.display = 'none';
-            document.getElementById('manageBtnIcon').textContent = '📋';
+            document.getElementById('manageBtnIcon').innerHTML = WC_ICON_MENU;
         }
     });
 </script>
