@@ -1152,6 +1152,14 @@ select.input-field optgroup {
   font-weight: 700;
 }
 
+.t-date {
+  display: block;
+  color: rgba(212, 175, 55, 0.6);
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
 /* =========================
    GALLERY CAROUSEL
 ========================= */

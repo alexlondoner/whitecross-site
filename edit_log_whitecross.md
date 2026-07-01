@@ -187,3 +187,16 @@ Lay groundwork for organic ranking on broad London searches ("london barbers", "
 - **Yeni**: "Barbers near Old Street | Book in Seconds – Whitecross EC1" (58 karakter, Google kesmez)
 - `<title>` + `og:title` + `twitter:title` üçü de güncellendi (tutarlılık).
 - Not: title sıralamayı Huckles/Murdock üstüne taşımaz (domain otoritesi/GMB/yorum işi); alaka + CTR içindir.
+
+## 2026-07-01 — Ana sayfa kayan yorumlara 5 yeni Google yorumu (tarihli)
+- **Neden**: en güncel 5 Google yorumu (Thor Bengtsson 1 Jul, Harry Atkins 25 Jun, Shaggy Goatboy 24 Jun, Hanafi + Huseyin Arkin 17 Jun 2026) en başta çıksın; millet dükkanın güncel/aktif olduğunu görsün.
+- `index.html` — `#testimonialsTrack` marquee'sinin İKİ yarısına da (animasyon -50% kaydığı için loop pürüzsüz kalsın diye) 5 kart en öne eklendi. Toplam 32 kart = 16/yarım.
+- İsmin altına `<span class="t-date">` ile tarih eklendi (güncellik sinyali).
+- `style.css` — yeni `.t-date` stili (küçük, soluk altın, isim altında blok).
+- Not: sayfa başındaki JSON-LD review datası (SEO) bu yorumlarla GÜNCELLENMEDİ — istenirse eklenir.
+
+## 2026-07-01 (ek) — JSON-LD yorumları + reviewCount güncel
+- `index.html` — sayfa başındaki JSON-LD `"review"` dizisine aynı 5 yeni yorum (Thor/Harry/Shaggy Goatboy/Hanafi/Huseyin Arkin) `datePublished` ile en başa eklendi (SEO). İki ld+json bloğu da valid doğrulandı.
+- `index.html` + `london-barbers.html` — `aggregateRating.reviewCount` 408 → 413 (Alex'in verdiği güncel sayı).
+- "over 400 reviews" metinleri değişmedi (413 hâlâ 400+).
+- Aylık hatırlatma kuruldu: trigger `trig_01Jn7y3oqcABTkD8r6Z25PXV`, her ayın 1'i 10:00 (push+email), fresh session; ilk çalışma 1 Ağu 2026.
